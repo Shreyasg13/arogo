@@ -1,0 +1,14 @@
+/* main.css — MediScan Health OS
+   Imports all CSS modules in order.
+   In development, link this file in index.html.
+   For production, concatenate the modules.
+*/
+
+@import "modules/01-base.css";
+@import "modules/02-dashboard.css";
+@import "modules/03-medical.css";
+@import "modules/04-fitness.css";
+@import "modules/05-food.css";
+@import "modules/06-wellness.css";
+@import "modules/07-medical2.css";
+@import "modules/08-features.css";

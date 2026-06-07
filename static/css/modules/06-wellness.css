@@ -1,0 +1,333 @@
+/* 06-wellness.css — Thoughts journal, sleep tiles, body metrics, mood analytics, habits
+   MediScan Health OS */
+
+/* ════════════════════════════════════
+   DASHBOARD WELLNESS STRIP
+   ════════════════════════════════════ */
+.dash-wellness-strip {
+  display: flex; align-items: center;
+  background: var(--gray-0); border: 1px solid var(--gray-100);
+  border-radius: var(--r-xl); padding: 12px 20px;
+  box-shadow: var(--shadow-sm); margin-bottom: 20px; gap: 0;
+}
+.dws-item {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1; cursor: pointer; padding: 4px 8px;
+  border-radius: var(--r-md); transition: background .12s;
+}
+.dws-item:hover { background: var(--teal-50); }
+.dws-icon { font-size: 20px; flex-shrink: 0; }
+.dws-content { flex: 1; min-width: 0; }
+.dws-label { font-size: 10.5px; color: var(--gray-400); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+.dws-val   { font-size: 14px; font-weight: 700; color: var(--gray-800); margin-top: 1px; }
+.dws-sep { width: 1px; height: 32px; background: var(--gray-100); flex-shrink: 0; margin: 0 4px; }
+.dws-bar-wrap { width: 60px; flex-shrink: 0; }
+.dws-bar-track { height: 5px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
+.dws-bar-fill  { height: 100%; border-radius: 99px; transition: width .5s ease; }
+.dws-bar--blue { background: linear-gradient(90deg, #06B6D4, #0284C7); }
+.dws-quality { font-size: 16px; }
+.dws-badge { font-size: 11px; font-weight: 700; color: var(--teal-700); background: var(--teal-50); padding: 2px 8px; border-radius: 99px; }
+
+/* ════════════════════════════════════
+   WELLNESS & MEDICAL TABS
+   ════════════════════════════════════ */
+.wellness-tabs, .medical-tabs {
+  display: flex; gap: 4px; margin-bottom: 20px;
+  background: var(--gray-50); border-radius: var(--r-xl); padding: 4px;
+  border: 1px solid var(--gray-100); width: fit-content;
+}
+.wellness-tab {
+  padding: 8px 18px; border-radius: var(--r-lg); border: none;
+  font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+  color: var(--gray-500); background: transparent; cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.wellness-tab:hover  { background: var(--gray-0); color: var(--gray-800); }
+.wellness-tab.active { background: var(--gray-0); color: var(--teal-700); font-weight: 600;
+                       box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.wellness-tab-content { animation: tabFade .18s ease; }
+@keyframes tabFade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ════════════════════════════════════
+   SLEEP TRACKER
+   ════════════════════════════════════ */
+.sleep-layout  { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+.sleep-log-panel {}
+.sleep-chart-panel {}
+.sleep-quality-picker { display: flex; gap: 5px; flex-wrap: wrap; }
+.sleep-q-btn {
+  flex: 1; padding: 7px 6px; border: 1.5px solid var(--gray-200); border-radius: var(--r-md);
+  background: var(--gray-0); font-size: 12px; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; text-align: center; transition: all .15s; white-space: nowrap;
+}
+.sleep-q-btn.selected { background: var(--teal-600); border-color: var(--teal-600); color: #fff; }
+.sleep-q-btn:not(.selected):hover { border-color: var(--teal-300); background: var(--teal-50); }
+.sleep-log-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-50); transition: background .12s;
+}
+.sleep-log-row:last-child { border-bottom: none; }
+.sleep-log-row:hover { background: var(--gray-25); }
+.sleep-log-date { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--gray-500); width: 72px; flex-shrink: 0; }
+.sleep-log-dur  { font-size: 15px; font-weight: 700; font-family: 'DM Serif Display', serif; color: var(--gray-900); flex: 1; }
+.sleep-log-qual { font-size: 16px; flex-shrink: 0; }
+.sleep-bar-col  { width: 80px; height: 6px; background: var(--gray-100); border-radius: 99px; overflow: hidden; flex-shrink: 0; }
+.sleep-bar-fill { height: 100%; border-radius: 99px; }
+.sleep-bar-fill.great { background: #22C55E; }
+.sleep-bar-fill.good  { background: #0E8F7E; }
+.sleep-bar-fill.ok    { background: #D97706; }
+.sleep-bar-fill.poor  { background: #EF4444; }
+
+/* ════════════════════════════════════
+   BODY METRICS
+   ════════════════════════════════════ */
+.body-layout { display: grid; grid-template-columns: 320px 1fr; gap: 18px; }
+.body-metric-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  border-bottom: 1px solid var(--gray-50);
+}
+.body-metric-row:last-child { border-bottom: none; }
+.body-metric-date { font-size: 11.5px; color: var(--gray-400); font-family: 'JetBrains Mono', monospace; width: 76px; }
+.body-metric-weight { font-size: 16px; font-weight: 700; font-family: 'DM Serif Display', serif; color: var(--gray-900); }
+.body-metric-chips  { display: flex; gap: 5px; flex-wrap: wrap; margin-left: auto; }
+.body-chip { font-size: 11px; padding: 2px 8px; border-radius: 99px; font-family: 'JetBrains Mono', monospace; }
+.body-chip--fat  { background: var(--purple-50); color: var(--purple-500); }
+.body-chip--bmi  { background: var(--teal-50); color: var(--teal-700); }
+.body-chip--waist{ background: var(--amber-50); color: var(--amber-700); }
+
+/* ════════════════════════════════════
+   HABITS
+   ════════════════════════════════════ */
+.habits-section { margin-top: 24px; }
+.habits-header {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+}
+.habits-title { font-size: 16px; font-weight: 700; color: var(--gray-800); }
+.habits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.habit-card {
+  background: var(--gray-0); border: 1.5px solid var(--gray-100);
+  border-radius: var(--r-xl); padding: 14px 16px;
+  box-shadow: var(--shadow-sm); transition: box-shadow .15s, transform .15s;
+  position: relative; overflow: hidden;
+}
+.habit-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.habit-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.habit-emoji { font-size: 24px; }
+.habit-streak { font-size: 11px; font-weight: 700; color: var(--gray-500); font-family: 'JetBrains Mono', monospace; }
+.habit-name { font-size: 14px; font-weight: 600; color: var(--gray-800); margin-bottom: 10px; }
+.habit-check-btn {
+  width: 100%; padding: 8px; border-radius: var(--r-md); border: 2px solid var(--gray-200);
+  background: var(--gray-50); font-size: 12.5px; font-family: 'DM Sans', sans-serif;
+  font-weight: 600; color: var(--gray-500); cursor: pointer; transition: all .15s;
+}
+.habit-check-btn:hover  { border-color: var(--teal-400); background: var(--teal-50); color: var(--teal-700); }
+.habit-check-btn.done   { background: var(--teal-600); border-color: var(--teal-600); color: #fff; }
+.habit-delete-btn {
+  position: absolute; top: 8px; right: 8px; width: 22px; height: 22px;
+  border-radius: 50%; border: none; background: none; cursor: pointer;
+  color: var(--gray-300); display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s;
+}
+.habit-card:hover .habit-delete-btn { opacity: 1; }
+.habit-delete-btn:hover { color: var(--red-500); background: var(--red-50); border-radius: 50%; }
+.habit-color-stripe { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+.habit-color-picker { display: flex; gap: 7px; }
+.habit-color-btn { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: all .15s; }
+.habit-color-btn.selected { border-color: var(--gray-800); transform: scale(1.15); }
+
+/* ════════════════════════════════════
+   SYMPTOMS
+   ════════════════════════════════════ */
+.symptoms-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+.symptom-presets { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
+.symptom-preset-btn {
+  padding: 5px 10px; border: 1px solid var(--gray-200); border-radius: 99px;
+  background: var(--gray-0); font-size: 12px; cursor: pointer; transition: all .12s;
+  font-family: 'DM Sans', sans-serif;
+}
+.symptom-preset-btn:hover { border-color: var(--teal-300); background: var(--teal-50); }
+.severity-slider-wrap { display: flex; align-items: center; gap: 10px; }
+.severity-slider { flex: 1; accent-color: var(--teal-600); }
+.severity-label { font-size: 12px; font-weight: 600; color: var(--gray-600); white-space: nowrap; min-width: 110px; }
+.symptom-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-50); transition: background .12s;
+}
+.symptom-row:hover { background: var(--gray-25); }
+.symptom-row:last-child { border-bottom: none; }
+.symptom-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.symptom-info { flex: 1; min-width: 0; }
+.symptom-name-text { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+.symptom-meta { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.symptom-severity-badge {
+  font-size: 11.5px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  padding: 3px 8px; border-radius: 99px; flex-shrink: 0;
+}
+
+/* ════════════════════════════════════
+   VITALS
+   ════════════════════════════════════ */
+.vitals-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; }
+.vital-type-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.vital-type-btn {
+  padding: 7px 12px; border: 1.5px solid var(--gray-200); border-radius: var(--r-md);
+  background: var(--gray-0); font-size: 12.5px; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.vital-type-btn.selected { background: var(--teal-600); border-color: var(--teal-600); color: #fff; font-weight: 500; }
+.vital-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  border-bottom: 1px solid var(--gray-50);
+}
+.vital-row:last-child { border-bottom: none; }
+.vital-type-icon { font-size: 18px; flex-shrink: 0; }
+.vital-info { flex: 1; }
+.vital-reading { font-size: 16px; font-weight: 700; font-family: 'DM Serif Display', serif; color: var(--gray-900); }
+.vital-meta { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+.vital-flag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+.vital-flag.normal { background: var(--teal-50); color: var(--teal-700); }
+.vital-flag.high   { background: #FEE2E2; color: #DC2626; }
+.vital-flag.low    { background: #EFF6FF; color: #2563EB; }
+
+/* ════════════════════════════════════
+   EMERGENCY HEALTH CARD
+   ════════════════════════════════════ */
+.emergency-layout { display: grid; grid-template-columns: 1fr 340px; gap: 18px; }
+.emergency-card {
+  background: linear-gradient(145deg, #0D1117, #0A2E28);
+  border-radius: var(--r-xl); padding: 24px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.3);
+  position: sticky; top: 20px; color: #fff;
+}
+.ec-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.ec-logo { font-size: 28px; }
+.ec-title { font-size: 16px; font-weight: 700; color: #fff; }
+.ec-body { display: flex; flex-direction: column; gap: 10px; }
+.ec-row { display: flex; align-items: flex-start; gap: 12px; }
+.ec-key { font-size: 11px; color: rgba(255,255,255,.45); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; width: 90px; flex-shrink: 0; padding-top: 1px; }
+.ec-val { font-size: 13.5px; color: rgba(255,255,255,.9); flex: 1; line-height: 1.5; }
+.ec-divider { height: 1px; background: rgba(255,255,255,.1); margin: 4px 0; }
+
+/* ════════════════════════════════════
+   HYDRATION (Food page)
+   ════════════════════════════════════ */
+.hydration-bottle-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.hydration-bottle {
+  width: 54px; height: 90px;
+  border: 2px solid var(--blue-200);
+  border-radius: 8px 8px 12px 12px;
+  background: var(--blue-50); position: relative; overflow: hidden; flex-shrink: 0;
+}
+.hydration-fill {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(180deg, #06B6D4, #0284C7);
+  transition: height .5s cubic-bezier(.4,0,.2,1);
+  border-radius: 0 0 10px 10px;
+}
+.hydration-level-text {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-size: 9px; font-weight: 700; color: var(--gray-700); text-align: center;
+  line-height: 1.2; z-index: 2; white-space: nowrap;
+}
+.hydration-pct { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--gray-900); line-height: 1; }
+.hydration-quick-add { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; margin-bottom: 12px; }
+.hydration-btn {
+  padding: 7px 4px; border: 1.5px solid var(--blue-200); border-radius: var(--r-md);
+  background: var(--blue-50); font-size: 12px; font-family: 'DM Sans', sans-serif;
+  color: #0284C7; cursor: pointer; text-align: center; transition: all .12s; font-weight: 600;
+}
+.hydration-btn:hover { background: #0284C7; color: #fff; border-color: #0284C7; }
+.hydration-log-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 2px; border-bottom: 1px solid var(--gray-50); font-size: 12px;
+}
+.hydration-log-item:last-child { border-bottom: none; }
+
+/* ════════════════════════════════════
+   MOOD ANALYTICS
+   ════════════════════════════════════ */
+.mood-analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.mood-dist-chart { display: flex; flex-direction: column; gap: 6px; }
+.mood-dist-row { display: flex; align-items: center; gap: 8px; }
+.mood-dist-emoji { font-size: 16px; flex-shrink: 0; }
+.mood-dist-bar-track { flex: 1; height: 8px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
+.mood-dist-bar { height: 100%; border-radius: 99px; transition: width .5s ease; }
+.mood-dist-count { font-size: 11px; color: var(--gray-400); font-family: 'JetBrains Mono', monospace; width: 24px; text-align: right; }
+
+/* ════════════════════════════════════
+   SLEEP FORM — Redesigned
+   ════════════════════════════════════ */
+
+/* Layout */
+.sleep-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+.sleep-log-panel { display: flex; flex-direction: column; gap: 14px; }
+
+/* Time input — full width, large enough to read */
+.sleep-time-input {
+  font-size: 15px !important;
+  padding: 10px 14px !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
+/* Duration preview pill */
+.sleep-duration-preview {
+  background: linear-gradient(135deg, var(--teal-50), #F0FDF9);
+  border: 1px solid var(--teal-200);
+  border-radius: var(--r-lg);
+  padding: 10px 16px;
+  margin: -4px 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--teal-700);
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Quality grid — 5 equal tiles in a row */
+.sleep-quality-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.sleep-q-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--r-lg);
+  background: var(--gray-0);
+  cursor: pointer;
+  transition: all .15s;
+}
+.sleep-q-tile:hover { border-color: var(--teal-300); background: var(--teal-50); transform: translateY(-1px); }
+.sleep-q-tile.selected {
+  border-color: var(--teal-600);
+  background: var(--teal-600);
+  box-shadow: 0 3px 10px rgba(14,111,94,.25);
+}
+.sleep-q-emoji { font-size: 20px; line-height: 1; }
+.sleep-q-text  { font-size: 10.5px; font-weight: 600; color: var(--gray-600); }
+.sleep-q-tile.selected .sleep-q-text { color: rgba(255,255,255,.9); }
+
+/* 14-day summary chips */
+.sleep-summary-chips {
+  display: flex;
+  gap: 10px;
+  padding: 14px 18px;
+  background: var(--gray-0);
+  border: 1px solid var(--gray-100);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-sm);
+}
+.sleep-chip {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+}
+.sleep-chip-val { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--gray-900); line-height: 1; }
+.sleep-chip-label { font-size: 10.5px; color: var(--gray-400); margin-top: 3px; text-transform: uppercase; letter-spacing: .05em; }
+.sleep-chip-sep { width: 1px; background: var(--gray-100); }

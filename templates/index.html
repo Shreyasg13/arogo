@@ -1,0 +1,2602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediScan — Health Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="app-shell">
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+        <rect width="26" height="26" rx="7" fill="#0E6B5E"/>
+        <path d="M13 5v16M5 13h16" stroke="#E8F5F3" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-name">MediScan</div>
+      <div class="logo-sub">Health OS</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Overview</div>
+    <a href="#" class="nav-item active" data-view="dashboard">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
+      Dashboard
+    </a>
+
+    <div class="nav-section-label">Features</div>
+    <a href="#" class="nav-item" data-view="reports">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Medical Reports
+    </a>
+    <a href="#" class="nav-item" data-view="medicines">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20H4a2 2 0 01-2-2V6a2 2 0 012-2h16a2 2 0 012 2v5"/><circle cx="18" cy="18" r="4"/><path d="M18 16v4M16 18h4"/></svg>
+      Medicine Tracker
+      <span class="nav-badge" id="nav-dose-badge" style="display:none"></span>
+    </a>
+    <a href="#" class="nav-item" data-view="fitness">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Fitness Journey
+    </a>
+    <a href="#" class="nav-item" data-view="consistency">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Consistency
+    </a>
+    <a href="#" class="nav-item" data-view="food">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      Food Tracker
+    </a>
+
+    <div class="nav-section-label">Personal</div>
+    <a href="#" class="nav-item" data-view="habits">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Habits
+    </a>
+    <a href="#" class="nav-item" data-view="thoughts">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Thoughts
+    </a>
+    <a href="#" class="nav-item" data-view="todos">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      To-Do List
+      <span class="nav-badge" id="nav-todo-badge" style="display:none"></span>
+    </a>
+
+    <div class="nav-section-label">Insights</div>
+    <a href="#" class="nav-item" data-view="progress">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      Progress
+    </a>
+    <a href="#" class="nav-item" data-view="report">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Health Report
+    </a>
+    <a href="#" class="nav-item" data-view="notifications">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Notifications
+      <span class="nav-badge" id="nav-notif-badge" style="display:none"></span>
+    </a>
+    <a href="#" class="nav-item" data-view="export">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export Data
+    </a>
+  </nav>
+
+  <!-- Global search overlay -->
+  <div class="global-search-wrap" id="global-search-wrap" style="display:none" onclick="if(event.target===this)closeGlobalSearch()">
+    <div class="gs-modal">
+      <div class="gs-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;color:var(--gray-400)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="global-search-input"
+          placeholder="Search symptoms, meals, tasks, thoughts…"
+          oninput="runGlobalSearch(this.value)"
+          onkeydown="handleSearchKey(event)"
+          autocomplete="off" spellcheck="false">
+        <div class="gs-kbd">Esc</div>
+      </div>
+      <!-- Quick filters -->
+      <div class="gs-filters">
+        <button class="gs-filter-btn active" data-type="all"      onclick="setSearchType('all')">All</button>
+        <button class="gs-filter-btn" data-type="food"     onclick="setSearchType('food')">🍽️ Food</button>
+        <button class="gs-filter-btn" data-type="symptom"  onclick="setSearchType('symptom')">🩺 Symptoms</button>
+        <button class="gs-filter-btn" data-type="todo"     onclick="setSearchType('todo')">✅ Tasks</button>
+        <button class="gs-filter-btn" data-type="thought"  onclick="setSearchType('thought')">💭 Thoughts</button>
+        <button class="gs-filter-btn" data-type="activity" onclick="setSearchType('activity')">🏃 Workouts</button>
+      </div>
+      <!-- Hints shown before typing -->
+      <div class="gs-hints" id="gs-hints">
+        <div class="gs-hints-title">Try searching for</div>
+        <div class="gs-hints-grid">
+          <div class="gs-hint-chip" onclick="fillSearch('back pain')">back pain</div>
+          <div class="gs-hint-chip" onclick="fillSearch('chicken')">chicken</div>
+          <div class="gs-hint-chip" onclick="fillSearch('last tuesday')">last tuesday</div>
+          <div class="gs-hint-chip" onclick="fillSearch('this week')">this week</div>
+          <div class="gs-hint-chip" onclick="fillSearch('headache last week')">headache last week</div>
+          <div class="gs-hint-chip" onclick="fillSearch('yesterday')">yesterday</div>
+          <div class="gs-hint-chip" onclick="fillSearch('running')">running</div>
+          <div class="gs-hint-chip" onclick="fillSearch('high priority')">high priority</div>
+        </div>
+      </div>
+      <div id="global-search-results" class="global-search-results"></div>
+    </div>
+  </div>
+
+  <div class="sidebar-bottom">
+    <div class="user-card">
+      <div class="user-avatar" id="sidebar-avatar">—</div>
+      <div class="user-info">
+        <div class="user-name" id="sidebar-name">Loading…</div>
+        <div class="user-role" id="sidebar-role">Health Profile</div>
+      </div>
+      <div class="user-status"></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── MAIN ── -->
+<main class="main-content">
+
+<!-- ═══════════ DASHBOARD ═══════════ -->
+<div id="view-dashboard" class="view active">
+  <div class="page-header">
+    <div>
+      <div class="page-greeting" id="greeting">Good morning</div>
+      <h1 class="page-title">Your Health Dashboard</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <!-- Consistency shortcut -->
+      <button class="dash-icon-btn" onclick="switchView('consistency')" title="Consistency Tracker" id="dash-consistency-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="dash-icon-btn-badge" id="dash-streak-badge" style="display:none">0</span>
+      </button>
+      <!-- Profile icon only -->
+      <button class="dash-icon-btn" onclick="openProfileModal()" title="Health Profile">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+      </button>
+      <button class="dash-icon-btn" onclick="openGlobalSearch()" title="Search everything (Ctrl+K)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <div class="header-date" id="header-date"></div>
+    </div>
+  </div>
+
+  <div class="dash-hero-grid" id="dash-hero-grid">
+    <!-- Medicine card — hidden until user has medicines -->
+    <div class="hero-card hero-card--teal" id="dash-doses-card" style="display:none">
+      <div class="hero-card-label">Today's Doses</div>
+      <div class="hero-card-value" id="dash-doses-today">—</div>
+      <div class="hero-card-sub" id="dash-doses-sub">remaining</div>
+      <div class="hero-card-icon">💊</div>
+    </div>
+    <!-- Active minutes — always shown, clickable to Fitness -->
+    <div class="hero-card hero-card--blue dash-clickable" id="dash-active-card"
+         onclick="switchView('fitness')" title="Go to Fitness Journey" style="cursor:pointer">
+      <div class="hero-card-label">Active Minutes</div>
+      <div class="hero-card-value" id="dash-active-min">—</div>
+      <div class="hero-card-sub">this week</div>
+      <div class="hero-card-icon">🏃</div>
+      <div class="hero-card-arrow">→</div>
+    </div>
+    <!-- Calorie balance — always shown, clickable for breakdown -->
+    <div class="hero-card hero-card--amber dash-clickable" id="dash-caldeficit-card"
+         onclick="openCalorieBreakdown()" title="View calorie breakdown" style="cursor:pointer">
+      <div class="hero-card-label">Calorie Balance</div>
+      <div class="hero-card-value" id="dash-cal-deficit">—</div>
+      <div class="hero-card-sub" id="dash-cal-deficit-sub">today</div>
+      <div class="hero-card-icon">⚡</div>
+      <div class="hero-card-arrow">→</div>
+    </div>
+    <!-- Medical reports card — hidden until user has reports -->
+    <div class="hero-card hero-card--purple" id="dash-reports-card" style="display:none">
+      <div class="hero-card-label">Medical Reports</div>
+      <div class="hero-card-value" id="dash-reports">—</div>
+      <div class="hero-card-sub">uploaded</div>
+      <div class="hero-card-icon">📋</div>
+    </div>
+  </div>
+
+  <!-- Nutrition quick bar -->
+  <div class="dash-nutrition-bar" id="dash-nutrition-bar" style="display:none">
+    <div class="dnb-label">Today's Nutrition</div>
+    <div class="dnb-macros">
+      <div class="dnb-macro dnb-macro--cal">
+        <div class="dnb-macro-val" id="dnb-cal">0</div>
+        <div class="dnb-macro-key">kcal eaten</div>
+      </div>
+      <div class="dnb-sep"></div>
+      <div class="dnb-macro dnb-macro--prot">
+        <div class="dnb-macro-val" id="dnb-prot">0g</div>
+        <div class="dnb-macro-key">protein</div>
+      </div>
+      <div class="dnb-sep"></div>
+      <div class="dnb-macro dnb-macro--carb">
+        <div class="dnb-macro-val" id="dnb-carb">0g</div>
+        <div class="dnb-macro-key">carbs</div>
+      </div>
+      <div class="dnb-sep"></div>
+      <div class="dnb-macro dnb-macro--fat">
+        <div class="dnb-macro-val" id="dnb-fat">0g</div>
+        <div class="dnb-macro-key">fat</div>
+      </div>
+      <div class="dnb-sep"></div>
+      <div class="dnb-macro dnb-macro--fiber">
+        <div class="dnb-macro-val" id="dnb-fiber">0g</div>
+        <div class="dnb-macro-key">fiber</div>
+      </div>
+    </div>
+    <a href="#" class="dnb-link" onclick="switchView('food');return false">Log food →</a>
+  </div>
+
+  <!-- Wellness quick-strip (hydration, sleep, habits) -->
+  <div class="dash-wellness-strip" id="dash-wellness-strip">
+    <!-- Hydration -->
+    <div class="dws-item" onclick="switchView('food')" title="Water intake today">
+      <div class="dws-icon">💧</div>
+      <div class="dws-content">
+        <div class="dws-label">Hydration</div>
+        <div class="dws-val" id="dws-hydration">— ml</div>
+      </div>
+      <div class="dws-bar-wrap">
+        <div class="dws-bar-track"><div class="dws-bar-fill dws-bar--blue" id="dws-hydration-bar"></div></div>
+      </div>
+    </div>
+    <div class="dws-sep"></div>
+    <!-- Sleep -->
+    <div class="dws-item" onclick="switchView('thoughts')" title="Last night's sleep">
+      <div class="dws-icon">🌙</div>
+      <div class="dws-content">
+        <div class="dws-label">Sleep</div>
+        <div class="dws-val" id="dws-sleep">— h</div>
+      </div>
+      <div class="dws-quality" id="dws-sleep-quality"></div>
+    </div>
+    <div class="dws-sep"></div>
+    <!-- Habits -->
+    <div class="dws-item" onclick="switchView('consistency')" title="Today's habits">
+      <div class="dws-icon">⭐</div>
+      <div class="dws-content">
+        <div class="dws-label">Habits</div>
+        <div class="dws-val" id="dws-habits">— / —</div>
+      </div>
+      <div class="dws-badge" id="dws-habits-badge"></div>
+    </div>
+    <div class="dws-sep"></div>
+    <!-- Symptoms -->
+    <div class="dws-item" onclick="switchView('reports')" title="Today's symptoms">
+      <div class="dws-icon">🩺</div>
+      <div class="dws-content">
+        <div class="dws-label">Symptoms</div>
+        <div class="dws-val" id="dws-symptoms">None today</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick-log action bar -->
+  <div class="quick-log-bar">
+    <button class="ql-btn" onclick="quickAddWater(250);showToast('💧 250ml logged','success')">
+      <span class="ql-icon">💧</span>
+      <span class="ql-label">Log Water</span>
+      <span class="ql-hint">250ml</span>
+    </button>
+    <button class="ql-btn" onclick="switchView('food');setTimeout(()=>openAddFoodModal(),200)">
+      <span class="ql-icon">🍽️</span>
+      <span class="ql-label">Log Meal</span>
+      <span class="ql-hint">food tracker</span>
+    </button>
+    <button class="ql-btn" onclick="switchView('fitness');setTimeout(()=>openActivityModal(),200)">
+      <span class="ql-icon">🏃</span>
+      <span class="ql-label">Log Workout</span>
+      <span class="ql-hint">fitness</span>
+    </button>
+    <button class="ql-btn" onclick="switchView('thoughts')">
+      <span class="ql-icon">💭</span>
+      <span class="ql-label">Add Thought</span>
+      <span class="ql-hint">journal</span>
+    </button>
+    <button class="ql-btn" onclick="switchView('todos');setTimeout(()=>openTodoModal(),200)">
+      <span class="ql-icon">✅</span>
+      <span class="ql-label">Add Task</span>
+      <span class="ql-hint">to-do list</span>
+    </button>
+  </div>
+
+  <div class="dash-body-grid">
+    <!-- Today's medicines -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Today's Medicines</h2>
+        <a href="#" class="panel-link" onclick="switchView('medicines');return false">Manage →</a>
+      </div>
+      <div id="dash-medicine-list" class="dash-dose-list"></div>
+    </div>
+
+    <!-- Today's todos -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Pending Tasks</h2>
+        <a href="#" class="panel-link" onclick="switchView('todos');return false">All tasks →</a>
+      </div>
+      <div id="dash-todos-list" class="dash-todos-list"></div>
+    </div>
+
+    <!-- Fitness suggestions -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">AI Suggestions</h2>
+        <span class="panel-badge">Personalized</span>
+      </div>
+      <div id="dash-suggestions" class="suggestions-list"></div>
+    </div>
+
+    <!-- Weekly activity chart -->
+    <div class="panel panel--wide">
+      <div class="panel-header">
+        <h2 class="panel-title">Weekly Activity</h2>
+        <div class="chart-legend">
+          <span class="legend-dot" style="background:#0E8F7E"></span>Calories
+          <span class="legend-dot" style="background:#2563EB;margin-left:12px"></span>Minutes
+        </div>
+      </div>
+      <div class="weekly-chart" id="weekly-chart"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ REPORTS ═══════════ -->
+<div id="view-reports" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Medical Reports</h1>
+      <p class="page-subtitle" id="reports-count-label">Upload and track your reports</p>
+    </div>
+    <button class="btn-primary" onclick="openUploadModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Upload Report
+    </button>
+  </div>
+
+  <div class="filter-bar">
+    <div class="search-box">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search-input" class="search-input" placeholder="Search reports, patients, tags…">
+    </div>
+    <select class="filter-select" id="severity-filter">
+      <option value="">All Severities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="moderate">Moderate</option>
+      <option value="normal">Normal</option>
+    </select>
+    <select class="filter-select" id="tag-filter">
+      <option value="">All Tags</option>
+      {% for tag in tags %}<option value="{{ tag }}">{{ tag }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div id="reports-grid" class="reports-grid"></div>
+
+  <!-- Medical sub-tabs -->
+  <div class="medical-tabs" style="margin-top:24px">
+    <button class="wellness-tab" data-tab="symptoms" onclick="switchMedTab('symptoms')">🩺 Symptoms</button>
+    <button class="wellness-tab" data-tab="vitals" onclick="switchMedTab('vitals')">❤️ Vitals</button>
+    <button class="wellness-tab" data-tab="emergency" onclick="switchMedTab('emergency')">🆘 Health Card</button>
+  </div>
+
+  <!-- SYMPTOMS -->
+  <div id="med-tab-symptoms" class="wellness-tab-content active" style="margin-top:16px">
+    <div class="sym-stacked-layout">
+
+      <!-- LOG PANEL: full width -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">🩺 Log Symptoms</h2>
+          <span class="panel-badge">Tap to select multiple</span>
+        </div>
+        <div class="sym-log-body">
+
+          <!-- Full-width toggle grid -->
+          <div class="sym-full-grid" id="symptom-multi-grid">
+            <button type="button" class="sym-toggle-btn" data-sym="Headache"       onclick="toggleSymptom(this)">🤕 Headache</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Fatigue"        onclick="toggleSymptom(this)">😴 Fatigue</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Nausea"         onclick="toggleSymptom(this)">🤢 Nausea</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Back Pain"      onclick="toggleSymptom(this)">🦴 Back Pain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Chest Pain"     onclick="toggleSymptom(this)">💔 Chest Pain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Dizziness"      onclick="toggleSymptom(this)">💫 Dizziness</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Breathlessness" onclick="toggleSymptom(this)">😮‍💨 Breathless</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Fever"          onclick="toggleSymptom(this)">🌡️ Fever</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Joint Pain"     onclick="toggleSymptom(this)">🦵 Joint Pain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Anxiety"        onclick="toggleSymptom(this)">😰 Anxiety</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Cough"          onclick="toggleSymptom(this)">🫁 Cough</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Bloating"       onclick="toggleSymptom(this)">🫃 Bloating</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Insomnia"       onclick="toggleSymptom(this)">🌙 Insomnia</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Muscle Cramps"  onclick="toggleSymptom(this)">💪 Cramps</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Eye Strain"     onclick="toggleSymptom(this)">👁️ Eye Strain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Migraine"       onclick="toggleSymptom(this)">⚡ Migraine</button>
+          </div>
+
+          <!-- Custom symptom input -->
+          <div class="sym-custom-row">
+            <input type="text" class="form-input" id="symptom-custom-input"
+                   placeholder="Type a custom symptom and press Enter…"
+                   onkeydown="if(event.key==='Enter'){addCustomSymptom();event.preventDefault()}">
+            <button type="button" class="btn-outline" onclick="addCustomSymptom()"
+                    style="padding:0 16px;white-space:nowrap;flex-shrink:0">+ Add</button>
+          </div>
+
+          <!-- Selected chips preview -->
+          <div class="symptom-selected-chips" id="symptom-selected-chips" style="display:none">
+            <div class="sym-chips-label">✓ Selected:</div>
+            <div id="sym-chips-list" class="sym-chips-list"></div>
+          </div>
+
+          <!-- Details row: severity + time + notes -->
+          <div class="sym-details-row">
+            <div class="sym-detail-group">
+              <label class="form-label">Severity (1–10)</label>
+              <div class="severity-slider-wrap">
+                <input type="range" id="symptom-severity" min="1" max="10" value="5"
+                       oninput="updateSeverityLabel(this.value)" class="severity-slider">
+                <span class="severity-label" id="severity-label">5 — Moderate</span>
+              </div>
+            </div>
+            <div class="sym-detail-group sym-detail-group--narrow">
+              <label class="form-label">Time of day</label>
+              <select class="form-input" id="symptom-time">
+                <option value="morning">☀️ Morning</option>
+                <option value="afternoon">🌤️ Afternoon</option>
+                <option value="evening" selected>🌆 Evening</option>
+                <option value="night">🌙 Night</option>
+                <option value="all_day">🔄 All day</option>
+              </select>
+            </div>
+            <div class="sym-detail-group">
+              <label class="form-label">Notes <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+              <input type="text" class="form-input" id="symptom-notes" placeholder="Any extra context…">
+            </div>
+          </div>
+
+          <!-- Action row -->
+          <div class="sym-action-row">
+            <div class="sym-hint" id="sym-log-hint">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Select at least one symptom above
+            </div>
+            <button class="btn-primary" id="log-symptoms-btn" onclick="logSymptoms()" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Log Symptoms
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORY: full width, below the form -->
+      <div class="panel sym-history-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Symptom History</h2>
+          <span class="panel-badge">Last 14 days</span>
+        </div>
+        <div id="symptoms-list" class="sym-history-list"></div>
+      </div>
+
+    </div>
+  </div>
+  <!-- VITALS -->
+  <div id="med-tab-vitals" class="wellness-tab-content" style="display:none;margin-top:16px">
+    <div class="vitals-layout">
+      <div class="vitals-log-panel">
+        <div class="panel">
+          <div class="panel-header"><h2 class="panel-title">Log Reading</h2></div>
+          <div style="padding:16px">
+            <div class="form-group">
+              <label class="form-label">Type</label>
+              <div class="vital-type-picker" id="vital-type-picker">
+                <button type="button" class="vital-type-btn selected" data-type="blood_pressure" onclick="selectVitalType('blood_pressure')">❤️ Blood Pressure</button>
+                <button type="button" class="vital-type-btn" data-type="blood_sugar" onclick="selectVitalType('blood_sugar')">🩸 Blood Sugar</button>
+                <button type="button" class="vital-type-btn" data-type="heart_rate" onclick="selectVitalType('heart_rate')">💓 Heart Rate</button>
+                <button type="button" class="vital-type-btn" data-type="temperature" onclick="selectVitalType('temperature')">🌡️ Temperature</button>
+                <button type="button" class="vital-type-btn" data-type="oxygen_sat" onclick="selectVitalType('oxygen_sat')">💨 SpO2</button>
+              </div>
+            </div>
+            <div id="vital-value-fields"></div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <input type="text" class="form-input" id="vital-notes" placeholder="e.g. Before breakfast, after walk…">
+            </div>
+            <button class="btn-primary" style="width:100%" onclick="logVital()">Save Reading</button>
+          </div>
+        </div>
+      </div>
+      <div class="vitals-history-panel">
+        <div class="panel">
+          <div class="panel-header"><h2 class="panel-title">30-Day History</h2></div>
+          <div id="vitals-list" style="padding:0 0 8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMERGENCY CARD -->
+  <div id="med-tab-emergency" class="wellness-tab-content" style="display:none;margin-top:16px">
+    <div class="emergency-layout">
+      <div class="emergency-form-panel">
+        <div class="panel">
+          <div class="panel-header"><h2 class="panel-title">My Health Information</h2></div>
+          <div style="padding:16px">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Blood Type</label>
+                <select class="form-input" id="em-blood-type">
+                  <option value="">Unknown</option>
+                  <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                  <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Insurance Provider</label>
+                <input type="text" class="form-input" id="em-insurance-provider" placeholder="e.g. Blue Cross">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Allergies</label>
+              <textarea class="form-input" id="em-allergies" rows="2" placeholder="e.g. Penicillin, Peanuts, Latex…"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Medical Conditions</label>
+              <textarea class="form-input" id="em-conditions" rows="2" placeholder="e.g. Type 2 Diabetes, Hypertension…"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Current Medications</label>
+              <textarea class="form-input" id="em-medications" rows="2" placeholder="e.g. Metformin 500mg, Lisinopril 10mg…"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Emergency Contact 1</label>
+                <input type="text" class="form-input" id="em-c1-name" placeholder="Name" style="margin-bottom:6px">
+                <input type="tel" class="form-input" id="em-c1-phone" placeholder="Phone number">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Emergency Contact 2</label>
+                <input type="text" class="form-input" id="em-c2-name" placeholder="Name" style="margin-bottom:6px">
+                <input type="tel" class="form-input" id="em-c2-phone" placeholder="Phone number">
+              </div>
+            </div>
+            <button class="btn-primary" style="width:100%" onclick="saveEmergencyInfo()">Save Health Card</button>
+          </div>
+        </div>
+      </div>
+      <div class="emergency-card-panel">
+        <div class="emergency-card" id="emergency-card-preview">
+          <div class="ec-header">
+            <div class="ec-logo">🆘</div>
+            <div class="ec-title">Emergency Health Card</div>
+          </div>
+          <div class="ec-body" id="ec-body">
+            <div class="ec-row"><span class="ec-key">Blood Type</span><span class="ec-val" id="ec-blood-type">—</span></div>
+            <div class="ec-row"><span class="ec-key">Allergies</span><span class="ec-val" id="ec-allergies">—</span></div>
+            <div class="ec-row"><span class="ec-key">Conditions</span><span class="ec-val" id="ec-conditions">—</span></div>
+            <div class="ec-row"><span class="ec-key">Medications</span><span class="ec-val" id="ec-medications">—</span></div>
+            <div class="ec-divider"></div>
+            <div class="ec-row"><span class="ec-key">Emergency 1</span><span class="ec-val" id="ec-c1">—</span></div>
+            <div class="ec-row"><span class="ec-key">Emergency 2</span><span class="ec-val" id="ec-c2">—</span></div>
+            <div class="ec-divider"></div>
+            <div class="ec-row"><span class="ec-key">Insurance</span><span class="ec-val" id="ec-insurance">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ MEDICINES ═══════════ -->
+<div id="view-medicines" class="view">
+  <!-- Low stock alert banner -->
+  <div id="med-low-stock-banner" class="low-stock-alert-banner" style="display:none">
+    <div class="lsab-icon">⚠️</div>
+    <div class="lsab-body">
+      <div class="lsab-title">Refill needed</div>
+      <div class="lsab-items" id="lsab-items"></div>
+    </div>
+  </div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Medicine Tracker</h1>
+      <p class="page-subtitle">Daily doses and reminders</p>
+    </div>
+    <button class="btn-primary" onclick="openMedModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Medicine
+    </button>
+  </div>
+
+  <!-- Today's schedule -->
+  <div class="med-today-panel">
+    <div class="med-today-header">
+      <div class="med-today-title">
+        <span class="med-today-icon">☀️</span>
+        Today's Schedule
+        <span class="today-date-badge" id="med-today-date"></span>
+      </div>
+      <div class="med-progress-wrap">
+        <div class="med-progress-label" id="med-progress-label">0 of 0 taken</div>
+        <div class="med-progress-track"><div class="med-progress-fill" id="med-progress-fill" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="today-dose-timeline" class="dose-timeline"></div>
+  </div>
+
+  <!-- All medicines -->
+  <div class="section-header">
+    <h2 class="section-title">Your Medicines</h2>
+    <span class="section-count" id="med-count">0 active</span>
+  </div>
+  <div id="medicines-grid" class="medicines-grid"></div>
+
+  <!-- Adherence history — BOTTOM ↓ -->
+  <div class="panel" style="margin-top:24px">
+    <div class="panel-header">
+      <h2 class="panel-title">Adherence History</h2>
+      <span class="panel-badge">Last 7 days</span>
+    </div>
+    <div id="med-adherence-chart" style="padding:16px 20px"></div>
+  </div>
+</div>
+
+<!-- ═══════════ FITNESS ═══════════ -->
+<div id="view-fitness" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Fitness Journey</h1>
+      <p class="page-subtitle">Track workouts, connect apps, get insights</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon-labeled" onclick="switchView('consistency')" title="Consistency Tracker">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg>
+        <span id="fitness-streak-badge" class="streak-pill" style="display:none"></span>
+      </button>
+      <button class="btn-outline" onclick="openConnectModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+        Connect App
+      </button>
+      <button class="btn-primary" onclick="openActivityModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Log Activity
+      </button>
+    </div>
+  </div>
+
+<!-- Calorie Deficit Banner -->
+  <div class="calorie-deficit-banner" id="calorie-deficit-banner">
+    <div class="cdb-left">
+      <div class="cdb-title">Today's Energy Balance</div>
+      <div class="cdb-subtitle">Burned vs. consumed vs. your goal</div>
+    </div>
+    <div class="cdb-metrics">
+      <div class="cdb-metric">
+        <div class="cdb-metric-val" id="cdb-burned">—</div>
+        <div class="cdb-metric-label">🔥 Burned</div>
+      </div>
+      <div class="cdb-op">−</div>
+      <div class="cdb-metric">
+        <div class="cdb-metric-val" id="cdb-eaten">—</div>
+        <div class="cdb-metric-label">🍽️ Eaten</div>
+      </div>
+      <div class="cdb-op">=</div>
+      <div class="cdb-metric cdb-metric--result">
+        <div class="cdb-metric-val" id="cdb-net">—</div>
+        <div class="cdb-metric-label" id="cdb-net-label">Net</div>
+      </div>
+    </div>
+    <div class="cdb-right">
+      <div class="cdb-goal-row">
+        <span class="cdb-goal-label">Daily Target</span>
+        <span class="cdb-goal-val" id="cdb-target">—</span>
+      </div>
+      <div class="cdb-progress-wrap">
+        <div class="cdb-progress-track">
+          <div class="cdb-progress-fill" id="cdb-progress"></div>
+        </div>
+        <span class="cdb-progress-pct" id="cdb-progress-pct">0%</span>
+      </div>
+      <a href="#" class="cdb-food-link" onclick="switchView('food');return false">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Log food
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="fitness-stats-row">
+    <div class="fit-stat-card">
+      <div class="fit-stat-icon">🏅</div>
+      <div class="fit-stat-value" id="fit-week-acts">—</div>
+      <div class="fit-stat-label">Workouts this week</div>
+    </div>
+    <div class="fit-stat-card">
+      <div class="fit-stat-icon">⏱️</div>
+      <div class="fit-stat-value" id="fit-week-min">—</div>
+      <div class="fit-stat-label">Active minutes</div>
+    </div>
+    <div class="fit-stat-card">
+      <div class="fit-stat-icon">🔥</div>
+      <div class="fit-stat-value" id="fit-week-cal">—</div>
+      <div class="fit-stat-label">Calories burned</div>
+      <div class="fit-stat-sub" id="fit-today-cal-sub" style="font-size:11px;color:var(--teal-600);margin-top:3px;font-weight:500"></div>
+    </div>
+    <div class="fit-stat-card">
+      <div class="fit-stat-icon">📍</div>
+      <div class="fit-stat-value" id="fit-week-km">—</div>
+      <div class="fit-stat-label">Kilometers</div>
+    </div>
+  </div>
+
+    <!-- Nutrition Macros Strip (integrated from food tracker) -->
+  <div class="fit-nutrition-strip" id="fit-nutrition-strip">
+    <div class="fns-header">
+      <span class="fns-title">🥗 Today's Nutrition</span>
+      <a href="#" class="fns-link" onclick="switchView('food');return false">Full tracker →</a>
+    </div>
+    <div class="fns-macros">
+      <div class="fns-macro">
+        <div class="fns-macro-ring" style="--ring-color:#0E8F7E">
+          <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#E5E7EB" stroke-width="4"/><circle id="fns-ring-cal" cx="22" cy="22" r="18" fill="none" stroke="#0E8F7E" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg>
+          <span id="fns-cal-val">0</span>
+        </div>
+        <div class="fns-macro-name">Calories</div>
+        <div class="fns-macro-sub" id="fns-cal-sub">/ 2000</div>
+      </div>
+      <div class="fns-macro">
+        <div class="fns-macro-ring" style="--ring-color:#2563EB">
+          <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#E5E7EB" stroke-width="4"/><circle id="fns-ring-prot" cx="22" cy="22" r="18" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg>
+          <span id="fns-prot-val">0g</span>
+        </div>
+        <div class="fns-macro-name">Protein</div>
+        <div class="fns-macro-sub" id="fns-prot-sub">/ 56g</div>
+      </div>
+      <div class="fns-macro">
+        <div class="fns-macro-ring" style="--ring-color:#D97706">
+          <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#E5E7EB" stroke-width="4"/><circle id="fns-ring-carb" cx="22" cy="22" r="18" fill="none" stroke="#D97706" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg>
+          <span id="fns-carb-val">0g</span>
+        </div>
+        <div class="fns-macro-name">Carbs</div>
+        <div class="fns-macro-sub" id="fns-carb-sub">/ 250g</div>
+      </div>
+      <div class="fns-macro">
+        <div class="fns-macro-ring" style="--ring-color:#7C3AED">
+          <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#E5E7EB" stroke-width="4"/><circle id="fns-ring-fat" cx="22" cy="22" r="18" fill="none" stroke="#7C3AED" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg>
+          <span id="fns-fat-val">0g</span>
+        </div>
+        <div class="fns-macro-name">Fat</div>
+        <div class="fns-macro-sub" id="fns-fat-sub">/ 65g</div>
+      </div>
+      <div class="fns-macro">
+        <div class="fns-macro-ring" style="--ring-color:#16A34A">
+          <svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18" fill="none" stroke="#E5E7EB" stroke-width="4"/><circle id="fns-ring-fiber" cx="22" cy="22" r="18" fill="none" stroke="#16A34A" stroke-width="4" stroke-linecap="round" stroke-dasharray="113" stroke-dashoffset="113" transform="rotate(-90 22 22)"/></svg>
+          <span id="fns-fiber-val">0g</span>
+        </div>
+        <div class="fns-macro-name">Fiber</div>
+        <div class="fns-macro-sub" id="fns-fiber-sub">/ 30g</div>
+      </div>
+    </div>
+    <!-- Nutrition suggestions -->
+    <div class="fns-suggestions" id="fns-suggestions"></div>
+  </div>
+
+  <div class="fitness-body-grid">
+    <!-- AI Suggestions -->
+    <div class="panel">
+      <div class="panel-header">
+        <h2 class="panel-title">Smart Suggestions</h2>
+        <span class="panel-badge panel-badge--ai">✦ AI</span>
+      </div>
+      <div id="fitness-suggestions" class="suggestions-list"></div>
+    </div>
+
+    <!-- Type breakdown -->
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">Activity Types</h2></div>
+      <div id="activity-type-chart" class="type-donut-wrap"></div>
+    </div>
+
+    <!-- Connected apps -->
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">Connected Apps</h2></div>
+      <div class="connected-apps-list" id="connected-apps">
+        <div class="app-connect-row" data-service="garmin">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Garmin_logo.svg/200px-Garmin_logo.svg.png" class="app-logo" alt="Garmin" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="app-logo-fallback" style="display:none">G</div>
+          <div class="app-info"><div class="app-name">Garmin Connect</div><div class="app-desc">GPS watches & fitness trackers</div></div>
+          <button class="btn-connect" onclick="connectService('garmin')">Connect</button>
+        </div>
+        <div class="app-connect-row" data-service="strava">
+          <div class="app-logo-fallback app-logo-fallback--orange">S</div>
+          <div class="app-info"><div class="app-name">Strava</div><div class="app-desc">Running, cycling & more</div></div>
+          <button class="btn-connect" onclick="connectService('strava')">Connect</button>
+        </div>
+        <div class="app-connect-row" data-service="apple_health">
+          <div class="app-logo-fallback app-logo-fallback--gray">🍎</div>
+          <div class="app-info"><div class="app-name">Apple Health</div><div class="app-desc">Steps, workouts, vitals</div></div>
+          <button class="btn-connect" onclick="connectService('apple_health')">Connect</button>
+        </div>
+        <div class="app-connect-row" data-service="google_fit">
+          <div class="app-logo-fallback app-logo-fallback--blue">G</div>
+          <div class="app-info"><div class="app-name">Google Fit</div><div class="app-desc">Android health data</div></div>
+          <button class="btn-connect" onclick="connectService('google_fit')">Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Activity Log — BOTTOM ↓ -->
+  <div class="panel" style="margin-top:20px">
+    <div class="panel-header">
+      <h2 class="panel-title">Activity Log</h2>
+      <span class="section-count" id="activity-count"></span>
+    </div>
+    <div id="activity-feed" class="activity-feed"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════ CONSISTENCY ═══════════ -->
+<div id="view-consistency" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Consistency Tracker</h1>
+      <p class="page-subtitle">Streaks, activity calendar &amp; full history</p>
+    </div>
+    <div class="header-actions">
+      <div class="cal-nav">
+        <button class="btn-icon cal-prev" onclick="calPrevMonth()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="cal-month-label" id="cal-month-label">Loading…</span>
+        <button class="btn-icon cal-next" onclick="calNextMonth()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compact stat bar -->
+  <div class="con-stat-bar">
+    <div class="con-stat-pill con-stat-pill--teal">
+      <div class="csp-accent"></div>
+      <div class="csp-icon">🔥</div>
+      <div class="csp-value" id="con-current-streak">0</div>
+      <div class="csp-divider"></div>
+      <div class="csp-meta">
+        <div class="csp-label">Current Streak</div>
+        <div class="csp-sub">days in a row</div>
+      </div>
+    </div>
+    <div class="con-stat-pill con-stat-pill--purple">
+      <div class="csp-accent"></div>
+      <div class="csp-icon">🏆</div>
+      <div class="csp-value" id="con-longest-streak">0</div>
+      <div class="csp-divider"></div>
+      <div class="csp-meta">
+        <div class="csp-label">Best Streak</div>
+        <div class="csp-sub">all-time record</div>
+      </div>
+    </div>
+    <div class="con-stat-pill con-stat-pill--blue">
+      <div class="csp-accent"></div>
+      <div class="csp-icon">📅</div>
+      <div class="csp-value" id="con-active-month">0</div>
+      <div class="csp-divider"></div>
+      <div class="csp-meta">
+        <div class="csp-label">Active Days</div>
+        <div class="csp-sub">this month</div>
+      </div>
+    </div>
+    <div class="con-stat-pill con-stat-pill--orange">
+      <div class="csp-accent"></div>
+      <div class="csp-icon">⚡</div>
+      <div class="csp-value" id="con-total-acts">0</div>
+      <div class="csp-divider"></div>
+      <div class="csp-meta">
+        <div class="csp-label">Total Workouts</div>
+        <div class="csp-sub">all time</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CALENDAR + MONTHLY BREAKDOWN ── -->
+  <div class="consistency-body">
+    <!-- LEFT: calendar + monthly chart -->
+    <div class="consistency-left">
+
+      <div class="cal-card">
+        <div class="cal-card-header">
+          <div class="cal-card-title">Activity Calendar</div>
+        </div>
+        <div class="cal-body">
+          <div class="cal-weekdays">
+            <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+        <div class="cal-footer">
+          <div class="cal-legend">
+            <span class="cal-legend-label">Less</span>
+            <div class="cal-legend-scale">
+              <div class="cal-legend-box" style="background:var(--gray-100)"></div>
+              <div class="cal-legend-box" style="background:#C7EDE9"></div>
+              <div class="cal-legend-box" style="background:#5CC8BC"></div>
+              <div class="cal-legend-box" style="background:#0E8F7E"></div>
+              <div class="cal-legend-box" style="background:#0A5C52"></div>
+            </div>
+            <span class="cal-legend-label">More</span>
+          </div>
+          <div class="cal-month-stats" id="cal-month-stats">
+            <div class="cal-month-stat">
+              <div class="cal-month-stat-val" id="cal-stat-days">—</div>
+              <div class="cal-month-stat-label">Active days</div>
+            </div>
+            <div class="cal-month-stat">
+              <div class="cal-month-stat-val" id="cal-stat-workouts">—</div>
+              <div class="cal-month-stat-label">Workouts</div>
+            </div>
+          </div>
+        </div>
+        <div class="cal-day-detail" id="cal-day-detail" style="display:none">
+          <div class="cal-detail-header">
+            <div class="cal-detail-date">
+              <div class="cal-detail-date-dot"></div>
+              <span id="cal-detail-date"></span>
+            </div>
+            <button class="btn-icon" onclick="document.getElementById('cal-day-detail').style.display='none'" style="width:22px;height:22px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="cal-detail-body" id="cal-detail-body"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Monthly Breakdown</h2>
+          <span class="panel-badge">Last 12 months</span>
+        </div>
+        <div class="monthly-chart" id="monthly-chart"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: placeholder to keep 2-col grid intact -->
+    <div class="consistency-right">
+      <!-- intentionally empty — history moved to bottom -->
+    </div>
+  </div>
+
+  <!-- ── ACTIVITY HISTORY — BOTTOM ↓ ── -->
+  <div class="panel" style="margin-top:20px">
+    <div class="panel-header">
+      <h2 class="panel-title">Activity History</h2>
+      <span class="section-count" id="history-total-label"></span>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap">
+      <div class="search-box" style="flex:1;min-width:160px">
+        <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" id="history-search" placeholder="Search activities…" style="font-size:12.5px;padding:7px 10px 7px 30px">
+      </div>
+      <select class="filter-select" id="history-type-filter" style="font-size:12px;padding:7px 26px 7px 9px">
+        <option value="">All types</option>
+        <optgroup label="Cardio">
+          <option value="running">🏃 Running</option>
+          <option value="cycling">🚴 Cycling</option>
+          <option value="cycling_indoor">🚲 Indoor Bike</option>
+          <option value="walking">🚶 Walking</option>
+          <option value="swimming">🏊 Swimming</option>
+          <option value="rowing">🚣 Rowing</option>
+          <option value="crossfit">💪 CrossFit</option>
+        </optgroup>
+        <optgroup label="Outdoor">
+          <option value="hiking">⛰️ Hiking</option>
+          <option value="climbing">🧗 Climbing</option>
+          <option value="skiing">⛷️ Skiing</option>
+          <option value="snowboarding">🏂 Snowboard</option>
+          <option value="skating">⛸️ Skating</option>
+        </optgroup>
+        <optgroup label="Racket">
+          <option value="tennis">🎾 Tennis</option>
+          <option value="pickleball">🏓 Pickleball</option>
+          <option value="badminton">🏸 Badminton</option>
+        </optgroup>
+        <optgroup label="Team Sports">
+          <option value="football">⚽ Football</option>
+          <option value="basketball">🏀 Basketball</option>
+          <option value="volleyball">🏐 Volleyball</option>
+          <option value="baseball">⚾ Baseball</option>
+          <option value="cricket">🏏 Cricket</option>
+        </optgroup>
+        <optgroup label="Mind & Body">
+          <option value="yoga">🧘 Yoga</option>
+          <option value="pilates">🤸 Pilates</option>
+          <option value="stretching">🤸 Stretching</option>
+          <option value="dancing">💃 Dancing</option>
+          <option value="martial_arts">🥋 Martial Arts</option>
+          <option value="boxing">🥊 Boxing</option>
+        </optgroup>
+        <optgroup label="Strength & Other">
+          <option value="gym">🏋️ Gym</option>
+          <option value="golf">⛳ Golf</option>
+          <option value="other">🏅 Other</option>
+        </optgroup>
+      </select>
+      <select class="filter-select" id="history-source-filter" style="font-size:12px;padding:7px 26px 7px 9px">
+        <option value="">All sources</option>
+        <option value="manual">Manual</option>
+        <option value="strava">Strava</option>
+        <option value="garmin">Garmin</option>
+        <option value="google_fit">Google Fit</option>
+        <option value="apple_health">Apple Health</option>
+      </select>
+    </div>
+    <div class="history-stats-bar" id="history-stats-bar"></div>
+    <div id="history-feed" class="activity-feed"></div>
+    <div class="history-load-more" id="history-load-more" style="display:none">
+      <button class="btn-outline" onclick="loadMoreHistory()">Load more</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ HABITS ═══════════ -->
+<div id="view-habits" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Habit Tracker</h1>
+      <p class="page-subtitle" id="habits-date-label">Today's check-in</p>
+    </div>
+  </div>
+
+  <!-- TODAY CHECKLIST — tap to check off / undo -->
+  <div class="panel habit-today-panel" id="habit-today-panel">
+    <div class="habit-today-header">
+      <div class="habit-today-title">Today's Habits</div>
+      <div class="habit-today-score" id="habit-today-score"></div>
+    </div>
+    <div id="habit-checklist" class="habit-checklist"></div>
+  </div>
+
+  <!-- HABIT CARDS — streak + 7-day bars + monthly heatmap -->
+  <div class="habits-section-label">All Habits</div>
+  <div id="habits-grid" class="habits-grid"></div>
+</div>
+
+<!-- ═══════════ FOOD TRACKER ═══════════ -->
+<div id="view-food" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Food Tracker</h1>
+      <p class="page-subtitle" id="food-date-label">Today's nutrition</p>
+    </div>
+    <div class="header-actions">
+      <div class="food-date-nav">
+        <button class="btn-icon" onclick="foodDateShift(-1)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <input type="date" class="form-input" id="food-date-picker" onchange="loadFoodDay(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
+        <button class="btn-icon" onclick="foodDateShift(1)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <button class="btn-primary" onclick="openAddFoodModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Food
+      </button>
+    </div>
+  </div>
+
+  <!-- Macro rings row -->
+  <div class="food-macro-bar" id="food-macro-bar">
+    <div class="macro-ring-card macro-ring-card--cal">
+      <div class="macro-ring-wrap">
+        <svg class="macro-ring-svg" viewBox="0 0 80 80">
+          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
+          <circle class="macro-ring-fg" id="ring-cal" cx="40" cy="40" r="32" stroke="#0E8F7E"/>
+        </svg>
+        <div class="macro-ring-center">
+          <div class="macro-ring-val" id="ring-cal-val">0</div>
+          <div class="macro-ring-unit">kcal</div>
+        </div>
+      </div>
+      <div class="macro-ring-label">Calories</div>
+      <div class="macro-ring-target" id="ring-cal-target">/ 2000</div>
+    </div>
+    <div class="macro-ring-card macro-ring-card--protein">
+      <div class="macro-ring-wrap">
+        <svg class="macro-ring-svg" viewBox="0 0 80 80">
+          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
+          <circle class="macro-ring-fg" id="ring-prot" cx="40" cy="40" r="32" stroke="#2563EB"/>
+        </svg>
+        <div class="macro-ring-center">
+          <div class="macro-ring-val" id="ring-prot-val">0</div>
+          <div class="macro-ring-unit">g</div>
+        </div>
+      </div>
+      <div class="macro-ring-label">Protein</div>
+      <div class="macro-ring-target" id="ring-prot-target">/ 56g</div>
+    </div>
+    <div class="macro-ring-card macro-ring-card--carbs">
+      <div class="macro-ring-wrap">
+        <svg class="macro-ring-svg" viewBox="0 0 80 80">
+          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
+          <circle class="macro-ring-fg" id="ring-carbs" cx="40" cy="40" r="32" stroke="#D97706"/>
+        </svg>
+        <div class="macro-ring-center">
+          <div class="macro-ring-val" id="ring-carbs-val">0</div>
+          <div class="macro-ring-unit">g</div>
+        </div>
+      </div>
+      <div class="macro-ring-label">Carbs</div>
+      <div class="macro-ring-target" id="ring-carbs-target">/ 250g</div>
+    </div>
+    <div class="macro-ring-card macro-ring-card--fat">
+      <div class="macro-ring-wrap">
+        <svg class="macro-ring-svg" viewBox="0 0 80 80">
+          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
+          <circle class="macro-ring-fg" id="ring-fat" cx="40" cy="40" r="32" stroke="#7C3AED"/>
+        </svg>
+        <div class="macro-ring-center">
+          <div class="macro-ring-val" id="ring-fat-val">0</div>
+          <div class="macro-ring-unit">g</div>
+        </div>
+      </div>
+      <div class="macro-ring-label">Fat</div>
+      <div class="macro-ring-target" id="ring-fat-target">/ 65g</div>
+    </div>
+    <div class="macro-ring-card macro-ring-card--fiber">
+      <div class="macro-ring-wrap">
+        <svg class="macro-ring-svg" viewBox="0 0 80 80">
+          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
+          <circle class="macro-ring-fg" id="ring-fiber" cx="40" cy="40" r="32" stroke="#16A34A"/>
+        </svg>
+        <div class="macro-ring-center">
+          <div class="macro-ring-val" id="ring-fiber-val">0</div>
+          <div class="macro-ring-unit">g</div>
+        </div>
+      </div>
+      <div class="macro-ring-label">Fiber</div>
+      <div class="macro-ring-target" id="ring-fiber-target">/ 30g</div>
+    </div>
+  </div>
+
+  <div class="food-body-grid">
+
+    <!-- LEFT: meal log + AI insights + micronutrients -->
+    <div class="food-left">
+
+      <!-- Meals by type -->
+      <div class="meal-sections" id="meal-sections"></div>
+
+      <!-- AI Insights — below meal log -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Nutrition Insights</h2>
+          <span class="panel-badge panel-badge--ai">✦ AI</span>
+        </div>
+        <div id="food-suggestions" class="suggestions-list">
+          <div style="color:var(--gray-400);font-size:13px">Log meals to see personalised suggestions.</div>
+        </div>
+      </div>
+
+      <!-- Micronutrients — below AI insights, collapsed by default -->
+      <div class="panel">
+        <div class="panel-header panel-header--clickable" onclick="toggleMicroPanel()" style="cursor:pointer">
+          <h2 class="panel-title">Micronutrients</h2>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="panel-badge">Daily</span>
+            <svg id="micro-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transform:rotate(-90deg);transition:transform .2s;color:var(--gray-400)"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div id="micro-panel" class="micro-panel" style="display:none"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: hydration only -->
+    <div class="food-right">
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">💧 Hydration</h2>
+          <span class="panel-badge" id="hydration-goal-badge">Goal: —</span>
+        </div>
+        <div style="padding:14px 16px">
+          <div class="hydration-bottle-wrap">
+            <div class="hydration-bottle">
+              <div class="hydration-fill" id="hydration-fill"></div>
+              <div class="hydration-level-text" id="hydration-level-text">0 ml</div>
+            </div>
+            <div class="hydration-pct" id="hydration-pct">0%</div>
+          </div>
+          <div class="hydration-quick-add">
+            <button class="hydration-btn" onclick="quickAddWater(150)">☕ 150</button>
+            <button class="hydration-btn" onclick="quickAddWater(250)">🥛 250</button>
+            <button class="hydration-btn" onclick="quickAddWater(500)">🍶 500</button>
+            <button class="hydration-btn" onclick="quickAddWater(1000)">🫙 1L</button>
+          </div>
+          <div class="hydration-logs-wrap" id="hydration-logs-wrap"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 7-Day Calorie Trend — BOTTOM ↓ -->
+  <div class="panel" style="margin-top:20px">
+    <div class="panel-header">
+      <h2 class="panel-title">7-Day Calorie Trend</h2>
+      <span class="panel-badge" id="food-weekly-target-badge">Goal: —</span>
+    </div>
+    <div id="food-weekly-chart" class="food-weekly-chart" style="padding:14px 20px 16px"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════ THOUGHTS ═══════════ -->
+<div id="view-thoughts" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Daily Thoughts</h1>
+      <p class="page-subtitle">Capture what's on your mind — up to 10 notes a day</p>
+    </div>
+    <div class="header-actions">
+      <div class="thoughts-date-nav">
+        <button class="btn-icon" onclick="thoughtsDateShift(-1)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <input type="date" class="form-input" id="thoughts-date-picker" onchange="loadThoughts(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
+        <button class="btn-icon" onclick="thoughtsDateShift(1)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wellness tabs -->
+  <div class="wellness-tabs">
+    <button class="wellness-tab active" data-tab="thoughts" onclick="switchWellnessTab('thoughts')">
+      💭 Thoughts
+    </button>
+    <button class="wellness-tab" data-tab="sleep" onclick="switchWellnessTab('sleep')">
+      🌙 Sleep
+    </button>
+    <button class="wellness-tab" data-tab="body" onclick="switchWellnessTab('body')">
+      📊 Body Metrics
+    </button>
+    <button class="wellness-tab" data-tab="mood" onclick="switchWellnessTab('mood')">
+      🎭 Mood Analytics
+    </button>
+  </div>
+
+  <!-- THOUGHTS TAB -->
+  <div id="wellness-tab-thoughts" class="wellness-tab-content active">
+  <div class="thoughts-layout">
+    <!-- Write new thought -->
+    <div class="thoughts-composer" id="thoughts-composer">
+      <div class="composer-header">
+        <div class="composer-mood-row">
+          <span class="composer-label">How are you feeling?</span>
+          <div class="mood-picker" id="mood-picker">
+            <button type="button" class="mood-btn selected" data-mood="neutral" onclick="selectMood('neutral')" title="Neutral">😐</button>
+            <button type="button" class="mood-btn" data-mood="happy"   onclick="selectMood('happy')"   title="Happy">😊</button>
+            <button type="button" class="mood-btn" data-mood="excited" onclick="selectMood('excited')" title="Excited">🤩</button>
+            <button type="button" class="mood-btn" data-mood="calm"    onclick="selectMood('calm')"    title="Calm">😌</button>
+            <button type="button" class="mood-btn" data-mood="anxious" onclick="selectMood('anxious')" title="Anxious">😰</button>
+            <button type="button" class="mood-btn" data-mood="tired"   onclick="selectMood('tired')"   title="Tired">😴</button>
+            <button type="button" class="mood-btn" data-mood="sad"     onclick="selectMood('sad')"     title="Sad">😞</button>
+            <button type="button" class="mood-btn" data-mood="angry"   onclick="selectMood('angry')"   title="Angry">😤</button>
+          </div>
+        </div>
+        <div class="thoughts-quota" id="thoughts-quota">
+          <span id="thoughts-used">0</span> / 10 today
+        </div>
+      </div>
+      <div class="composer-body">
+        <textarea id="thought-textarea" class="thought-textarea"
+          placeholder="What's on your mind right now? …"
+          maxlength="1000" oninput="updateThoughtCounter(this)"></textarea>
+        <div class="composer-footer">
+          <span class="thought-char-count" id="thought-char-count">0 / 1000</span>
+          <button class="btn-primary" id="thought-submit-btn" onclick="submitThought()" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Save thought
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thoughts feed -->
+    <div class="thoughts-feed" id="thoughts-feed">
+      <div class="thoughts-feed-header">
+        <h2 class="thoughts-feed-title" id="thoughts-feed-title">Today's thoughts</h2>
+        <div class="thoughts-week-moods" id="thoughts-week-moods"></div>
+      </div>
+      <div id="thoughts-list" class="thoughts-list">
+        <div class="thoughts-empty">
+          <div class="thoughts-empty-icon">💭</div>
+          <div class="thoughts-empty-text">No thoughts yet today</div>
+          <div class="thoughts-empty-sub">Write your first one above</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div><!-- /wellness-tab-thoughts -->
+
+  <!-- SLEEP TAB -->
+  <div id="wellness-tab-sleep" class="wellness-tab-content" style="display:none">
+    <div class="sleep-layout">
+
+      <!-- LEFT: log form + summary -->
+      <div class="sleep-log-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">🌙 Log Sleep</h2>
+          </div>
+          <div style="padding:18px 20px 20px">
+
+            <!-- Bedtime -->
+            <div class="form-group">
+              <label class="form-label">🛏️ Bedtime</label>
+              <input type="datetime-local" class="form-input sleep-time-input" id="sleep-bedtime"
+                     oninput="previewSleepDuration()">
+            </div>
+
+            <!-- Wake time -->
+            <div class="form-group">
+              <label class="form-label">⏰ Wake time</label>
+              <input type="datetime-local" class="form-input sleep-time-input" id="sleep-waketime"
+                     oninput="previewSleepDuration()">
+            </div>
+
+            <!-- Duration preview -->
+            <div class="sleep-duration-preview" id="sleep-duration-preview" style="display:none">
+              <span id="sleep-duration-text"></span>
+            </div>
+
+            <!-- Quality — large emoji buttons, single row -->
+            <div class="form-group">
+              <label class="form-label">How did you sleep?</label>
+              <div class="sleep-quality-grid" id="sleep-quality-picker">
+                <button type="button" class="sleep-q-tile" data-q="1" onclick="selectSleepQ(1)">
+                  <span class="sleep-q-emoji">😩</span>
+                  <span class="sleep-q-text">Terrible</span>
+                </button>
+                <button type="button" class="sleep-q-tile" data-q="2" onclick="selectSleepQ(2)">
+                  <span class="sleep-q-emoji">😕</span>
+                  <span class="sleep-q-text">Poor</span>
+                </button>
+                <button type="button" class="sleep-q-tile selected" data-q="3" onclick="selectSleepQ(3)">
+                  <span class="sleep-q-emoji">😐</span>
+                  <span class="sleep-q-text">OK</span>
+                </button>
+                <button type="button" class="sleep-q-tile" data-q="4" onclick="selectSleepQ(4)">
+                  <span class="sleep-q-emoji">😊</span>
+                  <span class="sleep-q-text">Good</span>
+                </button>
+                <button type="button" class="sleep-q-tile" data-q="5" onclick="selectSleepQ(5)">
+                  <span class="sleep-q-emoji">😴</span>
+                  <span class="sleep-q-text">Great</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-group">
+              <label class="form-label">Notes <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+              <input type="text" class="form-input" id="sleep-notes"
+                     placeholder="e.g. Woke up once, vivid dreams…">
+            </div>
+
+            <button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveSleepLog()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Save Sleep
+            </button>
+          </div>
+        </div>
+
+        <!-- 14-day summary stat chips -->
+        <div class="sleep-summary-chips" id="sleep-stats-panel"></div>
+      </div>
+
+      <!-- RIGHT: history list -->
+      <div class="sleep-chart-panel">
+        <div class="panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Sleep History</h2>
+            <span class="panel-badge">14 days</span>
+          </div>
+          <div id="sleep-history-list" style="padding:0 0 8px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BODY METRICS TAB -->
+  <div id="wellness-tab-body" class="wellness-tab-content" style="display:none">
+    <div class="body-layout">
+      <div class="body-log-panel">
+        <div class="panel">
+          <div class="panel-header"><h2 class="panel-title">Log Metrics</h2></div>
+          <div style="padding:16px">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-input" id="body-date-input">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Weight (kg)</label>
+                <input type="number" class="form-input" id="body-weight" placeholder="72.5" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Body Fat %</label>
+                <input type="number" class="form-input" id="body-fat" placeholder="18.0" step="0.1" min="1" max="60">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Waist (cm)</label>
+              <input type="number" class="form-input" id="body-waist" placeholder="82.0" step="0.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Notes</label>
+              <input type="text" class="form-input" id="body-notes" placeholder="e.g. After workout, morning fast…">
+            </div>
+            <button class="btn-primary" style="width:100%" onclick="saveBodyMetric()">Save Metrics</button>
+          </div>
+        </div>
+      </div>
+      <div class="body-chart-panel">
+        <div class="panel">
+          <div class="panel-header"><h2 class="panel-title">30-Day Trend</h2></div>
+          <div id="body-metrics-chart" style="padding:16px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOOD ANALYTICS TAB -->
+  <div id="wellness-tab-mood" class="wellness-tab-content" style="display:none">
+    <div id="mood-analytics-content" style="padding:0"></div>
+  </div>
+
+</div>
+
+<!-- ═══════════ TODOS ═══════════ -->
+<div id="view-todos" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">To-Do List</h1>
+      <p class="page-subtitle">Tasks, reminders and things to get done</p>
+    </div>
+    <button class="btn-primary" onclick="openTodoModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Task
+    </button>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="todo-stats-bar">
+    <div class="todo-stat">
+      <div class="todo-stat-val" id="td-pending-count">0</div>
+      <div class="todo-stat-label">Pending</div>
+    </div>
+    <div class="todo-stat-sep"></div>
+    <div class="todo-stat">
+      <div class="todo-stat-val" id="td-done-count">0</div>
+      <div class="todo-stat-label">Completed</div>
+    </div>
+    <div class="todo-stat-sep"></div>
+    <div class="todo-stat">
+      <div class="todo-stat-val" id="td-overdue-count" style="color:var(--red-500)">0</div>
+      <div class="todo-stat-label">Overdue</div>
+    </div>
+    <div class="todo-progress-wrap">
+      <div class="todo-progress-track">
+        <div class="todo-progress-fill" id="td-progress-fill"></div>
+      </div>
+      <span class="todo-progress-label" id="td-progress-label">0% done</span>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="todo-filters">
+    <button class="todo-filter-btn active" data-filter="all"     onclick="setTodoFilter('all')">All</button>
+    <button class="todo-filter-btn"        data-filter="pending" onclick="setTodoFilter('pending')">Pending</button>
+    <button class="todo-filter-btn"        data-filter="done"    onclick="setTodoFilter('done')">Completed</button>
+    <div style="flex:1"></div>
+    <div class="todo-sort-wrap">
+      <select class="filter-select" id="todo-sort" onchange="loadTodos()" style="font-size:12px;padding:6px 28px 6px 10px">
+        <option value="priority">By priority</option>
+        <option value="due_date">By due date</option>
+        <option value="created">By created</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Task lists -->
+  <div class="todo-sections">
+    <div id="todo-pending-section" class="todo-section">
+      <div class="todo-section-label">
+        <span>📌 Pending Tasks</span>
+        <span class="todo-section-count" id="td-pend-count-label"></span>
+      </div>
+      <div id="todo-pending-list" class="todo-list"></div>
+    </div>
+    <div id="todo-done-section" class="todo-section">
+      <div class="todo-section-label">
+        <span>✅ Completed</span>
+        <span class="todo-section-count" id="td-done-count-label"></span>
+      </div>
+      <div id="todo-done-list" class="todo-list"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ PROGRESS ═══════════ -->
+<div id="view-progress" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Goal Progress</h1>
+      <p class="page-subtitle" id="prog-subtitle">Am I actually making progress?</p>
+    </div>
+    <div class="header-actions">
+      <!-- Period toggle -->
+      <div class="prog-period-toggle">
+        <button class="prog-period-btn active" data-period="month" onclick="setProgressPeriod('month')">This month</button>
+        <button class="prog-period-btn" data-period="week" onclick="setProgressPeriod('week')">7 days</button>
+      </div>
+      <button class="btn-outline" onclick="loadProgress()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary score strip -->
+  <div class="prog-score-strip" id="prog-score-strip" style="display:none">
+    <div class="prog-score-item" id="psi-overall">
+      <div class="prog-score-circle-wrap" id="psi-overall-ring"></div>
+      <div class="prog-score-label">Overall</div>
+    </div>
+    <div class="prog-score-sep"></div>
+    <div class="prog-score-item">
+      <div class="prog-score-big" id="psi-sleep">—</div>
+      <div class="prog-score-label">Avg sleep</div>
+    </div>
+    <div class="prog-score-sep"></div>
+    <div class="prog-score-item">
+      <div class="prog-score-big" id="psi-workouts">—</div>
+      <div class="prog-score-label">Workout days</div>
+    </div>
+    <div class="prog-score-sep"></div>
+    <div class="prog-score-item">
+      <div class="prog-score-big" id="psi-habits">—</div>
+      <div class="prog-score-label">Habit rate</div>
+    </div>
+    <div class="prog-score-sep"></div>
+    <div class="prog-score-item">
+      <div class="prog-score-big" id="psi-cals">—</div>
+      <div class="prog-score-label">Calorie goal</div>
+    </div>
+  </div>
+
+  <div id="progress-content"></div>
+</div>
+
+<!-- ═══════════ HEALTH REPORT ═══════════ -->
+<div id="view-report" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Weekly Health Report</h1>
+      <p class="page-subtitle">Last 7 days — shareable summary</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline" onclick="printReport()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / Save PDF
+      </button>
+      <button class="btn-primary" onclick="loadReport()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Generate Report
+      </button>
+    </div>
+  </div>
+  <div id="report-content"></div>
+</div>
+
+<!-- ═══════════ NOTIFICATIONS ═══════════ -->
+<div id="view-notifications" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Notification Centre</h1>
+      <p class="page-subtitle">All reminders and alerts in one place</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline" onclick="markAllRead()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Mark all read
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="notif-filter-bar">
+    <button class="notif-filter-btn active" data-f="all"      onclick="setNotifFilter('all')">All</button>
+    <button class="notif-filter-btn"        data-f="medicine" onclick="setNotifFilter('medicine')">💊 Medicine</button>
+    <button class="notif-filter-btn"        data-f="refill"   onclick="setNotifFilter('refill')">⚠️ Refill</button>
+    <button class="notif-filter-btn"        data-f="todo"     onclick="setNotifFilter('todo')">✅ Tasks</button>
+    <button class="notif-filter-btn"        data-f="system"   onclick="setNotifFilter('system')">🔔 System</button>
+    <div style="flex:1"></div>
+    <span class="notif-unread-total" id="notif-unread-total"></span>
+  </div>
+
+  <div id="notif-list" class="notif-list"></div>
+</div>
+
+
+<!-- ═══════════ DATA EXPORT ═══════════ -->
+<div id="view-export" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Export Your Data</h1>
+      <p class="page-subtitle">Download everything MediScan has stored about your health</p>
+    </div>
+  </div>
+
+  <!-- Format + date range -->
+  <div class="export-controls panel">
+    <div class="export-controls-body">
+      <div class="export-format-group">
+        <div class="export-ctrl-label">Format</div>
+        <div class="export-format-toggle">
+          <button class="export-fmt-btn active" data-fmt="json" onclick="setExportFmt('json')">
+            <span class="export-fmt-icon">{ }</span>
+            <span class="export-fmt-name">JSON</span>
+            <span class="export-fmt-desc">Structured, for developers</span>
+          </button>
+          <button class="export-fmt-btn" data-fmt="csv" onclick="setExportFmt('csv')">
+            <span class="export-fmt-icon">⊞</span>
+            <span class="export-fmt-name">CSV</span>
+            <span class="export-fmt-desc">For Excel / Google Sheets</span>
+          </button>
+        </div>
+      </div>
+      <div class="export-date-group">
+        <div class="export-ctrl-label">Date range</div>
+        <div class="export-date-row">
+          <div>
+            <label class="form-label" style="font-size:11px">From</label>
+            <input type="date" class="form-input" id="export-from-date" style="font-size:13px">
+          </div>
+          <div style="padding-top:24px;color:var(--gray-400)">→</div>
+          <div>
+            <label class="form-label" style="font-size:11px">To</label>
+            <input type="date" class="form-input" id="export-to-date" style="font-size:13px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;padding-top:20px">
+            <button class="export-preset-btn" onclick="setExportPreset(30)">Last 30 days</button>
+            <button class="export-preset-btn" onclick="setExportPreset(90)">Last 90 days</button>
+            <button class="export-preset-btn" onclick="setExportPreset(365)">Last year</button>
+            <button class="export-preset-btn" onclick="setExportPreset(0)">All time</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section selector -->
+  <div class="export-sections-grid" id="export-sections-grid">
+    <!-- Rendered by JS -->
+  </div>
+
+  <!-- Select all + download -->
+  <div class="export-action-bar">
+    <div class="export-action-left">
+      <button class="btn-outline" onclick="setAllExportSections(true)">Select all</button>
+      <button class="btn-outline" onclick="setAllExportSections(false)">Deselect all</button>
+      <span class="export-size-estimate" id="export-size-estimate"></span>
+    </div>
+    <button class="btn-primary export-download-btn" onclick="doExport()" id="export-download-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download JSON
+    </button>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- Upload Report Modal -->
+<div class="modal-overlay" id="upload-modal-overlay" style="display:none">
+<div class="modal modal--wide">
+  <div class="modal-head">
+    <h2 class="modal-title">Upload Medical Report</h2>
+    <button class="modal-close" onclick="closeModal('upload-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body modal-body--split">
+    <div class="upload-col">
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone-icon">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div class="dropzone-text">Drop file here</div>
+        <div class="dropzone-sub">PDF · PNG · JPG · TXT · CSV</div>
+        <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.txt,.csv" style="display:none">
+        <button type="button" class="btn-outline" onclick="document.getElementById('file-input').click()">Browse</button>
+      </div>
+      <div class="file-preview" id="file-preview" style="display:none">
+        <div class="file-preview-icon" id="file-preview-icon">📄</div>
+        <div class="file-preview-info">
+          <div class="file-preview-name" id="file-preview-name"></div>
+          <div class="file-preview-size" id="file-preview-size"></div>
+        </div>
+        <button class="btn-icon" onclick="clearFile()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <form id="upload-form" class="form-col">
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Patient Name</label><input type="text" class="form-input" name="patient_name" placeholder="Full name" required></div>
+        <div class="form-group"><label class="form-label">Doctor</label><input type="text" class="form-input" name="doctor" placeholder="Dr. Name"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Report Type</label>
+          <select class="form-input" name="report_type"><option>General</option><option>Blood Test</option><option>Radiology</option><option>Cardiology</option><option>Pathology</option><option>Neurology</option><option>Oncology</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" name="report_date" id="report-date"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Severity</label>
+        <div class="severity-picker">
+          <label class="sev-option sev-normal"><input type="radio" name="severity" value="normal" checked><span class="sev-dot"></span>Normal</label>
+          <label class="sev-option sev-moderate"><input type="radio" name="severity" value="moderate"><span class="sev-dot"></span>Moderate</label>
+          <label class="sev-option sev-high"><input type="radio" name="severity" value="high"><span class="sev-dot"></span>High</label>
+          <label class="sev-option sev-critical"><input type="radio" name="severity" value="critical"><span class="sev-dot"></span>Critical</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Tags</label>
+        <div class="tags-picker" id="tags-picker">
+          {% for tag in tags %}<button type="button" class="tag-btn" data-tag="{{ tag }}">{{ tag }}</button>{% endfor %}
+        </div>
+        <div class="custom-tag-row"><input type="text" class="form-input" id="custom-tag-input" placeholder="Custom tag…" style="flex:1"><button type="button" class="btn-outline-sm" onclick="addCustomTag()">Add</button></div>
+        <div class="selected-tags" id="selected-tags"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Analysis Notes</label>
+        <textarea class="form-input form-textarea" name="analysis_notes" rows="3" placeholder="Clinical observations, findings…"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="closeModal('upload-modal-overlay')">Cancel</button>
+        <button type="submit" class="btn-primary" id="submit-btn">Upload & Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+
+<!-- Add Medicine Modal -->
+<!-- Restock Modal -->
+<div class="modal-overlay" id="restock-modal-overlay" style="display:none">
+<div class="modal" style="max-width:420px">
+  <div class="modal-head">
+    <div>
+      <h2 class="modal-title">Update Pill Stock</h2>
+      <p class="modal-subtitle" id="restock-med-name" style="font-size:13px;color:var(--gray-400);margin-top:2px"></p>
+    </div>
+    <button class="modal-close" onclick="closeModal('restock-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="restock-med-id">
+    <div class="form-group">
+      <label class="form-label">Current pill count</label>
+      <div class="restock-count-row">
+        <button type="button" class="restock-step-btn" onclick="stepRestock(-10)">−10</button>
+        <button type="button" class="restock-step-btn" onclick="stepRestock(-1)">−1</button>
+        <input type="number" class="form-input" id="restock-pill-count" min="0"
+               oninput="updateRestockPreview()"
+               style="text-align:center;font-size:24px;font-weight:700;width:100px;flex-shrink:0">
+        <button type="button" class="restock-step-btn" onclick="stepRestock(1)">+1</button>
+        <button type="button" class="restock-step-btn restock-step-btn--add" onclick="stepRestock(30)">+30</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Pills per dose</label>
+        <input type="number" class="form-input" id="restock-pills-per-dose" min="1" value="1" oninput="updateRestockPreview()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alert below (days)</label>
+        <input type="number" class="form-input" id="restock-threshold" min="1" max="90" value="7">
+      </div>
+    </div>
+    <div class="restock-days-preview" id="restock-days-preview"></div>
+    <div class="form-actions">
+      <button type="button" class="btn-outline" onclick="closeModal('restock-modal-overlay')">Cancel</button>
+      <button type="button" class="btn-primary" onclick="saveRestock()">Save Stock</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="med-modal-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title">Add Medicine</h2>
+    <button class="modal-close" onclick="closeModal('med-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <form id="med-form">
+      <div class="form-group">
+        <label class="form-label">Medicine Name</label>
+        <input type="text" class="form-input" name="name" placeholder="e.g. Metformin, Aspirin" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Dosage</label><input type="text" class="form-input" name="dosage" placeholder="500" required></div>
+        <div class="form-group"><label class="form-label">Unit</label>
+          <select class="form-input" name="unit"><option value="mg">mg</option><option value="mcg">mcg</option><option value="g">g</option><option value="ml">ml</option><option value="IU">IU</option><option value="tablet">tablet</option><option value="capsule">capsule</option><option value="drops">drops</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Frequency</label>
+        <div class="freq-picker" id="freq-picker">
+          <label class="freq-opt"><input type="radio" name="frequency" value="once_daily" checked>Once Daily</label>
+          <label class="freq-opt"><input type="radio" name="frequency" value="twice_daily">Twice Daily</label>
+          <label class="freq-opt"><input type="radio" name="frequency" value="thrice_daily">3× Daily</label>
+          <label class="freq-opt"><input type="radio" name="frequency" value="weekly">Weekly</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Reminder Times</label>
+        <div id="time-slots" class="time-slots">
+          <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" onclick="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        </div>
+        <button type="button" class="btn-outline-sm" onclick="addTimeSlot()" style="margin-top:8px">+ Add time</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-input" name="start_date" id="med-start-date"></div>
+        <div class="form-group"><label class="form-label">End Date (optional)</label><input type="date" class="form-input" name="end_date"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Icon & Color</label>
+        <div class="icon-picker">
+          <div class="icon-options">
+            <button type="button" class="icon-opt selected" data-icon="💊">💊</button>
+            <button type="button" class="icon-opt" data-icon="💉">💉</button>
+            <button type="button" class="icon-opt" data-icon="🩺">🩺</button>
+            <button type="button" class="icon-opt" data-icon="❤️">❤️</button>
+            <button type="button" class="icon-opt" data-icon="🫀">🫀</button>
+            <button type="button" class="icon-opt" data-icon="🧬">🧬</button>
+          </div>
+          <div class="color-options">
+            <button type="button" class="color-opt selected" data-color="teal" style="background:#0E8F7E"></button>
+            <button type="button" class="color-opt" data-color="blue" style="background:#2563EB"></button>
+            <button type="button" class="color-opt" data-color="purple" style="background:#7C3AED"></button>
+            <button type="button" class="color-opt" data-color="red" style="background:#DC2626"></button>
+            <button type="button" class="color-opt" data-color="amber" style="background:#D97706"></button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="toggle-label">
+          <input type="checkbox" name="with_food" id="with-food-toggle">
+          <span class="toggle-switch"></span>
+          Take with food
+        </label>
+      </div>
+      <div class="form-group"><label class="form-label">Notes</label>
+        <input type="text" class="form-input" name="notes" placeholder="e.g. Avoid grapefruit">
+      </div>
+      <!-- Refill tracking -->
+      <div class="refill-section">
+        <button type="button" class="refill-toggle-btn" onclick="toggleRefillSection()">
+          💊 Track remaining pills <span id="refill-status-text" style="color:var(--gray-400);font-weight:400"></span>
+          <svg id="refill-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-left:auto;transform:rotate(-90deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="refill-fields" style="display:none;margin-top:12px">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Current pill count</label>
+              <input type="number" class="form-input" id="med-pill-count" placeholder="e.g. 30" min="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Pills per dose</label>
+              <input type="number" class="form-input" id="med-pills-per-dose" value="1" min="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Alert when below (days of supply)</label>
+            <input type="number" class="form-input" id="med-refill-threshold" value="7" min="1" max="90">
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="closeModal('med-modal-overlay')">Cancel</button>
+        <button type="submit" class="btn-primary">Add Medicine</button>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+
+<!-- Log Activity Modal -->
+<div class="modal-overlay" id="activity-modal-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title">Log Activity</h2>
+    <button class="modal-close" onclick="closeModal('activity-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <form id="activity-form">
+      <div class="form-group"><label class="form-label">Activity Type</label>
+        <div class="activity-type-picker" id="activity-type-picker">
+          <div class="atp-category">
+            <div class="atp-category-label">Cardio</div>
+            <div class="atp-row">
+              <button type="button" class="act-type-btn selected" data-type="running">🏃 Running</button>
+              <button type="button" class="act-type-btn" data-type="cycling">🚴 Cycling</button>
+              <button type="button" class="act-type-btn" data-type="cycling_indoor">🚲 Indoor Bike</button>
+              <button type="button" class="act-type-btn" data-type="walking">🚶 Walking</button>
+              <button type="button" class="act-type-btn" data-type="swimming">🏊 Swimming</button>
+              <button type="button" class="act-type-btn" data-type="rowing">🚣 Rowing</button>
+              <button type="button" class="act-type-btn" data-type="crossfit">💪 CrossFit</button>
+            </div>
+          </div>
+          <div class="atp-category">
+            <div class="atp-category-label">Outdoor & Adventure</div>
+            <div class="atp-row">
+              <button type="button" class="act-type-btn" data-type="hiking">⛰️ Hiking</button>
+              <button type="button" class="act-type-btn" data-type="climbing">🧗 Climbing</button>
+              <button type="button" class="act-type-btn" data-type="skiing">⛷️ Skiing</button>
+              <button type="button" class="act-type-btn" data-type="snowboarding">🏂 Snowboard</button>
+              <button type="button" class="act-type-btn" data-type="skating">⛸️ Skating</button>
+            </div>
+          </div>
+          <div class="atp-category">
+            <div class="atp-category-label">Racket Sports</div>
+            <div class="atp-row">
+              <button type="button" class="act-type-btn" data-type="tennis">🎾 Tennis</button>
+              <button type="button" class="act-type-btn" data-type="pickleball">🏓 Pickleball</button>
+              <button type="button" class="act-type-btn" data-type="badminton">🏸 Badminton</button>
+            </div>
+          </div>
+          <div class="atp-category">
+            <div class="atp-category-label">Team Sports</div>
+            <div class="atp-row">
+              <button type="button" class="act-type-btn" data-type="football">⚽ Football</button>
+              <button type="button" class="act-type-btn" data-type="basketball">🏀 Basketball</button>
+              <button type="button" class="act-type-btn" data-type="volleyball">🏐 Volleyball</button>
+              <button type="button" class="act-type-btn" data-type="baseball">⚾ Baseball</button>
+              <button type="button" class="act-type-btn" data-type="cricket">🏏 Cricket</button>
+            </div>
+          </div>
+          <div class="atp-category">
+            <div class="atp-category-label">Mind & Body</div>
+            <div class="atp-row">
+              <button type="button" class="act-type-btn" data-type="yoga">🧘 Yoga</button>
+              <button type="button" class="act-type-btn" data-type="pilates">🤸 Pilates</button>
+              <button type="button" class="act-type-btn" data-type="stretching">🤸 Stretching</button>
+              <button type="button" class="act-type-btn" data-type="dancing">💃 Dancing</button>
+              <button type="button" class="act-type-btn" data-type="martial_arts">🥋 Martial Arts</button>
+              <button type="button" class="act-type-btn" data-type="boxing">🥊 Boxing</button>
+            </div>
+          </div>
+          <div class="atp-category">
+            <div class="atp-category-label">Strength & Other</div>
+            <div class="atp-row">
+              <button type="button" class="act-type-btn" data-type="gym">🏋️ Gym</button>
+              <button type="button" class="act-type-btn" data-type="golf">⛳ Golf</button>
+              <button type="button" class="act-type-btn" data-type="other">🏅 Other</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Always-visible: name + date -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name / Title</label>
+          <input type="text" class="form-input" name="name" id="act-name" placeholder="Morning Run">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" name="date" id="activity-date">
+        </div>
+      </div>
+
+      <!-- Dynamic fields injected here by JS -->
+      <div id="activity-dynamic-fields"></div>
+
+      <!-- Always-visible: notes -->
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <input type="text" class="form-input" name="notes" placeholder="How did it feel?">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="closeModal('activity-modal-overlay')">Cancel</button>
+        <button type="submit" class="btn-primary">Save Activity</button>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+
+<!-- Connect App Modal -->
+<div class="modal-overlay" id="connect-modal-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title">Connect Fitness App</h2>
+    <button class="modal-close" onclick="closeModal('connect-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <p style="color:var(--gray-500);font-size:13.5px;margin-bottom:20px;line-height:1.6">Connect your fitness apps to automatically import workouts. Each service requires API credentials in your <code style="background:var(--gray-50);padding:1px 6px;border-radius:4px;font-size:12px">.env</code> file.</p>
+    <div class="connect-grid">
+
+      <div class="connect-card" id="connect-card-strava" onclick="connectService('strava')">
+        <div class="connect-card-icon" style="background:#FC4C02;color:#fff">S</div>
+        <div class="connect-card-name">Strava</div>
+        <div class="connect-card-desc">Running, cycling & more</div>
+        <div class="connect-card-setup">
+          <div class="setup-step">1. <a href="https://www.strava.com/settings/api" target="_blank">strava.com/settings/api</a> → create app</div>
+          <div class="setup-step">2. Set redirect: <code>localhost:5000/oauth/strava/callback</code></div>
+          <div class="setup-step">3. Add <code>STRAVA_CLIENT_ID</code> + <code>STRAVA_CLIENT_SECRET</code> to .env</div>
+        </div>
+        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('strava')">Connect Strava →</button>
+      </div>
+
+      <div class="connect-card" id="connect-card-garmin" onclick="connectService('garmin')">
+        <div class="connect-card-icon" style="background:#007CC3;color:#fff">G</div>
+        <div class="connect-card-name">Garmin Connect</div>
+        <div class="connect-card-desc">GPS watches & fitness trackers</div>
+        <div class="connect-card-setup">
+          <div class="setup-step">1. Apply at <a href="https://developer.garmin.com/gc-developer-program/" target="_blank">developer.garmin.com</a></div>
+          <div class="setup-step">2. Add <code>GARMIN_CONSUMER_KEY</code> + <code>GARMIN_CONSUMER_SECRET</code> to .env</div>
+        </div>
+        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('garmin')">Connect Garmin →</button>
+      </div>
+
+      <div class="connect-card" id="connect-card-apple_health" onclick="connectService('apple_health')">
+        <div class="connect-card-icon" style="background:#1C1C1E;color:#fff">🍎</div>
+        <div class="connect-card-name">Apple Health</div>
+        <div class="connect-card-desc">iPhone & Apple Watch</div>
+        <div class="connect-card-setup">
+          <div class="setup-step">1. iPhone → Health → Profile → Export All Health Data</div>
+          <div class="setup-step">2. Upload the ZIP file here — no API keys needed</div>
+        </div>
+        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('apple_health')">Import Export →</button>
+      </div>
+
+      <div class="connect-card" id="connect-card-google_fit" onclick="connectService('google_fit')">
+        <div class="connect-card-icon" style="background:#4285F4;color:#fff">G</div>
+        <div class="connect-card-name">Google Fit</div>
+        <div class="connect-card-desc">Android & Wear OS</div>
+        <div class="connect-card-setup">
+          <div class="setup-step">1. <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → Enable Fitness API</div>
+          <div class="setup-step">2. Add <code>GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_SECRET</code> to .env</div>
+        </div>
+        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('google_fit')">Connect Google →</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Report Detail Modal -->
+<div class="modal-overlay" id="report-detail-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title" id="rdetail-title">Report</h2>
+    <button class="modal-close" onclick="closeModal('report-detail-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body" id="rdetail-body"></div>
+</div>
+</div>
+
+<!-- Notification permission banner -->
+<div class="notif-banner" id="notif-banner" style="display:none">
+  <span>🔔 Enable notifications to receive medicine reminders</span>
+  <button class="btn-outline-sm" onclick="requestNotifPermission()">Enable</button>
+  <button class="btn-icon" onclick="document.getElementById('notif-banner').style.display='none'" style="color:#fff">✕</button>
+</div>
+
+
+<!-- Apple Health Import Modal -->
+<div class="modal-overlay" id="apple-modal-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title">Import Apple Health</h2>
+    <button class="modal-close" onclick="closeModal('apple-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="apple-steps">
+      <div class="apple-step"><span class="step-num">1</span><span>On your iPhone, open the <strong>Health app</strong></span></div>
+      <div class="apple-step"><span class="step-num">2</span><span>Tap your <strong>profile picture</strong> → <strong>Export All Health Data</strong></span></div>
+      <div class="apple-step"><span class="step-num">3</span><span>Share the ZIP file to your computer</span></div>
+      <div class="apple-step"><span class="step-num">4</span><span>Upload the <strong>ZIP</strong> or extracted <strong>export.xml</strong> below</span></div>
+    </div>
+    <form id="apple-health-form" style="margin-top:20px">
+      <div class="form-group">
+        <label class="form-label">Health Export File</label>
+        <input type="file" id="apple-health-file" class="form-input" accept=".zip,.xml">
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="closeModal('apple-modal-overlay')">Cancel</button>
+        <button type="submit" class="btn-primary">Import</button>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+
+
+<!-- Add Food Modal -->
+<div class="modal-overlay" id="add-food-overlay" style="display:none">
+<div class="modal modal--wide">
+  <div class="modal-head">
+    <h2 class="modal-title">Add Food</h2>
+    <button class="modal-close" onclick="closeModal('add-food-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body modal-body--split">
+    <div class="food-search-col">
+      <!-- Search bar -->
+      <div class="food-search-bar-wrap">
+        <div class="search-box">
+          <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="search-input" id="food-search-input" placeholder="Search any food…" oninput="searchFoodDB(this.value)">
+          <button class="food-search-clear" id="food-search-clear" onclick="clearFoodSearch()" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Category dropdown -->
+      <div class="food-cat-dropdown-wrap">
+        <label class="food-cat-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h7"/></svg>
+          Cuisine / Category
+        </label>
+        <div class="food-cat-select-wrap">
+          <select id="food-cat-select" class="food-cat-select" onchange="filterFoodCat(this.value)">
+            <option value="">🌍 All Foods</option>
+          </select>
+          <svg class="food-cat-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <!-- Active category badge -->
+        <div class="food-cat-active-badge" id="food-cat-active-badge" style="display:none">
+          <span id="food-cat-active-text"></span>
+          <button onclick="filterFoodCat('')" class="food-cat-clear-btn">✕</button>
+        </div>
+      </div>
+
+      <!-- Count + results -->
+      <div class="food-results-header">
+        <span class="food-results-count" id="food-results-count">Loading…</span>
+        <button class="food-add-custom-btn" onclick="openCustomFoodForm()" id="custom-food-toggle-btn">+ Custom food</button>
+      </div>
+
+      <!-- Custom food inline form — hidden by default -->
+      <div id="custom-food-form" class="custom-food-form" style="display:none">
+        <div class="custom-food-form-header">
+          <span style="font-weight:700;font-size:13px;color:var(--gray-800)">Create custom food</span>
+          <button type="button" onclick="closeCustomFoodForm()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1">×</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Food name *</label>
+          <input type="text" class="form-input" id="cf-name" placeholder="e.g. My Protein Shake">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label class="form-label">Calories (kcal) *</label>
+            <input type="number" class="form-input" id="cf-calories" placeholder="0" min="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Serving size (g/ml)</label>
+            <input type="number" class="form-input" id="cf-serving" placeholder="100" min="1">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label class="form-label">Protein (g)</label>
+            <input type="number" class="form-input" id="cf-protein" placeholder="0" min="0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Carbs (g)</label>
+            <input type="number" class="form-input" id="cf-carbs" placeholder="0" min="0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fat (g)</label>
+            <input type="number" class="form-input" id="cf-fat" placeholder="0" min="0" step="0.1">
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top:4px">
+          <button type="button" class="btn-outline" onclick="closeCustomFoodForm()">Cancel</button>
+          <button type="button" class="btn-primary" onclick="saveCustomFood()">Save & Add to Meal</button>
+        </div>
+      </div>
+
+      <div id="food-search-results" class="food-search-results"></div>
+    </div>
+
+    <div class="food-add-col" id="food-add-col">
+      <div class="food-add-placeholder">
+        <div style="font-size:42px;margin-bottom:12px">🍽️</div>
+        <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:6px">Pick a food to add</div>
+        <div style="font-size:12.5px;color:var(--gray-400);text-align:center;max-width:180px">Search or browse by cuisine,<br>then tap any item</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- Calorie Breakdown Modal -->
+<div class="modal-overlay" id="calorie-breakdown-overlay" style="display:none">
+<div class="modal modal--calbreakdown">
+  <div class="modal-head">
+    <div>
+      <h2 class="modal-title">Today's Calorie Balance</h2>
+      <p style="font-size:12px;color:var(--gray-400);margin-top:2px" id="cbd-date-label">Today</p>
+    </div>
+    <button class="modal-close" onclick="closeModal('calorie-breakdown-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <!-- Visual equation -->
+    <div class="cbd-equation">
+      <div class="cbd-eq-block cbd-eq-block--target">
+        <div class="cbd-eq-icon">🎯</div>
+        <div class="cbd-eq-val" id="cbd-target-val">—</div>
+        <div class="cbd-eq-label">Daily Target</div>
+      </div>
+      <div class="cbd-eq-op">−</div>
+      <div class="cbd-eq-block cbd-eq-block--eaten">
+        <div class="cbd-eq-icon">🍽️</div>
+        <div class="cbd-eq-val" id="cbd-eaten-val">—</div>
+        <div class="cbd-eq-label">Eaten</div>
+      </div>
+      <div class="cbd-eq-op">=</div>
+      <div class="cbd-eq-block cbd-eq-block--result" id="cbd-result-block">
+        <div class="cbd-eq-icon" id="cbd-result-icon">⚡</div>
+        <div class="cbd-eq-val" id="cbd-result-val">—</div>
+        <div class="cbd-eq-label" id="cbd-result-label">Remaining</div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="cbd-progress-section">
+      <div class="cbd-progress-track">
+        <div class="cbd-progress-fill" id="cbd-progress-fill"></div>
+        <div class="cbd-progress-marker" id="cbd-progress-marker"></div>
+      </div>
+      <div class="cbd-progress-labels">
+        <span>0</span>
+        <span id="cbd-progress-pct-label">0% of goal</span>
+        <span id="cbd-target-label">—</span>
+      </div>
+    </div>
+
+    <!-- Macro breakdown -->
+    <div class="cbd-macros" id="cbd-macros">
+      <div class="cbd-macro-row">
+        <div class="cbd-macro-dot" style="background:#0E8F7E"></div>
+        <div class="cbd-macro-name">Protein</div>
+        <div class="cbd-macro-bar-wrap"><div class="cbd-macro-bar" id="cbd-bar-prot" style="background:#0E8F7E"></div></div>
+        <div class="cbd-macro-val" id="cbd-prot-val">—</div>
+      </div>
+      <div class="cbd-macro-row">
+        <div class="cbd-macro-dot" style="background:#D97706"></div>
+        <div class="cbd-macro-name">Carbs</div>
+        <div class="cbd-macro-bar-wrap"><div class="cbd-macro-bar" id="cbd-bar-carb" style="background:#D97706"></div></div>
+        <div class="cbd-macro-val" id="cbd-carb-val">—</div>
+      </div>
+      <div class="cbd-macro-row">
+        <div class="cbd-macro-dot" style="background:#7C3AED"></div>
+        <div class="cbd-macro-name">Fat</div>
+        <div class="cbd-macro-bar-wrap"><div class="cbd-macro-bar" id="cbd-bar-fat" style="background:#7C3AED"></div></div>
+        <div class="cbd-macro-val" id="cbd-fat-val">—</div>
+      </div>
+      <div class="cbd-macro-row">
+        <div class="cbd-macro-dot" style="background:#16A34A"></div>
+        <div class="cbd-macro-name">Fiber</div>
+        <div class="cbd-macro-bar-wrap"><div class="cbd-macro-bar" id="cbd-bar-fiber" style="background:#16A34A"></div></div>
+        <div class="cbd-macro-val" id="cbd-fiber-val">—</div>
+      </div>
+    </div>
+
+    <!-- How target is calculated -->
+    <div class="cbd-formula">
+      <div class="cbd-formula-title">How your target is calculated</div>
+      <div class="cbd-formula-rows" id="cbd-formula-rows"></div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cbd-cta" id="cbd-cta">
+      <div class="cbd-cta-text" id="cbd-cta-text">Track your meals for a complete picture.</div>
+      <button class="btn-primary" onclick="closeModal('calorie-breakdown-overlay');switchView('food')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Log Food Now
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- User Profile Modal -->
+<div class="modal-overlay" id="profile-modal-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title">Health Profile</h2>
+    <button class="modal-close" onclick="closeModal('profile-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <form id="profile-form">
+      <!-- Name + Age -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input type="text" class="form-input" name="name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Age</label>
+          <input type="number" class="form-input" name="age" placeholder="25" min="10" max="100">
+        </div>
+      </div>
+
+      <!-- Weight with unit toggle -->
+      <div class="form-group">
+        <div class="prof-label-row">
+          <label class="form-label">Weight</label>
+          <div class="unit-toggle" id="weight-unit-toggle">
+            <button type="button" class="unit-btn active" data-unit="kg" onclick="setWeightUnit('kg')">kg</button>
+            <button type="button" class="unit-btn" data-unit="lbs" onclick="setWeightUnit('lbs')">lbs</button>
+          </div>
+        </div>
+        <input type="number" class="form-input" id="weight-display-input"
+               placeholder="70" step="0.1" oninput="syncWeightInput(this.value)"
+               style="font-size:15px;font-weight:600">
+        <input type="hidden" name="weight_kg" id="weight-kg-hidden">
+        <div class="prof-unit-hint" id="weight-unit-hint"></div>
+      </div>
+
+      <!-- Height with unit toggle -->
+      <div class="form-group">
+        <div class="prof-label-row">
+          <label class="form-label">Height</label>
+          <div class="unit-toggle" id="height-unit-toggle">
+            <button type="button" class="unit-btn active" data-unit="cm" onclick="setHeightUnit('cm')">cm</button>
+            <button type="button" class="unit-btn" data-unit="ft" onclick="setHeightUnit('ft')">ft / in</button>
+          </div>
+        </div>
+        <!-- cm input -->
+        <input type="number" class="form-input" id="height-cm-input"
+               placeholder="170" oninput="syncHeightInput()"
+               style="font-size:15px;font-weight:600">
+        <!-- ft/in inputs -->
+        <div id="height-ftin-inputs" style="display:none;gap:8px" class="form-row" style="margin-bottom:0">
+          <div class="form-group" style="margin-bottom:0">
+            <input type="number" class="form-input" id="height-ft-input"
+                   placeholder="5" min="3" max="8" oninput="syncHeightInput()">
+            <div class="prof-unit-hint">feet</div>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <input type="number" class="form-input" id="height-in-input"
+                   placeholder="8" min="0" max="11" oninput="syncHeightInput()">
+            <div class="prof-unit-hint">inches</div>
+          </div>
+        </div>
+        <input type="hidden" name="height_cm" id="height-cm-hidden">
+        <div class="prof-unit-hint" id="height-unit-hint"></div>
+      </div>
+
+      <!-- Gender + Activity -->
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select class="form-input" name="gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Activity Level</label>
+          <select class="form-input" name="activity_level">
+            <option value="sedentary">Sedentary (desk job)</option>
+            <option value="light">Light (1-2x/week)</option>
+            <option value="moderate" selected>Moderate (3-4x/week)</option>
+            <option value="active">Active (5-6x/week)</option>
+            <option value="very_active">Very Active (2x/day)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Fitness goal -->
+      <div class="form-group">
+        <label class="form-label">Fitness Goal</label>
+        <div class="goal-picker" id="goal-picker">
+          <label class="goal-opt"><input type="radio" name="goal" value="lose_fast">🔥 Lose fast<span class="goal-adj">−500 kcal</span></label>
+          <label class="goal-opt"><input type="radio" name="goal" value="lose">📉 Lose weight<span class="goal-adj">−250 kcal</span></label>
+          <label class="goal-opt"><input type="radio" name="goal" value="maintain" checked>⚖️ Maintain<span class="goal-adj">0 kcal</span></label>
+          <label class="goal-opt"><input type="radio" name="goal" value="gain">📈 Gain muscle<span class="goal-adj">+250 kcal</span></label>
+          <label class="goal-opt"><input type="radio" name="goal" value="gain_fast">💪 Bulk<span class="goal-adj">+500 kcal</span></label>
+        </div>
+      </div>
+
+      <!-- TDEE preview -->
+      <div class="profile-tdee-preview" id="tdee-preview" style="display:none">
+        <div class="tdee-row"><span>BMR (Basal Metabolic Rate)</span><span id="prev-bmr">—</span></div>
+        <div class="tdee-row"><span>TDEE (with activity)</span><span id="prev-tdee">—</span></div>
+        <div class="tdee-row tdee-row--target"><span>Daily Calorie Target</span><span id="prev-target">—</span></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-outline" onclick="closeModal('profile-modal-overlay')">Cancel</button>
+        <button type="submit" class="btn-primary">Save &amp; Apply</button>
+      </div>
+      <div style="border-top:1px solid var(--gray-100);margin-top:18px;padding-top:14px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--gray-400);margin-bottom:10px">Export your data</div>
+        <div style="display:flex;gap:8px">
+          <a href="/api/export?format=json" class="btn-outline" style="flex:1;text-align:center;text-decoration:none;font-size:12.5px" download>⬇ JSON</a>
+          <a href="/api/export?format=csv" class="btn-outline" style="flex:1;text-align:center;text-decoration:none;font-size:12.5px" download>⬇ CSV</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+
+
+<!-- Add / Edit Todo Modal -->
+<div class="modal-overlay" id="todo-modal-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title" id="todo-modal-title">Add Task</h2>
+    <button class="modal-close" onclick="closeModal('todo-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <input type="hidden" id="todo-edit-id">
+    <div class="form-group">
+      <label class="form-label">Task title <span style="color:var(--red-500)">*</span></label>
+      <input type="text" class="form-input" id="todo-title-input" placeholder="What needs to be done?" maxlength="200">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <textarea class="form-input" id="todo-notes-input" placeholder="Add details, links, or context…" rows="3" style="resize:vertical"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <div class="todo-priority-picker" id="todo-priority-picker">
+          <button type="button" class="todo-pri-btn" data-p="low"    onclick="selectTodoPriority('low')">🟢 Low</button>
+          <button type="button" class="todo-pri-btn selected" data-p="medium" onclick="selectTodoPriority('medium')">🟡 Medium</button>
+          <button type="button" class="todo-pri-btn" data-p="high"   onclick="selectTodoPriority('high')">🔴 High</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Due date (optional)</label>
+        <input type="date" class="form-input" id="todo-due-input">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right:4px;vertical-align:middle"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Reminder (optional)
+      </label>
+      <div class="reminder-toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" id="todo-reminder-toggle" onchange="toggleReminderPicker(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="reminder-toggle-label">Set a reminder</span>
+      </div>
+      <div id="todo-reminder-picker" style="display:none;margin-top:10px">
+        <input type="datetime-local" class="form-input" id="todo-reminder-input">
+        <div class="reminder-hint">You'll get a browser notification at this time</div>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-outline" onclick="closeModal('todo-modal-overlay')">Cancel</button>
+      <button type="button" class="btn-primary" onclick="saveTodo()">Save Task</button>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- ── Habit Modal ── -->
+<div class="modal-overlay" id="habit-modal-overlay" style="display:none">
+<div class="modal">
+  <div class="modal-head">
+    <h2 class="modal-title">Add New Habit</h2>
+    <button class="modal-close" onclick="closeModal('habit-modal-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <!-- Preset habits for quick add -->
+    <div class="form-group">
+      <label class="form-label">Quick presets</label>
+      <div class="habit-presets">
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Morning walk','🚶','#0E8F7E')">🚶 Morning walk</button>
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Meditate','🧘','#7C3AED')">🧘 Meditate</button>
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Read 20 pages','📚','#2563EB')">📚 Read</button>
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Drink 2L water','💧','#06B6D4')">💧 Hydration</button>
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('No sugar','🍭','#DC2626')">🍭 No sugar</button>
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Sleep by 10pm','😴','#6366F1')">😴 Early sleep</button>
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Workout','💪','#D97706')">💪 Workout</button>
+        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Journaling','✍️','#16A34A')">✍️ Journal</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">— or create custom —</label>
+    </div>
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <div class="form-group" style="width:64px;flex-shrink:0">
+        <label class="form-label">Emoji</label>
+        <input type="text" class="form-input" id="habit-emoji-input" value="⭐"
+               maxlength="2" style="font-size:22px;text-align:center;padding:8px 4px">
+      </div>
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Habit name</label>
+        <input type="text" class="form-input" id="habit-name-input"
+               placeholder="e.g. Morning walk, No coffee…" maxlength="60">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Colour</label>
+      <div class="habit-color-picker" id="habit-color-picker">
+        <button type="button" class="habit-color-btn selected" data-color="#0E8F7E" onclick="selectHabitColor('#0E8F7E')" style="background:#0E8F7E" title="Teal"></button>
+        <button type="button" class="habit-color-btn" data-color="#2563EB" onclick="selectHabitColor('#2563EB')" style="background:#2563EB" title="Blue"></button>
+        <button type="button" class="habit-color-btn" data-color="#7C3AED" onclick="selectHabitColor('#7C3AED')" style="background:#7C3AED" title="Purple"></button>
+        <button type="button" class="habit-color-btn" data-color="#D97706" onclick="selectHabitColor('#D97706')" style="background:#D97706" title="Amber"></button>
+        <button type="button" class="habit-color-btn" data-color="#DC2626" onclick="selectHabitColor('#DC2626')" style="background:#DC2626" title="Red"></button>
+        <button type="button" class="habit-color-btn" data-color="#16A34A" onclick="selectHabitColor('#16A34A')" style="background:#16A34A" title="Green"></button>
+        <button type="button" class="habit-color-btn" data-color="#06B6D4" onclick="selectHabitColor('#06B6D4')" style="background:#06B6D4" title="Cyan"></button>
+        <button type="button" class="habit-color-btn" data-color="#EC4899" onclick="selectHabitColor('#EC4899')" style="background:#EC4899" title="Pink"></button>
+        <button type="button" class="habit-color-btn" data-color="#6366F1" onclick="selectHabitColor('#6366F1')" style="background:#6366F1" title="Indigo"></button>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-outline" onclick="closeModal('habit-modal-overlay')">Cancel</button>
+      <button type="button" class="btn-primary" id="habit-save-btn" onclick="saveHabit()">Create Habit</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" style="display:none"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
