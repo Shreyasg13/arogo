@@ -166,6 +166,8 @@ def save_profile():
 @bp.route('/api/food/custom', methods=['POST'])
 def add_custom_food():
     data = request.json or {}
+    if not data.get('name'):
+        return jsonify({'success': False, 'error': 'Name required'}), 400
     f = save_custom_food(data)
     return jsonify({'success': True, 'food': f})
 

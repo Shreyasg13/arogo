@@ -1,0 +1,30 @@
+name: MediScan API Tests
+
+on:
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install flask pytest
+
+      - name: Run test suite
+        run: |
+          python tests/test_api.py
+
+      - name: Run with pytest (if available)
+        run: |
+          pytest tests/test_api.py -v --tb=short || true

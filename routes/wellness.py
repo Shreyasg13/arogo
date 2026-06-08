@@ -76,12 +76,14 @@ def api_get_thoughts(date_key):
 
 @bp.route('/api/thoughts', methods=['POST'])
 def api_save_thought():
-    t = save_thought(request.json or {})
+    d = request.json or {}
+    t = save_thought(d.get('content',''), d.get('mood','neutral'), d.get('date_key', today_iso()))
     return jsonify({'success': True, 'thought': t})
 
 @bp.route('/api/thoughts/<tid>', methods=['PUT'])
 def api_update_thought(tid):
-    t = update_thought(tid, request.json or {})
+    d = request.json or {}
+    t = update_thought(tid, d.get('content',''), d.get('mood','neutral'))
     return jsonify({'success': True, 'thought': t})
 
 @bp.route('/api/thoughts/<tid>', methods=['DELETE'])

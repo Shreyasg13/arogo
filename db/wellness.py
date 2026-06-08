@@ -140,13 +140,28 @@ def get_hydration_week(days: int = 7) -> list:
 
 # ── Sleep ─────────────────────────────────────────────────────────────────────
 
+def _sleep_duration(bedtime: str, wake_time: str) -> float:
+    try:
+        import datetime as dt
+        fmt  = '%Y-%m-%dT%H:%M'
+        bed  = dt.datetime.strptime(bedtime[:16],  fmt)
+        wake = dt.datetime.strptime(wake_time[:16], fmt)
+        if wake < bed:
+            wake += dt.timedelta(days=1)
+        return round((wake - bed).seconds / 3600, 2)
+    except Exception:
+        return 0.0
+
 def log_sleep(data: dict) -> dict:
-    sid = new_id()
+    sid      = new_id()
+    bed      = data.get('bedtime', '')
+    wake     = data.get('wake_time', '')
+    dur      = _sleep_duration(bed, wake)
+    date_key = data.get('date_key') or (bed[:10] if bed else today_iso())
     execute("""INSERT INTO sleep_logs (id,date_key,bedtime,wake_time,duration_h,quality,notes,created_at)
                VALUES (?,?,?,?,?,?,?,?)""",
-            (sid, data['date_key'], data['bedtime'], data['wake_time'],
-             float(data['duration_h']), int(data.get('quality',3)),
-             data.get('notes',''), now_iso()), commit=True)
+            (sid, date_key, bed, wake, dur,
+             int(data.get('quality', 3)), data.get('notes', ''), now_iso()), commit=True)
     return dict(execute("SELECT * FROM sleep_logs WHERE id=?", (sid,), fetchone=True))
 
 def get_sleep_logs(days: int = 14) -> list:
@@ -209,15 +224,6 @@ def get_hydration_week(days: int = 7) -> list:
     return result
 
 # ── Sleep ─────────────────────────────────────────────────────────────────────
-
-def log_sleep(data: dict) -> dict:
-    sid = new_id()
-    execute("""INSERT INTO sleep_logs (id,date_key,bedtime,wake_time,duration_h,quality,notes,created_at)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            (sid, data['date_key'], data['bedtime'], data['wake_time'],
-             float(data['duration_h']), int(data.get('quality',3)),
-             data.get('notes',''), now_iso()), commit=True)
-    return dict(execute("SELECT * FROM sleep_logs WHERE id=?", (sid,), fetchone=True))
 
 def get_sleep_logs(days: int = 14) -> list:
     import datetime as dt
