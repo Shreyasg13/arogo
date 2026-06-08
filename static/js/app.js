@@ -198,6 +198,9 @@ async function loadDashboard() {
 
   // Daily check-in — shows once per day on first dashboard open
   initDailyCheckin();
+
+  // Health score hero card
+  loadHealthScore();
 }
 
 async function openCalorieBreakdown() {
@@ -2286,6 +2289,9 @@ async function loadFoodTracker() {
 
   // Weekly trend
   renderFoodWeeklyChart(weekData, foodTargets);
+
+  // Quick-add recent meals panel
+  loadQuickMeals();
 }
 
 // ── Macro rings ──────────────────────────────────────────────────────────────
@@ -8234,4 +8240,248 @@ async function saveTargetWeight(val) {
     showToast(`Target weight set: ${kg} kg`, 'success');
     loadWeightProgressChart();
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// QUICK-ADD RECENT MEALS
+// ════════════════════════════════════════════════════════════════
+
+async function loadQuickMeals() {
+  const el    = document.getElementById('quick-meals-content');
+  const badge = document.getElementById('quick-meals-badge');
+  if (!el) return;
+
+  const data = await fetch('/api/food/recent-meals', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!data) return;
+
+  const { combos, yesterday, yesterday_total_cal, yesterday_date } = data;
+
+  if (!combos.length && !Object.keys(yesterday).length) {
+    el.innerHTML = `<div style="color:var(--gray-400);font-size:12.5px;text-align:center;padding:16px 0">
+      Log meals for a few days to unlock quick-add shortcuts
+    </div>`;
+    return;
+  }
+
+  const MEAL_ICONS = {breakfast:'🌅',lunch:'☀️',snack:'🍎',dinner:'🌙'};
+
+  // ── Yesterday shortcut (if has data and we're viewing today) ──
+  const today = new Date().toISOString().split('T')[0];
+  const isToday = foodDate === today;
+  const ystdHtml = isToday && Object.keys(yesterday).length
+    ? `<div class="qm-yesterday-banner">
+        <div class="qm-yday-info">
+          <div class="qm-yday-title">📋 Same as yesterday</div>
+          <div class="qm-yday-sub">${Math.round(yesterday_total_cal)} kcal total</div>
+        </div>
+        <button class="qm-yday-btn" onclick="copyYesterdayMeals()">Copy all</button>
+       </div>`
+    : '';
+
+  // ── Combo chips ───────────────────────────────────────────────
+  const comboHtml = combos.map((combo, idx) => {
+    const icon     = MEAL_ICONS[combo.meal_type] || '🍽️';
+    const repeated = combo.count > 1 ? `<span class="qm-freq">${combo.count}×</span>` : '';
+    const macros   = `${Math.round(combo.total_cal)} kcal · ${combo.total_prot}g P`;
+
+    return `
+      <div class="qm-combo" onclick="repeatMealCombo(${idx})">
+        <div class="qm-combo-top">
+          <span class="qm-combo-icon">${icon}</span>
+          <span class="qm-combo-meal">${combo.meal_type}</span>
+          ${repeated}
+        </div>
+        <div class="qm-combo-label">${escHtml(combo.label)}</div>
+        <div class="qm-combo-macros">${macros}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = ystdHtml + `<div class="qm-grid">${comboHtml}</div>`;
+  if (badge) badge.textContent = `${combos.length} recent`;
+
+  // Store for repeatMealCombo to access
+  window._recentCombos    = combos;
+  window._yesterdayMeals  = yesterday;
+}
+
+// Log a full combo to current foodDate
+async function repeatMealCombo(idx) {
+  const combo = (window._recentCombos || [])[idx];
+  if (!combo) return;
+
+  const promises = combo.items.map(item =>
+    fetch('/api/food/log', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        food_id:    item.food_id,
+        food_name:  item.food_name,
+        meal_type:  combo.meal_type,
+        date_key:   foodDate,
+        quantity_g: item.quantity_g,
+        calories:   item.calories,
+        protein:    item.protein,
+        carbs:      item.carbs,
+        fat:        item.fat,
+        fiber:      item.fiber,
+      })
+    }).then(r => r.json()).catch(() => null)
+  );
+
+  const results = await Promise.all(promises);
+  const ok = results.every(r => r?.success);
+
+  if (ok) {
+    const MEAL_LABELS = {breakfast:'Breakfast',lunch:'Lunch',snack:'Snack',dinner:'Dinner'};
+    showToast(`✓ ${MEAL_LABELS[combo.meal_type] || combo.meal_type} added (${Math.round(combo.total_cal)} kcal)`, 'success');
+    loadFoodTracker();
+  } else {
+    showToast('Some items failed to log', 'error');
+  }
+}
+
+// Copy all meals from yesterday to today
+async function copyYesterdayMeals() {
+  const yesterday = window._yesterdayMeals || {};
+  const allItems  = Object.values(yesterday).flat();
+  if (!allItems.length) return;
+
+  const promises = allItems.map(item =>
+    fetch('/api/food/log', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        food_id:    item.food_id,
+        food_name:  item.food_name,
+        meal_type:  item.meal_type,
+        date_key:   foodDate,
+        quantity_g: item.quantity_g,
+        calories:   item.calories,
+        protein:    item.protein,
+        carbs:      item.carbs,
+        fat:        item.fat,
+        fiber:      item.fiber,
+      })
+    }).then(r => r.json()).catch(() => null)
+  );
+
+  const results = await Promise.all(promises);
+  const ok = results.filter(r => r?.success).length;
+  showToast(`✓ Copied ${ok} item${ok !== 1 ? 's' : ''} from yesterday`, 'success');
+  loadFoodTracker();
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// HEALTH SCORE
+// ════════════════════════════════════════════════════════════════
+
+let _healthScore = null;  // cache for modal
+
+async function loadHealthScore() {
+  const data = await fetch('/api/health-score', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+  if (!data) return;
+
+  _healthScore = data;
+  const { score, label } = data;
+
+  // ── Hero card ─────────────────────────────────────────────────
+  const card  = document.getElementById('dash-score-card');
+  const valEl = document.getElementById('dash-score-val');
+  const lblEl = document.getElementById('dash-score-label');
+  const ring  = document.getElementById('dash-score-ring');
+
+  if (valEl) valEl.textContent = score;
+  if (lblEl) lblEl.textContent = label;
+
+  // Colour the card based on score
+  if (card) {
+    card.classList.remove('hero-card--score-green','hero-card--score-amber','hero-card--score-red','hero-card--score-teal');
+    card.classList.add(
+      score >= 80 ? 'hero-card--score-green' :
+      score >= 60 ? 'hero-card--score-teal'  :
+      score >= 40 ? 'hero-card--score-amber'  : 'hero-card--score-red'
+    );
+  }
+
+  // Animate the ring (circumference = 2π×22 ≈ 138.2)
+  if (ring) {
+    const dash = Math.round(score / 100 * 138.2);
+    ring.style.transition = 'stroke-dasharray 0.8s ease';
+    ring.setAttribute('stroke-dasharray', `${dash} 138.2`);
+  }
+}
+
+function openHealthScoreModal() {
+  const data = _healthScore;
+  if (!data) return;
+
+  const { score, grade, label, message, components } = data;
+  const scoreColor =
+    score >= 80 ? '#22C55E' :
+    score >= 60 ? '#0E8F7E' :
+    score >= 40 ? '#F59E0B' : '#EF4444';
+
+  // Ring (circumference 2π×32 ≈ 201)
+  const ring = document.getElementById('hs-ring-fill');
+  if (ring) {
+    const dash = Math.round(score / 100 * 201);
+    ring.setAttribute('stroke', scoreColor);
+    ring.setAttribute('stroke-dasharray', `${dash} 201`);
+  }
+
+  setText('hs-big-num', score);
+  setText('hs-grade',   grade);
+  setText('hs-label',   label);
+  setText('hs-message', message);
+
+  const gradeEl = document.getElementById('hs-grade');
+  if (gradeEl) gradeEl.style.color = scoreColor;
+
+  const bigNumEl = document.getElementById('hs-big-num');
+  if (bigNumEl) bigNumEl.style.color = scoreColor;
+
+  // Component bars
+  const compEl = document.getElementById('hs-components');
+  if (compEl) {
+    compEl.innerHTML = components.map(c => {
+      const pct        = Math.round(c.score / c.max * 100);
+      const barColor   =
+        pct >= 80 ? '#22C55E' :
+        pct >= 60 ? '#0E8F7E' :
+        pct >= 40 ? '#F59E0B' : '#EF4444';
+      return `
+        <div class="hs-comp-row">
+          <div class="hs-comp-left">
+            <span class="hs-comp-icon">${c.icon}</span>
+            <div>
+              <div class="hs-comp-name">${c.label}</div>
+              <div class="hs-comp-detail">${escHtml(c.detail)}</div>
+            </div>
+          </div>
+          <div class="hs-comp-right">
+            <div class="hs-comp-score" style="color:${barColor}">${c.score}<span style="font-size:11px;color:var(--gray-400);font-weight:400">/${c.max}</span></div>
+            <div class="hs-comp-bar-wrap">
+              <div class="hs-comp-bar" style="width:${pct}%;background:${barColor}"></div>
+            </div>
+            <div class="hs-comp-tip">${escHtml(c.tip)}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  // Footer
+  const footEl = document.getElementById('hs-footer');
+  if (footEl) {
+    const unlogged = components.filter(c => c.score === 0);
+    footEl.innerHTML = unlogged.length
+      ? `<div>Log ${unlogged.map(c => c.label.toLowerCase()).join(', ')} to improve your score.</div>`
+      : `<div>All 5 components tracked today 🎉</div>`;
+  }
+
+  document.getElementById('health-score-overlay').style.display = 'flex';
 }

@@ -163,6 +163,108 @@ def save_profile():
     t = calc_tdee(p)
     return jsonify({'success': True, 'profile': p, 'targets': t})
 
+
+@bp.route('/api/food/recent-meals')
+def api_recent_meals():
+    """
+    Return recent meal combos from the last 14 days.
+    Groups items by (date, meal_type) into combos.
+    Returns ranked by frequency — most repeated combos first.
+    Also returns yesterday's full log for the "copy yesterday" shortcut.
+    """
+    import datetime as dt
+    from collections import defaultdict
+    from db.core import execute
+
+    today     = dt.date.today()
+    yesterday = (today - dt.timedelta(days=1)).isoformat()
+    start     = (today - dt.timedelta(days=14)).isoformat()
+
+    rows = execute(
+        """SELECT id, food_id, food_name, meal_type, date_key,
+                  quantity_g, calories, protein, carbs, fat, fiber
+           FROM food_logs
+           WHERE date_key >= ? AND date_key < ?
+           ORDER BY date_key DESC, logged_at ASC""",
+        (start, today.isoformat()), fetchall=True)
+
+    # Group by (date_key, meal_type)
+    combos_raw = defaultdict(list)
+    for r in rows:
+        key = (r['date_key'], r['meal_type'])
+        combos_raw[key].append({
+            'food_id':   r['food_id'],
+            'food_name': r['food_name'],
+            'meal_type': r['meal_type'],
+            'quantity_g':r['quantity_g'],
+            'calories':  round(r['calories'] or 0, 1),
+            'protein':   round(r['protein']  or 0, 1),
+            'carbs':     round(r['carbs']    or 0, 1),
+            'fat':       round(r['fat']      or 0, 1),
+            'fiber':     round(r['fiber']    or 0, 1),
+        })
+
+    # Build unique combos — key by sorted food_name list so duplicates merge
+    seen_signatures = {}
+    combos_list = []
+    for (date_key, meal_type), items in sorted(combos_raw.items(), reverse=True):
+        sig = meal_type + '|' + '|'.join(
+            sorted(f'{i["food_name"]}:{i["quantity_g"]}' for i in items)
+        )
+        if sig in seen_signatures:
+            seen_signatures[sig]['count'] += 1
+        else:
+            total_cal  = sum(i['calories'] for i in items)
+            total_prot = round(sum(i['protein']  for i in items), 1)
+            total_carb = round(sum(i['carbs']    for i in items), 1)
+            total_fat  = round(sum(i['fat']      for i in items), 1)
+            entry = {
+                'meal_type':   meal_type,
+                'items':       items,
+                'item_count':  len(items),
+                'total_cal':   round(total_cal, 1),
+                'total_prot':  total_prot,
+                'total_carb':  total_carb,
+                'total_fat':   total_fat,
+                'last_eaten':  date_key,
+                'count':       1,
+                'label':       ', '.join(i['food_name'] for i in items[:2])
+                               + (f' +{len(items)-2} more' if len(items) > 2 else ''),
+            }
+            seen_signatures[sig] = entry
+            combos_list.append(entry)
+
+    # Sort by count desc, then recency
+    combos_list.sort(key=lambda x: (x['count'], x['last_eaten']), reverse=True)
+
+    # Yesterday's log for "copy yesterday" shortcut
+    yesterday_rows = execute(
+        """SELECT id, food_id, food_name, meal_type, date_key,
+                  quantity_g, calories, protein, carbs, fat, fiber
+           FROM food_logs WHERE date_key = ? ORDER BY meal_type, logged_at""",
+        (yesterday,), fetchall=True)
+
+    yesterday_by_meal = defaultdict(list)
+    for r in yesterday_rows:
+        yesterday_by_meal[r['meal_type']].append({
+            'food_id':   r['food_id'],
+            'food_name': r['food_name'],
+            'meal_type': r['meal_type'],
+            'quantity_g':r['quantity_g'],
+            'calories':  round(r['calories'] or 0, 1),
+            'protein':   round(r['protein']  or 0, 1),
+            'carbs':     round(r['carbs']    or 0, 1),
+            'fat':       round(r['fat']      or 0, 1),
+            'fiber':     round(r['fiber']    or 0, 1),
+        })
+
+    return jsonify({
+        'combos':    combos_list[:12],   # top 12 combos
+        'yesterday': dict(yesterday_by_meal),
+        'yesterday_total_cal': round(sum(r['calories'] or 0 for r in yesterday_rows), 0),
+        'yesterday_date': yesterday,
+    })
+
 @bp.route('/api/food/custom', methods=['POST'])
 def add_custom_food():
     data = request.json or {}

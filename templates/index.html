@@ -166,7 +166,23 @@
   </div>
 
   <div class="dash-hero-grid" id="dash-hero-grid">
-    <!-- Medicine card — hidden until user has medicines -->
+    <!-- Health Score — always first, always visible -->
+    <div class="hero-card hero-card--score dash-clickable" id="dash-score-card"
+         onclick="openHealthScoreModal()" style="cursor:pointer;position:relative;overflow:hidden">
+      <div class="hero-card-label">Health Score</div>
+      <div class="hero-score-wrap">
+        <svg class="hero-score-ring" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="5"/>
+          <circle cx="28" cy="28" r="22" fill="none" stroke="white" stroke-width="5"
+            stroke-dasharray="0 138.2" stroke-linecap="round"
+            transform="rotate(-90 28 28)" id="dash-score-ring"/>
+        </svg>
+        <div class="hero-score-num" id="dash-score-val">—</div>
+      </div>
+      <div class="hero-card-sub" id="dash-score-label">calculating…</div>
+      <div class="hero-card-icon">🎯</div>
+      <div class="hero-card-arrow">→</div>
+    </div>
     <div class="hero-card hero-card--teal" id="dash-doses-card" style="display:none">
       <div class="hero-card-label">Today's Doses</div>
       <div class="hero-card-value" id="dash-doses-today">—</div>
@@ -1199,8 +1215,22 @@
 
     </div>
 
-    <!-- RIGHT: hydration only -->
+    <!-- RIGHT: quick add + hydration -->
     <div class="food-right">
+
+      <!-- Quick add recent meals -->
+      <div class="panel" id="quick-meals-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Quick add</h2>
+          <span class="panel-badge" id="quick-meals-badge">Recent</span>
+        </div>
+        <div id="quick-meals-content" style="padding:10px 14px 14px">
+          <div style="color:var(--gray-400);font-size:12.5px;text-align:center;padding:16px 0">
+            Log meals to see quick-add shortcuts
+          </div>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-header">
           <h2 class="panel-title">💧 Hydration</h2>
@@ -2619,6 +2649,52 @@
     <!-- Actions -->
     <div style="padding:12px 24px 20px;display:flex;gap:10px" id="checkin-footer"></div>
 
+  </div>
+</div>
+
+
+<!-- ═══════════ HEALTH SCORE MODAL ═══════════ -->
+<div class="modal-overlay" id="health-score-overlay" style="display:none">
+  <div class="modal" style="max-width:440px;width:100%">
+    <div class="modal-head">
+      <h2 class="modal-title" id="hs-modal-title">Today's Health Score</h2>
+      <button class="modal-close" onclick="closeModal('health-score-overlay')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" style="padding:0 24px 24px">
+
+      <!-- Score ring + grade -->
+      <div class="hs-top">
+        <div class="hs-ring-wrap">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--gray-100)" stroke-width="7"/>
+            <circle cx="40" cy="40" r="32" fill="none"
+              stroke="#0E8F7E" stroke-width="7"
+              stroke-dasharray="0 201" stroke-linecap="round"
+              transform="rotate(-90 40 40)" id="hs-ring-fill"/>
+          </svg>
+          <div class="hs-ring-inner">
+            <div class="hs-big-num" id="hs-big-num">—</div>
+            <div class="hs-grade" id="hs-grade">—</div>
+          </div>
+        </div>
+        <div class="hs-right">
+          <div class="hs-label" id="hs-label">—</div>
+          <div class="hs-message" id="hs-message"></div>
+        </div>
+      </div>
+
+      <!-- Component breakdown -->
+      <div id="hs-components" style="margin-top:16px"></div>
+
+      <!-- Footer nudge -->
+      <div class="hs-footer" id="hs-footer"></div>
+
+    </div>
   </div>
 </div>
 
