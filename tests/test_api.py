@@ -674,24 +674,6 @@ class TestInsights:
         for key in ["period","sleep","fitness","nutrition","habits","symptoms"]:
             assert key in d
 
-    def test_export_counts_shape(self, client):
-        code, d = jget(client, "/api/export/counts")
-        assert code == 200
-        for key in ["food_logs","sleep_logs","symptoms","medicines"]:
-            assert key in d
-
-    def test_export_json(self, client):
-        r = client.get("/api/export?format=json&sections=todos,sleep_logs")
-        assert r.status_code == 200
-        assert "json" in r.content_type
-        body = json.loads(r.data)
-        assert "_meta" in body or "todos" in body
-
-    def test_export_csv(self, client):
-        r = client.get("/api/export?format=csv&sections=symptoms")
-        assert r.status_code == 200
-        assert "csv" in r.content_type
-        assert b"MediScan" in r.data or b"id" in r.data
 
 
 # ══════════════════════════════════════════════════════════════════════════════

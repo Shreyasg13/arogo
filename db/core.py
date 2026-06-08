@@ -16,9 +16,8 @@ def get_db() -> sqlite3.Connection:
     global _conn
     with _mutex:
         if _conn is None:
-            # Delete stale WAL / SHM files left by a previous crashed session.
-            # On Windows NTFS paths (/mnt/d/...) these cause "locking protocol"
-            # errors because the file system does not support SQLite's lock protocol.
+            # Remove stale WAL/SHM files left by a crashed session.
+            # On Windows NTFS (/mnt/d/...) these cause "locking protocol" errors.
             for ext in ("-wal", "-shm"):
                 stale = DB_PATH + ext
                 if os.path.exists(stale):
@@ -26,7 +25,15 @@ def get_db() -> sqlite3.Connection:
                         os.remove(stale)
                     except OSError:
                         pass
-            _conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+
+            # isolation_level=None → autocommit mode.
+            # SQLite never opens an implicit write transaction that stays open
+            # between calls, which is what causes locking errors on NTFS mounts.
+            _conn = sqlite3.connect(
+                DB_PATH,
+                check_same_thread=False,
+                isolation_level=None,
+            )
             _conn.row_factory = sqlite3.Row
         return _conn
 
@@ -35,8 +42,8 @@ def get_db() -> sqlite3.Connection:
 def execute(sql: str, params=(), *, fetchone=False, fetchall=False, commit=False):
     conn = get_db()
     cur  = conn.execute(sql, params)
-    if commit:
-        conn.commit()
+    # commit kwarg kept for API compatibility; in autocommit mode every
+    # statement commits itself, so this is a no-op but harmless.
     if fetchone:
         row = cur.fetchone()
         return dict(row) if row else None
@@ -48,11 +55,11 @@ def execute(sql: str, params=(), *, fetchone=False, fetchall=False, commit=False
 def executemany(sql: str, param_list):
     conn = get_db()
     conn.executemany(sql, param_list)
-    conn.commit()
 
 
 def commit():
-    get_db().commit()
+    # No-op in autocommit mode — kept so existing callers don't break.
+    pass
 
 
 # ── Tiny helpers ──────────────────────────────────────────────────────────────
@@ -201,5 +208,4 @@ def init_db():
         stmt = stmt.strip()
         if stmt:
             conn.execute(stmt)
-    conn.commit()
     print(f"[DB] Ready — {DB_PATH}")
