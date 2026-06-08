@@ -18,9 +18,17 @@ def get_profile() -> dict:
 
 def update_profile(data: dict) -> dict:
     p = get_profile()
+    # Handle target_weight_kg — may not exist in older DB rows
+    existing_target = p.get('target_weight_kg')
+    new_target = data.get('target_weight_kg', existing_target)
+    if new_target is not None:
+        try:
+            new_target = float(new_target)
+        except (TypeError, ValueError):
+            new_target = None
     execute("""UPDATE user_profile SET
         name=?,weight_kg=?,height_cm=?,age=?,gender=?,
-        activity_level=?,goal=?,updated_at=?
+        activity_level=?,goal=?,target_weight_kg=?,updated_at=?
         WHERE id=?""",
         (data.get('name',p['name']),
          float(data.get('weight_kg',p['weight_kg'])),
@@ -29,6 +37,7 @@ def update_profile(data: dict) -> dict:
          data.get('gender',p['gender']),
          data.get('activity_level',p['activity_level']),
          data.get('goal',p['goal']),
+         new_target,
          now_iso(), p['id']), commit=True)
     return get_profile()
 

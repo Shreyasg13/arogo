@@ -118,26 +118,6 @@ def mark_reminder_sent(tid: str):
 
 # ── Hydration ─────────────────────────────────────────────────────────────────
 
-def log_hydration(amount_ml: int, drink_type: str, date_key: str) -> dict:
-    hid = new_id()
-    execute("""INSERT INTO hydration_logs (id,amount_ml,drink_type,date_key,logged_at)
-               VALUES (?,?,?,?,?)""", (hid, amount_ml, drink_type, date_key, now_iso()), commit=True)
-    return dict(execute("SELECT * FROM hydration_logs WHERE id=?", (hid,), fetchone=True))
-
-# (duplicate removed — see get_hydration_day above)
-
-def delete_hydration_log(lid: str):
-    execute("DELETE FROM hydration_logs WHERE id=?", (lid,), commit=True)
-
-def get_hydration_week(days: int = 7) -> list:
-    import datetime as dt
-    result = []
-    for i in range(days-1, -1, -1):
-        d = (dt.date.today() - dt.timedelta(days=i)).isoformat()
-        rows = execute("SELECT SUM(amount_ml) as total FROM hydration_logs WHERE date_key=?", (d,), fetchone=True)
-        result.append({'date': d, 'total_ml': rows['total'] or 0})
-    return result
-
 # ── Sleep ─────────────────────────────────────────────────────────────────────
 
 def _sleep_duration(bedtime: str, wake_time: str) -> float:
@@ -164,33 +144,7 @@ def log_sleep(data: dict) -> dict:
              int(data.get('quality', 3)), data.get('notes', ''), now_iso()), commit=True)
     return dict(execute("SELECT * FROM sleep_logs WHERE id=?", (sid,), fetchone=True))
 
-def get_sleep_logs(days: int = 14) -> list:
-    import datetime as dt
-    start = (dt.date.today() - dt.timedelta(days=days)).isoformat()
-    rows = execute("SELECT * FROM sleep_logs WHERE date_key >= ? ORDER BY date_key DESC", (start,), fetchall=True)
-    return [dict(r) for r in rows]
-
-def delete_sleep_log(lid: str):
-    execute("DELETE FROM sleep_logs WHERE id=?", (lid,), commit=True)
-
 # ── Body Metrics ──────────────────────────────────────────────────────────────
-
-def log_body_metric(data: dict) -> dict:
-    bid = new_id()
-    w = data.get('weight_kg')
-    h_cm = data.get('height_cm')
-    bmi = round(w / ((h_cm/100)**2), 1) if w and h_cm else None
-    execute("""INSERT INTO body_metrics (id,date_key,weight_kg,body_fat_pct,waist_cm,bmi,notes,created_at)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            (bid, data['date_key'], w, data.get('body_fat_pct'),
-             data.get('waist_cm'), bmi, data.get('notes',''), now_iso()), commit=True)
-    return dict(execute("SELECT * FROM body_metrics WHERE id=?", (bid,), fetchone=True))
-
-def get_body_metrics(days: int = 30) -> list:
-    import datetime as dt
-    start = (dt.date.today() - dt.timedelta(days=days)).isoformat()
-    rows = execute("SELECT * FROM body_metrics WHERE date_key >= ? ORDER BY date_key", (start,), fetchall=True)
-    return [dict(r) for r in rows]
 
 # ── Habits ────────────────────────────────────────────────────────────────────
 

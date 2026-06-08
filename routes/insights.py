@@ -15,6 +15,570 @@ def api_weekly_report():
 # Goal Progress
 # ══════════════════════════════════════════════════════════════════════════════
 
+
+@bp.route('/api/calorie-balance')
+def api_calorie_balance():
+    """
+    Today's calorie balance: eaten vs burned vs target.
+    Also returns 7-day daily breakdown for trend chart.
+    """
+    import datetime as dt
+    from db import get_nutrition_summary, get_profile, calc_tdee
+    from db.fitness import list_activities
+
+    today    = dt.date.today().isoformat()
+    raw_prof = get_profile()
+    targets  = calc_tdee(raw_prof)
+    profile  = {'profile': raw_prof, 'targets': targets}
+    target   = int(targets.get('target_calories', 2000))
+
+    # Today's food
+    food_sum = get_nutrition_summary(today)
+    eaten    = round(food_sum['totals'].get('calories', 0))
+
+    # Today's workouts
+    all_acts      = list_activities()
+    today_acts    = [a for a in all_acts if a.get('date') == today]
+    burned_today  = sum(a.get('calories', 0) for a in today_acts)
+
+    # Net balance: positive = deficit (under budget), negative = surplus (over budget)
+    # budget = target + burned (exercise earns more calories)
+    budget  = target + burned_today
+    net     = budget - eaten   # positive → still has room; negative → over
+
+    # 7-day daily breakdown
+    daily = []
+    for i in range(6, -1, -1):
+        d     = (dt.date.today() - dt.timedelta(days=i)).isoformat()
+        fs    = get_nutrition_summary(d)
+        d_eat = round(fs['totals'].get('calories', 0))
+        d_acts = [a for a in all_acts if a.get('date') == d]
+        d_burn = sum(a.get('calories', 0) for a in d_acts)
+        d_bud  = target + d_burn
+        daily.append({
+            'date':    d,
+            'eaten':   d_eat,
+            'burned':  d_burn,
+            'target':  target,
+            'budget':  d_bud,
+            'net':     d_bud - d_eat,
+            'logged':  fs['log_count'] > 0,
+        })
+
+    return jsonify({
+        'today': {
+            'date':    today,
+            'eaten':   eaten,
+            'burned':  burned_today,
+            'target':  target,
+            'budget':  budget,
+            'net':     net,
+            'workouts': [
+                {'name': a.get('name') or a.get('type','workout'),
+                 'type': a.get('type',''),
+                 'calories': a.get('calories', 0),
+                 'duration': a.get('duration', 0)}
+                for a in today_acts
+            ],
+        },
+        'daily':   daily,
+        'targets': targets,
+        'profile': profile.get('profile', {}),
+    })
+
+
+@bp.route('/api/fitness/prs')
+def api_fitness_prs():
+    """
+    Compute Personal Records from all-time activity history.
+    Returns PRs grouped by type + a recent PR flag (set in last 30 days).
+    """
+    import datetime as dt
+    from db.fitness import list_activities
+
+    activities  = list_activities()
+    if not activities:
+        return jsonify({'prs': [], 'total_activities': 0, 'has_data': False})
+
+    today       = dt.date.today()
+    recent_cutoff = (today - dt.timedelta(days=30)).isoformat()
+
+    DISTANCE_TYPES  = {'running', 'cycling', 'swimming', 'walking', 'hiking'}
+    ELEVATION_TYPES = {'running', 'cycling', 'hiking'}
+    STEPS_TYPES     = {'running', 'walking'}
+
+    # ── Per-category PRs ─────────────────────────────────────────
+    # Longest distance per type
+    distance_prs = {}
+    for a in activities:
+        t = a.get('type', 'other')
+        if t not in DISTANCE_TYPES: continue
+        d = float(a.get('distance') or 0)
+        if d <= 0: continue
+        if t not in distance_prs or d > distance_prs[t]['value']:
+            distance_prs[t] = {
+                'value':    d,
+                'unit':     'km',
+                'date':     a['date'],
+                'name':     a.get('name') or t,
+                'activity_id': a['id'],
+                'is_recent': a['date'] >= recent_cutoff,
+            }
+
+    # Longest duration per type
+    duration_prs = {}
+    for a in activities:
+        t = a.get('type', 'other')
+        dur = int(a.get('duration') or 0)
+        if dur <= 0: continue
+        if t not in duration_prs or dur > duration_prs[t]['value']:
+            duration_prs[t] = {
+                'value':    dur,
+                'unit':     'min',
+                'date':     a['date'],
+                'name':     a.get('name') or t,
+                'activity_id': a['id'],
+                'is_recent': a['date'] >= recent_cutoff,
+            }
+
+    # Most calories burned (single session) per type
+    calorie_prs = {}
+    for a in activities:
+        t = a.get('type', 'other')
+        cal = int(a.get('calories') or 0)
+        if cal <= 0: continue
+        if t not in calorie_prs or cal > calorie_prs[t]['value']:
+            calorie_prs[t] = {
+                'value':    cal,
+                'unit':     'kcal',
+                'date':     a['date'],
+                'name':     a.get('name') or t,
+                'activity_id': a['id'],
+                'is_recent': a['date'] >= recent_cutoff,
+            }
+
+    # Most steps (overall, not per type)
+    best_steps = None
+    for a in activities:
+        if a.get('type') not in STEPS_TYPES: continue
+        s = int(a.get('steps') or 0)
+        if s <= 0: continue
+        if not best_steps or s > best_steps['value']:
+            best_steps = {
+                'value': s, 'unit': 'steps',
+                'date':  a['date'],
+                'name':  a.get('name') or a.get('type'),
+                'activity_id': a['id'],
+                'is_recent': a['date'] >= recent_cutoff,
+            }
+
+    # Highest elevation gain (overall)
+    best_elevation = None
+    for a in activities:
+        if a.get('type') not in ELEVATION_TYPES: continue
+        e = float(a.get('elevation') or 0)
+        if e <= 0: continue
+        if not best_elevation or e > best_elevation['value']:
+            best_elevation = {
+                'value': e, 'unit': 'm',
+                'date':  a['date'],
+                'name':  a.get('name') or a.get('type'),
+                'activity_id': a['id'],
+                'is_recent': a['date'] >= recent_cutoff,
+            }
+
+    # Most active week (total duration)
+    from collections import defaultdict
+    week_totals = defaultdict(int)
+    for a in activities:
+        d = a.get('date', '')
+        if not d: continue
+        dt_obj   = dt.date.fromisoformat(d)
+        week_key = (dt_obj - dt.timedelta(days=dt_obj.weekday())).isoformat()
+        week_totals[week_key] += int(a.get('duration') or 0)
+
+    best_week = None
+    if week_totals:
+        best_wk  = max(week_totals, key=week_totals.get)
+        best_week = {
+            'value':    week_totals[best_wk],
+            'unit':     'min',
+            'date':     best_wk,
+            'name':     'Active week',
+            'is_recent': best_wk >= recent_cutoff,
+        }
+
+    # ── Build PR list ─────────────────────────────────────────────
+    TYPE_LABELS = {
+        'running': 'Running', 'cycling': 'Cycling', 'swimming': 'Swimming',
+        'walking': 'Walking',  'hiking':  'Hiking',  'yoga':     'Yoga',
+        'gym':     'Gym',      'hiit':    'HIIT',    'other':    'Other',
+    }
+    TYPE_ICONS = {
+        'running': '🏃', 'cycling': '🚴', 'swimming': '🏊',
+        'walking': '🚶', 'hiking':  '🥾', 'yoga':     '🧘',
+        'gym':     '🏋️',  'hiit':    '⚡', 'other':    '🏅',
+    }
+
+    prs = []
+
+    for t, pr in distance_prs.items():
+        prs.append({
+            'category':  TYPE_LABELS.get(t, t),
+            'icon':      TYPE_ICONS.get(t, '🏅'),
+            'metric':    'Longest distance',
+            'value':     round(pr['value'], 2),
+            'unit':      'km',
+            'date':      pr['date'],
+            'name':      pr['name'],
+            'is_recent': pr['is_recent'],
+            'type':      t,
+        })
+
+    for t, pr in duration_prs.items():
+        label = TYPE_LABELS.get(t, t)
+        h, m  = divmod(pr['value'], 60)
+        prs.append({
+            'category':     label,
+            'icon':         TYPE_ICONS.get(t, '🏅'),
+            'metric':       'Longest session',
+            'value':        pr['value'],
+            'value_display': f"{int(h)}h {int(m)}m" if h else f"{int(m)}m",
+            'unit':         'min',
+            'date':         pr['date'],
+            'name':         pr['name'],
+            'is_recent':    pr['is_recent'],
+            'type':         t,
+        })
+
+    for t, pr in calorie_prs.items():
+        prs.append({
+            'category':  TYPE_LABELS.get(t, t),
+            'icon':      TYPE_ICONS.get(t, '🏅'),
+            'metric':    'Most calories burned',
+            'value':     pr['value'],
+            'unit':      'kcal',
+            'date':      pr['date'],
+            'name':      pr['name'],
+            'is_recent': pr['is_recent'],
+            'type':      t,
+        })
+
+    if best_steps:
+        prs.append({
+            'category': 'Steps', 'icon': '👟',
+            'metric':   'Most steps in a session',
+            'value':    best_steps['value'],
+            'value_display': f"{best_steps['value']:,}",
+            'unit':     'steps',
+            'date':     best_steps['date'],
+            'name':     best_steps['name'],
+            'is_recent': best_steps['is_recent'],
+        })
+
+    if best_elevation:
+        prs.append({
+            'category': 'Elevation', 'icon': '⛰️',
+            'metric':   'Most elevation gain',
+            'value':    best_elevation['value'],
+            'unit':     'm',
+            'date':     best_elevation['date'],
+            'name':     best_elevation['name'],
+            'is_recent': best_elevation['is_recent'],
+        })
+
+    if best_week:
+        h, m = divmod(best_week['value'], 60)
+        prs.append({
+            'category': 'Weekly', 'icon': '📅',
+            'metric':   'Most active week',
+            'value':    best_week['value'],
+            'value_display': f"{int(h)}h {int(m)}m",
+            'unit':     'min',
+            'date':     best_week['date'],
+            'name':     'Week of ' + best_week['date'],
+            'is_recent': best_week['is_recent'],
+        })
+
+    # Sort: recent PRs first, then by type alphabetically
+    prs.sort(key=lambda x: (not x['is_recent'], x['category']))
+
+    return jsonify({
+        'prs':              prs,
+        'total_activities': len(activities),
+        'recent_prs':       sum(1 for p in prs if p['is_recent']),
+        'has_data':         True,
+    })
+
+
+@bp.route('/api/mood-sleep/correlation')
+def api_mood_sleep_correlation():
+    """
+    Join 90 days of mood logs with sleep logs on date_key.
+    Returns:
+    - scatter points (sleep_duration, mood_score) for chart
+    - per-mood sleep averages
+    - correlation strength: strong/moderate/weak/none
+    - insight text
+    """
+    import datetime as dt, math
+    from db.wellness import get_thoughts_range, get_sleep_logs
+
+    days     = int(request.args.get('days', 90))
+    thoughts = get_thoughts_range(days=days)
+    sleeps   = get_sleep_logs(days=days)
+
+    # Mood → numeric score
+    MOOD_SCORE = {
+        'terrible': 1, 'sad': 2, 'anxious': 3,
+        'neutral':  4, 'calm': 5, 'tired':   3,
+        'happy':    6, 'excited': 7,
+    }
+    MOOD_POSITIVE = {'calm', 'happy', 'excited'}
+    MOOD_NEGATIVE = {'terrible', 'sad', 'anxious', 'tired'}
+
+    # Index sleep by date (take the latest entry per day)
+    sleep_by_date = {}
+    for s in sleeps:
+        d = s['date_key']
+        if d not in sleep_by_date or s['duration_h'] > sleep_by_date[d]['duration_h']:
+            sleep_by_date[d] = s
+
+    # Index moods by date — take the highest-score mood per day
+    mood_by_date = {}
+    for t in thoughts:
+        d = t['date_key']
+        score = MOOD_SCORE.get(t.get('mood', 'neutral'), 4)
+        if d not in mood_by_date or score > mood_by_date[d]['score']:
+            mood_by_date[d] = {
+                'mood':     t.get('mood', 'neutral'),
+                'score':    score,
+                'date_key': d,
+            }
+
+    # Join: only days where BOTH exist
+    paired = []
+    for date_key, mood_data in mood_by_date.items():
+        if date_key not in sleep_by_date:
+            continue
+        s = sleep_by_date[date_key]
+        paired.append({
+            'date':     date_key,
+            'mood':     mood_data['mood'],
+            'score':    mood_data['score'],
+            'duration': round(s['duration_h'], 1),
+            'quality':  s['quality'],
+        })
+
+    if len(paired) < 3:
+        return jsonify({
+            'paired':      paired,
+            'has_data':    len(paired) > 0,
+            'need_more':   True,
+            'need_count':  max(0, 5 - len(paired)),
+            'insight':     None,
+            'per_mood':    {},
+            'correlation': None,
+        })
+
+    # ── Per-mood sleep averages ───────────────────────────────────
+    from collections import defaultdict
+    mood_groups = defaultdict(list)
+    for p in paired:
+        mood_groups[p['mood']].append(p['duration'])
+
+    per_mood = {
+        mood: {
+            'avg_duration': round(sum(durs)/len(durs), 1),
+            'count':        len(durs),
+            'max':          round(max(durs), 1),
+            'min':          round(min(durs), 1),
+        }
+        for mood, durs in mood_groups.items()
+    }
+
+    # ── Pearson correlation (duration × mood score) ───────────────
+    n   = len(paired)
+    xs  = [p['duration'] for p in paired]
+    ys  = [p['score']    for p in paired]
+    mx  = sum(xs) / n
+    my  = sum(ys) / n
+    num = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    dx  = math.sqrt(sum((x - mx)**2 for x in xs))
+    dy  = math.sqrt(sum((y - my)**2 for y in ys))
+    r   = round(num / (dx * dy), 3) if dx * dy > 0 else 0
+
+    if abs(r) >= 0.5:   strength = 'strong'
+    elif abs(r) >= 0.3: strength = 'moderate'
+    elif abs(r) >= 0.1: strength = 'weak'
+    else:               strength = 'none'
+
+    direction = 'positive' if r > 0 else 'negative'
+
+    # ── Insight sentence ──────────────────────────────────────────
+    pos_avg = sum(p['duration'] for p in paired if p['mood'] in MOOD_POSITIVE)
+    pos_n   = sum(1 for p in paired if p['mood'] in MOOD_POSITIVE)
+    neg_avg = sum(p['duration'] for p in paired if p['mood'] in MOOD_NEGATIVE)
+    neg_n   = sum(1 for p in paired if p['mood'] in MOOD_NEGATIVE)
+    pos_dur = round(pos_avg / pos_n, 1) if pos_n else None
+    neg_dur = round(neg_avg / neg_n, 1) if neg_n else None
+
+    if strength == 'none':
+        insight = f'No clear pattern yet across {n} matched days. Keep logging!'
+    elif strength == 'strong' and direction == 'positive':
+        insight = f'Strong link: more sleep → better mood. You sleep {pos_dur}h on good days vs {neg_dur}h on tough ones.' if pos_dur and neg_dur else f'Strong positive correlation (r={r}) across {n} days.'
+    elif strength == 'moderate' and direction == 'positive':
+        insight = f'Moderate link: longer sleep tends to lift your mood ({n} days analysed).'
+        if pos_dur and neg_dur:
+            diff = round(pos_dur - neg_dur, 1)
+            insight = f'On your best mood days you sleep ~{diff}h more than on tough days ({pos_dur}h vs {neg_dur}h).'
+    elif direction == 'negative':
+        insight = f'Interesting pattern: your mood scores are higher after shorter sleep — possibly you wake earlier on energised days.'
+    else:
+        insight = f'Weak trend across {n} days. More data will clarify the pattern.'
+
+    # ── 7h threshold split ────────────────────────────────────────
+    above_7 = [p for p in paired if p['duration'] >= 7]
+    below_7 = [p for p in paired if p['duration'] < 7]
+    avg_mood_above = round(sum(p['score'] for p in above_7) / len(above_7), 2) if above_7 else None
+    avg_mood_below = round(sum(p['score'] for p in below_7) / len(below_7), 2) if below_7 else None
+
+    return jsonify({
+        'paired':       paired,
+        'has_data':     True,
+        'need_more':    False,
+        'days_analysed':days,
+        'matched_days': n,
+        'correlation':  {'r': r, 'strength': strength, 'direction': direction},
+        'per_mood':     per_mood,
+        'threshold': {
+            'above_7h': {'count': len(above_7), 'avg_mood_score': avg_mood_above},
+            'below_7h': {'count': len(below_7), 'avg_mood_score': avg_mood_below},
+        },
+        'insight': insight,
+    })
+
+
+@bp.route('/api/weekly-digest')
+def api_weekly_digest():
+    """
+    Weekly insight digest — highlights, wins, concerns, one-line summary.
+    Built on top of generate_weekly_report with added narrative logic.
+    """
+    import datetime as dt
+    from db.insights import generate_weekly_report
+    from db.wellness import get_sleep_logs, get_thoughts_range
+
+    r = generate_weekly_report()
+    today = dt.date.today()
+
+    # ── Compute scores (0-100) ────────────────────────────────────
+    sleep_score = 0
+    if r['sleep']['avg_hours']:
+        h = r['sleep']['avg_hours']
+        sleep_score = min(100, int(min(h, 9) / 9 * 100))
+        # Quality bonus
+        if r['sleep']['avg_quality']:
+            sleep_score = int(sleep_score * 0.7 + (r['sleep']['avg_quality']/5*100) * 0.3)
+
+    workout_score = min(100, int(r['fitness']['workout_days'] / 5 * 100))
+
+    habit_score   = int(r['habits']['completion_pct'] or 0)
+
+    hydration_score = 0
+    if r['nutrition']['avg_hydration_ml']:
+        hydration_score = min(100, int(r['nutrition']['avg_hydration_ml'] / 2450 * 100))
+
+    cal_score = 0
+    if r['nutrition']['adherence_pct']:
+        pct = r['nutrition']['adherence_pct']
+        # Ideal is 90–110% of target
+        cal_score = 100 if 90 <= pct <= 110 else max(0, int(100 - abs(pct - 100) * 2))
+
+    overall_score = int((sleep_score + workout_score + habit_score + hydration_score + cal_score) / 5)
+
+    # ── Wins (things that went well) ─────────────────────────────
+    wins = []
+    sleep_h = r['sleep']['avg_hours']
+    if sleep_h and sleep_h >= 7:
+        wins.append({'icon': '🌙', 'text': f'Averaged {sleep_h}h sleep — at or above the 7h target'})
+    if r['fitness']['workout_days'] >= 4:
+        wins.append({'icon': '🏅', 'text': f'{r["fitness"]["workout_days"]} workout days this week — great consistency'})
+    if habit_score >= 80:
+        wins.append({'icon': '⭐', 'text': f'{int(habit_score)}% habit completion — nearly perfect week'})
+    if hydration_score >= 90:
+        wins.append({'icon': '💧', 'text': f'Well hydrated — averaged {r["nutrition"]["avg_hydration_ml"]}ml/day'})
+    if r['fitness']['calories_burned'] >= 2000:
+        wins.append({'icon': '🔥', 'text': f'{r["fitness"]["calories_burned"]:,} kcal burned through exercise'})
+
+    # ── Concerns (things to watch) ────────────────────────────────
+    concerns = []
+    if sleep_h and sleep_h < 6:
+        concerns.append({'icon': '😴', 'text': f'Sleep averaged {sleep_h}h — below the 7h minimum. Early bedtime this week?'})
+    elif sleep_h and sleep_h < 7:
+        concerns.append({'icon': '🌙', 'text': f'Sleep was a bit short ({sleep_h}h avg). Aim for 7h+ tonight.'})
+
+    if r['fitness']['workout_days'] == 0:
+        concerns.append({'icon': '🏃', 'text': 'No workouts logged this week. Even a 20-min walk counts.'})
+    elif r['fitness']['workout_days'] <= 1:
+        concerns.append({'icon': '🏃', 'text': f'Only {r["fitness"]["workout_days"]} workout day this week. Try for 3+.'})
+
+    if habit_score is not None and habit_score < 50 and r['habits']['total'] > 0:
+        concerns.append({'icon': '📋', 'text': f'Habits only {int(habit_score)}% complete. Consider removing habits that no longer fit.'})
+
+    if r['symptoms']:
+        top = r['symptoms'][0]
+        concerns.append({'icon': '🩺', 'text': f'{top["name"]} appeared {top["count"]} time{"s" if top["count"]>1 else ""} this week. Worth noting if it continues.'})
+
+    if hydration_score < 60:
+        concerns.append({'icon': '💧', 'text': f'Hydration was low ({r["nutrition"]["avg_hydration_ml"]}ml avg, goal 2450ml). Try a water reminder.'})
+
+    # ── Highlights (neutral notable stats) ───────────────────────
+    highlights = []
+    if r['sleep']['nights'] > 0:
+        highlights.append({'label': 'Avg sleep',    'value': f'{sleep_h}h' if sleep_h else '—', 'icon': '🌙'})
+    if r['fitness']['workout_days'] > 0:
+        highlights.append({'label': 'Workout days', 'value': str(r['fitness']['workout_days']),  'icon': '🏋️'})
+    if r['habits']['total'] > 0:
+        highlights.append({'label': 'Habits',       'value': f'{int(habit_score)}%',             'icon': '⭐'})
+    if r['nutrition']['avg_hydration_ml']:
+        highlights.append({'label': 'Avg water',    'value': f'{r["nutrition"]["avg_hydration_ml"]}ml','icon': '💧'})
+    if r['fitness']['calories_burned']:
+        highlights.append({'label': 'Cal burned',   'value': f'{r["fitness"]["calories_burned"]:,}',  'icon': '🔥'})
+
+    # ── One-line headline ─────────────────────────────────────────
+    if overall_score >= 80:
+        headline = "Strong week — you're building good habits 💪"
+    elif overall_score >= 60:
+        headline = "Solid week overall, with a few areas to improve"
+    elif overall_score >= 40:
+        headline = "Mixed week — some wins, some things to work on"
+    else:
+        headline = "Tough week — small steps still count. Keep going."
+
+    # ── Period label ──────────────────────────────────────────────
+    start = dt.date.fromisoformat(r['period']['start'])
+    end   = dt.date.fromisoformat(r['period']['end'])
+    period_label = f"{start.strftime('%b %-d')} – {end.strftime('%b %-d, %Y')}"
+
+    return jsonify({
+        'period':        r['period'],
+        'period_label':  period_label,
+        'headline':      headline,
+        'overall_score': overall_score,
+        'scores': {
+            'sleep':      sleep_score,
+            'workouts':   workout_score,
+            'habits':     habit_score,
+            'hydration':  hydration_score,
+            'nutrition':  cal_score,
+        },
+        'highlights':  highlights,
+        'wins':        wins[:3],
+        'concerns':    concerns[:3],
+        'raw':         r,
+    })
+
 @bp.route('/api/progress')
 def api_goal_progress():
     return jsonify(get_goal_progress())
@@ -440,4 +1004,3 @@ if __name__ == '__main__':
     from scheduler import start_scheduler
     start_scheduler()
     app.run(debug=True, port=5000, use_reloader=False)
-

@@ -58,25 +58,33 @@ function setupNavigation() {
 }
 
 function switchView(view) {
+  // Redirect removed/merged views
+  const REDIRECT = {
+    'consistency': 'habits',
+    'report':      'progress',
+    'export':      'progress',
+  };
+  view = REDIRECT[view] || view;
+
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const viewEl = document.getElementById(`view-${view}`);
-  const navEl = document.querySelector(`[data-view="${view}"]`);
+  const viewEl = document.getElementById('view-' + view);
+  const navEl  = document.querySelector('[data-view="' + view + '"]');
   if (viewEl) viewEl.classList.add('active');
-  if (navEl) navEl.classList.add('active');
-  if (view === 'dashboard')   loadDashboard();
-  if (view === 'reports')     loadReports();
-  if (view === 'medicines')   loadMedicines();
-  if (view === 'fitness')     { loadFitness(); loadConnectedServices(); }
-  if (view === 'consistency') loadConsistency();
-  if (view === 'food')      loadFoodTracker();
-  if (view === 'thoughts')  loadThoughts();
+  if (navEl)  navEl.classList.add('active');
+
+  if (view === 'dashboard')     { loadDashboard(); loadWellnessStrip(); }
+  if (view === 'food')          { loadFoodTracker(); loadHydration(new Date().toISOString().split('T')[0]); }
+  if (view === 'fitness')       { loadFitness(); loadConnectedServices(); }
+  if (view === 'medicines')     loadMedicines();
+  if (view === 'reports')       loadReports();
+  if (view === 'habits')        loadHabits();
+  if (view === 'thoughts')      { loadWellness(); setTimeout(() => switchWellnessTab('thoughts'), 50); }
+  if (view === 'sleep')         loadSleepView();
+  if (view === 'body')          loadBodyView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
-  if (view === 'report')        loadReport();
   if (view === 'notifications') loadNotifications();
-  if (view === 'export')        initExportView();
-  if (view === 'habits')        loadHabits();
 }
 
 // ── Dashboard ──
@@ -108,19 +116,29 @@ async function loadDashboard() {
   }
 
   // Calorie balance hero card
-  const todayCalBurned  = fitnessStats.week?.calories || 0;  // weekly, approximate
-  const todayCalEaten   = foodDay?.summary?.totals?.calories || 0;
-  const targetCal       = profile?.targets?.target_calories || 2000;
-  const netBalance      = Math.round(targetCal - todayCalEaten); // deficit = target - eaten
-  const deficitCard     = document.getElementById('dash-caldeficit-card');
-  const deficitEl       = document.getElementById('dash-cal-deficit');
-  const deficitSubEl    = document.getElementById('dash-cal-deficit-sub');
-  if (deficitEl) deficitEl.textContent = (netBalance >= 0 ? '' : '+') + Math.abs(netBalance);
-  if (deficitSubEl) deficitSubEl.textContent = netBalance >= 0 ? 'kcal remaining' : 'kcal over goal';
-  if (deficitCard) {
-    deficitCard.classList.remove('hero-card--amber','hero-card--green','hero-card--red');
-    deficitCard.classList.add(netBalance >= 0 ? 'hero-card--amber' : 'hero-card--red');
-  }
+  // Calorie balance — fetched separately with correct formula (includes exercise)
+  fetch('/api/calorie-balance').then(r => r.json()).then(cb => {
+    const t   = cb.today || {};
+    const net = t.net ?? 0;
+    const deficitCard  = document.getElementById('dash-caldeficit-card');
+    const deficitEl    = document.getElementById('dash-cal-deficit');
+    const deficitSubEl = document.getElementById('dash-cal-deficit-sub');
+    if (deficitEl) deficitEl.textContent = Math.abs(net);
+    if (deficitSubEl) deficitSubEl.textContent =
+      net > 100  ? 'kcal remaining' :
+      net < -100 ? 'kcal over budget' : 'on track';
+    if (deficitCard) {
+      deficitCard.classList.remove('hero-card--amber','hero-card--green','hero-card--red');
+      deficitCard.classList.add(
+        net > 100  ? 'hero-card--green' :
+        net < -100 ? 'hero-card--red'   : 'hero-card--amber'
+      );
+    }
+    // Sub-label shows burned if workouts logged
+    if (t.burned > 0 && deficitSubEl) {
+      deficitSubEl.textContent = `${t.burned} kcal burned`;
+    }
+  }).catch(() => {});
 
   // Dashboard nutrition bar
   if (foodDay && foodDay.summary?.log_count > 0) {
@@ -177,32 +195,43 @@ async function loadDashboard() {
       else sb.style.display = 'none';
     }
   }).catch(() => {});
+
+  // Daily check-in — shows once per day on first dashboard open
+  initDailyCheckin();
 }
 
 async function openCalorieBreakdown() {
-  const today = new Date().toISOString().split('T')[0];
-  const [foodDay, profile] = await Promise.all([
-    fetch(`/api/food/log/${today}`).then(r => r.json()).catch(() => null),
-    fetch('/api/food/profile').then(r => r.json()).catch(() => null)
-  ]);
+  const cb = await fetch('/api/calorie-balance').then(r => r.json()).catch(() => null);
+  if (!cb) return;
 
-  const targets  = profile?.targets || {};
-  const totals   = foodDay?.summary?.totals || {};
-  const logCount = foodDay?.summary?.log_count || 0;
-
-  const targetCal = targets.target_calories || 2000;
-  const eaten     = Math.round(totals.calories || 0);
-  const net       = Math.round(targetCal - eaten);      // positive = still has room
-  const pct       = Math.min(Math.round((eaten / targetCal) * 100), 150);
+  const t        = cb.today || {};
+  const targets  = cb.targets || {};
+  const profile  = cb.profile || {};
+  const eaten    = t.eaten    || 0;
+  const burned   = t.burned   || 0;
+  const target   = t.target   || 2000;
+  const budget   = t.budget   || target;   // target + burned
+  const net      = t.net      || 0;
+  const pct      = Math.min(Math.round((eaten / budget) * 100), 150);
+  const today    = new Date().toISOString().split('T')[0];
 
   // Date label
   const d = new Date(today + 'T12:00:00');
   setText('cbd-date-label', d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }));
 
-  // Equation values
-  setText('cbd-target-val', targetCal + ' kcal');
-  setText('cbd-eaten-val',  eaten + ' kcal');
+  // Equation — show budget (target + burned) not raw target
+  setText('cbd-target-val', budget + ' kcal');
+  setText('cbd-eaten-val',  eaten  + ' kcal');
   setText('cbd-result-val', Math.abs(net) + ' kcal');
+
+  // Sub-label under target shows the breakdown when exercise exists
+  const targetBlock = document.querySelector('.cbd-eq-block--target');
+  if (targetBlock) {
+    const sub = targetBlock.querySelector('.cbd-eq-label');
+    if (sub) sub.textContent = burned > 0
+      ? `Budget (${target} + ${burned} burned)`
+      : 'Daily budget';
+  }
 
   const resultBlock = document.getElementById('cbd-result-block');
   const resultLabel = document.getElementById('cbd-result-label');
@@ -211,7 +240,7 @@ async function openCalorieBreakdown() {
     resultBlock.className = 'cbd-eq-block cbd-eq-block--result ' +
       (net < -100 ? 'surplus' : net > 100 ? 'deficit' : 'balanced');
   }
-  if (resultLabel) resultLabel.textContent = net < -100 ? 'Over goal' : net > 100 ? 'Remaining' : 'Balanced!';
+  if (resultLabel) resultLabel.textContent = net < -100 ? 'Over budget' : net > 100 ? 'Remaining' : 'Balanced!';
   if (resultIcon)  resultIcon.textContent  = net < -100 ? '⚠️' : net > 100 ? '✅' : '⚖️';
 
   // Progress bar
@@ -220,65 +249,81 @@ async function openCalorieBreakdown() {
     fill.style.width = Math.min(pct, 100) + '%';
     fill.classList.toggle('over', pct > 105);
   }
-  setText('cbd-progress-pct-label', `${pct}% of daily goal`);
-  setText('cbd-target-label', targetCal + ' kcal');
+  setText('cbd-progress-pct-label', `${pct}% of daily budget`);
+  setText('cbd-target-label', budget + ' kcal');
 
   // Macro bars
-  const macros = [
-    { id:'prot', val: Math.round(totals.protein||0), target: targets.protein_g||56, unit:'g' },
-    { id:'carb', val: Math.round(totals.carbs||0),   target: targets.carbs_g||250,  unit:'g' },
-    { id:'fat',  val: Math.round(totals.fat||0),     target: targets.fat_g||65,     unit:'g' },
-    { id:'fiber',val: Math.round(totals.fiber||0),   target: targets.fiber_g||30,   unit:'g' },
+  const foodDay = await fetch(`/api/food/log/${today}`).then(r => r.json()).catch(() => null);
+  const totals  = foodDay?.summary?.totals || {};
+  const macros  = [
+    { id:'prot',  val: Math.round(totals.protein||0), target: targets.protein_g||56,  unit:'g' },
+    { id:'carb',  val: Math.round(totals.carbs||0),   target: targets.carbs_g||250,   unit:'g' },
+    { id:'fat',   val: Math.round(totals.fat||0),     target: targets.fat_g||65,      unit:'g' },
+    { id:'fiber', val: Math.round(totals.fiber||0),   target: targets.fiber_g||30,    unit:'g' },
   ];
   macros.forEach(m => {
     const bar = document.getElementById(`cbd-bar-${m.id}`);
     const val = document.getElementById(`cbd-${m.id}-val`);
-    if (bar) bar.style.width = Math.min((m.val/m.target)*100, 100).toFixed(0) + '%';
+    if (bar) bar.style.width = Math.min((m.val / m.target) * 100, 100).toFixed(0) + '%';
     if (val) val.textContent = `${m.val}${m.unit} / ${m.target}${m.unit}`;
   });
 
-  // Formula explanation
+  // Workouts today
   const formulaEl = document.getElementById('cbd-formula-rows');
   if (formulaEl) {
-    const p = profile?.profile || {};
-    const goalLabels = { lose_fast:'Lose fast (−500)', lose:'Lose weight (−250)',
-      maintain:'Maintain (±0)', gain:'Gain muscle (+250)', gain_fast:'Bulk (+500)' };
+    const goalLabels = {
+      lose_fast: 'Lose fast (−500)', lose: 'Lose weight (−250)',
+      maintain: 'Maintain (±0)', gain: 'Gain muscle (+250)', gain_fast: 'Bulk (+500)',
+    };
+    const workoutsHTML = t.workouts?.length
+      ? t.workouts.map(w =>
+          `<div class="cbd-formula-row">
+            <span class="cbd-formula-key">🏃 ${escHtml(w.name || w.type)} (${w.duration} min)</span>
+            <span class="cbd-formula-val" style="color:#22C55E">+${w.calories} kcal</span>
+           </div>`).join('')
+      : '';
     formulaEl.innerHTML = `
       <div class="cbd-formula-row">
-        <span class="cbd-formula-key">BMR (${p.gender||'male'}, ${p.age||25} yrs, ${p.weight_kg||70}kg, ${p.height_cm||170}cm)</span>
+        <span class="cbd-formula-key">BMR (${profile.gender||'male'}, ${profile.age||25} yrs, ${profile.weight_kg||70}kg, ${profile.height_cm||170}cm)</span>
         <span class="cbd-formula-val">${targets.bmr||'—'} kcal</span>
       </div>
       <div class="cbd-formula-row">
-        <span class="cbd-formula-key">× Activity multiplier (${(p.activity_level||'moderate').replace('_',' ')})</span>
-        <span class="cbd-formula-val">${targets.tdee||'—'} kcal (TDEE)</span>
+        <span class="cbd-formula-key">× Activity multiplier (${(profile.activity_level||'moderate').replace('_',' ')})</span>
+        <span class="cbd-formula-val">${targets.tdee||'—'} kcal TDEE</span>
       </div>
       <div class="cbd-formula-row">
         <span class="cbd-formula-key">Goal adjustment</span>
-        <span class="cbd-formula-val">${goalLabels[p.goal||'maintain']}</span>
+        <span class="cbd-formula-val">${goalLabels[profile.goal||'maintain']}</span>
       </div>
-      <div class="cbd-formula-row">
-        <span class="cbd-formula-key">Daily calorie target</span>
-        <span class="cbd-formula-val highlight">${targetCal} kcal</span>
+      ${workoutsHTML}
+      <div class="cbd-formula-row" style="border-top:1px solid var(--gray-100);margin-top:6px;padding-top:6px">
+        <span class="cbd-formula-key" style="font-weight:600">Daily budget</span>
+        <span class="cbd-formula-val highlight">${budget} kcal</span>
       </div>
     `;
   }
 
+  // 7-day trend chart
+  renderCalorieTrendChart(cb.daily || []);
+
   // CTA text
   const ctaEl = document.getElementById('cbd-cta-text');
   if (ctaEl) {
+    const logCount = foodDay?.summary?.log_count || 0;
     if (logCount === 0) {
-      ctaEl.textContent = "You haven't logged any food today. Add your meals to see the full picture.";
+      ctaEl.textContent = "No food logged today yet. Add your meals to see the full picture.";
     } else if (net > 300) {
-      ctaEl.textContent = `You still have ${net} kcal left. Log your next meal to stay on track.`;
+      ctaEl.textContent = `${net} kcal remaining. ${burned > 0 ? 'Great job burning ' + burned + ' kcal!' : 'Log a workout to earn more calories.'}`;
     } else if (net < -100) {
-      ctaEl.textContent = `You're ${Math.abs(net)} kcal over your goal. Consider a lighter dinner.`;
+      ctaEl.textContent = `${Math.abs(net)} kcal over budget. A ${Math.round(Math.abs(net)/8)}-min walk would balance it.`;
     } else {
-      ctaEl.textContent = "Great balance today! Keep logging to maintain accuracy.";
+      ctaEl.textContent = "Nice balance today! You're right on target.";
     }
   }
 
   document.getElementById('calorie-breakdown-overlay').style.display = 'flex';
 }
+
 
 function renderSuggestions(el, suggestions) {
   if (suggestions.length === 0) {
@@ -503,6 +548,7 @@ async function loadMedicines() {
   renderMedicinesGrid(meds);
   const mc = document.getElementById('med-count');
   if (mc) mc.textContent = `${meds.filter(m=>m.active).length} active`;
+  loadMedAdherence();
 }
 
 function renderTodayTimeline(doses) {
@@ -924,6 +970,9 @@ async function loadFitness() {
 
   // ── Nutrition strip ──
   renderFitnessNutritionStrip(foodDay, profile?.targets);
+
+  // ── Personal Records ──
+  loadFitnessPRs();
 }
 
 function renderFitnessNutritionStrip(foodDay, targets) {
@@ -3761,16 +3810,23 @@ function scheduleTodoReminderChecks() {
 // ════════════════════════════════════════════════════════════
 
 async function loadWellnessStrip() {
-  const r = await fetch('/api/wellness/today').then(r => r.json()).catch(() => null);
-  if (!r) return;
+  const today = new Date().toISOString().split('T')[0];
 
-  // Hydration
-  const h = r.hydration;
-  const hGoal = h.goal_ml || 2450;
-  const hPct  = h.pct != null ? h.pct : Math.min(Math.round((h.total_ml || 0) / hGoal * 100), 100);
-  setText('dws-hydration', `${h.total_ml || 0} ml`);
-  const hBar = document.getElementById('dws-hydration-bar');
-  if (hBar) hBar.style.width = hPct + '%';
+  // Fetch hydration directly — separate call ensures freshest data
+  const [hyd, r] = await Promise.all([
+    fetch(`/api/hydration/${today}`, {cache: 'no-store'}).then(r => r.json()).catch(() => null),
+    fetch('/api/wellness/today', {cache: 'no-store'}).then(r => r.json()).catch(() => null),
+  ]);
+
+  // Hydration — use direct fetch (most accurate)
+  if (hyd) {
+    const hydEl = document.getElementById('dws-hydration');
+    if (hydEl) hydEl.textContent = `${hyd.total_ml || 0} ml`;
+    const hBar = document.getElementById('dws-hydration-bar');
+    if (hBar) hBar.style.width = (hyd.pct || 0) + '%';
+  }
+
+  if (!r) return;
 
   // Sleep
   const s = r.sleep;
@@ -3794,14 +3850,7 @@ async function loadWellnessStrip() {
 
   // Symptoms
   const symEl = document.getElementById('dws-symptoms');
-  if (symEl) {
-    if (!r.symptoms.length) {
-      symEl.textContent = 'None today';
-    } else {
-      symEl.textContent = r.symptoms.slice(0,2).map(s => s.name).join(', ');
-      if (r.symptoms.length > 2) symEl.textContent += ` +${r.symptoms.length-2}`;
-    }
-  }
+  if (symEl) symEl.textContent = r.symptoms > 0 ? `${r.symptoms} today` : 'None today';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -3915,7 +3964,7 @@ async function loadSleepData() {
 
 async function delSleep(id) {
   await fetch(`/api/sleep/${id}`, {method:'DELETE'});
-  loadSleepData(); loadWellnessStrip();
+  loadSleepData(); loadSleepTrend(); loadWellnessStrip();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -4300,7 +4349,7 @@ async function logSymptoms() {
     document.getElementById('symptom-notes').value = '';
     document.getElementById('symptom-severity').value = 5;
     updateSeverityLabel(5);
-    loadSymptoms();
+    loadSymptoms(); loadSymptomPatterns();
     loadWellnessStrip();
   } else {
     showToast('Some symptoms failed to save', 'error');
@@ -4318,7 +4367,7 @@ function switchMedTab(tab) {
   document.querySelectorAll('#view-reports .wellness-tab-content').forEach(c => {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
-  if (tab === 'symptoms') loadSymptoms();
+  if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
   if (tab === 'vitals')   { loadVitals(); renderVitalFields(); }
   if (tab === 'emergency') loadEmergencyCard();
 }
@@ -4393,7 +4442,7 @@ async function loadSymptoms() {
 
 async function delSymptom(id) {
   await fetch(`/api/symptoms/${id}`, {method:'DELETE'});
-  loadSymptoms(); loadWellnessStrip();
+  loadSymptoms(); loadSymptomPatterns(); loadWellnessStrip();
 }
 
 // ════════════════════════════════════════════════════════════
@@ -4562,79 +4611,75 @@ async function saveEmergencyInfo() {
 // ════════════════════════════════════════════════════════════
 
 async function loadHydration(dateStr) {
-  const date = dateStr || (typeof foodDate !== 'undefined' ? foodDate : new Date().toISOString().split('T')[0]);
-  const r = await fetch(`/api/hydration/${date}`).then(r => r.json()).catch(() => null);
+  const date = dateStr || new Date().toISOString().split('T')[0];
+  const r = await fetch(`/api/hydration/${date}`, {cache: 'no-store'}).then(r => r.json()).catch(() => null);
   if (!r) return;
 
-  // Update bottle fill
-  const fill = document.getElementById('hydration-fill');
-  const pctEl = document.getElementById('hydration-pct');
-  const lvlEl = document.getElementById('hydration-level-text');
+  const goalMl = r.goal_ml || 2450;
+  const pct    = r.pct != null ? r.pct : Math.min(Math.round((r.total_ml || 0) / goalMl * 100), 100);
+
+  // Update food page hydration panel
+  const fill    = document.getElementById('hydration-fill');
+  const pctEl   = document.getElementById('hydration-pct');
+  const lvlEl   = document.getElementById('hydration-level-text');
   const badgeEl = document.getElementById('hydration-goal-badge');
-  // Calculate pct client-side as fallback if server doesn't send it
-  const goalMl = r.goal_ml || Math.round(2450);   // 35ml/kg × 70kg default
-  const pct    = r.pct != null ? r.pct : Math.min(Math.round(r.total_ml / goalMl * 100), 100);
   if (fill)    fill.style.height = pct + '%';
   if (pctEl)   pctEl.textContent = pct + '%';
   if (lvlEl)   lvlEl.textContent = (r.total_ml || 0) + 'ml';
   if (badgeEl) badgeEl.textContent = `Goal: ${goalMl}ml`;
 
-  // Logs
+  // Update dashboard wellness strip at the same time
+  const stripEl  = document.getElementById('dws-hydration');
+  const stripBar = document.getElementById('dws-hydration-bar');
+  if (stripEl)  stripEl.textContent = `${r.total_ml || 0} ml`;
+  if (stripBar) stripBar.style.width = pct + '%';
+
+  // Render log list with delete buttons
   const wrap = document.getElementById('hydration-logs-wrap');
-  if (wrap) {
-    if (!r.logs.length) {
-      wrap.innerHTML = '<div style="color:var(--gray-400);font-size:12px;text-align:center;padding:8px 0">No water logged today</div>';
-    } else {
-      const DTYPE = { water:'💧', coffee:'☕', tea:'🍵', juice:'🥤', milk:'🥛', other:'🫙' };
-      wrap.innerHTML = r.logs.map(l => `
-        <div class="hydration-log-item">
-          <span>${DTYPE[l.drink_type]||'💧'} ${l.drink_type}</span>
-          <span style="font-weight:600;font-family:'JetBrains Mono',monospace">${l.amount_ml}ml</span>
-          <button class="food-search-clear" onclick="delHydration('${l.id}')" style="width:20px;height:20px">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>`).join('');
-    }
+  if (!wrap) return;
+
+  if (!r.logs || !r.logs.length) {
+    wrap.innerHTML = '<div style="color:var(--gray-400);font-size:12px;text-align:center;padding:12px 0">No water logged yet — tap a button above</div>';
+    return;
   }
-  loadWellnessStrip();
+
+  const DTYPE = { water:'💧', coffee:'☕', tea:'🍵', juice:'🥤', milk:'🥛', other:'🫙' };
+  wrap.innerHTML = r.logs.map(l => `
+    <div class="hydration-log-item">
+      <span class="hli-icon">${DTYPE[l.drink_type] || '💧'}</span>
+      <span class="hli-type">${l.drink_type || 'water'}</span>
+      <span class="hli-amount">${l.amount_ml}ml</span>
+      <button class="hli-delete" onclick="delHydration('${l.id}')" title="Remove">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>`).join('');
 }
 
 async function quickAddWater(ml) {
-  const date = typeof foodDate !== 'undefined' ? foodDate : new Date().toISOString().split('T')[0];
-  await fetch('/api/hydration', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({amount_ml: ml, drink_type:'water', date_key: date})
-  });
-  loadHydration(date);
+  const today = new Date().toISOString().split('T')[0];
+  const res = await fetch('/api/hydration', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({amount_ml: ml, drink_type: 'water', date_key: today})
+  }).then(r => r.json()).catch(() => null);
+
+  if (!res?.success) { showToast('Failed to log water', 'error'); return; }
+
+  // Reload the full hydration panel (updates bottle + log list + strip)
+  await loadHydration(today);
   showToast(`💧 +${ml}ml logged`, 'success');
 }
 
 async function delHydration(id) {
-  await fetch(`/api/hydration/${id}`, {method:'DELETE'});
-  const date = typeof foodDate !== 'undefined' ? foodDate : new Date().toISOString().split('T')[0];
-  loadHydration(date);
+  const today = new Date().toISOString().split('T')[0];
+  await fetch(`/api/hydration/${id}`, {method: 'DELETE'});
+  await loadHydration(today);
+  showToast('Entry removed', 'success');
 }
 
-// Patch loadFoodTracker to also load hydration
-const _origLoadFoodTracker = loadFoodTracker;
-loadFoodTracker = async function() {
-  await _origLoadFoodTracker.apply(this, arguments);
-  loadHydration(foodDate);
-};
-
-// Patch loadDashboard to also load wellness strip
-const _origLoadDashboard = loadDashboard;
-loadDashboard = async function() {
-  await _origLoadDashboard.apply(this, arguments);
-  loadWellnessStrip();
-};
-
-// Patch loadConsistency to also load habits
-const _origLoadConsistency = loadConsistency;
-loadConsistency = async function() {
-  await _origLoadConsistency.apply(this, arguments);
-  loadHabits();
-};
+// (monkey-patches removed — all wired directly in switchView)
 
 // Patch loadReports to init medical tabs
 const _origLoadReports = loadReports;
@@ -4712,59 +4757,119 @@ loadDashboard = async function() {
 };
 
 // ════════════════════════════════════════════════════════════
-// MEDICINE: Adherence history chart (weekly heatmap)
+// MEDICINE ADHERENCE STREAKS
 // ════════════════════════════════════════════════════════════
-async function loadMedAdherence() {
-  const el = document.getElementById('med-adherence-chart');
-  if (!el) return;
-  const r = await fetch('/api/medicines/adherence').then(r => r.json()).catch(() => null);
-  if (!r) return;
 
-  const medicines = r.medicines || [];
-  if (!medicines.length) {
-    el.innerHTML = '<div style="color:var(--gray-400);font-size:13px;text-align:center;padding:16px 0">No medicines tracked yet.</div>';
+async function loadMedAdherence() {
+  const section = document.getElementById('med-streaks-section');
+  if (!section) return;
+
+  const data = await fetch('/api/medicines/streaks?days=28', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!data || !data.medicines.length) {
+    section.innerHTML = '';
     return;
   }
 
-  // Build 7-day date labels
-  const days = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(); d.setDate(d.getDate() - i);
-    days.push({ iso: d.toISOString().split('T')[0], label: d.toLocaleDateString('en-US',{weekday:'short'}) });
-  }
+  const { medicines, overall_pct, overall_taken, overall_total } = data;
 
-  el.innerHTML = medicines.slice(0, 8).map(m => {
-    const dots = days.map(d => {
-      const logged = (m.dose_log || []).some(l => l.date === d.iso && l.taken);
-      const expected = (m.dose_log || []).some(l => l.date === d.iso);
-      const color = logged ? 'var(--teal-500)' : expected ? 'var(--red-300)' : 'var(--gray-100)';
-      return `<div style="width:22px;height:22px;border-radius:50%;background:${color};flex-shrink:0" title="${d.iso}"></div>`;
+  // ── Overall score card ──────────────────────────────────────
+  const scoreColor = overall_pct >= 90 ? '#22C55E'
+                   : overall_pct >= 70 ? '#F59E0B' : '#EF4444';
+  const scoreLabel = overall_pct >= 90 ? 'Excellent'
+                   : overall_pct >= 70 ? 'Good'
+                   : overall_pct >= 50 ? 'Needs work' : 'Low';
+
+  // ── Per-medicine streak cards ───────────────────────────────
+  const FREQ_LABEL = {
+    once_daily: 'Once daily', twice_daily: 'Twice daily',
+    thrice_daily: '3× daily', weekly: 'Weekly',
+  };
+
+  const medCards = medicines.map(m => {
+    // 28-day dot heatmap — last 28 days
+    const days28 = m.days.slice(-28);
+    const dots = days28.map(d => {
+      if (!d.total) return '<div class="adh-dot adh-dot--none"></div>';
+      if (d.full)   return `<div class="adh-dot adh-dot--full" title="${d.date}: all doses taken"></div>`;
+      if (d.taken)  return `<div class="adh-dot adh-dot--partial" title="${d.date}: ${d.taken}/${d.total} doses"></div>`;
+      return `<div class="adh-dot adh-dot--missed" title="${d.date}: missed"></div>`;
     }).join('');
-    const rate = m.adherence_rate != null ? Math.round(m.adherence_rate) + '%' : '—';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-50)">
-      <span style="font-size:18px;flex-shrink:0">${m.icon||'💊'}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(m.name)}</div>
-        <div style="font-size:11px;color:var(--gray-400)">${m.dosage||''} ${m.unit||''}</div>
+
+    const pctColor = m.adherence_pct >= 90 ? '#22C55E'
+                   : m.adherence_pct >= 70 ? '#F59E0B' : '#EF4444';
+
+    const streakEmoji = m.streak >= 14 ? '🔥'
+                      : m.streak >= 7  ? '⚡'
+                      : m.streak >= 3  ? '✅' : '';
+
+    return `
+      <div class="adh-med-card">
+        <div class="adh-med-top">
+          <span class="adh-med-icon">${m.icon}</span>
+          <div class="adh-med-info">
+            <div class="adh-med-name">${escHtml(m.name)}</div>
+            <div class="adh-med-sub">${m.dosage} ${m.unit} · ${FREQ_LABEL[m.frequency] || m.frequency}</div>
+          </div>
+          <div class="adh-med-stats">
+            <div class="adh-streak-badge" title="Current streak">
+              ${streakEmoji} ${m.streak}<span style="font-size:10px;font-weight:400"> days</span>
+            </div>
+            <div class="adh-pct-badge" style="color:${pctColor}">${m.adherence_pct}%</div>
+          </div>
+        </div>
+        <div class="adh-dot-grid">${dots}</div>
+        <div class="adh-med-foot">
+          <span>Best streak: ${m.best_streak} days</span>
+          <span>${m.taken_total} of ${m.days.reduce((s,d)=>s+d.total,0)} doses taken</span>
+        </div>
+      </div>`;
+  }).join('');
+
+  section.innerHTML = `
+    <div class="panel" style="padding:18px 20px 20px">
+
+      <!-- Header + overall score -->
+      <div class="adh-header">
+        <div>
+          <h2 class="panel-title">Adherence streaks</h2>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:3px">Last 28 days</div>
+        </div>
+        <div class="adh-overall-score">
+          <div class="adh-overall-ring">
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r="22" fill="none" stroke="var(--gray-100)" stroke-width="5"/>
+              <circle cx="28" cy="28" r="22" fill="none"
+                stroke="${scoreColor}" stroke-width="5"
+                stroke-dasharray="${Math.round(overall_pct * 1.382)} 138.2"
+                stroke-linecap="round"
+                transform="rotate(-90 28 28)"/>
+            </svg>
+            <div class="adh-overall-num" style="color:${scoreColor}">${Math.round(overall_pct)}%</div>
+          </div>
+          <div style="text-align:center">
+            <div class="adh-overall-label">${scoreLabel}</div>
+            <div style="font-size:10.5px;color:var(--gray-400)">${overall_taken}/${overall_total} doses</div>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;gap:4px;align-items:center">${dots}</div>
-      <div style="font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--teal-600);width:32px;text-align:right;flex-shrink:0">${rate}</div>
+
+      <!-- Legend -->
+      <div class="adh-legend">
+        <span class="adh-leg-item"><span class="adh-dot adh-dot--full" style="display:inline-block"></span>All taken</span>
+        <span class="adh-leg-item"><span class="adh-dot adh-dot--partial" style="display:inline-block"></span>Partial</span>
+        <span class="adh-leg-item"><span class="adh-dot adh-dot--missed" style="display:inline-block"></span>Missed</span>
+        <span class="adh-leg-item"><span class="adh-dot adh-dot--none" style="display:inline-block"></span>No dose</span>
+      </div>
+
+      <!-- Per-medicine cards -->
+      <div class="adh-med-list">${medCards}</div>
+
     </div>`;
-  }).join('') +
-  `<div style="display:flex;gap:4px;align-items:center;margin-top:10px;padding-top:8px;border-top:1px solid var(--gray-100)">
-    <span style="font-size:11px;color:var(--gray-400);margin-right:6px">Legend:</span>
-    <div style="width:14px;height:14px;border-radius:50%;background:var(--teal-500)"></div><span style="font-size:11px;color:var(--gray-500)">Taken</span>
-    <div style="width:14px;height:14px;border-radius:50%;background:var(--red-300);margin-left:8px"></div><span style="font-size:11px;color:var(--gray-500)">Missed</span>
-    <div style="width:14px;height:14px;border-radius:50%;background:var(--gray-100);margin-left:8px"></div><span style="font-size:11px;color:var(--gray-500)">No dose</span>
-  </div>`;
 }
 
-// Patch loadMedicines to also render adherence
-const _origLoadMedicines = loadMedicines;
-loadMedicines = async function() {
-  await _origLoadMedicines.apply(this, arguments);
-  loadMedAdherence();
-};
+// markDoseTaken also refreshes streaks
 
 // Food weekly chart: update goal badge when loaded
 const _origRenderFoodWeekly = renderFoodWeeklyChart;
@@ -4942,6 +5047,8 @@ function setNotifFilter(f) {
 }
 
 async function loadNotifications() {
+  // Preload reminder settings in background so panel is ready when opened
+  loadReminderSettings().catch(() => {});
   const r = await fetch('/api/notifications?limit=100').then(r => r.json()).catch(() => null);
   if (!r) return;
   _allNotifs = r.notifications || [];
@@ -5096,6 +5203,8 @@ async function loadProgress() {
   if (!r) { el.innerHTML = '<div style="padding:40px;color:var(--gray-400)">Could not load progress data.</div>'; return; }
   _progressData = r;
   renderProgress(r);
+  loadMoodSleepCorrelation();
+  loadWeeklyDigest();
 }
 
 function renderProgress(r) {
@@ -5714,56 +5823,528 @@ async function checkLowStock() {
 // the notification centre so they appear in the unified feed.
 // ════════════════════════════════════════════════════════════
 
-const _nudgeFired = {};
+// ════════════════════════════════════════════════════════════
+// SMART REMINDER SYSTEM
+// Reads user settings from /api/reminders/settings before firing.
+// Water reminders are spaced by interval and only fire when behind.
+// ════════════════════════════════════════════════════════════
 
-async function checkDailyNudges() {
+const _nudgeFired  = {};
+let   _remSettings = null;  // cached settings
+
+async function loadReminderSettings() {
+  const s = await fetch('/api/reminders/settings').then(r => r.json()).catch(() => null);
+  if (s) _remSettings = s;
+  return s;
+}
+
+async function getReminderSettings() {
+  if (!_remSettings) await loadReminderSettings();
+  return _remSettings || {};
+}
+
+// ── Water reminder logic ──────────────────────────────────────
+// Smart: only fires if behind on goal AND enough time has passed since last log
+async function checkWaterReminder(s, today, hour, min) {
+  if (!s.water_enabled) return;
+
+  const startH = parseInt((s.water_start || '08:00').split(':')[0]);
+  const endH   = parseInt((s.water_end   || '21:00').split(':')[0]);
+  if (hour < startH || hour >= endH) return;  // outside window
+
+  // Check if interval has passed since last fire
+  const intervalMin = Math.round((s.water_interval_h || 2) * 60);
+  const lastKey = `water_last_${today}`;
+  const lastFired = _nudgeFired[lastKey] || 0;  // minutes-since-midnight
+  const nowMin = hour * 60 + min;
+  if (lastFired > 0 && nowMin - lastFired < intervalMin) return;
+
+  // Fetch hydration status
+  const h = await fetch(`/api/reminders/water-status`).then(r => r.json()).catch(() => null);
+  if (!h) return;
+
+  // Smart: only fire if meaningfully behind
+  const expectedPct = Math.min(
+    100,
+    ((nowMin - startH * 60) / ((endH - startH) * 60)) * 100
+  );
+  if (h.pct >= expectedPct - 10) return;  // on track, skip
+
+  // Check if they drank recently (within 45 min)
+  if (h.last_log) {
+    const lastLogMin = new Date(h.last_log);
+    const minsAgo = (Date.now() - lastLogMin.getTime()) / 60000;
+    if (minsAgo < 45) return;  // just drank, skip
+  }
+
+  _nudgeFired[lastKey] = nowMin;
+
+  const remaining = Math.round((h.goal_ml - h.total_ml) / 1000 * 10) / 10;
+  const msg = h.total_ml === 0
+    ? `Haven't logged any water today. Goal is ${h.goal_ml}ml.`
+    : `${h.total_ml}ml so far, ${h.goal_ml - h.total_ml}ml to go. ${remaining}L remaining.`;
+
+  fireSmartNotification('💧 Time to drink some water', msg, 'hydration-' + today + '-' + nowMin);
+  logNotification('hydration', '💧 Water Reminder', msg);
+}
+
+// ── Habit reminder ────────────────────────────────────────────
+async function checkHabitReminder(s, today, hour, min) {
+  if (!s.habit_reminder_enabled) return;
+  const [rh, rm] = (s.habit_reminder_time || '20:00').split(':').map(Number);
+  if (hour !== rh || min >= rm + 10) return;
+  if (_nudgeFired['habit_' + today]) return;
+  _nudgeFired['habit_' + today] = true;
+
+  const d = await fetch('/api/habits').then(r => r.json()).catch(() => null);
+  if (!d) return;
+  const remaining = (d.habits || []).filter(h => !h.done_today).length;
+  if (remaining === 0) return;
+
+  const msg = remaining === 1
+    ? '1 habit still unchecked for today.'
+    : `${remaining} habits still unchecked for today.`;
+  fireSmartNotification('⭐ Habit check', msg, 'habit-' + today);
+  logNotification('system', '⭐ Habit Reminder', msg);
+}
+
+// ── Sleep reminder ────────────────────────────────────────────
+async function checkSleepReminder(s, today, hour, min) {
+  if (!s.sleep_reminder_enabled) return;
+  const [rh, rm] = (s.sleep_reminder_time || '22:00').split(':').map(Number);
+  if (hour !== rh || min >= rm + 10) return;
+  if (_nudgeFired['sleep_' + today]) return;
+  _nudgeFired['sleep_' + today] = true;
+
+  const logs = await fetch('/api/sleep?days=1').then(r => r.json()).catch(() => []);
+  if (Array.isArray(logs) && logs.some(l => l.date_key === today)) return;
+
+  const msg = "Don't forget to log tonight's sleep when you wake up.";
+  fireSmartNotification('🌙 Sleep reminder', msg, 'sleep-' + today);
+  logNotification('sleep', '🌙 Sleep Reminder', msg);
+}
+
+// ── Mood / journal reminder ───────────────────────────────────
+async function checkMoodReminder(s, today, hour, min) {
+  if (!s.mood_reminder_enabled) return;
+  const [rh, rm] = (s.mood_reminder_time || '18:00').split(':').map(Number);
+  if (hour !== rh || min >= rm + 10) return;
+  if (_nudgeFired['mood_' + today]) return;
+  _nudgeFired['mood_' + today] = true;
+
+  const t = await fetch(`/api/thoughts/${today}`).then(r => r.json()).catch(() => null);
+  if (Array.isArray(t) && t.length > 0) return;
+
+  const msg = 'How are you feeling today? Take a moment to capture your thoughts.';
+  fireSmartNotification('😊 Daily journal', msg, 'mood-' + today);
+  logNotification('system', '😊 Journal Reminder', msg);
+}
+
+// ── Fire browser notification ─────────────────────────────────
+function fireSmartNotification(title, body, tag) {
   if (Notification.permission !== 'granted') return;
-
-  const now  = new Date();
-  const hour = now.getHours();
-  const min  = now.getMinutes();
-  const timeStr = String(hour).padStart(2,'0') + ':' + String(min).padStart(2,'0');
-  const today = now.toISOString().slice(0,10);
-
-  // ── 2:00 PM — Hydration check ──
-  if (hour === 14 && min < 10 && !_nudgeFired['hydration_'+today]) {
-    _nudgeFired['hydration_'+today] = true;
-    const h = await fetch(`/api/hydration/${today}`).then(r=>r.json()).catch(()=>null);
-    if (h && h.pct < 50) {
-      const msg = `You've had ${h.total_ml}ml so far. Goal is ${h.goal_ml}ml.`;
-      new Notification('💧 Hydration check', { body: msg, tag: 'hydration-'+today });
-      logNotification('hydration', '💧 Hydration Reminder', msg);
-    }
-  }
-
-  // ── 10:00 PM — Sleep reminder ──
-  if (hour === 22 && min < 10 && !_nudgeFired['sleep_'+today]) {
-    _nudgeFired['sleep_'+today] = true;
-    const s = await fetch('/api/sleep?days=1').then(r=>r.json()).catch(()=>[]);
-    const loggedToday = s.some && s.some(l => l.date_key === today);
-    if (!loggedToday) {
-      const msg = "Don't forget to log tonight's sleep when you wake up.";
-      new Notification('🌙 Sleep reminder', { body: msg, tag: 'sleep-'+today });
-      logNotification('sleep', '🌙 Sleep Reminder', msg);
-    }
-  }
-
-  // ── 6:00 PM — Mood / thought check ──
-  if (hour === 18 && min < 10 && !_nudgeFired['thought_'+today]) {
-    _nudgeFired['thought_'+today] = true;
-    const t = await fetch(`/api/thoughts/${today}`).then(r=>r.json()).catch(()=>null);
-    if (t && t.count === 0) {
-      const msg = 'Take a moment to capture your thoughts for today.';
-      new Notification('💭 Daily check-in', { body: msg, tag: 'thought-'+today });
-      logNotification('system', '💭 Daily Check-in', msg);
-    }
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg =>
+      reg.showNotification(title, { body, tag, requireInteraction: false })
+    );
+  } else {
+    new Notification(title, { body, tag });
   }
 }
+
+// ── Main check loop ───────────────────────────────────────────
+async function checkDailyNudges() {
+  if (Notification.permission !== 'granted') return;
+  const s     = await getReminderSettings();
+  const now   = new Date();
+  const hour  = now.getHours();
+  const min   = now.getMinutes();
+  const today = now.toISOString().slice(0, 10);
+
+  await Promise.all([
+    checkWaterReminder(s, today, hour, min),
+    checkHabitReminder(s, today, hour, min),
+    checkSleepReminder(s, today, hour, min),
+    checkMoodReminder(s, today, hour, min),
+  ]);
+}
+
+// ── Reminder settings UI ──────────────────────────────────────
+function toggleReminderSettings() {
+  const panel = document.getElementById('reminder-settings-panel');
+  if (!panel) return;
+  const showing = panel.style.display !== 'none';
+  panel.style.display = showing ? 'none' : 'block';
+  if (!showing) loadReminderSettingsUI();
+}
+
+async function loadReminderSettingsUI() {
+  const s = await loadReminderSettings();
+  if (!s) return;
+
+  // Permission badge
+  const badge = document.getElementById('notif-permission-badge');
+  if (badge) {
+    if (!('Notification' in window)) {
+      badge.textContent = 'Not supported';
+      badge.style.background = '#FEE2E2'; badge.style.color = '#DC2626';
+    } else if (Notification.permission === 'granted') {
+      badge.textContent = '🔔 Notifications on';
+      badge.style.background = '#DCFCE7'; badge.style.color = '#15803D';
+    } else {
+      badge.innerHTML = '<a href="#" onclick="requestNotifPermission();return false" style="color:inherit">Enable notifications →</a>';
+      badge.style.background = '#FEF3C7'; badge.style.color = '#92400E';
+    }
+  }
+
+  // Populate toggles and inputs
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.type === 'checkbox') el.checked = Boolean(val);
+    else el.value = val;
+  };
+
+  set('rs-water-enabled',   s.water_enabled);
+  set('rs-water-interval',  s.water_interval_h);
+  set('rs-water-start',     s.water_start);
+  set('rs-water-end',       s.water_end);
+  set('rs-habit-enabled',   s.habit_reminder_enabled);
+  set('rs-habit-time',      s.habit_reminder_time);
+  set('rs-sleep-enabled',   s.sleep_reminder_enabled);
+  set('rs-sleep-time',      s.sleep_reminder_time);
+  set('rs-mood-enabled',    s.mood_reminder_enabled);
+  set('rs-mood-time',       s.mood_reminder_time);
+
+  // Show/hide section bodies based on toggle state
+  ['water','habit','sleep','mood'].forEach(key => {
+    const enabled = document.getElementById(`rs-${key}-enabled`)?.checked;
+    const body    = document.getElementById(`rs-${key}-body`);
+    if (body) body.style.display = enabled ? 'block' : 'none';
+  });
+}
+
+async function saveReminderSettings() {
+  const get = id => {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return el.type === 'checkbox' ? (el.checked ? 1 : 0) : el.value;
+  };
+
+  const settings = {
+    water_enabled:           get('rs-water-enabled'),
+    water_interval_h:        parseFloat(get('rs-water-interval') || 2),
+    water_start:             get('rs-water-start'),
+    water_end:               get('rs-water-end'),
+    habit_reminder_enabled:  get('rs-habit-enabled'),
+    habit_reminder_time:     get('rs-habit-time'),
+    sleep_reminder_enabled:  get('rs-sleep-enabled'),
+    sleep_reminder_time:     get('rs-sleep-time'),
+    mood_reminder_enabled:   get('rs-mood-enabled'),
+    mood_reminder_time:      get('rs-mood-time'),
+  };
+
+  const r = await fetch('/api/reminders/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(settings),
+  }).then(r => r.json()).catch(() => null);
+
+  if (r?.success) {
+    _remSettings = r.settings;
+    showToast('Reminder settings saved', 'success');
+    // Show/hide section bodies
+    ['water','habit','sleep','mood'].forEach(key => {
+      const enabled = document.getElementById(`rs-${key}-enabled`)?.checked;
+      const body    = document.getElementById(`rs-${key}-body`);
+      if (body) body.style.display = enabled ? 'block' : 'none';
+    });
+  }
+}
+
 
 // Run nudge check every 5 minutes
 setInterval(checkDailyNudges, 5 * 60 * 1000);
 // Also run once on load (in case user opens app at 2pm)
 setTimeout(checkDailyNudges, 3000);
+
+
+
+// ════════════════════════════════════════════════════════════
+// SLEEP VIEW — standalone page
+// ════════════════════════════════════════════════════════════
+async function loadSleepView() {
+  const el = document.getElementById('sleep-view-content');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px">
+
+      <!-- Log form -->
+      <div class="panel">
+        <div class="panel-header"><h2 class="panel-title">Log sleep</h2></div>
+        <div style="padding:16px 20px">
+          <div class="form-group">
+            <label class="form-label">Bedtime</label>
+            <input type="datetime-local" class="form-input" id="sleep-bed-sv" oninput="previewSleepDuration()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Wake time</label>
+            <input type="datetime-local" class="form-input" id="sleep-wake-sv" oninput="previewSleepDuration()">
+          </div>
+          <div class="sleep-duration-preview" id="sleep-dur-preview-sv" style="display:none"></div>
+          <div class="form-group">
+            <label class="form-label">Quality</label>
+            <div class="sleep-quality-grid" id="sleep-q-sv">
+              ${[1,2,3,4,5].map(q => {
+                const labels = ['😩 Terrible','😕 Poor','😐 Okay','😊 Good','😴 Great'];
+                return '<button class="sleep-q-btn" data-q="'+q+'" onclick="selectSleepQ('+q+',\'sv\')">'+ labels[q-1] +'</button>';
+              }).join('')}
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notes <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+            <input type="text" class="form-input" id="sleep-notes-sv" placeholder="e.g. woke up once, vivid dreams">
+          </div>
+          <button class="btn-primary" style="width:100%" onclick="saveSleepLogFromView()">Save sleep log</button>
+        </div>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="panel" id="sleep-stats-card">
+        <div class="panel-header"><h2 class="panel-title">Last 30 nights</h2></div>
+        <div id="sleep-summary-strip" style="padding:14px 20px 4px">
+          <div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">No data yet</div>
+        </div>
+        <div id="sleep-history-sv" style="padding:0 20px 16px"></div>
+      </div>
+    </div>
+
+    <!-- Trend chart — full width -->
+    <div class="panel" id="sleep-trend-card" style="padding:18px 20px 20px;display:none">
+      <div class="panel-header" style="margin-bottom:4px">
+        <h2 class="panel-title">Duration trend</h2>
+        <span class="panel-badge" id="sleep-trend-badge">30 days</span>
+      </div>
+      <div style="font-size:12px;color:var(--gray-400);margin-bottom:14px" id="sleep-trend-sub"></div>
+      <div style="position:relative;height:180px">
+        <canvas id="sleep-chart"></canvas>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap" id="sleep-week-strip"></div>
+    </div>`;
+
+  initSleepDefaults();
+  loadSleepTrend();
+}
+
+function selectSleepQ(q, suffix) {
+  const grid = document.getElementById('sleep-q-' + (suffix || ''));
+  if (grid) grid.querySelectorAll('.sleep-q-btn').forEach(b => {
+    b.classList.toggle('active', parseInt(b.dataset.q) === q);
+  });
+  window._sleepQ = q;
+}
+
+async function saveSleepLogFromView() {
+  const bed  = document.getElementById('sleep-bed-sv')?.value;
+  const wake = document.getElementById('sleep-wake-sv')?.value;
+  if (!bed || !wake) { showToast('Enter both bedtime and wake time', 'error'); return; }
+  const r = await fetch('/api/sleep', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ bedtime: bed, wake_time: wake,
+                           quality: window._sleepQ || 3,
+                           notes: document.getElementById('sleep-notes-sv')?.value || '' })
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) {
+    showToast('Sleep logged ✓', 'success');
+    loadSleepData();
+    loadSleepTrend();
+    loadWellnessStrip();
+  } else {
+    showToast('Failed to save', 'error');
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// BODY & VITALS VIEW — standalone page
+// ════════════════════════════════════════════════════════════
+async function loadBodyView() {
+  const el = document.getElementById('body-view-content');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px">
+
+      <!-- Log Body Metrics -->
+      <div class="panel">
+        <div class="panel-header"><h2 class="panel-title">Log body metrics</h2></div>
+        <div style="padding:16px 20px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" class="form-input" id="bv-weight" placeholder="72.5" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Body fat %</label>
+              <input type="number" class="form-input" id="bv-bodyfat" placeholder="18.0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Waist (cm)</label>
+              <input type="number" class="form-input" id="bv-waist" placeholder="82" step="0.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-input" id="bv-date" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+          </div>
+          <button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveBodyMetricFromView()">Save</button>
+        </div>
+        <div id="bv-metric-history" style="padding:0 20px 16px"></div>
+      </div>
+
+      <!-- Log Vitals -->
+      <div class="panel">
+        <div class="panel-header"><h2 class="panel-title">Log a vital</h2></div>
+        <div style="padding:16px 20px">
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <div class="vital-type-chips" id="bv-vital-chips">
+              ${[
+                {id:'blood_pressure', label:'Blood pressure', unit:'mmHg'},
+                {id:'heart_rate',     label:'Heart rate',     unit:'bpm'},
+                {id:'blood_sugar',    label:'Blood sugar',    unit:'mg/dL'},
+                {id:'temperature',    label:'Temperature',    unit:'°C'},
+                {id:'spo2',           label:'SpO₂',      unit:'%'},
+              ].map(v =>
+                '<button class="vital-chip" data-type="'+v.id+'" data-unit="'+v.unit+'" onclick="selectVitalTypeView(this)">'+v.label+'</button>'
+              ).join('')}
+            </div>
+          </div>
+          <div id="bv-vital-fields" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="form-group">
+                <label class="form-label" id="bv-v1-label">Value</label>
+                <input type="number" class="form-input" id="bv-v1" step="0.1">
+              </div>
+              <div class="form-group" id="bv-v2-wrap" style="display:none">
+                <label class="form-label" id="bv-v2-label">Value 2</label>
+                <input type="number" class="form-input" id="bv-v2" step="0.1">
+              </div>
+            </div>
+            <button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveVitalFromView()">Log vital</button>
+          </div>
+        </div>
+        <div id="bv-vital-history" style="padding:0 20px 16px"></div>
+      </div>
+    </div>
+
+    <!-- Weight progress chart — full width -->
+    <div id="bv-weight-chart-section" style="margin-bottom:20px"></div>
+
+    <!-- Vital trend charts -->
+    <div id="bv-trend-section"></div>
+  `;
+
+  loadBodyMetricsView();
+  loadVitalsView();
+  loadWeightProgressChart();
+  loadVitalTrends();
+}
+
+function selectVitalTypeView(btn) {
+  document.querySelectorAll('.vital-chip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  window._bvVitalType = btn.dataset.type;
+  window._bvVitalUnit = btn.dataset.unit;
+  const fields = document.getElementById('bv-vital-fields');
+  if (fields) fields.style.display = 'block';
+  // Show/hide second value for BP
+  const v2 = document.getElementById('bv-v2-wrap');
+  const v1l = document.getElementById('bv-v1-label');
+  const v2l = document.getElementById('bv-v2-label');
+  if (btn.dataset.type === 'blood_pressure') {
+    if (v2) v2.style.display = 'block';
+    if (v1l) v1l.textContent = 'Systolic';
+    if (v2l) v2l.textContent = 'Diastolic';
+  } else {
+    if (v2) v2.style.display = 'none';
+    if (v1l) v1l.textContent = 'Value (' + btn.dataset.unit + ')';
+  }
+}
+
+async function saveBodyMetricFromView() {
+  const data = {
+    weight_kg:    parseFloat(document.getElementById('bv-weight')?.value) || null,
+    body_fat_pct: parseFloat(document.getElementById('bv-bodyfat')?.value) || null,
+    waist_cm:     parseFloat(document.getElementById('bv-waist')?.value) || null,
+    date_key:     document.getElementById('bv-date')?.value || new Date().toISOString().split('T')[0],
+  };
+  if (!data.weight_kg && !data.body_fat_pct && !data.waist_cm) {
+    showToast('Enter at least one measurement', 'error'); return;
+  }
+  const r = await fetch('/api/body-metrics', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) { showToast('Saved ✓', 'success'); loadBodyMetricsView(); loadWeightProgressChart(); }
+  else showToast('Failed to save', 'error');
+}
+
+async function saveVitalFromView() {
+  if (!window._bvVitalType) { showToast('Select a vital type', 'error'); return; }
+  const v1 = parseFloat(document.getElementById('bv-v1')?.value);
+  const v2 = parseFloat(document.getElementById('bv-v2')?.value) || null;
+  if (!v1) { showToast('Enter a value', 'error'); return; }
+  const r = await fetch('/api/vitals', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ type: window._bvVitalType, value1: v1, value2: v2,
+                           unit: window._bvVitalUnit, date_key: new Date().toISOString().split('T')[0] })
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) { showToast('Logged ✓', 'success'); loadVitalsView(); }
+  else showToast('Failed to save', 'error');
+}
+
+async function loadBodyMetricsView() {
+  const el = document.getElementById('bv-metric-history');
+  if (!el) return;
+  const r = await fetch('/api/body-metrics').then(r => r.json()).catch(() => []);
+  const rows = (Array.isArray(r) ? r : []).slice(0,5);
+  if (!rows.length) { el.innerHTML = '<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:12px 0">No entries yet</p>'; return; }
+  el.innerHTML = rows.map(m => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-50)">
+      <div style="font-size:12px;color:var(--gray-400)">${m.date_key}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--gray-800)">
+        ${m.weight_kg ? m.weight_kg + ' kg' : ''}
+        ${m.bmi ? ' · BMI ' + m.bmi : ''}
+        ${m.body_fat_pct ? ' · ' + m.body_fat_pct + '% fat' : ''}
+      </div>
+    </div>`).join('');
+}
+
+async function loadVitalsView() {
+  const el = document.getElementById('bv-vital-history');
+  if (!el) return;
+  const r = await fetch('/api/vitals').then(r => r.json()).catch(() => []);
+  const rows = (Array.isArray(r) ? r : []).slice(0,5);
+  if (!rows.length) { el.innerHTML = '<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:12px 0">No vitals logged yet</p>'; return; }
+  el.innerHTML = rows.map(v => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-50)">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--gray-800)">${v.type.replace('_',' ')}</div>
+        <div style="font-size:11.5px;color:var(--gray-400)">${v.date_key}</div>
+      </div>
+      <div style="font-size:14px;font-weight:700;color:var(--teal-700)">
+        ${v.value1}${v.value2 ? '/' + v.value2 : ''} <span style="font-size:11px;font-weight:400">${v.unit}</span>
+      </div>
+    </div>`).join('');
+}
+
+// loadJournal = alias for the existing loadWellness but only shows thoughts tab
+function loadJournal() {
+  loadWellness();
+  // Switch to journal/thoughts tab
+  setTimeout(() => switchWellnessTab('thoughts'), 50);
+}
 
 // ════════════════════════════════════════════════════════════
 // DATA EXPORT VIEW
@@ -5885,4 +6466,1772 @@ async function doExport() {
   document.body.appendChild(a); a.click();
   document.body.removeChild(a);
   showToast(`Downloading ${_exportFmt.toUpperCase()} export…`, 'success');
+}
+
+// ════════════════════════════════════════════════════════════════
+// DAILY CHECK-IN
+// Shown once per day on first dashboard open.
+// Writes to: /api/thoughts (mood), /api/sleep, /api/symptoms,
+//            /api/hydration  — all existing endpoints.
+// Completion stored in localStorage so it shows once per day.
+// ════════════════════════════════════════════════════════════════
+
+const CI_STEPS  = ['mood', 'sleep', 'symptoms', 'water'];
+let   ciStep    = 0;
+const ciSel     = { mood: null, sleep: null, symptoms: [], water: null };
+
+const CI_MOODS = [
+  { emoji: '😩', label: 'Rough',   mood: 'terrible' },
+  { emoji: '😕', label: 'Low',     mood: 'sad'      },
+  { emoji: '😐', label: 'Okay',    mood: 'neutral'  },
+  { emoji: '😊', label: 'Good',    mood: 'happy'    },
+  { emoji: '🤩', label: 'Great',   mood: 'excited'  },
+];
+const CI_SLEEP = [
+  { label: 'Under 5h', sub: 'Very short',    dur: 4,   quality: 1 },
+  { label: '5 – 6h',   sub: 'A bit short',   dur: 5.5, quality: 2 },
+  { label: '6 – 7h',   sub: 'Nearly enough', dur: 6.5, quality: 3 },
+  { label: '7 – 9h',   sub: 'Just right',    dur: 8,   quality: 5 },
+  { label: '9h+',      sub: 'Long sleep',    dur: 9.5, quality: 3 },
+  { label: 'No sleep', sub: '—',             dur: 0,   quality: 1 },
+];
+const CI_SYMPTOMS = [
+  'Headache', 'Fatigue', 'Nausea', 'Back pain',
+  'Anxiety',  'Sore throat', 'Stomach ache', 'Dizziness',
+  'Fever', 'Cold / runny nose',
+];
+const CI_WATER = [
+  { label: '250ml', ml: 250  },
+  { label: '500ml', ml: 500  },
+  { label: '750ml', ml: 750  },
+  { label: '1L+',   ml: 1000 },
+];
+
+// ── Trigger: call from loadDashboard ─────────────────────────────
+function initDailyCheckin() {
+  const today = new Date().toISOString().split('T')[0];
+  const key   = `mediscan_checkin_${today}`;
+  if (localStorage.getItem(key)) return;   // already done today
+  // Small delay so dashboard loads behind the modal
+  setTimeout(() => {
+    ciStep = 0;
+    ciSel.mood = null; ciSel.sleep = null; ciSel.symptoms = []; ciSel.water = null;
+    renderCheckin();
+    document.getElementById('checkin-overlay').style.display = 'flex';
+  }, 600);
+}
+
+function closeCheckin() {
+  document.getElementById('checkin-overlay').style.display = 'none';
+}
+
+// ── Renderer ──────────────────────────────────────────────────────
+function renderCheckin() {
+  // Dots
+  const dotsEl = document.getElementById('checkin-dots');
+  if (dotsEl) {
+    dotsEl.innerHTML = CI_STEPS.map((_, i) => {
+      let cls = 'ci-dot';
+      if (i < ciStep)      cls += ' done';
+      else if (i === ciStep) cls += ' active';
+      return `<div class="${cls}"></div>`;
+    }).join('');
+  }
+
+  // Progress bar
+  const prog = document.getElementById('checkin-progress');
+  if (prog) prog.style.width = ((ciStep + 1) / CI_STEPS.length * 100) + '%';
+
+  const body   = document.getElementById('checkin-body');
+  const footer = document.getElementById('checkin-footer');
+  if (!body || !footer) return;
+
+  // ── Step 0: Mood ──────────────────────────────────────────────
+  if (ciStep === 0) {
+    body.innerHTML = `
+      <div class="ci-step-label">Step 1 of 4 · How you feel</div>
+      <div class="ci-question">Good morning! How are you feeling?</div>
+      <div class="ci-mood-grid">
+        ${CI_MOODS.map((m, i) => `
+          <button class="ci-mood-btn${ciSel.mood === i ? ' active' : ''}"
+                  onclick="ciPickMood(${i})">
+            <span class="ci-mood-emoji">${m.emoji}</span>
+            <span class="ci-mood-label">${m.label}</span>
+          </button>`).join('')}
+      </div>`;
+    footer.innerHTML = `
+      <button class="ci-btn-primary" onclick="ciNext()"
+              ${ciSel.mood === null ? 'disabled' : ''}>Continue</button>`;
+  }
+
+  // ── Step 1: Sleep ─────────────────────────────────────────────
+  else if (ciStep === 1) {
+    body.innerHTML = `
+      <div class="ci-step-label">Step 2 of 4 · Sleep</div>
+      <div class="ci-question">How much did you sleep last night?</div>
+      <div class="ci-sleep-grid">
+        ${CI_SLEEP.map((s, i) => `
+          <button class="ci-sleep-btn${ciSel.sleep === i ? ' active' : ''}"
+                  onclick="ciPickSleep(${i})">
+            <div class="ci-sleep-dur">${s.label}</div>
+            <div class="ci-sleep-qual">${s.sub}</div>
+          </button>`).join('')}
+      </div>`;
+    footer.innerHTML = `
+      <button class="ci-btn-secondary" onclick="ciBack()">Back</button>
+      <button class="ci-btn-primary" onclick="ciNext()"
+              ${ciSel.sleep === null ? 'disabled' : ''}>Continue</button>`;
+  }
+
+  // ── Step 2: Symptoms ──────────────────────────────────────────
+  else if (ciStep === 2) {
+    body.innerHTML = `
+      <div class="ci-step-label">Step 3 of 4 · Symptoms</div>
+      <div class="ci-question">Any symptoms today?</div>
+      <div class="ci-sym-list">
+        <button class="ci-none-btn${ciSel.symptoms.length === 0 ? ' active' : ''}"
+                onclick="ciClearSymptoms()">None, feeling fine</button>
+        ${CI_SYMPTOMS.map(s => `
+          <button class="ci-sym-btn${ciSel.symptoms.includes(s) ? ' active' : ''}"
+                  onclick="ciToggleSymptom('${s}')">${s}</button>`).join('')}
+      </div>`;
+    footer.innerHTML = `
+      <button class="ci-btn-secondary" onclick="ciBack()">Back</button>
+      <button class="ci-btn-primary" onclick="ciNext()">Continue</button>`;
+  }
+
+  // ── Step 3: Hydration ─────────────────────────────────────────
+  else if (ciStep === 3) {
+    body.innerHTML = `
+      <div class="ci-step-label">Step 4 of 4 · Hydration</div>
+      <div class="ci-question">How much have you had to drink so far?</div>
+      <div class="ci-water-grid">
+        ${CI_WATER.map((w, i) => `
+          <button class="ci-water-btn${ciSel.water === i ? ' active' : ''}"
+                  onclick="ciPickWater(${i})">
+            <div>${w.label}</div>
+          </button>`).join('')}
+      </div>`;
+    footer.innerHTML = `
+      <button class="ci-btn-secondary" onclick="ciBack()">Back</button>
+      <button class="ci-btn-primary" onclick="ciSubmit()">Done</button>`;
+  }
+}
+
+// ── Interaction handlers ──────────────────────────────────────────
+function ciPickMood(i) {
+  ciSel.mood = i;
+  renderCheckin();
+}
+function ciPickSleep(i) {
+  ciSel.sleep = i;
+  renderCheckin();
+}
+function ciToggleSymptom(s) {
+  const idx = ciSel.symptoms.indexOf(s);
+  if (idx >= 0) ciSel.symptoms.splice(idx, 1);
+  else          ciSel.symptoms.push(s);
+  renderCheckin();
+}
+function ciClearSymptoms() {
+  ciSel.symptoms = [];
+  renderCheckin();
+}
+function ciPickWater(i) {
+  ciSel.water = i;
+  renderCheckin();
+}
+function ciNext() {
+  ciStep++;
+  renderCheckin();
+}
+function ciBack() {
+  ciStep--;
+  renderCheckin();
+}
+
+// ── Submit: save to all relevant APIs ────────────────────────────
+async function ciSubmit() {
+  const today     = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const saves     = [];
+
+  // 1. Mood → save as a thought with the mood tag
+  if (ciSel.mood !== null) {
+    const m = CI_MOODS[ciSel.mood];
+    saves.push(fetch('/api/thoughts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content:  `Morning check-in: feeling ${m.label.toLowerCase()}.`,
+        mood:     m.mood,
+        date_key: today,
+      })
+    }).catch(() => {}));
+  }
+
+  // 2. Sleep → derive bedtime/wake from duration
+  if (ciSel.sleep !== null) {
+    const s   = CI_SLEEP[ciSel.sleep];
+    const dur = s.dur;
+    if (dur > 0) {
+      // Assume woke up now, went to bed dur hours ago
+      const now      = new Date();
+      const wake     = now.toISOString().slice(0, 16);
+      const bedDate  = new Date(now - dur * 3600000);
+      const bedtime  = bedDate.toISOString().slice(0, 16);
+      saves.push(fetch('/api/sleep', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bedtime, wake_time: wake,
+          quality:  s.quality,
+          notes:    'Logged via daily check-in',
+          date_key: yesterday,   // sleep was last night
+        })
+      }).catch(() => {}));
+    }
+  }
+
+  // 3. Symptoms
+  ciSel.symptoms.forEach(sym => {
+    saves.push(fetch('/api/symptoms', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name:        sym,
+        severity:    5,
+        date_key:    today,
+        time_of_day: 'morning',
+        notes:       'Logged via daily check-in',
+      })
+    }).catch(() => {}));
+  });
+
+  // 4. Hydration
+  if (ciSel.water !== null) {
+    const w = CI_WATER[ciSel.water];
+    saves.push(fetch('/api/hydration', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount_ml: w.ml, drink_type: 'water', date_key: today })
+    }).catch(() => {}));
+  }
+
+  await Promise.all(saves);
+
+  // Mark today's check-in done
+  localStorage.setItem(`mediscan_checkin_${today}`, '1');
+
+  // Show thank-you summary, then auto-close after 2.5s
+  ciShowSummary();
+
+  // Refresh dashboard strip so hydration shows updated
+  loadWellnessStrip();
+}
+
+// ── Summary screen ────────────────────────────────────────────────
+function ciShowSummary() {
+  const body   = document.getElementById('checkin-body');
+  const footer = document.getElementById('checkin-footer');
+  const prog   = document.getElementById('checkin-progress');
+  const dots   = document.getElementById('checkin-dots');
+  if (prog) prog.style.width = '100%';
+  if (dots) dots.innerHTML = CI_STEPS.map(() => '<div class="ci-dot done"></div>').join('');
+
+  const moodObj  = ciSel.mood  !== null ? CI_MOODS[ciSel.mood]  : null;
+  const sleepObj = ciSel.sleep !== null ? CI_SLEEP[ciSel.sleep] : null;
+  const waterObj = ciSel.water !== null ? CI_WATER[ciSel.water] : null;
+  const symText  = ciSel.symptoms.length
+    ? ciSel.symptoms.slice(0, 2).join(', ') + (ciSel.symptoms.length > 2 ? ` +${ciSel.symptoms.length - 2}` : '')
+    : 'None';
+
+  body.innerHTML = `
+    <div class="ci-step-label" style="color:var(--teal-600)">All done</div>
+    <div class="ci-question" style="font-size:17px;margin-bottom:18px">Good start to the day!</div>
+    <div class="ci-summary-grid">
+      <div class="ci-sum-card">
+        <div class="ci-sum-val">${moodObj ? moodObj.emoji + ' ' + moodObj.label : '—'}</div>
+        <div class="ci-sum-lab">Mood</div>
+      </div>
+      <div class="ci-sum-card">
+        <div class="ci-sum-val">${sleepObj ? sleepObj.label : '—'}</div>
+        <div class="ci-sum-lab">Sleep</div>
+      </div>
+      <div class="ci-sum-card">
+        <div class="ci-sum-val" style="font-size:13px">${symText}</div>
+        <div class="ci-sum-lab">Symptoms</div>
+      </div>
+      <div class="ci-sum-card">
+        <div class="ci-sum-val">${waterObj ? waterObj.label : '—'}</div>
+        <div class="ci-sum-lab">Hydration</div>
+      </div>
+    </div>`;
+
+  footer.innerHTML = `
+    <button class="ci-btn-primary" onclick="closeCheckin()">Go to dashboard</button>`;
+
+  setTimeout(closeCheckin, 3000);
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// VITAL TRENDS — 30-day charts using Chart.js
+// ════════════════════════════════════════════════════════════════
+
+const VITAL_META = {
+  blood_pressure: {
+    label: 'Blood pressure',
+    unit:  'mmHg',
+    color: { sys: '#0E8F7E', dia: '#5DCAA5' },
+    refLines: [
+      { value: 120, label: 'Sys goal', color: '#0E8F7E', dash: [4,3] },
+      { value: 80,  label: 'Dia goal', color: '#5DCAA5', dash: [4,3] },
+      { value: 140, label: 'Sys high', color: '#EF4444', dash: [6,3] },
+    ],
+    yMin: 40, yMax: 180,
+    twoValues: true,
+  },
+  heart_rate: {
+    label: 'Heart rate',
+    unit:  'bpm',
+    color: { main: '#E85D24' },
+    refLines: [
+      { value: 60,  label: 'Low',    color: '#3B82F6', dash: [4,3] },
+      { value: 100, label: 'High',   color: '#EF4444', dash: [4,3] },
+    ],
+    yMin: 40, yMax: 160,
+    twoValues: false,
+  },
+  blood_sugar: {
+    label: 'Blood sugar',
+    unit:  'mg/dL',
+    color: { main: '#BA7517' },
+    refLines: [
+      { value: 70,  label: 'Low',    color: '#3B82F6', dash: [4,3] },
+      { value: 99,  label: 'Normal', color: '#22C55E', dash: [4,3] },
+      { value: 125, label: 'Pre-diabetic', color: '#F59E0B', dash: [4,3] },
+    ],
+    yMin: 50, yMax: 200,
+    twoValues: false,
+  },
+  spo2: {
+    label: 'SpO\u2082',
+    unit:  '%',
+    color: { main: '#2563EB' },
+    refLines: [
+      { value: 95, label: 'Min normal', color: '#EF4444', dash: [4,3] },
+    ],
+    yMin: 85, yMax: 102,
+    twoValues: false,
+  },
+  temperature: {
+    label: 'Temperature',
+    unit:  '\u00b0C',
+    color: { main: '#D85A30' },
+    refLines: [
+      { value: 37.2, label: 'Fever threshold', color: '#EF4444', dash: [4,3] },
+    ],
+    yMin: 35, yMax: 40,
+    twoValues: false,
+  },
+};
+
+// Chart.js instance cache so we can destroy before re-render
+const _vitalCharts = {};
+
+async function loadVitalTrends() {
+  const section = document.getElementById('bv-trend-section');
+  if (!section) return;
+
+  section.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:20px 0;text-align:center">Loading trend charts…</div>';
+
+  // Load Chart.js if not already present
+  if (!window.Chart) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const data = await fetch('/api/vitals/trend?days=30', { cache: 'no-store' })
+    .then(r => r.json()).catch(() => null);
+
+  if (!data) {
+    section.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:20px 0;text-align:center">Could not load trend data</div>';
+    return;
+  }
+
+  const groups  = data.groups || {};
+  const hasData = Object.keys(groups).some(k => groups[k].length > 0);
+
+  if (!hasData) {
+    section.innerHTML = `
+      <div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:15px;font-weight:600;color:var(--gray-700);margin-bottom:6px">No vital trends yet</div>
+        <div style="font-size:13px;color:var(--gray-400)">Log your first vital above — charts appear once you have data.</div>
+      </div>`;
+    return;
+  }
+
+  // Build a chart card for each type that has data
+  const CHART_ORDER = ['blood_pressure','heart_rate','blood_sugar','spo2','temperature'];
+  const chartsHTML  = CHART_ORDER
+    .filter(t => groups[t] && groups[t].length >= 1)
+    .map(t => {
+      const meta    = VITAL_META[t];
+      const entries = groups[t];
+      const latest  = entries[entries.length - 1];
+      const latestVal = latest.value2
+        ? `${latest.value1}/${latest.value2}`
+        : latest.value1;
+      return `
+        <div class="panel" style="padding:16px 20px 20px">
+          <div class="panel-header" style="margin-bottom:4px">
+            <h2 class="panel-title">${meta.label}</h2>
+            <span class="panel-badge">${latestVal} ${meta.unit}</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--gray-400);margin-bottom:12px">${entries.length} reading${entries.length !== 1 ? 's' : ''} in last 30 days</div>
+          <div style="position:relative;height:160px">
+            <canvas id="vchart-${t}"></canvas>
+          </div>
+          <div id="vref-${t}" style="display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:11px;color:var(--gray-500)"></div>
+        </div>`;
+    }).join('');
+
+  section.innerHTML = `
+    <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:12px">30-day trends</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">${chartsHTML}</div>`;
+
+  // Render each chart after DOM is ready
+  requestAnimationFrame(() => {
+    CHART_ORDER.filter(t => groups[t] && groups[t].length >= 1).forEach(t => {
+      renderVitalChart(t, groups[t], VITAL_META[t]);
+    });
+  });
+}
+
+function renderVitalChart(type, entries, meta) {
+  const canvas = document.getElementById('vchart-' + type);
+  if (!canvas) return;
+
+  // Destroy previous instance if exists
+  if (_vitalCharts[type]) {
+    _vitalCharts[type].destroy();
+    delete _vitalCharts[type];
+  }
+
+  const labels = entries.map(e => {
+    const d = new Date(e.date);
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  });
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickColor  = isDark ? '#888780'                : '#888780';
+
+  // Build datasets
+  const datasets = [];
+  if (meta.twoValues) {
+    // Blood pressure: two lines
+    datasets.push({
+      label:           'Systolic',
+      data:            entries.map(e => e.value1),
+      borderColor:     meta.color.sys,
+      backgroundColor: meta.color.sys + '20',
+      borderWidth:     2,
+      pointRadius:     entries.length > 15 ? 2 : 3.5,
+      pointHoverRadius:5,
+      tension:         0.35,
+      fill:            false,
+    });
+    datasets.push({
+      label:           'Diastolic',
+      data:            entries.map(e => e.value2),
+      borderColor:     meta.color.dia,
+      backgroundColor: meta.color.dia + '20',
+      borderWidth:     2,
+      pointRadius:     entries.length > 15 ? 2 : 3.5,
+      pointHoverRadius:5,
+      tension:         0.35,
+      fill:            false,
+    });
+  } else {
+    datasets.push({
+      label:           meta.label,
+      data:            entries.map(e => e.value1),
+      borderColor:     meta.color.main,
+      backgroundColor: meta.color.main + '18',
+      borderWidth:     2,
+      pointRadius:     entries.length > 15 ? 2 : 3.5,
+      pointHoverRadius:5,
+      tension:         0.35,
+      fill:            true,
+    });
+  }
+
+  // Reference line annotations as extra datasets (dashed)
+  meta.refLines.forEach(ref => {
+    datasets.push({
+      label:       ref.label,
+      data:        entries.map(() => ref.value),
+      borderColor: ref.color,
+      borderWidth: 1,
+      borderDash:  ref.dash,
+      pointRadius: 0,
+      pointHoverRadius: 0,
+      fill:        false,
+    });
+  });
+
+  _vitalCharts[type] = new window.Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      interaction:         { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display:  meta.twoValues || meta.refLines.length > 0,
+          position: 'bottom',
+          labels:   { boxWidth: 10, boxHeight: 2, font: { size: 11 }, color: tickColor, padding: 10 },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.pointRadius === 0) return null; // skip ref lines in tooltip
+              return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + ' ' + meta.unit;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid:   { color: gridColor },
+          ticks:  { color: tickColor, font: { size: 10 }, maxTicksLimit: 8 },
+          border: { display: false },
+        },
+        y: {
+          min:    meta.yMin,
+          max:    meta.yMax,
+          grid:   { color: gridColor },
+          ticks:  { color: tickColor, font: { size: 10 }, maxTicksLimit: 5 },
+          border: { display: false },
+        },
+      },
+    },
+  });
+
+  // Render ref line legend
+  const refLegend = document.getElementById('vref-' + type);
+  if (refLegend && meta.refLines.length) {
+    refLegend.innerHTML = meta.refLines.map(r =>
+      `<span style="display:flex;align-items:center;gap:4px">
+         <span style="width:18px;height:2px;background:${r.color};display:inline-block;border-radius:1px"></span>
+         ${r.label}
+       </span>`
+    ).join('');
+  }
+}
+
+// After saving a vital, reload both the list AND the trend chart
+const _origSaveVitalFromView = saveVitalFromView;
+saveVitalFromView = async function() {
+  await _origSaveVitalFromView.apply(this, arguments);
+  // Refresh trends section after a short delay to let the save complete
+  setTimeout(loadVitalTrends, 400);
+};
+
+
+// ════════════════════════════════════════════════════════════════
+// SYMPTOM PATTERN DETECTOR
+// ════════════════════════════════════════════════════════════════
+
+async function loadSymptomPatterns() {
+  const panel = document.getElementById('symptom-patterns-panel');
+  if (!panel) return;
+
+  const data = await fetch('/api/symptoms/patterns?days=30', {cache:'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!data || data.total_logs === 0) {
+    panel.innerHTML = '';
+    return;
+  }
+
+  const { symptoms, alerts, co_occur, heatmap } = data;
+  if (!symptoms.length) { panel.innerHTML = ''; return; }
+
+  const TREND_ICON  = { worsening:'↑', improving:'↓', stable:'→' };
+  const TREND_COLOR = { worsening:'#EF4444', improving:'#22C55E', stable:'#888780' };
+  const TIME_LABEL  = { morning:'morning', afternoon:'afternoon', evening:'evening',
+                        night:'night', all_day:'all day' };
+  const SEV_COLOR   = s => s >= 8 ? '#EF4444' : s >= 5 ? '#F59E0B' : '#22C55E';
+
+  // ── Alerts banner ─────────────────────────────────────────────
+  const alertsHTML = alerts.length ? `
+    <div class="spp-alerts">
+      <div class="spp-alerts-head">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Recurring this week
+      </div>
+      <div class="spp-alerts-list">
+        ${alerts.map(a => `
+          <div class="spp-alert-chip">
+            <span class="spp-alert-name">${escHtml(a.name)}</span>
+            <span class="spp-alert-count">${a.count}× · mostly ${TIME_LABEL[a.peak_time]}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  // ── Symptom frequency bars ────────────────────────────────────
+  const maxCount = symptoms[0]?.count || 1;
+  const freqRows = symptoms.slice(0, 8).map(s => `
+    <div class="spp-freq-row">
+      <div class="spp-freq-name">${escHtml(s.name)}</div>
+      <div class="spp-freq-bar-wrap">
+        <div class="spp-freq-bar" style="width:${Math.round(s.count/maxCount*100)}%;background:${SEV_COLOR(s.avg_severity)}"></div>
+      </div>
+      <div class="spp-freq-meta">
+        <span>${s.count}×</span>
+        <span style="color:${TREND_COLOR[s.trend]};font-weight:600">${TREND_ICON[s.trend]}</span>
+        <span style="color:var(--gray-400);font-size:11px">${TIME_LABEL[s.peak_time]}</span>
+      </div>
+    </div>`).join('');
+
+  // ── Heatmap ───────────────────────────────────────────────────
+  const heatDates    = heatmap.dates;
+  const heatNames    = heatmap.names;
+  const SHORT_DATES  = heatDates.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    return (dt.getMonth()+1) + '/' + dt.getDate();
+  });
+
+  const heatRows = heatNames.map(name => {
+    const vals = heatmap.data[name] || [];
+    const cells = vals.map((v, i) => {
+      if (!v) return `<div class="spp-heat-cell spp-heat-0" title="${heatDates[i]}: none"></div>`;
+      const bg = v >= 8 ? '#FCA5A5' : v >= 5 ? '#FCD34D' : '#86EFAC';
+      return `<div class="spp-heat-cell" style="background:${bg}" title="${heatDates[i]}: severity ${v}"></div>`;
+    }).join('');
+    return `
+      <div class="spp-heat-row">
+        <div class="spp-heat-name">${escHtml(name)}</div>
+        <div class="spp-heat-cells">${cells}</div>
+      </div>`;
+  }).join('');
+
+  const heatLegend = `
+    <div class="spp-heat-legend">
+      <span class="spp-heat-leg-item"><span class="spp-heat-cell spp-heat-0" style="display:inline-block"></span> None</span>
+      <span class="spp-heat-leg-item"><span class="spp-heat-cell" style="background:#86EFAC;display:inline-block"></span> Mild</span>
+      <span class="spp-heat-leg-item"><span class="spp-heat-cell" style="background:#FCD34D;display:inline-block"></span> Moderate</span>
+      <span class="spp-heat-leg-item"><span class="spp-heat-cell" style="background:#FCA5A5;display:inline-block"></span> Severe</span>
+    </div>`;
+
+  // ── Co-occurrence ─────────────────────────────────────────────
+  const coHTML = co_occur.length ? `
+    <div class="panel" style="padding:16px 20px">
+      <div class="panel-header" style="margin-bottom:12px">
+        <h2 class="panel-title">Often appear together</h2>
+        <span class="panel-badge">30 days</span>
+      </div>
+      ${co_occur.map(pair => `
+        <div class="spp-co-row">
+          <span class="spp-co-name">${escHtml(pair.a)}</span>
+          <span class="spp-co-plus">+</span>
+          <span class="spp-co-name">${escHtml(pair.b)}</span>
+          <span class="spp-co-count">${pair.count} days</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  panel.innerHTML = `
+    ${alertsHTML}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px">
+
+      <!-- Frequency + trend -->
+      <div class="panel" style="padding:16px 20px">
+        <div class="panel-header" style="margin-bottom:14px">
+          <h2 class="panel-title">Frequency (30 days)</h2>
+        </div>
+        <div class="spp-freq-legend" style="margin-bottom:10px">
+          <span style="color:#22C55E">● mild</span>
+          <span style="color:#F59E0B">● moderate</span>
+          <span style="color:#EF4444">● severe</span>
+          <span style="margin-left:8px;color:var(--gray-400);font-size:11px">↑ worsening  ↓ improving  → stable</span>
+        </div>
+        ${freqRows}
+      </div>
+
+      <!-- Heatmap + co-occurrence -->
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="panel" style="padding:16px 20px">
+          <div class="panel-header" style="margin-bottom:12px">
+            <h2 class="panel-title">14-day calendar</h2>
+          </div>
+          <div class="spp-heat-date-row">
+            <div style="width:90px;flex-shrink:0"></div>
+            ${SHORT_DATES.map(d => `<div class="spp-heat-date">${d}</div>`).join('')}
+          </div>
+          ${heatRows}
+          ${heatLegend}
+        </div>
+        ${coHTML}
+      </div>
+    </div>`;
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// SLEEP TREND CHART
+// ════════════════════════════════════════════════════════════════
+
+let _sleepChart = null;
+
+async function loadSleepTrend() {
+  const data = await fetch('/api/sleep/trend?days=30', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!data) return;
+
+  // ── Stats strip ───────────────────────────────────────────────
+  const strip = document.getElementById('sleep-summary-strip');
+  const histEl = document.getElementById('sleep-history-sv');
+  const s = data.stats;
+
+  if (!data.total || !s.avg_duration) {
+    if (strip) strip.innerHTML = '<div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">No sleep logged yet</div>';
+    return;
+  }
+
+  const TREND_ICON  = {improving: '↑ improving', worsening: '↓ worsening', stable: '→ stable'};
+  const TREND_COLOR = {improving: '#22C55E',      worsening: '#EF4444',      stable: '#888780'};
+  const QMAP = {1:'😩',2:'😕',3:'😐',4:'😊',5:'😴'};
+
+  if (strip) {
+    strip.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+        <div class="sleep-stat-card">
+          <div class="sleep-stat-val">${s.avg_duration}h</div>
+          <div class="sleep-stat-lab">Avg duration</div>
+        </div>
+        <div class="sleep-stat-card">
+          <div class="sleep-stat-val">${s.best_night}h</div>
+          <div class="sleep-stat-lab">Best night</div>
+        </div>
+        <div class="sleep-stat-card">
+          <div class="sleep-stat-val">${s.good_pct}%</div>
+          <div class="sleep-stat-lab">Nights ≥ 7h</div>
+        </div>
+        <div class="sleep-stat-card">
+          <div class="sleep-stat-val" style="color:${TREND_COLOR[s.dur_trend]}">${TREND_ICON[s.dur_trend]}</div>
+          <div class="sleep-stat-lab">Trend</div>
+        </div>
+      </div>`;
+  }
+
+  // ── Recent history list (last 7 entries) ──────────────────────
+  if (histEl) {
+    const recent = (data.logs || []).slice().reverse().slice(0, 7);
+    const QCLS   = {1:'poor',2:'poor',3:'ok',4:'good',5:'great'};
+    if (!recent.length) {
+      histEl.innerHTML = '';
+    } else {
+      histEl.innerHTML = recent.map(r => {
+        const pct = Math.min((r.duration_h / 9) * 100, 100).toFixed(0);
+        return `
+          <div class="sleep-log-row">
+            <div class="sleep-log-date">${r.date_key.slice(5)}</div>
+            <div class="sleep-log-dur">${r.duration_h}h</div>
+            <div class="sleep-bar-col">
+              <div class="sleep-bar-fill ${QCLS[r.quality]||'ok'}" style="width:${pct}%"></div>
+            </div>
+            <div class="sleep-log-qual">${QMAP[r.quality]||'😐'}</div>
+            <button class="todo-act-btn del" onclick="delSleep('${r.id}')" title="Delete">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+            </button>
+          </div>`;
+      }).join('');
+    }
+  }
+
+  // ── Trend chart (needs Chart.js) ──────────────────────────────
+  const trendCard = document.getElementById('sleep-trend-card');
+  if (!trendCard || data.logs.length < 2) return;
+  trendCard.style.display = '';
+
+  const sub = document.getElementById('sleep-trend-sub');
+  if (sub) sub.textContent =
+    `${data.total} nights logged · avg ${s.avg_duration}h · ${s.good_nights} nights ≥ 7h`;
+
+  // Lazy-load Chart.js
+  if (!window.Chart) {
+    await new Promise((res, rej) => {
+      const sc = document.createElement('script');
+      sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+      sc.onload = res; sc.onerror = rej;
+      document.head.appendChild(sc);
+    });
+  }
+
+  const canvas = document.getElementById('sleep-chart');
+  if (!canvas) return;
+
+  if (_sleepChart) { _sleepChart.destroy(); _sleepChart = null; }
+
+  const logs   = data.logs;
+  const labels = logs.map(l => {
+    const d = new Date(l.date_key + 'T12:00:00');
+    return (d.getMonth()+1) + '/' + d.getDate();
+  });
+  const durations = logs.map(l => l.duration_h);
+  const qualities = logs.map(l => l.quality);
+
+  // Bar color: green ≥7h, amber 6–7h, red <6h
+  const barColors = durations.map(d =>
+    d >= 7 ? '#22C55E66' : d >= 6 ? '#F59E0B66' : '#EF444466'
+  );
+  const barBorders = durations.map(d =>
+    d >= 7 ? '#16A34A' : d >= 6 ? '#D97706' : '#DC2626'
+  );
+
+  const isDark   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const grid     = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickCol  = '#888780';
+
+  _sleepChart = new window.Chart(canvas, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type:            'bar',
+          label:           'Duration (h)',
+          data:            durations,
+          backgroundColor: barColors,
+          borderColor:     barBorders,
+          borderWidth:     1,
+          borderRadius:    4,
+          yAxisID:         'y',
+        },
+        {
+          type:            'line',
+          label:           'Quality',
+          data:            qualities,
+          borderColor:     '#0E8F7E',
+          backgroundColor: 'transparent',
+          borderWidth:     2,
+          pointRadius:     logs.length > 20 ? 2 : 3,
+          pointHoverRadius:5,
+          tension:         0.4,
+          yAxisID:         'y2',
+        },
+        // 7h recommended line
+        {
+          type:        'line',
+          label:       '7h target',
+          data:        logs.map(() => 7),
+          borderColor: '#22C55E',
+          borderWidth: 1,
+          borderDash:  [5, 4],
+          pointRadius: 0,
+          yAxisID:     'y',
+        },
+      ],
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      interaction:         {mode: 'index', intersect: false},
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 10, boxHeight: 3,
+            font: {size: 11}, color: tickCol, padding: 12,
+            filter: item => item.text !== '7h target',  // hide from legend
+          },
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label === '7h target') return null;
+              if (ctx.dataset.label === 'Quality') {
+                const QN = {1:'Terrible',2:'Poor',3:'Okay',4:'Good',5:'Great'};
+                return ' Quality: ' + (QN[ctx.parsed.y] || ctx.parsed.y);
+              }
+              return ' Duration: ' + ctx.parsed.y + 'h';
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid:  {color: grid},
+          ticks: {color: tickCol, font: {size: 10}, maxTicksLimit: 10},
+          border:{display: false},
+        },
+        y: {
+          min:    0, max: 11,
+          grid:   {color: grid},
+          ticks:  {
+            color: tickCol, font: {size: 10},
+            callback: v => v + 'h',
+            stepSize: 2,
+          },
+          border: {display: false},
+        },
+        y2: {
+          position: 'right',
+          min: 0, max: 6,
+          grid: {drawOnChartArea: false},
+          ticks: {
+            color: '#0E8F7E', font: {size: 10},
+            callback: v => ['','😩','😕','😐','😊','😴'][v] || '',
+            stepSize: 1,
+          },
+          border: {display: false},
+        },
+      },
+    },
+  });
+
+  // ── Week-over-week strip ──────────────────────────────────────
+  const weekStrip = document.getElementById('sleep-week-strip');
+  if (weekStrip && data.weekly.length) {
+    weekStrip.innerHTML = data.weekly.map(w => `
+      <div class="sleep-week-card">
+        <div class="sleep-week-label">${w.label}</div>
+        <div class="sleep-week-dur">${w.avg_dur}h</div>
+        <div class="sleep-week-nights">${w.good}/${w.nights} good</div>
+      </div>`).join('');
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// CALORIE BALANCE — 7-day trend chart
+// ════════════════════════════════════════════════════════════════
+
+let _calChart = null;
+
+async function renderCalorieTrendChart(daily) {
+  const section = document.getElementById('cbd-trend-section');
+  const canvas  = document.getElementById('cbd-trend-chart');
+  if (!section || !canvas || !daily.length) return;
+
+  // Only show when at least 2 days have food logged
+  const logged = daily.filter(d => d.logged);
+  if (logged.length < 2) return;
+  section.style.display = '';
+
+  if (!window.Chart) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  if (_calChart) { _calChart.destroy(); _calChart = null; }
+
+  const isDark   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridCol  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickCol  = '#888780';
+
+  const labels = daily.map(d => {
+    const dt = new Date(d.date + 'T12:00:00');
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+  });
+
+  // Bar colour: green if under budget, red if over
+  const barColors = daily.map(d =>
+    !d.logged ? 'transparent' :
+    d.net >= 0 ? '#22C55E66' : '#EF444466'
+  );
+  const barBorders = daily.map(d =>
+    !d.logged ? 'transparent' :
+    d.net >= 0 ? '#16A34A' : '#DC2626'
+  );
+
+  _calChart = new window.Chart(canvas, {
+    data: {
+      labels,
+      datasets: [
+        {
+          type:            'bar',
+          label:           'Eaten',
+          data:            daily.map(d => d.eaten || 0),
+          backgroundColor: barColors,
+          borderColor:     barBorders,
+          borderWidth:     1,
+          borderRadius:    3,
+          yAxisID:         'y',
+        },
+        {
+          type:            'line',
+          label:           'Budget',
+          data:            daily.map(d => d.budget),
+          borderColor:     '#0E8F7E',
+          backgroundColor: 'transparent',
+          borderWidth:     1.5,
+          borderDash:      [4, 3],
+          pointRadius:     0,
+          yAxisID:         'y',
+        },
+      ],
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      interaction:         {mode: 'index', intersect: false},
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 10, boxHeight: 2,
+            font: {size: 10}, color: tickCol, padding: 10,
+          },
+        },
+        tooltip: {
+          callbacks: {
+            afterBody: items => {
+              const idx = items[0]?.dataIndex;
+              if (idx == null) return '';
+              const d = daily[idx];
+              if (!d.logged) return 'No food logged';
+              const diff = d.net;
+              return diff >= 0
+                ? `${diff} kcal under budget`
+                : `${Math.abs(diff)} kcal over budget`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid:   {display: false},
+          ticks:  {color: tickCol, font: {size: 10}},
+          border: {display: false},
+        },
+        y: {
+          min:    0,
+          grid:   {color: gridCol},
+          ticks:  {
+            color: tickCol, font: {size: 10},
+            callback: v => v >= 1000 ? (v/1000).toFixed(1) + 'k' : v,
+            maxTicksLimit: 4,
+          },
+          border: {display: false},
+        },
+      },
+    },
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// FITNESS PERSONAL RECORDS (PRs)
+// ════════════════════════════════════════════════════════════════
+
+async function loadFitnessPRs() {
+  const section = document.getElementById('fitness-pr-section');
+  if (!section) return;
+
+  const data = await fetch('/api/fitness/prs', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!data?.has_data || !data.prs.length) {
+    section.innerHTML = '';
+    return;
+  }
+
+  const { prs, total_activities, recent_prs } = data;
+
+  // Group PRs by category for display
+  const grouped = {};
+  prs.forEach(pr => {
+    const cat = pr.category;
+    if (!grouped[cat]) grouped[cat] = { icon: pr.icon, metrics: [] };
+    grouped[cat].metrics.push(pr);
+  });
+
+  const PRCards = Object.entries(grouped).map(([cat, group]) => {
+    const metricsHTML = group.metrics.map(pr => {
+      const val    = pr.value_display || (pr.unit === 'km' ? pr.value + ' km' : pr.value + ' ' + pr.unit);
+      const date   = new Date(pr.date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+      const newTag = pr.is_recent
+        ? '<span class="pr-new-tag">🏆 New!</span>'
+        : '';
+      return `
+        <div class="pr-metric-row">
+          <div class="pr-metric-info">
+            <div class="pr-metric-name">${escHtml(pr.metric)}</div>
+            <div class="pr-metric-date">${escHtml(pr.name)} · ${date}</div>
+          </div>
+          <div class="pr-metric-right">
+            ${newTag}
+            <div class="pr-metric-val">${escHtml(String(val))}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="pr-card">
+        <div class="pr-card-header">
+          <span class="pr-card-icon">${group.icon}</span>
+          <span class="pr-card-cat">${escHtml(cat)}</span>
+        </div>
+        ${metricsHTML}
+      </div>`;
+  }).join('');
+
+  section.innerHTML = `
+    <div class="panel" style="padding:18px 20px 20px">
+      <div class="panel-header" style="margin-bottom:14px">
+        <h2 class="panel-title">Personal Records</h2>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${recent_prs > 0 ? `<span class="panel-badge" style="background:#DCFCE7;color:#15803D">🏆 ${recent_prs} new this month</span>` : ''}
+          <span class="panel-badge">${total_activities} workouts all-time</span>
+        </div>
+      </div>
+      <div class="pr-grid">${PRCards}</div>
+    </div>`;
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// MOOD × SLEEP CORRELATION
+// ════════════════════════════════════════════════════════════════
+
+let _moodSleepChart = null;
+
+async function loadMoodSleepCorrelation() {
+  const section = document.getElementById('mood-sleep-section');
+  if (!section) return;
+
+  const data = await fetch('/api/mood-sleep/correlation?days=90', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!data) return;
+
+  // Not enough data yet
+  if (!data.has_data || data.need_more) {
+    const needed = data.need_count || 5;
+    section.innerHTML = `
+      <div class="panel" style="padding:20px 24px">
+        <div class="panel-header" style="margin-bottom:10px">
+          <h2 class="panel-title">Mood × Sleep correlation</h2>
+        </div>
+        <div style="text-align:center;padding:24px 0">
+          <div style="font-size:28px;margin-bottom:10px">🌙😊</div>
+          <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:6px">Not enough data yet</div>
+          <div style="font-size:13px;color:var(--gray-400)">
+            Log both mood (in Journal) and sleep on the same day ${needed} more time${needed !== 1 ? 's' : ''} to unlock this insight.
+          </div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const { paired, correlation, per_mood, threshold, insight, matched_days } = data;
+  const r_val   = correlation?.r ?? 0;
+  const strength = correlation?.strength || 'none';
+
+  // Strength indicator color
+  const STRENGTH_COLOR = { strong:'#22C55E', moderate:'#F59E0B', weak:'#9CA3AF', none:'#9CA3AF' };
+  const strengthColor  = STRENGTH_COLOR[strength];
+
+  // ── Per-mood sleep average bars ──────────────────────────────
+  const MOOD_ORDER = ['excited','happy','calm','neutral','tired','anxious','sad','terrible'];
+  const moodRows = MOOD_ORDER
+    .filter(m => per_mood[m])
+    .map(m => {
+      const pm  = per_mood[m];
+      const pct = Math.min(Math.round(pm.avg_duration / 10 * 100), 100);
+      return `
+        <div class="msc-mood-row">
+          <div class="msc-mood-emoji">${MOOD_EMOJI[m] || '😐'}</div>
+          <div class="msc-mood-bar-wrap">
+            <div class="msc-mood-bar" style="width:${pct}%;background:${MOOD_COLOR[m]||'#0E8F7E'}"></div>
+          </div>
+          <div class="msc-mood-val">${pm.avg_duration}h</div>
+          <div class="msc-mood-count">${pm.count}d</div>
+        </div>`;
+    }).join('');
+
+  // ── 7h threshold split ────────────────────────────────────────
+  const above = threshold?.above_7h || {};
+  const below = threshold?.below_7h || {};
+  const SCORE_LABELS = {1:'Rough',2:'Low',3:'Okay',4:'Neutral',5:'Calm',6:'Good',7:'Great'};
+  const aboveLabel = above.avg_mood_score ? SCORE_LABELS[Math.round(above.avg_mood_score)] || '' : '—';
+  const belowLabel = below.avg_mood_score ? SCORE_LABELS[Math.round(below.avg_mood_score)] || '' : '—';
+
+  section.innerHTML = `
+    <div class="panel" style="padding:18px 20px 20px">
+      <div class="panel-header" style="margin-bottom:14px">
+        <h2 class="panel-title">Mood × Sleep correlation</h2>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="panel-badge" style="background:${strengthColor}22;color:${strengthColor}">
+            ${strength} correlation
+          </span>
+          <span class="panel-badge">${matched_days} days</span>
+        </div>
+      </div>
+
+      <!-- Insight banner -->
+      <div class="msc-insight-banner">
+        <span class="msc-insight-icon">💡</span>
+        <span class="msc-insight-text">${escHtml(insight)}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px">
+
+        <!-- Left: per-mood sleep averages -->
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+            Avg sleep per mood
+          </div>
+          ${moodRows || '<div style="color:var(--gray-400);font-size:13px">Not enough data</div>'}
+        </div>
+
+        <!-- Right: 7h split + correlation badge -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+
+          <!-- Correlation coefficient -->
+          <div class="msc-r-card">
+            <div class="msc-r-val" style="color:${strengthColor}">${r_val > 0 ? '+' : ''}${r_val.toFixed(2)}</div>
+            <div class="msc-r-label">Pearson r</div>
+            <div class="msc-r-sub">
+              ${Math.abs(r_val) >= 0.3 ? 'Statistically meaningful' : 'More data needed'}
+            </div>
+          </div>
+
+          <!-- 7h threshold split -->
+          <div class="msc-split-card">
+            <div style="font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:10px">Sleep ≥ 7h vs < 7h</div>
+            <div class="msc-split-row">
+              <div class="msc-split-block msc-split-block--good">
+                <div class="msc-split-val">🌙 ${aboveLabel}</div>
+                <div class="msc-split-sub">After ≥7h (${above.count || 0} nights)</div>
+              </div>
+              <div class="msc-split-block msc-split-block--low">
+                <div class="msc-split-val">😪 ${belowLabel}</div>
+                <div class="msc-split-sub">After &lt;7h (${below.count || 0} nights)</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Scatter plot -->
+      <div id="msc-chart-section" style="margin-top:18px;display:none">
+        <div style="font-size:12px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">
+          Sleep duration vs mood — scatter
+        </div>
+        <div style="position:relative;height:200px">
+          <canvas id="msc-scatter"></canvas>
+        </div>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:6px;text-align:center">
+          Each dot = one day · horizontal = sleep hours · vertical = mood score
+        </div>
+      </div>
+
+    </div>`;
+
+  // Render scatter chart if 5+ points
+  if (paired.length >= 5) {
+    renderMoodSleepScatter(paired);
+  }
+}
+
+async function renderMoodSleepScatter(paired) {
+  const section = document.getElementById('msc-chart-section');
+  const canvas  = document.getElementById('msc-scatter');
+  if (!section || !canvas) return;
+  section.style.display = '';
+
+  if (!window.Chart) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  if (_moodSleepChart) { _moodSleepChart.destroy(); _moodSleepChart = null; }
+
+  const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridCol = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickCol = '#888780';
+
+  const SCORE_LABELS = ['','Rough','Low','Okay','Neutral','Calm','Good','Great'];
+
+  const points = paired.map(p => ({
+    x: p.duration,
+    y: p.score,
+    mood: p.mood,
+    date: p.date,
+  }));
+
+  // Colour each point by mood
+  const pointColors = points.map(pt =>
+    (MOOD_COLOR[pt.mood] || '#0E8F7E') + 'CC'
+  );
+
+  _moodSleepChart = new window.Chart(canvas, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label:           'Days',
+        data:            points,
+        backgroundColor: pointColors,
+        borderColor:     pointColors.map(c => c.slice(0,7)),
+        borderWidth:     1,
+        pointRadius:     6,
+        pointHoverRadius:8,
+      }],
+    },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const pt = ctx.raw;
+              return ` ${MOOD_EMOJI[pt.mood]||'😐'} ${pt.mood} after ${pt.x}h sleep (${pt.date})`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Sleep (hours)', color: tickCol, font: {size: 11} },
+          min: 3, max: 11,
+          grid:  { color: gridCol },
+          ticks: { color: tickCol, font: {size: 10} },
+          border:{ display: false },
+        },
+        y: {
+          title: { display: true, text: 'Mood', color: tickCol, font: {size: 11} },
+          min: 0.5, max: 7.5,
+          grid:  { color: gridCol },
+          ticks: {
+            color: tickCol, font: {size: 10},
+            callback: v => SCORE_LABELS[Math.round(v)] || '',
+            stepSize: 1,
+          },
+          border:{ display: false },
+        },
+      },
+    },
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// WEEKLY DIGEST
+// ════════════════════════════════════════════════════════════════
+
+async function loadWeeklyDigest() {
+  const section = document.getElementById('weekly-digest-section');
+  if (!section) return;
+
+  section.innerHTML = '<div style="height:4px"></div>'; // placeholder while loading
+
+  const d = await fetch('/api/weekly-digest', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!d) { section.innerHTML = ''; return; }
+
+  const { headline, overall_score, scores, highlights, wins, concerns, period_label } = d;
+
+  // Score ring color
+  const scoreColor = overall_score >= 80 ? '#22C55E'
+                   : overall_score >= 60 ? '#0E8F7E'
+                   : overall_score >= 40 ? '#F59E0B' : '#EF4444';
+
+  // Mini score bars
+  const SCORE_LABELS = {
+    sleep: '🌙 Sleep', workouts: '🏃 Workouts',
+    habits: '⭐ Habits', hydration: '💧 Hydration', nutrition: '🍽️ Nutrition',
+  };
+  const scoreBars = Object.entries(scores).map(([key, val]) => `
+    <div class="wd-score-row">
+      <span class="wd-score-label">${SCORE_LABELS[key] || key}</span>
+      <div class="wd-score-bar-wrap">
+        <div class="wd-score-bar" style="width:${val}%;background:${
+          val >= 80 ? '#22C55E' : val >= 60 ? '#0E8F7E' : val >= 40 ? '#F59E0B' : '#EF4444'
+        }"></div>
+      </div>
+      <span class="wd-score-pct">${val}%</span>
+    </div>`).join('');
+
+  // Highlights strip
+  const highlightStrip = highlights.map(h => `
+    <div class="wd-highlight">
+      <div class="wd-highlight-icon">${h.icon}</div>
+      <div class="wd-highlight-val">${escHtml(h.value)}</div>
+      <div class="wd-highlight-label">${escHtml(h.label)}</div>
+    </div>`).join('');
+
+  // Wins and concerns
+  const winsHTML = wins.length
+    ? wins.map(w => `
+        <div class="wd-item wd-item--win">
+          <span class="wd-item-icon">${w.icon}</span>
+          <span class="wd-item-text">${escHtml(w.text)}</span>
+        </div>`).join('')
+    : '<div style="font-size:13px;color:var(--gray-400);padding:8px 0">No highlights yet — keep logging!</div>';
+
+  const concernsHTML = concerns.length
+    ? concerns.map(c => `
+        <div class="wd-item wd-item--concern">
+          <span class="wd-item-icon">${c.icon}</span>
+          <span class="wd-item-text">${escHtml(c.text)}</span>
+        </div>`).join('')
+    : '<div style="font-size:13px;color:var(--gray-400);padding:8px 0">Nothing to flag — great week!</div>';
+
+  section.innerHTML = `
+    <div class="wd-card" style="margin-bottom:20px">
+
+      <!-- Header row -->
+      <div class="wd-header">
+        <div class="wd-header-left">
+          <div class="wd-period">${escHtml(period_label)}</div>
+          <div class="wd-headline">${escHtml(headline)}</div>
+        </div>
+        <div class="wd-ring-wrap">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--gray-100)" stroke-width="6"/>
+            <circle cx="32" cy="32" r="26" fill="none"
+              stroke="${scoreColor}" stroke-width="6"
+              stroke-dasharray="${Math.round(overall_score * 1.634)} 163.4"
+              stroke-linecap="round"
+              transform="rotate(-90 32 32)"/>
+          </svg>
+          <div class="wd-ring-num" style="color:${scoreColor}">${overall_score}</div>
+        </div>
+      </div>
+
+      <!-- Highlights strip -->
+      ${highlights.length ? `<div class="wd-highlights">${highlightStrip}</div>` : ''}
+
+      <!-- Scores + wins/concerns -->
+      <div class="wd-body">
+        <!-- Score bars -->
+        <div class="wd-scores">
+          <div class="wd-section-title">Area scores</div>
+          ${scoreBars}
+        </div>
+
+        <!-- Wins and concerns -->
+        <div class="wd-narrative">
+          <div style="margin-bottom:14px">
+            <div class="wd-section-title">✅ What went well</div>
+            ${winsHTML}
+          </div>
+          <div>
+            <div class="wd-section-title">📌 Worth watching</div>
+            ${concernsHTML}
+          </div>
+        </div>
+      </div>
+
+    </div>`;
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// WEIGHT PROGRESS CHART
+// ════════════════════════════════════════════════════════════════
+
+let _weightChart = null;
+
+async function loadWeightProgressChart() {
+  const section = document.getElementById('bv-weight-chart-section');
+  if (!section) return;
+
+  const data = await fetch('/api/body-metrics/trend?days=365', {cache: 'no-store'})
+    .then(r => r.json()).catch(() => null);
+
+  if (!data) return;
+
+  const { logs, projection, stats } = data;
+
+  // Not enough data
+  if (!logs.length) {
+    section.innerHTML = `
+      <div class="panel" style="padding:20px 24px">
+        <div class="panel-header" style="margin-bottom:10px">
+          <h2 class="panel-title">Weight progress</h2>
+        </div>
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:24px;margin-bottom:10px">⚖️</div>
+          <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:6px">No weight logged yet</div>
+          <div style="font-size:13px;color:var(--gray-400)">Log your first weight entry above to start tracking progress.</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const s      = stats;
+  const goal   = s.goal || 'maintain';
+  const GOAL_LABELS = {
+    lose_fast:'Lose weight fast', lose:'Lose weight',
+    maintain:'Maintain', gain:'Gain muscle', gain_fast:'Build mass',
+  };
+
+  // Progress toward goal
+  const hasGoal     = s.target_weight != null && goal !== 'maintain';
+  const change      = s.total_change;
+  const changeDir   = change < 0 ? '↓' : change > 0 ? '↑' : '→';
+  const changeColor = (goal.startsWith('lose') && change <= 0) || (goal.startsWith('gain') && change >= 0)
+    ? '#22C55E' : change === 0 ? '#888780' : '#F59E0B';
+
+  // ETA text
+  let etaText = '';
+  if (s.eta_date) {
+    const eta = new Date(s.eta_date + 'T12:00:00');
+    const daysLeft = Math.round((eta - new Date()) / 86400000);
+    etaText = daysLeft <= 0
+      ? '🎉 Goal reached!'
+      : `~${daysLeft} days to go (${eta.toLocaleDateString('en-US',{month:'short',day:'numeric'})})`;
+  }
+
+  // Stat cards
+  const statCards = [
+    {label: 'Current',   val: `${s.latest_weight} kg`,                 show: true},
+    {label: 'Starting',  val: `${s.start_weight} kg`,                  show: !!s.start_weight},
+    {label: 'Change',    val: `${changeDir} ${Math.abs(change)} kg`,   show: change !== 0, color: changeColor},
+    {label: 'Target',    val: `${s.target_weight} kg`,                  show: hasGoal},
+    {label: 'Progress',  val: `${s.pct_to_goal}%`,                      show: hasGoal && s.pct_to_goal != null},
+    {label: 'Pace',      val: `${Math.abs(s.rate_per_week)}kg/wk`,      show: s.rate_per_week !== 0},
+  ].filter(c => c.show);
+
+  const statsHTML = statCards.map(c => `
+    <div class="wpc-stat">
+      <div class="wpc-stat-val" ${c.color ? `style="color:${c.color}"` : ''}>${escHtml(c.val)}</div>
+      <div class="wpc-stat-label">${c.label}</div>
+    </div>`).join('');
+
+  section.innerHTML = `
+    <div class="panel" style="padding:18px 20px 20px">
+      <div class="panel-header" style="margin-bottom:12px">
+        <h2 class="panel-title">Weight progress</h2>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${etaText ? `<span class="panel-badge" style="background:#DCFCE7;color:#15803D">${escHtml(etaText)}</span>` : ''}
+          <span class="panel-badge">${GOAL_LABELS[goal] || goal}</span>
+        </div>
+      </div>
+
+      <!-- Goal weight input -->
+      <div class="wpc-goal-row">
+        <label style="font-size:12.5px;color:var(--gray-600);flex-shrink:0">Target weight</label>
+        <input type="number" class="form-input wpc-goal-input" id="wpc-target-weight"
+               placeholder="e.g. 68.0" step="0.5"
+               value="${s.target_weight || ''}"
+               onchange="saveTargetWeight(this.value)">
+        <span style="font-size:12.5px;color:var(--gray-500);flex-shrink:0">kg</span>
+        ${hasGoal && s.pct_to_goal != null ? `
+          <div class="wpc-progress-pill">
+            <div class="wpc-progress-fill" style="width:${s.pct_to_goal}%"></div>
+          </div>
+          <span style="font-size:11.5px;color:var(--gray-500);flex-shrink:0">${s.pct_to_goal}%</span>
+        ` : ''}
+      </div>
+
+      <!-- Stat strip -->
+      <div class="wpc-stats">${statsHTML}</div>
+
+      <!-- Chart -->
+      <div style="position:relative;height:220px;margin-top:16px">
+        <canvas id="wpc-chart"></canvas>
+      </div>
+
+      <!-- Legend -->
+      <div style="display:flex;gap:16px;margin-top:8px;font-size:11.5px;color:var(--gray-500);flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:5px">
+          <span style="width:18px;height:3px;background:#0E8F7E;display:inline-block;border-radius:1px"></span>
+          Actual weight
+        </span>
+        ${hasGoal && projection.length ? `
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="width:18px;height:2px;background:#F59E0B;display:inline-block;border-radius:1px;border-top:2px dashed #F59E0B;height:0"></span>
+            Projected at ${Math.abs(s.rate_per_week)} kg/week
+          </span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <span style="width:18px;height:2px;background:#22C55E;display:inline-block;border-radius:1px;border-top:2px dashed #22C55E;height:0"></span>
+            Goal: ${s.target_weight} kg
+          </span>` : ''}
+      </div>
+    </div>`;
+
+  renderWeightChart(logs, projection, stats);
+}
+
+async function renderWeightChart(logs, projection, stats) {
+  const canvas = document.getElementById('wpc-chart');
+  if (!canvas) return;
+
+  if (!window.Chart) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  if (_weightChart) { _weightChart.destroy(); _weightChart = null; }
+
+  const isDark   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const gridCol  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickCol  = '#888780';
+
+  // Actual weight dataset — all log dates
+  const actualLabels = logs.map(l => {
+    const d = new Date(l.date_key + 'T12:00:00');
+    return (d.getMonth()+1) + '/' + d.getDate();
+  });
+  const actualData = logs.map(l => l.weight_kg);
+
+  // Combined date range for projection overlay
+  const hasProjection = projection && projection.length > 0 && stats.target_weight;
+
+  // Y-axis range
+  const allWeights = actualData.slice();
+  if (hasProjection) projection.forEach(p => allWeights.push(p.weight));
+  if (stats.target_weight) allWeights.push(stats.target_weight);
+  const minW = Math.floor(Math.min(...allWeights) - 2);
+  const maxW = Math.ceil(Math.max(...allWeights) + 2);
+
+  // Projection labels (only dates beyond last actual entry)
+  const lastActualDate = logs[logs.length - 1].date_key;
+  const projFuture     = (projection || []).filter(p => p.date > lastActualDate);
+
+  // Build unified label set for combined chart
+  const projLabels = projFuture.map(p => {
+    const d = new Date(p.date + 'T12:00:00');
+    return (d.getMonth()+1) + '/' + d.getDate();
+  });
+
+  const allLabels = [...actualLabels, ...projLabels];
+
+  // Actual data padded with nulls for future dates
+  const actualPadded = [
+    ...actualData,
+    ...projLabels.map(() => null),
+  ];
+
+  // Projection data padded with nulls for past dates
+  // Overlap one point at the last actual to connect the lines
+  const lastActualIdx = actualLabels.length - 1;
+  const projPadded = [
+    ...actualLabels.map((_, i) => i === lastActualIdx ? actualData[lastActualIdx] : null),
+    ...projFuture.map(p => p.weight),
+  ];
+
+  // Goal line
+  const goalLine = stats.target_weight
+    ? allLabels.map(() => stats.target_weight)
+    : null;
+
+  const datasets = [
+    {
+      label:           'Weight',
+      data:            actualPadded,
+      borderColor:     '#0E8F7E',
+      backgroundColor: '#0E8F7E18',
+      borderWidth:     2.5,
+      pointRadius:     logs.length > 30 ? 2 : 4,
+      pointHoverRadius:6,
+      tension:         0.35,
+      fill:            true,
+      spanGaps:        false,
+    },
+  ];
+
+  if (hasProjection && projFuture.length) {
+    datasets.push({
+      label:           'Projected',
+      data:            projPadded,
+      borderColor:     '#F59E0B',
+      backgroundColor: 'transparent',
+      borderWidth:     2,
+      borderDash:      [5, 4],
+      pointRadius:     0,
+      pointHoverRadius:4,
+      tension:         0.2,
+      fill:            false,
+      spanGaps:        false,
+    });
+  }
+
+  if (goalLine) {
+    datasets.push({
+      label:       'Goal',
+      data:        goalLine,
+      borderColor: '#22C55E',
+      borderWidth: 1.5,
+      borderDash:  [6, 4],
+      pointRadius: 0,
+      fill:        false,
+    });
+  }
+
+  _weightChart = new window.Chart(canvas, {
+    type: 'line',
+    data: { labels: allLabels, datasets },
+    options: {
+      responsive:          true,
+      maintainAspectRatio: false,
+      interaction:         { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.parsed.y == null) return null;
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y} kg`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid:   { color: gridCol },
+          ticks:  { color: tickCol, font: {size: 10}, maxTicksLimit: 10 },
+          border: { display: false },
+        },
+        y: {
+          min:    minW, max: maxW,
+          grid:   { color: gridCol },
+          ticks:  {
+            color: tickCol, font: {size: 10},
+            callback: v => v + ' kg',
+            maxTicksLimit: 6,
+          },
+          border: { display: false },
+        },
+      },
+    },
+  });
+}
+
+async function saveTargetWeight(val) {
+  const kg = parseFloat(val);
+  if (!kg || kg < 20 || kg > 300) return;
+  const r = await fetch('/api/food/profile', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ target_weight_kg: kg }),
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) {
+    showToast(`Target weight set: ${kg} kg`, 'success');
+    loadWeightProgressChart();
+  }
 }

@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     id TEXT PRIMARY KEY, name TEXT DEFAULT '', weight_kg REAL DEFAULT 70,
     height_cm REAL DEFAULT 170, age INTEGER DEFAULT 30, gender TEXT DEFAULT 'male',
     activity_level TEXT DEFAULT 'moderate', goal TEXT DEFAULT 'maintain',
+    target_weight_kg REAL DEFAULT NULL,
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS food_logs (
@@ -197,6 +198,21 @@ CREATE TABLE IF NOT EXISTS notification_log (
     id TEXT PRIMARY KEY, type TEXT NOT NULL, title TEXT NOT NULL,
     body TEXT DEFAULT '', source_id TEXT DEFAULT NULL,
     read INTEGER DEFAULT 0, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reminder_settings (
+    id TEXT PRIMARY KEY,
+    water_enabled INTEGER DEFAULT 1,
+    water_interval_h REAL DEFAULT 2.0,
+    water_start TEXT DEFAULT '08:00',
+    water_end TEXT DEFAULT '21:00',
+    water_goal_ml INTEGER DEFAULT 2450,
+    habit_reminder_enabled INTEGER DEFAULT 1,
+    habit_reminder_time TEXT DEFAULT '20:00',
+    sleep_reminder_enabled INTEGER DEFAULT 1,
+    sleep_reminder_time TEXT DEFAULT '22:00',
+    mood_reminder_enabled INTEGER DEFAULT 1,
+    mood_reminder_time TEXT DEFAULT '18:00',
+    updated_at TEXT NOT NULL
 );
 """
 
