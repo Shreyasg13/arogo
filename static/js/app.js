@@ -6397,9 +6397,9 @@ async function loadSleepView() {
 
     <!-- Trend chart -->
     <div class="panel" id="sleep-trend-card" style="padding:18px 20px 20px;display:none">
-      <div class="panel-header" style="margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:4px">
         <h2 class="panel-title">Duration trend</h2>
-        <span class="panel-badge" id="sleep-trend-badge">7 days</span>
+        <div id="sleep-trend-badge"></div>
       </div>
       <div style="font-size:12px;color:var(--gray-400);margin-bottom:14px" id="sleep-trend-sub"></div>
       <div style="position:relative;height:180px"><canvas id="sleep-chart"></canvas></div>
@@ -7623,8 +7623,14 @@ async function loadSymptomPatterns() {
 
 let _sleepChart = null;
 
-async function loadSleepTrend() {
-  const data = await fetch('/api/sleep/trend?days=30', {cache: 'no-store'})
+// Active sleep trend window — 7, 14, or 30
+let _sleepTrendDays = 7;
+
+async function loadSleepTrend(days) {
+  if (days) _sleepTrendDays = days;
+  const d = _sleepTrendDays;
+
+  const data = await fetch(`/api/sleep/trend?days=30`, {cache: 'no-store'})
     .then(r => r.json()).catch(() => null);
 
   if (!data) return;
@@ -7636,95 +7642,102 @@ async function loadSleepTrend() {
 
   if (!data.total || !s.avg_duration) {
     if (strip) strip.innerHTML = '<div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">No sleep logged yet</div>';
-    return;
-  }
-
-  const TREND_ICON  = {improving: '↑ improving', worsening: '↓ worsening', stable: '→ stable'};
-  const TREND_COLOR = {improving: '#22C55E',      worsening: '#EF4444',      stable: '#888780'};
-  const QMAP = {1:'😩',2:'😕',3:'😐',4:'😊',5:'😴'};
-
-  if (strip) {
-    strip.innerHTML = `
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
-        <div class="sleep-stat-card">
-          <div class="sleep-stat-val">${s.avg_duration}h</div>
-          <div class="sleep-stat-lab">Avg duration</div>
-        </div>
-        <div class="sleep-stat-card">
-          <div class="sleep-stat-val">${s.best_night}h</div>
-          <div class="sleep-stat-lab">Best night</div>
-        </div>
-        <div class="sleep-stat-card">
-          <div class="sleep-stat-val">${s.good_pct}%</div>
-          <div class="sleep-stat-lab">Nights ≥ 7h</div>
-        </div>
-        <div class="sleep-stat-card">
-          <div class="sleep-stat-val" style="color:${TREND_COLOR[s.dur_trend]}">${TREND_ICON[s.dur_trend]}</div>
-          <div class="sleep-stat-lab">Trend</div>
-        </div>
-      </div>`;
-  }
-
-  // ── Recent history list (last 7 entries) ──────────────────────
-  if (histEl) {
-    const recent = (data.logs || []).slice().reverse().slice(0, 7);
-    const QCLS   = {1:'poor',2:'poor',3:'ok',4:'good',5:'great'};
-    if (!recent.length) {
-      histEl.innerHTML = '';
-    } else {
-      histEl.innerHTML = recent.map(r => {
-        const pct = Math.min((r.duration_h / 9) * 100, 100).toFixed(0);
-        return `
-          <div class="sleep-log-row">
-            <div class="sleep-log-date">${r.date_key.slice(5)}</div>
-            <div class="sleep-log-dur">${r.duration_h}h</div>
-            <div class="sleep-bar-col">
-              <div class="sleep-bar-fill ${QCLS[r.quality]||'ok'}" style="width:${pct}%"></div>
-            </div>
-            <div class="sleep-log-qual">${QMAP[r.quality]||'😐'}</div>
-            <button class="todo-act-btn del" onclick="delSleep('${r.id}')" title="Delete">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-            </button>
-          </div>`;
-      }).join('');
+  } else {
+    const TREND_ICON  = {improving: '↑ improving', worsening: '↓ worsening', stable: '→ stable'};
+    const TREND_COLOR = {improving: '#22C55E',      worsening: '#EF4444',      stable: '#888780'};
+    if (strip) {
+      strip.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+          <div class="sleep-stat-card">
+            <div class="sleep-stat-val">${s.avg_duration}h</div>
+            <div class="sleep-stat-lab">Avg duration</div>
+          </div>
+          <div class="sleep-stat-card">
+            <div class="sleep-stat-val">${s.best_night}h</div>
+            <div class="sleep-stat-lab">Best night</div>
+          </div>
+          <div class="sleep-stat-card">
+            <div class="sleep-stat-val">${s.good_pct}%</div>
+            <div class="sleep-stat-lab">Nights ≥ 7h</div>
+          </div>
+          <div class="sleep-stat-card">
+            <div class="sleep-stat-val" style="color:${TREND_COLOR[s.dur_trend]}">${TREND_ICON[s.dur_trend]}</div>
+            <div class="sleep-stat-lab">Trend</div>
+          </div>
+        </div>`;
     }
   }
 
-  // ── Trend chart — always show last 7 nights ──────────────────
+  // ── Recent history list ──────────────────────────────────────
+  const QMAP = {1:'😩',2:'😕',3:'😐',4:'😊',5:'😴'};
+  if (histEl) {
+    const recent = (data.logs || []).slice().reverse().slice(0, 7);
+    const QCLS   = {1:'poor',2:'poor',3:'ok',4:'good',5:'great'};
+    histEl.innerHTML = recent.length ? recent.map(r => {
+      const pct = Math.min((r.duration_h / 9) * 100, 100).toFixed(0);
+      return `
+        <div class="sleep-log-row">
+          <div class="sleep-log-date">${r.date_key.slice(5)}</div>
+          <div class="sleep-log-dur">${r.duration_h}h</div>
+          <div class="sleep-bar-col">
+            <div class="sleep-bar-fill ${QCLS[r.quality]||'ok'}" style="width:${pct}%"></div>
+          </div>
+          <div class="sleep-log-qual">${QMAP[r.quality]||'😐'}</div>
+          <button class="todo-act-btn del" onclick="delSleep('${r.id}')" title="Delete">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          </button>
+        </div>`;
+    }).join('') : '';
+  }
+
+  // ── Trend chart ───────────────────────────────────────────────
   const trendCard = document.getElementById('sleep-trend-card');
   if (!trendCard) return;
   trendCard.style.display = '';
 
-  // Build a 7-day date range (today-6 through today)
-  const today7 = new Date();
-  const sevenDays = Array.from({length: 7}, (_, i) => {
-    const d = new Date(today7);
-    d.setDate(d.getDate() - (6 - i));
-    return d.toISOString().split('T')[0];
+  // Render toggle buttons
+  const badge = document.getElementById('sleep-trend-badge');
+  if (badge) {
+    badge.innerHTML = `
+      <div class="trend-toggle">
+        <button class="trend-toggle-btn${d===7?' active':''}"  onclick="loadSleepTrend(7)">Weekly</button>
+        <button class="trend-toggle-btn${d===14?' active':''}" onclick="loadSleepTrend(14)">Bi-weekly</button>
+        <button class="trend-toggle-btn${d===30?' active':''}" onclick="loadSleepTrend(30)">Monthly</button>
+      </div>`;
+  }
+
+  // Build date range for selected window
+  const today = new Date();
+  const dateRange = Array.from({length: d}, (_, i) => {
+    const dt = new Date(today);
+    dt.setDate(dt.getDate() - (d - 1 - i));
+    return dt.toISOString().split('T')[0];
   });
 
   // Index logs by date
   const logByDate = {};
   (data.logs || []).forEach(l => { logByDate[l.date_key] = l; });
 
-  const labels7    = sevenDays.map(d => {
-    const dt = new Date(d + 'T12:00:00');
-    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+  // Build labels — for 7d use day names, for 14/30 use M/D
+  const labels = dateRange.map(date => {
+    const dt = new Date(date + 'T12:00:00');
+    if (d === 7) return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+    return (dt.getMonth()+1) + '/' + dt.getDate();
   });
-  const durations7  = sevenDays.map(d => logByDate[d]?.duration_h ?? null);
-  const qualities7  = sevenDays.map(d => logByDate[d]?.quality    ?? null);
-  const hasAnyData  = durations7.some(v => v !== null);
+
+  const durations  = dateRange.map(date => logByDate[date]?.duration_h ?? null);
+  const qualities  = dateRange.map(date => logByDate[date]?.quality    ?? null);
+  const hasAnyData = durations.some(v => v !== null);
+  const logged     = durations.filter(v => v !== null).length;
 
   const sub = document.getElementById('sleep-trend-sub');
   if (sub) {
-    if (!hasAnyData) {
-      sub.textContent = 'No nights logged yet — start tracking to see trends';
-    } else {
-      const logged = durations7.filter(v => v !== null).length;
-      sub.textContent = `${logged} of 7 nights logged · avg ${s?.avg_duration ?? '—'}h`;
-    }
+    sub.textContent = hasAnyData
+      ? `${logged} of ${d} nights logged · avg ${s?.avg_duration ?? '—'}h`
+      : 'No nights logged yet — start tracking to see your trend';
   }
 
+  // Load Chart.js if needed
   if (!window.Chart) {
     await new Promise((res, rej) => {
       const sc = document.createElement('script');
@@ -7736,59 +7749,65 @@ async function loadSleepTrend() {
 
   const canvas = document.getElementById('sleep-chart');
   if (!canvas) return;
-
   if (_sleepChart) { _sleepChart.destroy(); _sleepChart = null; }
 
-  // Bar color: green ≥7h, amber 6–7h, red <6h, transparent for no data
-  const barColors  = durations7.map(d =>
-    d === null ? 'transparent' : d >= 7 ? '#22C55E66' : d >= 6 ? '#F59E0B66' : '#EF444466'
+  const barColors  = durations.map(v =>
+    v === null ? 'rgba(0,0,0,0.04)' : v >= 7 ? '#22C55E55' : v >= 6 ? '#F59E0B55' : '#EF444455'
   );
-  const barBorders = durations7.map(d =>
-    d === null ? 'transparent' : d >= 7 ? '#16A34A'   : d >= 6 ? '#D97706'   : '#DC2626'
+  const barBorders = durations.map(v =>
+    v === null ? 'rgba(0,0,0,0.08)' : v >= 7 ? '#16A34A' : v >= 6 ? '#D97706' : '#DC2626'
   );
-  const qualityData = qualities7.map(q => q ?? null);
 
   const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const grid    = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const tickCol = '#888780';
+  const grid    = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const tickCol = '#9CA3AF';
+
+  // Quality emoji color for tooltip
+  const QUALITY_LABEL = {1:'😩 Terrible',2:'😕 Poor',3:'😐 Okay',4:'😊 Good',5:'😴 Great'};
+
+  // Custom plugin: draw quality emoji below x-axis labels
+  const qualityEmojiPlugin = {
+    id: 'qualityEmoji',
+    afterDraw(chart) {
+      const ctx2  = chart.ctx;
+      const xAxis = chart.scales.x;
+      const QEMOJI = {1:'😩',2:'😕',3:'😐',4:'😊',5:'😴'};
+      ctx2.save();
+      ctx2.font = d <= 14 ? '16px serif' : '13px serif';
+      ctx2.textAlign = 'center';
+      xAxis.ticks.forEach((tick, i) => {
+        const q = qualities[i];
+        if (q == null) return;
+        const x = xAxis.getPixelForTick(i);
+        const y = chart.chartArea.bottom + (d <= 14 ? 38 : 34);
+        ctx2.fillText(QEMOJI[q] || '', x, y);
+      });
+      ctx2.restore();
+    },
+  };
 
   _sleepChart = new window.Chart(canvas, {
+    plugins: [qualityEmojiPlugin],
     data: {
-      labels: labels7,
+      labels,
       datasets: [
         {
           type:            'bar',
           label:           'Duration (h)',
-          data:            durations7,
+          data:            durations,
           backgroundColor: barColors,
           borderColor:     barBorders,
-          borderWidth:     1,
-          borderRadius:    4,
+          borderWidth:     1.5,
+          borderRadius:    5,
           yAxisID:         'y',
         },
         {
-          type:            'line',
-          label:           'Quality',
-          data:            qualityData,
-          borderColor:     '#0E8F7E',
-          backgroundColor: 'transparent',
-          borderWidth:     2,
-          pointRadius:     4,
-          pointHoverRadius:6,
-          pointBackgroundColor: qualityData.map(q => q !== null ? '#0E8F7E' : 'transparent'),
-          pointBorderColor:     qualityData.map(q => q !== null ? '#0E8F7E' : 'transparent'),
-          tension:         0.4,
-          yAxisID:         'y2',
-          spanGaps:        false,
-        },
-        // 7h reference line
-        {
           type:        'line',
           label:       '7h target',
-          data:        Array(7).fill(7),
+          data:        Array(d).fill(7),
           borderColor: '#22C55E',
           borderWidth: 1,
-          borderDash:  [5, 4],
+          borderDash:  [4, 4],
           pointRadius: 0,
           yAxisID:     'y',
         },
@@ -7797,35 +7816,38 @@ async function loadSleepTrend() {
     options: {
       responsive:          true,
       maintainAspectRatio: false,
+      layout: { padding: { bottom: d <= 14 ? 28 : 22 } },  // room for emoji row
       interaction:         {mode: 'index', intersect: false},
       plugins: {
         legend: {
           position: 'bottom',
           labels: {
             boxWidth: 10, boxHeight: 3,
-            font: {size: 11}, color: tickCol, padding: 12,
-            filter: item => item.text !== '7h target',  // hide from legend
+            font: {size: 11}, color: tickCol, padding: 14,
+            filter: item => item.text !== '7h target',
           },
         },
         tooltip: {
+          backgroundColor: 'rgba(17,24,39,0.88)',
+          padding: 10,
+          titleFont: {size: 12, weight: '600'},
+          bodyFont:  {size: 12},
           callbacks: {
             label: ctx => {
               if (ctx.dataset.label === '7h target') return null;
               if (ctx.parsed.y === null || ctx.parsed.y === undefined) return null;
-              if (ctx.dataset.label === 'Quality') {
-                const QN = {1:'Terrible',2:'Poor',3:'Okay',4:'Good',5:'Great'};
-                return ' Quality: ' + (QN[ctx.parsed.y] || ctx.parsed.y);
-              }
-              return ' Duration: ' + ctx.parsed.y + 'h';
+              return '  Duration: ' + ctx.parsed.y + 'h';
             },
-            afterBody: (items) => {
-              // If all real datasets are null for this day, show "Not logged"
-              const realItems = items.filter(i =>
-                i.dataset.label !== '7h target' &&
-                (i.parsed.y === null || i.parsed.y === undefined)
-              );
-              if (realItems.length === items.filter(i => i.dataset.label !== '7h target').length) {
-                return ['  No sleep logged'];
+            afterLabel: ctx => {
+              if (ctx.dataset.label === '7h target') return null;
+              const q = qualities[ctx.dataIndex];
+              if (q == null) return null;
+              return '  Quality: ' + (QUALITY_LABEL[q] || '');
+            },
+            afterBody: items => {
+              const real = items.filter(i => i.dataset.label !== '7h target');
+              if (real.every(i => i.parsed.y === null || i.parsed.y === undefined)) {
+                return ['  Not logged'];
               }
               return [];
             },
@@ -7836,27 +7858,19 @@ async function loadSleepTrend() {
       scales: {
         x: {
           grid:  {color: grid},
-          ticks: {color: tickCol, font: {size: 10}, maxTicksLimit: 10},
-          border:{display: false},
-        },
-        y: {
-          min:    0, max: 11,
-          grid:   {color: grid},
-          ticks:  {
+          ticks: {
             color: tickCol, font: {size: 10},
-            callback: v => v + 'h',
-            stepSize: 2,
+            maxTicksLimit: d === 30 ? 10 : d,
           },
           border: {display: false},
         },
-        y2: {
-          position: 'right',
-          min: 0, max: 6,
-          grid: {drawOnChartArea: false},
+        y: {
+          min: 0, max: 11,
+          grid: {color: grid},
           ticks: {
-            color: '#0E8F7E', font: {size: 10},
-            callback: v => ['','😩','😕','😐','😊','😴'][v] || '',
-            stepSize: 1,
+            color: tickCol, font: {size: 10},
+            callback: v => v + 'h',
+            stepSize: 2,
           },
           border: {display: false},
         },
@@ -7864,14 +7878,14 @@ async function loadSleepTrend() {
     },
   });
 
-  // ── Week-over-week strip ──────────────────────────────────────
+  // ── Week strip ────────────────────────────────────────────────
   const weekStrip = document.getElementById('sleep-week-strip');
-  if (weekStrip && data.weekly.length) {
+  if (weekStrip && data.weekly?.length) {
     weekStrip.innerHTML = data.weekly.map(w => `
       <div class="sleep-week-card">
         <div class="sleep-week-label">${w.label}</div>
         <div class="sleep-week-dur">${w.avg_dur}h</div>
-        <div class="sleep-week-nights">${w.good}/${w.nights} good</div>
+        <div class="sleep-week-nights">${w.good}/${w.nights} good nights</div>
       </div>`).join('');
   }
 }
