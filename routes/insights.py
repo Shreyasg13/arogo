@@ -1,5 +1,6 @@
 """routes/insights.py — Health report, goal progress, global search, data export, notifications."""
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from auth import require_auth
 import os, json as json_mod
 from db import *
 from config import Config
@@ -8,6 +9,7 @@ import csv, io, datetime as dt_mod
 bp = Blueprint("insights", __name__)
 
 @bp.route('/api/report/weekly')
+@require_auth
 def api_weekly_report():
     return jsonify(generate_weekly_report())
 
@@ -17,6 +19,7 @@ def api_weekly_report():
 
 
 @bp.route('/api/calorie-balance')
+@require_auth
 def api_calorie_balance():
     """
     Today's calorie balance: eaten vs burned vs target.
@@ -88,6 +91,7 @@ def api_calorie_balance():
 
 
 @bp.route('/api/fitness/prs')
+@require_auth
 def api_fitness_prs():
     """
     Compute Personal Records from all-time activity history.
@@ -312,6 +316,7 @@ def api_fitness_prs():
 
 
 @bp.route('/api/mood-sleep/correlation')
+@require_auth
 def api_mood_sleep_correlation():
     """
     Join 90 days of mood logs with sleep logs on date_key.
@@ -460,6 +465,7 @@ def api_mood_sleep_correlation():
 
 
 @bp.route('/api/weekly-digest')
+@require_auth
 def api_weekly_digest():
     """
     Weekly insight digest — highlights, wins, concerns, one-line summary.
@@ -581,6 +587,7 @@ def api_weekly_digest():
 
 
 @bp.route('/api/health-score')
+@require_auth
 def api_health_score():
     """
     Compute today's 0-100 health score from 5 components (20 pts each):
@@ -731,6 +738,7 @@ def api_health_score():
     })
 
 @bp.route('/api/progress')
+@require_auth
 def api_goal_progress():
     return jsonify(get_goal_progress())
 
@@ -739,6 +747,7 @@ def api_goal_progress():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/search')
+@require_auth
 def api_global_search():
     q = request.args.get('q', '').strip()
     if len(q) < 2:
@@ -750,6 +759,7 @@ def api_global_search():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/export/counts')
+@require_auth
 def api_export_counts():
     """Return row counts per section for the export preview."""
     from database import execute
@@ -771,6 +781,7 @@ def api_export_counts():
     return jsonify(counts)
 
 @bp.route('/api/export')
+@require_auth
 def api_export():
     import csv, io, datetime as dt_mod
     fmt       = request.args.get('format', 'json')
@@ -864,6 +875,7 @@ def api_export():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/hydration/<date_key>')
+@require_auth
 def api_hydration_day(date_key):
     data = get_hydration_day(date_key)
     profile = get_profile()
@@ -873,6 +885,7 @@ def api_hydration_day(date_key):
     return jsonify(data)
 
 @bp.route('/api/hydration', methods=['POST'])
+@require_auth
 def api_log_hydration():
     data = request.json or {}
     log = log_hydration(int(data.get('amount_ml', 250)), data.get('drink_type','water'),
@@ -880,11 +893,13 @@ def api_log_hydration():
     return jsonify({'success': True, 'log': log})
 
 @bp.route('/api/hydration/<lid>', methods=['DELETE'])
+@require_auth
 def api_del_hydration(lid):
     delete_hydration_log(lid)
     return jsonify({'success': True})
 
 @bp.route('/api/hydration/week')
+@require_auth
 def api_hydration_week():
     profile = get_profile()
     goal_ml = round(float(profile.get('weight_kg', 70)) * 35)
@@ -897,11 +912,13 @@ def api_hydration_week():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/sleep')
+@require_auth
 def api_get_sleep():
     days = int(request.args.get('days', 14))
     return jsonify(get_sleep_logs(days))
 
 @bp.route('/api/sleep', methods=['POST'])
+@require_auth
 def api_log_sleep():
     data = request.json or {}
     if not data.get('bedtime') or not data.get('wake_time'):
@@ -921,6 +938,7 @@ def api_log_sleep():
     return jsonify({'success': True, 'sleep': s})
 
 @bp.route('/api/sleep/<lid>', methods=['DELETE'])
+@require_auth
 def api_del_sleep(lid):
     delete_sleep_log(lid)
     return jsonify({'success': True})
@@ -930,11 +948,13 @@ def api_del_sleep(lid):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/body-metrics')
+@require_auth
 def api_get_body_metrics():
     days = int(request.args.get('days', 30))
     return jsonify(get_body_metrics(days))
 
 @bp.route('/api/body-metrics', methods=['POST'])
+@require_auth
 def api_log_body_metric():
     data = request.json or {}
     data.setdefault('date_key', today_iso())
@@ -948,10 +968,12 @@ def api_log_body_metric():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/habits')
+@require_auth
 def api_get_habits():
     return jsonify(get_habit_stats())
 
 @bp.route('/api/habits', methods=['POST'])
+@require_auth
 def api_create_habit():
     data = request.json or {}
     if not data.get('name','').strip():
@@ -960,11 +982,13 @@ def api_create_habit():
     return jsonify({'success': True, 'habit': h})
 
 @bp.route('/api/habits/<hid>', methods=['DELETE'])
+@require_auth
 def api_delete_habit(hid):
     delete_habit(hid)
     return jsonify({'success': True})
 
 @bp.route('/api/habits/<hid>/toggle', methods=['POST'])
+@require_auth
 def api_toggle_habit(hid):
     date_key = (request.json or {}).get('date_key', today_iso())
     result = toggle_habit_log(hid, date_key)
@@ -975,11 +999,13 @@ def api_toggle_habit(hid):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/symptoms')
+@require_auth
 def api_get_symptoms():
     days = int(request.args.get('days', 14))
     return jsonify(get_symptoms(days))
 
 @bp.route('/api/symptoms', methods=['POST'])
+@require_auth
 def api_log_symptom():
     data = request.json or {}
     if not data.get('name','').strip():
@@ -988,6 +1014,7 @@ def api_log_symptom():
     return jsonify({'success': True, 'symptom': s})
 
 @bp.route('/api/symptoms/<sid>', methods=['DELETE'])
+@require_auth
 def api_del_symptom(sid):
     delete_symptom(sid)
     return jsonify({'success': True})
@@ -997,12 +1024,14 @@ def api_del_symptom(sid):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/vitals')
+@require_auth
 def api_get_vitals():
     vtype = request.args.get('type')
     days  = int(request.args.get('days', 30))
     return jsonify(get_vitals(vtype, days))
 
 @bp.route('/api/vitals', methods=['POST'])
+@require_auth
 def api_log_vital():
     data = request.json or {}
     if not data.get('type') or data.get('value1') is None:
@@ -1011,6 +1040,7 @@ def api_log_vital():
     return jsonify({'success': True, 'vital': v})
 
 @bp.route('/api/vitals/<vid>', methods=['DELETE'])
+@require_auth
 def api_del_vital(vid):
     delete_vital(vid)
     return jsonify({'success': True})
@@ -1020,10 +1050,12 @@ def api_del_vital(vid):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/emergency')
+@require_auth
 def api_get_emergency():
     return jsonify(get_emergency_info())
 
 @bp.route('/api/emergency', methods=['POST'])
+@require_auth
 def api_save_emergency():
     data = request.json or {}
     info = save_emergency_info(data)
@@ -1034,6 +1066,7 @@ def api_save_emergency():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/wellness/today')
+@require_auth
 def api_wellness_today():
     day = today_iso()
     hydration = get_hydration_day(day)
@@ -1056,6 +1089,7 @@ def api_wellness_today():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/thoughts/<date_key>')
+@require_auth
 def api_get_thoughts(date_key):
     thoughts = get_thoughts(date_key)
     count = len(thoughts)
@@ -1068,6 +1102,7 @@ def api_get_thoughts(date_key):
     })
 
 @bp.route('/api/thoughts', methods=['POST'])
+@require_auth
 def api_save_thought():
     data = request.json or {}
     content = data.get('content', '').strip()
@@ -1085,6 +1120,7 @@ def api_save_thought():
         return jsonify({'success': False, 'error': str(e)}), 429
 
 @bp.route('/api/thoughts/<tid>', methods=['PUT'])
+@require_auth
 def api_update_thought(tid):
     data = request.json or {}
     content = data.get('content', '').strip()
@@ -1094,11 +1130,13 @@ def api_update_thought(tid):
     return jsonify({'success': True, 'thought': t})
 
 @bp.route('/api/thoughts/<tid>', methods=['DELETE'])
+@require_auth
 def api_delete_thought(tid):
     delete_thought(tid)
     return jsonify({'success': True})
 
 @bp.route('/api/thoughts/range/week')
+@require_auth
 def api_thoughts_week():
     return jsonify(get_thoughts_range(7))
 
@@ -1107,6 +1145,7 @@ def api_thoughts_week():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/todos')
+@require_auth
 def api_list_todos():
     status = request.args.get('status')
     todos = list_todos(status)
@@ -1115,6 +1154,7 @@ def api_list_todos():
     return jsonify({'todos': todos, 'pending_count': len(pending), 'done_count': len(done)})
 
 @bp.route('/api/todos', methods=['POST'])
+@require_auth
 def api_create_todo():
     data = request.json or {}
     if not data.get('title', '').strip():
@@ -1123,22 +1163,26 @@ def api_create_todo():
     return jsonify({'success': True, 'todo': todo})
 
 @bp.route('/api/todos/<tid>', methods=['PUT'])
+@require_auth
 def api_update_todo(tid):
     data = request.json or {}
     todo = update_todo(tid, data)
     return jsonify({'success': True, 'todo': todo})
 
 @bp.route('/api/todos/<tid>/toggle', methods=['POST'])
+@require_auth
 def api_toggle_todo(tid):
     todo = toggle_todo(tid)
     return jsonify({'success': True, 'todo': todo})
 
 @bp.route('/api/todos/<tid>', methods=['DELETE'])
+@require_auth
 def api_delete_todo(tid):
     delete_todo(tid)
     return jsonify({'success': True})
 
 @bp.route('/api/todos/reminders/due')
+@require_auth
 def api_due_reminders():
     reminders = get_due_reminders()
     for r in reminders:

@@ -8,17 +8,10 @@ from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id
 def get_profile() -> dict:
     r = execute("SELECT * FROM user_profile LIMIT 1", fetchone=True)
     if r: return dict(r)
-    # Auto-create default profile
-    pid = new_id()
-    execute("""INSERT INTO user_profile
-        (id,name,weight_kg,height_cm,age,gender,activity_level,goal,updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?)""",
-        (pid,'User',70,170,25,'male','moderate','maintain',now_iso()), commit=True)
-    return get_profile()
+    return {}  # No profile yet — onboarding will create it
 
 def update_profile(data: dict) -> dict:
     p = get_profile()
-    # Handle target_weight_kg — may not exist in older DB rows
     existing_target = p.get('target_weight_kg')
     new_target = data.get('target_weight_kg', existing_target)
     if new_target is not None:
@@ -26,29 +19,52 @@ def update_profile(data: dict) -> dict:
             new_target = float(new_target)
         except (TypeError, ValueError):
             new_target = None
+    # Only coerce to float/int if the value is actually provided
+    def _float(key, fallback):
+        v = data.get(key, fallback)
+        if v is None or v == '': return None
+        try: return float(v)
+        except: return fallback
+    def _int(key, fallback):
+        v = data.get(key, fallback)
+        if v is None or v == '': return None
+        try: return int(v)
+        except: return fallback
+
     execute("""UPDATE user_profile SET
-        name=?,weight_kg=?,height_cm=?,age=?,gender=?,
-        activity_level=?,goal=?,target_weight_kg=?,updated_at=?
+        name=?, weight_kg=?, height_cm=?, age=?, gender=?,
+        activity_level=?, goal=?, target_weight_kg=?, updated_at=?
         WHERE id=?""",
-        (data.get('name',p['name']),
-         float(data.get('weight_kg',p['weight_kg'])),
-         float(data.get('height_cm',p['height_cm'])),
-         int(data.get('age',p['age'])),
-         data.get('gender',p['gender']),
-         data.get('activity_level',p['activity_level']),
-         data.get('goal',p['goal']),
+        (data.get('name', p['name']) or '',
+         _float('weight_kg', p.get('weight_kg')),
+         _float('height_cm', p.get('height_cm')),
+         _int('age', p.get('age')),
+         data.get('gender', p.get('gender')),
+         data.get('activity_level', p.get('activity_level')),
+         data.get('goal', p.get('goal')),
          new_target,
          now_iso(), p['id']), commit=True)
     return get_profile()
 
 def calc_tdee(profile: dict) -> dict:
-    """Harris-Benedict BMR → TDEE with goal adjustment."""
-    w = float(profile.get('weight_kg', 70))
-    h = float(profile.get('height_cm', 170))
-    a = int(profile.get('age', 25))
-    g = profile.get('gender', 'male')
+    """Harris-Benedict BMR → TDEE with goal adjustment.
+    Returns empty dict if mandatory fields (weight, height, age, gender) are missing."""
+    w   = profile.get('weight_kg')
+    h   = profile.get('height_cm')
+    a   = profile.get('age')
+    g   = profile.get('gender')
     act = profile.get('activity_level', 'moderate')
     goal = profile.get('goal', 'maintain')
+
+    # Can't calculate without these four
+    if any(v is None for v in (w, h, a, g)):
+        return {
+            'bmr': None, 'tdee': None, 'target_calories': None,
+            'protein_g': None, 'carbs_g': None, 'fat_g': None,
+            'fiber_g': 30, 'water_ml': None,
+        }
+
+    w, h, a = float(w), float(h), int(a)
 
     # BMR
     if g == 'male':

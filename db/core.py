@@ -5,7 +5,7 @@ import os, sqlite3, json, datetime, uuid, threading
 
 # ── Path ─────────────────────────────────────────────────────────────────────
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH  = os.environ.get("MEDISCAN_DB", os.path.join(ROOT_DIR, "mediscan.db"))
+DB_PATH  = os.environ.get("MEDEASY_DB", os.path.join(ROOT_DIR, "medeasy.db"))
 
 # ── Connection ────────────────────────────────────────────────────────────────
 _conn  = None
@@ -77,7 +77,14 @@ def new_id():    return uuid.uuid4().hex
 # ── Schema ────────────────────────────────────────────────────────────────────
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY, email TEXT UNIQUE, created_at TEXT NOT NULL
+    id          TEXT PRIMARY KEY,
+    email       TEXT UNIQUE NOT NULL,
+    name        TEXT DEFAULT '',
+    password_hash TEXT NOT NULL DEFAULT '',
+    verified    INTEGER DEFAULT 0,
+    verify_token TEXT DEFAULT NULL,
+    created_at  TEXT NOT NULL,
+    last_login  TEXT DEFAULT NULL
 );
 CREATE TABLE IF NOT EXISTS reports (
     id TEXT PRIMARY KEY, filename TEXT NOT NULL, original_name TEXT DEFAULT '',
@@ -121,9 +128,10 @@ CREATE TABLE IF NOT EXISTS sync_log (
     activities_synced INTEGER DEFAULT 0, error TEXT DEFAULT '', synced_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS user_profile (
-    id TEXT PRIMARY KEY, name TEXT DEFAULT '', weight_kg REAL DEFAULT 70,
-    height_cm REAL DEFAULT 170, age INTEGER DEFAULT 30, gender TEXT DEFAULT 'male',
-    activity_level TEXT DEFAULT 'moderate', goal TEXT DEFAULT 'maintain',
+    id TEXT PRIMARY KEY, name TEXT DEFAULT '',
+    weight_kg REAL DEFAULT NULL, height_cm REAL DEFAULT NULL,
+    age INTEGER DEFAULT NULL, gender TEXT DEFAULT NULL,
+    activity_level TEXT DEFAULT NULL, goal TEXT DEFAULT NULL,
     target_weight_kg REAL DEFAULT NULL,
     updated_at TEXT NOT NULL
 );
@@ -217,6 +225,83 @@ CREATE TABLE IF NOT EXISTS reminder_settings (
 """
 
 
+
+
+def migrate_fix_profile_defaults():
+    """
+    Drop the old user_profile table with hardcoded defaults and recreate with NULL defaults.
+    Safe to run multiple times — checks if migration is needed first.
+    """
+    conn = get_db()
+    # Check if weight_kg still has old default of 70
+    cols = conn.execute('PRAGMA table_info(user_profile)').fetchall()
+    col_map = {c[1]: c[4] for c in cols}  # name -> dflt_value
+    if col_map.get('weight_kg') != 'NULL' and col_map.get('weight_kg') != None:
+        # Back up existing rows
+        rows = conn.execute('SELECT * FROM user_profile').fetchall()
+        # Drop and recreate
+        conn.execute('DROP TABLE IF EXISTS user_profile_old')
+        conn.execute('ALTER TABLE user_profile RENAME TO user_profile_old')
+        conn.execute("""
+            CREATE TABLE user_profile (
+                id TEXT PRIMARY KEY, name TEXT DEFAULT '',
+                weight_kg REAL DEFAULT NULL, height_cm REAL DEFAULT NULL,
+                age INTEGER DEFAULT NULL, gender TEXT DEFAULT NULL,
+                activity_level TEXT DEFAULT NULL, goal TEXT DEFAULT NULL,
+                target_weight_kg REAL DEFAULT NULL,
+                user_id TEXT DEFAULT 'default',
+                updated_at TEXT NOT NULL
+            )""")
+        # Restore rows — only keep non-default rows (skip the auto-created garbage)
+        for row in rows:
+            try:
+                conn.execute(
+                    """INSERT INTO user_profile
+                       (id,name,weight_kg,height_cm,age,gender,
+                        activity_level,goal,target_weight_kg,user_id,updated_at)
+                       VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                    (row[0], row[1],
+                     None if row[2] == 70.0 else row[2],
+                     None if row[3] == 170.0 else row[3],
+                     None if row[4] == 30 else row[4],
+                     None if row[5] == 'male' else row[5],
+                     None if row[6] == 'moderate' else row[6],
+                     None if row[7] == 'maintain' else row[7],
+                     row[8] if len(row) > 8 else None,
+                     row[9] if len(row) > 9 else 'default',
+                     row[-1])
+                )
+            except Exception:
+                pass
+        conn.execute('DROP TABLE IF EXISTS user_profile_old')
+
+def migrate_add_user_id():
+    """Add user_id column to all data tables. Safe to run multiple times."""
+    tables = [
+        'food_logs', 'custom_foods', 'thoughts', 'todos',
+        'hydration_logs', 'sleep_logs', 'body_metrics',
+        'habits', 'habit_logs', 'symptoms', 'vitals',
+        'emergency_info', 'notification_log', 'reminder_settings',
+        'fitness_activities', 'medicines', 'dose_logs', 'reports',
+        'user_profile', 'oauth_tokens',
+    ]
+    conn = get_db()
+    for table in tables:
+        try:
+            conn.execute(
+                f"ALTER TABLE {table} ADD COLUMN user_id TEXT NOT NULL DEFAULT 'default'"
+            )
+        except Exception:
+            pass  # Column already exists
+    # Index for fast per-user queries on the most-queried tables
+    for table in ['food_logs','sleep_logs','hydration_logs','habits','symptoms','vitals']:
+        try:
+            conn.execute(
+                f"CREATE INDEX IF NOT EXISTS idx_{table}_user ON {table}(user_id)"
+            )
+        except Exception:
+            pass
+
 def init_db():
     """Create all tables. Safe to call every startup — uses IF NOT EXISTS."""
     conn = get_db()
@@ -224,4 +309,6 @@ def init_db():
         stmt = stmt.strip()
         if stmt:
             conn.execute(stmt)
+    migrate_add_user_id()
+    migrate_fix_profile_defaults()
     print(f"[DB] Ready — {DB_PATH}")

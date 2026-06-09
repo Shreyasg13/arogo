@@ -1,5 +1,6 @@
 """routes/food.py — Food logging, nutrition DB, custom foods, profile."""
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from auth import require_auth
 import os, json as json_mod
 from db import *
 from config import Config
@@ -30,6 +31,7 @@ bp = Blueprint("food", __name__)
 # ══════════════════════════════════════════════════════════════════════════════
 
 @bp.route('/api/food/db')
+@require_auth
 def food_database():
     query  = request.args.get('q', '')
     cat    = request.args.get('category', '')
@@ -56,6 +58,7 @@ def food_database():
     })
 
 @bp.route('/api/food/log', methods=['POST'])
+@require_auth
 def add_food_log():
     data = request.json or {}
     qty  = float(data.get('quantity_g', 100))
@@ -128,6 +131,7 @@ def add_food_log():
 
 
 @bp.route('/api/food/log/<date_key>')
+@require_auth
 def get_food_log(date_key):
     summary = get_nutrition_summary(date_key)
     profile = get_profile()
@@ -142,21 +146,25 @@ def get_food_log(date_key):
     })
 
 @bp.route('/api/food/log/<lid>', methods=['DELETE'])
+@require_auth
 def del_food_log(lid):
     delete_food_log(lid)
     return jsonify({'success': True})
 
 @bp.route('/api/food/weekly')
+@require_auth
 def weekly_nutrition():
     return jsonify(get_weekly_nutrition(7))
 
 @bp.route('/api/food/profile', methods=['GET'])
+@require_auth
 def get_user_profile():
     p = get_profile()
     t = calc_tdee(p)
     return jsonify({'profile': p, 'targets': t})
 
 @bp.route('/api/food/profile', methods=['POST'])
+@require_auth
 def save_profile():
     data = request.json or {}
     p = update_profile(data)
@@ -165,6 +173,7 @@ def save_profile():
 
 
 @bp.route('/api/food/recent-meals')
+@require_auth
 def api_recent_meals():
     """
     Return recent meal combos from the last 14 days.
@@ -266,6 +275,7 @@ def api_recent_meals():
     })
 
 @bp.route('/api/food/custom', methods=['POST'])
+@require_auth
 def add_custom_food():
     data = request.json or {}
     if not data.get('name'):

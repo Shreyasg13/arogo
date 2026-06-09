@@ -3,16 +3,106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MediScan — Health Dashboard</title>
+<title>MedEasy — Health Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+<!-- ═══════════ AUTH SCREEN ═══════════ -->
+<div id="auth-screen" style="display:none;position:fixed;inset:0;z-index:9999;
+     background:var(--gray-0);overflow-y:auto">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div style="width:100%;max-width:400px">
+
+      <!-- Logo / wordmark -->
+      <div style="text-align:center;margin-bottom:32px">
+        <div style="font-size:32px;margin-bottom:8px">🩺</div>
+        <h1 style="font-size:24px;font-weight:700;font-family:'DM Serif Display',serif;
+                   color:var(--gray-900);margin-bottom:4px">MedEasy</h1>
+        <p style="font-size:14px;color:var(--gray-400)">Your personal health operating system</p>
+      </div>
+
+      <!-- Card -->
+      <div class="panel" style="padding:28px 28px 24px">
+
+        <!-- Tab toggle -->
+        <div style="display:flex;gap:0;background:var(--gray-50);border-radius:10px;
+                    padding:4px;margin-bottom:24px">
+          <button id="auth-tab-login" onclick="switchAuthTab('login')"
+                  style="flex:1;padding:8px;border:none;border-radius:8px;
+                         font-size:14px;font-weight:600;cursor:pointer;
+                         background:var(--gray-0);color:var(--gray-800);
+                         font-family:'DM Sans',sans-serif;transition:all .15s">
+            Sign in
+          </button>
+          <button id="auth-tab-register" onclick="switchAuthTab('register')"
+                  style="flex:1;padding:8px;border:none;border-radius:8px;
+                         font-size:14px;font-weight:600;cursor:pointer;
+                         background:transparent;color:var(--gray-400);
+                         font-family:'DM Sans',sans-serif;transition:all .15s">
+            Create account
+          </button>
+        </div>
+
+        <!-- Error banner -->
+        <div id="auth-error" style="display:none;background:#FEF2F2;border:1px solid #FECACA;
+             border-radius:8px;padding:10px 14px;margin-bottom:16px;
+             font-size:13px;color:#DC2626;"></div>
+
+        <!-- Login form -->
+        <div id="auth-form-login">
+          <div class="form-group">
+            <label class="form-label">Email address</label>
+            <input type="email" class="form-input" id="login-email"
+                   placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-input" id="login-password"
+                   placeholder="Your password" autocomplete="current-password">
+          </div>
+          <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
+                  onclick="submitLogin()" id="login-btn">
+            Sign in
+          </button>
+        </div>
+
+        <!-- Register form (hidden) -->
+        <div id="auth-form-register" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Email address</label>
+            <input type="email" class="form-input" id="reg-email"
+                   placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password
+              <span style="font-weight:400;color:var(--gray-400)"> — 8+ characters</span>
+            </label>
+            <input type="password" class="form-input" id="reg-password"
+                   placeholder="Choose a strong password" autocomplete="new-password">
+          </div>
+          <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
+                  onclick="submitRegister()" id="register-btn">
+            Create account
+          </button>
+        </div>
+
+        <!-- Footer note -->
+        <p style="font-size:12px;color:var(--gray-400);text-align:center;margin-top:16px;line-height:1.5">
+          Your health data is stored securely and never shared without your consent.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
 <div class="app-shell">
 
 <!-- ── SIDEBAR ── -->
-<aside class="sidebar">
+<aside class="sidebar" id="app-sidebar">
   <div class="logo">
     <div class="logo-icon">
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
@@ -21,7 +111,7 @@
       </svg>
     </div>
     <div>
-      <div class="logo-name">MediScan</div>
+      <div class="logo-name">MedEasy</div>
       <div class="logo-sub">Health OS</div>
     </div>
   </div>
@@ -139,7 +229,7 @@
 </aside>
 
 <!-- ── MAIN ── -->
-<main class="main-content">
+<main class="main-content" id="app-main">
 
 <!-- ═══════════ DASHBOARD ═══════════ -->
 <div id="view-dashboard" class="view active">
@@ -667,6 +757,10 @@
       <p class="page-subtitle">Track workouts, connect apps, get insights</p>
     </div>
     <div class="header-actions">
+      <span id="header-user-name" style="font-size:13px;color:var(--gray-500);margin-right:4px"></span>
+      <button class="btn-outline" onclick="signOut()" style="font-size:12px;padding:6px 12px">
+        Sign out
+      </button>
       <button class="btn-icon-labeled" onclick="switchView('consistency')" title="Consistency Tracker">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg>
         <span id="fitness-streak-badge" class="streak-pill" style="display:none"></span>
@@ -1667,7 +1761,7 @@
   <div class="page-header">
     <div>
       <h1 class="page-title">Export Your Data</h1>
-      <p class="page-subtitle">Download everything MediScan has stored about your health</p>
+      <p class="page-subtitle">Download everything MedEasy has stored about your health</p>
     </div>
   </div>
 
@@ -2694,6 +2788,160 @@
       <!-- Footer nudge -->
       <div class="hs-footer" id="hs-footer"></div>
 
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ ONBOARDING MODAL ═══════════ -->
+<div id="onboarding-overlay" style="display:none;position:fixed;inset:0;z-index:9998;
+     background:rgba(0,0,0,0.5);overflow-y:auto">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+    <div style="width:100%;max-width:480px;background:var(--gray-0);border-radius:16px;overflow:hidden">
+
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#0E8F7E,#085041);padding:24px 28px 20px">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;
+                    color:rgba(255,255,255,0.65);margin-bottom:6px">Step 2 of 2</div>
+        <h2 style="font-size:22px;font-weight:700;color:#fff;
+                   font-family:'DM Serif Display',serif;margin-bottom:4px">Set up your profile</h2>
+        <p style="font-size:13px;color:rgba(255,255,255,0.75)">
+          This helps MedEasy personalise your experience. Weight and height can be added later.
+        </p>
+      </div>
+
+      <!-- Progress dots -->
+      <div style="display:flex;gap:6px;padding:16px 28px 0;align-items:center">
+        <div style="height:3px;flex:1;background:#0E8F7E;border-radius:99px"></div>
+        <div id="ob-progress" style="height:3px;flex:1;background:var(--gray-150);border-radius:99px;
+             transition:background .3s"></div>
+      </div>
+
+      <!-- Form -->
+      <div style="padding:20px 28px 28px">
+
+        <!-- Error banner -->
+        <div id="ob-error" style="display:none;background:#FEF2F2;border:1px solid #FECACA;
+             border-radius:8px;padding:10px 14px;margin-bottom:16px;
+             font-size:13px;color:#DC2626;"></div>
+
+        <!-- Step 1: Personal details -->
+        <div id="ob-step-1">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+            <!-- Full name -->
+            <div class="form-group" style="grid-column:1/-1;margin-bottom:0">
+              <label class="form-label">Full name <span style="color:#EF4444">*</span></label>
+              <input type="text" class="form-input" id="ob-name"
+                     placeholder="Your name" autocomplete="name">
+            </div>
+
+            <!-- Age -->
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Age <span style="color:#EF4444">*</span></label>
+              <input type="number" class="form-input" id="ob-age"
+                     placeholder="e.g. 28" min="1" max="120">
+            </div>
+
+            <!-- Gender -->
+            <div class="form-group" style="margin-bottom:0">
+              <label class="form-label">Biological sex <span style="color:#EF4444">*</span></label>
+              <select class="form-input" id="ob-gender">
+                <option value="">Select…</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other / prefer not to say</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="btn-primary" style="width:100%;padding:12px;font-size:14px;margin-top:4px"
+                  onclick="obNext()">
+            Continue
+          </button>
+          <p style="font-size:12px;color:var(--gray-400);text-align:center;margin-top:12px">
+            <span style="color:#EF4444">*</span> Required fields
+          </p>
+        </div>
+
+        <!-- Step 2: Lifestyle -->
+        <div id="ob-step-2" style="display:none">
+
+          <!-- Activity level -->
+          <div class="form-group">
+            <label class="form-label">Activity level <span style="color:#EF4444">*</span></label>
+            <div id="ob-activity-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button class="ob-option-btn" data-val="sedentary" onclick="obSelectActivity(this)">
+                <div class="ob-opt-title">Sedentary</div>
+                <div class="ob-opt-sub">Desk job, little exercise</div>
+              </button>
+              <button class="ob-option-btn" data-val="light" onclick="obSelectActivity(this)">
+                <div class="ob-opt-title">Lightly active</div>
+                <div class="ob-opt-sub">1–3 days/week exercise</div>
+              </button>
+              <button class="ob-option-btn" data-val="moderate" onclick="obSelectActivity(this)">
+                <div class="ob-opt-title">Moderately active</div>
+                <div class="ob-opt-sub">3–5 days/week exercise</div>
+              </button>
+              <button class="ob-option-btn" data-val="active" onclick="obSelectActivity(this)">
+                <div class="ob-opt-title">Very active</div>
+                <div class="ob-opt-sub">Daily intense exercise</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Health goal -->
+          <div class="form-group">
+            <label class="form-label">Your main health goal <span style="color:#EF4444">*</span></label>
+            <div id="ob-goal-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button class="ob-option-btn" data-val="lose_fast" onclick="obSelectGoal(this)">
+                <div class="ob-opt-title">Lose weight fast</div>
+                <div class="ob-opt-sub">−500 kcal/day</div>
+              </button>
+              <button class="ob-option-btn" data-val="lose" onclick="obSelectGoal(this)">
+                <div class="ob-opt-title">Lose weight</div>
+                <div class="ob-opt-sub">−250 kcal/day</div>
+              </button>
+              <button class="ob-option-btn" data-val="maintain" onclick="obSelectGoal(this)">
+                <div class="ob-opt-title">Maintain weight</div>
+                <div class="ob-opt-sub">Stay at current weight</div>
+              </button>
+              <button class="ob-option-btn" data-val="gain" onclick="obSelectGoal(this)">
+                <div class="ob-opt-title">Build muscle</div>
+                <div class="ob-opt-sub">+250 kcal/day</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Optional: weight + height -->
+          <div style="background:var(--gray-50);border-radius:10px;padding:14px;margin-bottom:16px">
+            <div style="font-size:12px;font-weight:600;color:var(--gray-500);margin-bottom:10px">
+              Optional — add now or later in Body &amp; Vitals
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Weight (kg)</label>
+                <input type="number" class="form-input" id="ob-weight"
+                       placeholder="e.g. 72" step="0.1">
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Height (cm)</label>
+                <input type="number" class="form-input" id="ob-height"
+                       placeholder="e.g. 175" step="0.5">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <button class="btn-outline" style="padding:11px 16px" onclick="obBack()">Back</button>
+            <button class="btn-primary" style="flex:1;padding:12px;font-size:14px"
+                    onclick="obSubmit()" id="ob-submit-btn">
+              Start using MedEasy
+            </button>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 </div>

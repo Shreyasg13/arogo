@@ -1,3 +1,198 @@
+// ════════════════════════════════════════════════════════════════
+// AUTH — login / register / session management
+// Runs before anything else. Shows auth screen if unauthenticated.
+// ════════════════════════════════════════════════════════════════
+
+let _currentUser = null;
+
+// Called on page load — check if we have a valid session
+async function initAuth() {
+  const r = await fetch('/auth/me', {credentials: 'same-origin'}).catch(() => null);
+  if (r && r.ok) {
+    _currentUser = await r.json();
+    showApp();
+  } else {
+    showAuthScreen();
+  }
+}
+
+function showAuthScreen() {
+  const screen = document.getElementById('auth-screen');
+  const sidebar = document.getElementById('app-sidebar');
+  const main    = document.getElementById('app-main');
+  if (screen)  screen.style.display = '';
+  if (sidebar) sidebar.style.display = 'none';
+  if (main)    main.style.display    = 'none';
+}
+
+function showApp() {
+  const screen  = document.getElementById('auth-screen');
+  const sidebar = document.getElementById('app-sidebar');
+  const main    = document.getElementById('app-main');
+  if (screen)  screen.style.display  = 'none';
+  if (sidebar) sidebar.style.display = '';
+  if (main)    main.style.display    = '';
+
+  // Populate user name in header
+  const nameEl = document.getElementById('header-user-name');
+  if (nameEl && _currentUser) nameEl.textContent = _currentUser.name || _currentUser.email;
+
+  // Run all setup functions that DOMContentLoaded used to run
+  try { setGreeting(); }             catch(e) {}
+  try { setDates(); }                catch(e) {}
+  try { setupNavigation(); }         catch(e) {}
+  try { setupDropzone(); }           catch(e) {}
+  try { setupTagPicker(); }          catch(e) {}
+  try { setupUploadForm(); }         catch(e) {}
+  try { setupMedForm(); }            catch(e) {}
+  try { setupActivityForm(); }       catch(e) {}
+  try { setupIconColorPicker(); }    catch(e) {}
+  try { setupFreqPicker(); }         catch(e) {}
+  try { setupActivityTypePicker(); } catch(e) {}
+  try { setupFilters(); }            catch(e) {}
+  try { updateSidebarUser(); }       catch(e) {}
+  try { checkNotifPermission(); }    catch(e) {}
+  try { scheduleReminderChecks(); }  catch(e) {}
+  try { scheduleTodoReminderChecks(); } catch(e) {}
+
+  const tdp = document.getElementById('thoughts-date-picker');
+  if (tdp) tdp.value = new Date().toISOString().split('T')[0];
+
+  // Load the dashboard
+  switchView('dashboard');
+}
+
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('auth-form-login').style.display    = isLogin ? '' : 'none';
+  document.getElementById('auth-form-register').style.display = isLogin ? 'none' : '';
+  document.getElementById('auth-tab-login').style.background    = isLogin ? 'var(--gray-0)' : 'transparent';
+  document.getElementById('auth-tab-login').style.color         = isLogin ? 'var(--gray-800)' : 'var(--gray-400)';
+  document.getElementById('auth-tab-register').style.background = isLogin ? 'transparent' : 'var(--gray-0)';
+  document.getElementById('auth-tab-register').style.color      = isLogin ? 'var(--gray-400)' : 'var(--gray-800)';
+  hideAuthError();
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  if (el) { el.textContent = msg; el.style.display = ''; }
+}
+function hideAuthError() {
+  const el = document.getElementById('auth-error');
+  if (el) el.style.display = 'none';
+}
+
+function setAuthBtnLoading(id, loading, label) {
+  const btn = document.getElementById(id);
+  if (!btn) return;
+  btn.disabled    = loading;
+  btn.textContent = loading ? 'Please wait…' : label;
+}
+
+async function submitLogin() {
+  hideAuthError();
+  const email = (document.getElementById('login-email')?.value || '').trim();
+  const pw    = document.getElementById('login-password')?.value || '';
+  if (!email || !pw) { showAuthError('Please enter your email and password'); return; }
+
+  setAuthBtnLoading('login-btn', true, 'Sign in');
+
+  let r, data;
+  try {
+    r = await fetch('/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({email, password: pw}),
+    });
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      data = await r.json();
+    } else {
+      const text = await r.text();
+      data = { error: `Server error (${r.status}): route not found. Check Flask is running the latest app.py.` };
+    }
+  } catch (err) {
+    setAuthBtnLoading('login-btn', false, 'Sign in');
+    showAuthError('Could not reach server. Is Flask running?');
+    console.error('Login fetch error:', err);
+    return;
+  }
+
+  setAuthBtnLoading('login-btn', false, 'Sign in');
+
+  if (!r.ok) {
+    showAuthError(data.error || 'Login failed');
+    return;
+  }
+
+  _currentUser = data.user;
+  await new Promise(res => setTimeout(res, 50));
+  showApp();
+}
+
+async function submitRegister() {
+  hideAuthError();
+  const email = (document.getElementById('reg-email')?.value || '').trim();
+  const pw    = document.getElementById('reg-password')?.value || '';
+  const name  = (document.getElementById('reg-name')?.value || '').trim();
+
+  if (!email) { showAuthError('Please enter your email address'); return; }
+  if (!pw)    { showAuthError('Please enter a password (8+ characters)'); return; }
+
+  setAuthBtnLoading('register-btn', true, 'Create account');
+
+  let r, data;
+  try {
+    r = await fetch('/auth/register', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({ name: name || email.split('@')[0], email, password: pw }),
+    });
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      data = await r.json();
+    } else {
+      const text = await r.text();
+      data = { error: `Server error (${r.status}): ${text.slice(0, 120)}` };
+    }
+  } catch (err) {
+    setAuthBtnLoading('register-btn', false, 'Create account');
+    showAuthError('Could not reach server. Is Flask running?');
+    console.error('Register fetch error:', err);
+    return;
+  }
+
+  setAuthBtnLoading('register-btn', false, 'Create account');
+
+  if (!r.ok) {
+    showAuthError(data.error || 'Registration failed');
+    return;
+  }
+
+  _currentUser = data.user;
+  await new Promise(res => setTimeout(res, 50));
+  // New users go through onboarding before seeing the dashboard
+  showOnboarding();
+}
+
+async function signOut() {
+  await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
+  _currentUser = null;
+  showAuthScreen();
+}
+
+// ── Keyboard: Enter submits the active form ──────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const screen = document.getElementById('auth-screen');
+  if (!screen || screen.style.display === 'none') return;
+  const loginVisible = document.getElementById('auth-form-login')?.style.display !== 'none';
+  if (loginVisible) submitLogin();
+  else              submitRegister();
+});
+
 // ── State ──
 let selectedTags = [], selectedFile = null, selectedIcon = '💊', selectedColor = 'teal', selectedActivityType = 'running';
 let notifPermission = 'default';
@@ -5,6 +200,10 @@ let reminderIntervals = [];
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
+  // Gate the entire app behind auth check
+  initAuth();
+  return; // rest of boot runs inside showApp() → switchView('dashboard')
+  // --- unreachable code below kept for reference ---
   setGreeting();
   setDates();
   setupNavigation();
@@ -3785,7 +3984,7 @@ function scheduleTodoBrowserNotif(todo, reminderAt) {
   const ms = new Date(reminderAt) - Date.now();
   if (ms <= 0 || ms > 86400000) return; // only schedule within 24h
   setTimeout(() => {
-    new Notification('📋 MediScan Reminder', {
+    new Notification('📋 MedEasy Reminder', {
       body: todo.title,
       icon: '/static/favicon.ico',
       tag:  `todo-${todo.id}`
@@ -3800,7 +3999,7 @@ function scheduleTodoReminderChecks() {
     const r = await fetch('/api/todos/reminders/due').then(r => r.json()).catch(() => null);
     if (!r?.reminders?.length) return;
     r.reminders.forEach(todo => {
-      new Notification('📋 MediScan Reminder', {
+      new Notification('📋 MedEasy Reminder', {
         body: todo.title + (todo.notes ? `\n${todo.notes}` : ''),
         icon: '/static/favicon.ico',
         tag:  `todo-${todo.id}`
@@ -5665,10 +5864,10 @@ async function loadReport() {
     <!-- Doctor note footer -->
     <div class="rpt-footer">
       <div class="rpt-footer-note">
-        <strong>For your doctor:</strong> This is a personal health summary generated by MediScan Health OS.
+        <strong>For your doctor:</strong> This is a personal health summary generated by MedEasy Health OS.
         Data is self-reported and should be reviewed alongside clinical assessments.
       </div>
-      <div class="rpt-footer-brand">MediScan Health OS · ${generatedStr}</div>
+      <div class="rpt-footer-brand">MedEasy Health OS · ${generatedStr}</div>
     </div>
 
   </div><!-- /printable-report -->
@@ -6088,37 +6287,107 @@ async function loadSleepView() {
 
       <!-- Log form -->
       <div class="panel">
-        <div class="panel-header"><h2 class="panel-title">Log sleep</h2></div>
-        <div style="padding:16px 20px">
-          <div class="form-group">
-            <label class="form-label">Bedtime</label>
-            <input type="datetime-local" class="form-input" id="sleep-bed-sv" oninput="previewSleepDuration()">
+        <div class="panel-header">
+          <h2 class="panel-title">Log sleep</h2>
+        </div>
+        <div style="padding:16px 20px 20px">
+
+          <!-- Time pickers row -->
+          <div class="stp-row">
+
+            <!-- Bedtime -->
+            <div class="stp-block">
+              <div class="stp-icon">🌙</div>
+              <div class="stp-label">Bedtime</div>
+              <div class="stp-sub">Last night</div>
+              <div class="stp-picker">
+                <div class="stp-col">
+                  <button class="stp-arrow" onclick="stpStep('bed','h',-1)">▲</button>
+                  <div class="stp-val" id="stp-bed-h">11</div>
+                  <button class="stp-arrow" onclick="stpStep('bed','h',1)">▼</button>
+                </div>
+                <div class="stp-colon">:</div>
+                <div class="stp-col">
+                  <button class="stp-arrow" onclick="stpStep('bed','m',-1)">▲</button>
+                  <div class="stp-val" id="stp-bed-m">00</div>
+                  <button class="stp-arrow" onclick="stpStep('bed','m',1)">▼</button>
+                </div>
+                <div class="stp-col stp-col--ampm">
+                  <button class="stp-ampm-btn" id="stp-bed-ampm" onclick="stpToggleAmpm('bed')">PM</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Duration badge -->
+            <div class="stp-mid">
+              <div class="stp-arrow-icon">→</div>
+              <div class="stp-dur-chip" id="stp-dur-chip">8h 0m</div>
+            </div>
+
+            <!-- Wake time -->
+            <div class="stp-block">
+              <div class="stp-icon">☀️</div>
+              <div class="stp-label">Wake time</div>
+              <div class="stp-sub">This morning</div>
+              <div class="stp-picker">
+                <div class="stp-col">
+                  <button class="stp-arrow" onclick="stpStep('wake','h',-1)">▲</button>
+                  <div class="stp-val" id="stp-wake-h">7</div>
+                  <button class="stp-arrow" onclick="stpStep('wake','h',1)">▼</button>
+                </div>
+                <div class="stp-colon">:</div>
+                <div class="stp-col">
+                  <button class="stp-arrow" onclick="stpStep('wake','m',-1)">▲</button>
+                  <div class="stp-val" id="stp-wake-m">00</div>
+                  <button class="stp-arrow" onclick="stpStep('wake','m',1)">▼</button>
+                </div>
+                <div class="stp-col stp-col--ampm">
+                  <button class="stp-ampm-btn" id="stp-wake-ampm" onclick="stpToggleAmpm('wake')">AM</button>
+                </div>
+              </div>
+            </div>
+
           </div>
-          <div class="form-group">
-            <label class="form-label">Wake time</label>
-            <input type="datetime-local" class="form-input" id="sleep-wake-sv" oninput="previewSleepDuration()">
-          </div>
-          <div class="sleep-duration-preview" id="sleep-dur-preview-sv" style="display:none"></div>
-          <div class="form-group">
-            <label class="form-label">Quality</label>
-            <div class="sleep-quality-grid" id="sleep-q-sv">
-              ${[1,2,3,4,5].map(q => {
-                const labels = ['😩 Terrible','😕 Poor','😐 Okay','😊 Good','😴 Great'];
-                return '<button class="sleep-q-btn" data-q="'+q+'" onclick="selectSleepQ('+q+',\'sv\')">'+ labels[q-1] +'</button>';
-              }).join('')}
+
+          <!-- Quality -->
+          <div style="margin:16px 0 10px">
+            <div class="stp-section-label">Sleep quality</div>
+            <div class="sdial-quality-row" id="sleep-q-sv">
+              ${[
+                {q:1,emoji:'😩',label:'Terrible'},
+                {q:2,emoji:'😕',label:'Poor'},
+                {q:3,emoji:'😐',label:'Okay'},
+                {q:4,emoji:'😊',label:'Good'},
+                {q:5,emoji:'😴',label:'Great'},
+              ].map(({q,emoji,label}) => `
+                <button class="sdial-q-btn${q===4?' active':''}" data-q="${q}"
+                        onclick="selectSleepQ(${q},'sv')">
+                  <span class="sdial-q-emoji">${emoji}</span>
+                  <span class="sdial-q-label">${label}</span>
+                </button>`).join('')}
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Notes <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
-            <input type="text" class="form-input" id="sleep-notes-sv" placeholder="e.g. woke up once, vivid dreams">
+
+          <!-- Notes -->
+          <div style="margin-bottom:14px">
+            <div class="stp-section-label">Notes <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--gray-400)">(optional)</span></div>
+            <input type="text" class="form-input" id="sleep-notes-sv"
+                   placeholder="e.g. woke up once, vivid dreams"
+                   style="font-size:13px">
           </div>
-          <button class="btn-primary" style="width:100%" onclick="saveSleepLogFromView()">Save sleep log</button>
+
+          <button class="btn-primary" style="width:100%;font-size:14px;font-weight:600"
+                  onclick="saveSleepLogFromView()">
+            Save sleep log
+          </button>
         </div>
       </div>
 
-      <!-- Stats strip -->
+      <!-- Stats + history -->
       <div class="panel" id="sleep-stats-card">
-        <div class="panel-header"><h2 class="panel-title">Last 30 nights</h2></div>
+        <div class="panel-header">
+          <h2 class="panel-title">Last 30 nights</h2>
+        </div>
         <div id="sleep-summary-strip" style="padding:14px 20px 4px">
           <div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">No data yet</div>
         </div>
@@ -6126,21 +6395,124 @@ async function loadSleepView() {
       </div>
     </div>
 
-    <!-- Trend chart — full width -->
+    <!-- Trend chart -->
     <div class="panel" id="sleep-trend-card" style="padding:18px 20px 20px;display:none">
       <div class="panel-header" style="margin-bottom:4px">
         <h2 class="panel-title">Duration trend</h2>
-        <span class="panel-badge" id="sleep-trend-badge">30 days</span>
+        <span class="panel-badge" id="sleep-trend-badge">7 days</span>
       </div>
       <div style="font-size:12px;color:var(--gray-400);margin-bottom:14px" id="sleep-trend-sub"></div>
-      <div style="position:relative;height:180px">
-        <canvas id="sleep-chart"></canvas>
-      </div>
+      <div style="position:relative;height:180px"><canvas id="sleep-chart"></canvas></div>
       <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap" id="sleep-week-strip"></div>
     </div>`;
 
-  initSleepDefaults();
+  window._svQuality = 4;
+  window._stpState  = { bed: {h:11, m:0, ampm:'PM'}, wake: {h:7, m:0, ampm:'AM'} };
+  stpUpdate();
   loadSleepTrend();
+}
+
+// ── Stepper logic ──────────────────────────────────────────────
+function stpStep(side, part, dir) {
+  const s = window._stpState[side];
+  if (part === 'h') {
+    s.h = ((s.h - 1 + dir + 12) % 12) + 1;  // wraps 1-12
+  } else {
+    s.m = (s.m + dir * 5 + 60) % 60;          // wraps 0-55 in 5min steps
+  }
+  stpUpdate();
+}
+
+function stpToggleAmpm(side) {
+  const s = window._stpState[side];
+  s.ampm = s.ampm === 'AM' ? 'PM' : 'AM';
+  stpUpdate();
+}
+
+function stpUpdate() {
+  const b = window._stpState.bed;
+  const w = window._stpState.wake;
+
+  // Update displays
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  set('stp-bed-h',    b.h);
+  set('stp-bed-m',    String(b.m).padStart(2,'0'));
+  set('stp-bed-ampm', b.ampm);
+  set('stp-wake-h',   w.h);
+  set('stp-wake-m',   String(w.m).padStart(2,'0'));
+  set('stp-wake-ampm',w.ampm);
+
+  // AMPM button colour
+  ['bed','wake'].forEach(side => {
+    const btn = document.getElementById('stp-' + side + '-ampm');
+    if (!btn) return;
+    const isPM = window._stpState[side].ampm === 'PM';
+    btn.style.background = isPM ? '#0E8F7E' : 'var(--gray-100)';
+    btn.style.color      = isPM ? '#fff'    : 'var(--gray-600)';
+  });
+
+  // Compute duration
+  function to24(h, m, ampm) {
+    let h24 = h % 12;
+    if (ampm === 'PM') h24 += 12;
+    return h24 * 60 + m;
+  }
+
+  let bedMins  = to24(b.h, b.m, b.ampm);
+  let wakeMins = to24(w.h, w.m, w.ampm);
+  // Sleep always crosses midnight — if wake ≤ bed treat as next day
+  if (wakeMins <= bedMins) wakeMins += 24 * 60;
+  // Cap at 16h (sanity check)
+  const totalMins = Math.min(wakeMins - bedMins, 960);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+
+  // Store for save
+  const bedH24  = to24(b.h, b.m, b.ampm);
+  const wakeH24 = to24(w.h, w.m, w.ampm) % 24;
+  window._svBedTime  = String(Math.floor(bedH24  / 60)).padStart(2,'0') + ':' + String(bedH24  % 60).padStart(2,'0');
+  window._svWakeTime = String(wakeH24).padStart(2,'0') + ':' + String(w.m).padStart(2,'0');
+
+  // Chip
+  const chip = document.getElementById('stp-dur-chip');
+  if (chip) {
+    chip.textContent = h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
+    chip.className = 'stp-dur-chip ' +
+      (h >= 7 ? 'stp-dur--good' : h >= 5 ? 'stp-dur--ok' : 'stp-dur--low');
+  }
+}
+
+
+
+function svPreview() {
+  const bedTime  = document.getElementById('sleep-bed-sv')?.value  || '23:00';
+  const wakeTime = document.getElementById('sleep-wake-sv')?.value || '07:00';
+  const chip     = document.getElementById('sv-duration-chip');
+  const text     = document.getElementById('sv-duration-text');
+  if (!text) return;
+
+  // Parse times into today/yesterday context
+  const [bh, bm] = bedTime.split(':').map(Number);
+  const [wh, wm] = wakeTime.split(':').map(Number);
+  let bedMins  = bh * 60 + bm;
+  let wakeMins = wh * 60 + wm;
+  if (wakeMins <= bedMins) wakeMins += 24 * 60;   // wake is next day
+  const totalMins = wakeMins - bedMins;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+
+  const quality = h >= 7 ? '😴' : h >= 5 ? '😐' : '😕';
+  text.textContent = `${quality} ${h}h ${m > 0 ? m + 'm' : ''} of sleep`;
+  if (chip) {
+    chip.style.background = h >= 7 ? '#F0FDF4' : h >= 5 ? '#FFFBEB' : '#FEF2F2';
+    chip.style.color       = h >= 7 ? '#15803D' : h >= 5 ? '#92400E' : '#DC2626';
+  }
+
+  // Update date labels
+  const bedLabel  = document.getElementById('sv-bed-date-label');
+  const wakeLabel = document.getElementById('sv-wake-date-label');
+  if (bedLabel)  bedLabel.textContent  = bh <= 8 ? 'Tonight' : 'Last night';
+  if (wakeLabel) wakeLabel.textContent = wakeMins > 24*60 ? 'Next morning' : 'This morning';
 }
 
 function selectSleepQ(q, suffix) {
@@ -6148,26 +6520,36 @@ function selectSleepQ(q, suffix) {
   if (grid) grid.querySelectorAll('.sleep-q-btn').forEach(b => {
     b.classList.toggle('active', parseInt(b.dataset.q) === q);
   });
-  window._sleepQ = q;
+  if (suffix === 'sv') window._svQuality = q;
+  else window._sleepQ = q;
 }
 
 async function saveSleepLogFromView() {
-  const bed  = document.getElementById('sleep-bed-sv')?.value;
-  const wake = document.getElementById('sleep-wake-sv')?.value;
-  if (!bed || !wake) { showToast('Enter both bedtime and wake time', 'error'); return; }
+  const bedTime  = window._svBedTime;
+  const wakeTime = window._svWakeTime;
+  if (!bedTime || !wakeTime) { showToast('Set bedtime and wake time', 'error'); return; }
+
+  const today     = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const bed  = yesterday + 'T' + bedTime;
+  const wake = today     + 'T' + wakeTime;
+
   const r = await fetch('/api/sleep', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ bedtime: bed, wake_time: wake,
-                           quality: window._sleepQ || 3,
-                           notes: document.getElementById('sleep-notes-sv')?.value || '' })
+    body: JSON.stringify({
+      bedtime:   bed,
+      wake_time: wake,
+      quality:   window._svQuality || 4,
+      notes:     document.getElementById('sleep-notes-sv')?.value || '',
+    })
   }).then(r => r.json()).catch(() => null);
+
   if (r?.success) {
     showToast('Sleep logged ✓', 'success');
-    loadSleepData();
     loadSleepTrend();
     loadWellnessStrip();
   } else {
-    showToast('Failed to save', 'error');
+    showToast(r?.error || 'Failed to save', 'error');
   }
 }
 
@@ -6514,11 +6896,45 @@ const CI_WATER = [
 ];
 
 // ── Trigger: call from loadDashboard ─────────────────────────────
-function initDailyCheckin() {
-  const today = new Date().toISOString().split('T')[0];
-  const key   = `mediscan_checkin_${today}`;
-  if (localStorage.getItem(key)) return;   // already done today
-  // Small delay so dashboard loads behind the modal
+async function initDailyCheckin() {
+  const today     = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const key       = `medeasy_checkin_${today}`;
+  if (localStorage.getItem(key)) return;  // already done today
+
+  // Check what's already been logged so we don't ask twice
+  const [sleepLogs, thoughts, hydration] = await Promise.all([
+    fetch('/api/sleep?days=2').then(r => r.json()).catch(() => []),
+    fetch(`/api/thoughts/${today}`).then(r => r.json()).catch(() => []),
+    fetch(`/api/hydration/${today}`, {cache: 'no-store'}).then(r => r.json()).catch(() => null),
+  ]);
+
+  // Sleep: skip if logged for today or yesterday
+  const hasSleep = Array.isArray(sleepLogs) &&
+    sleepLogs.some(s => s.date_key === today || s.date_key === yesterday);
+
+  // Mood: skip if thought/mood logged today
+  const hasMood = Array.isArray(thoughts) && thoughts.length > 0;
+
+  // Hydration: skip if already has meaningful water logged
+  const hasHydration = hydration && (hydration.total_ml || 0) >= 250;
+
+  // Build the steps to show — skip already-logged ones
+  const stepsToShow = [];
+  if (!hasMood)      stepsToShow.push('mood');
+  if (!hasSleep)     stepsToShow.push('sleep');
+                     stepsToShow.push('symptoms');  // always ask about symptoms
+  if (!hasHydration) stepsToShow.push('water');
+
+  // If everything is already logged, just mark done and skip
+  if (stepsToShow.length <= 1 && stepsToShow[0] === 'symptoms') {
+    localStorage.setItem(key, '1');
+    return;
+  }
+
+  // Show only the relevant steps
+  window._ciStepsToShow = stepsToShow;
+
   setTimeout(() => {
     ciStep = 0;
     ciSel.mood = null; ciSel.sleep = null; ciSel.symptoms = []; ciSel.water = null;
@@ -6533,12 +6949,17 @@ function closeCheckin() {
 
 // ── Renderer ──────────────────────────────────────────────────────
 function renderCheckin() {
+  // Use only the steps that haven't been logged yet
+  const steps = window._ciStepsToShow || CI_STEPS;
+  const currentStepName = steps[ciStep];
+  const totalSteps = steps.length;
+
   // Dots
   const dotsEl = document.getElementById('checkin-dots');
   if (dotsEl) {
-    dotsEl.innerHTML = CI_STEPS.map((_, i) => {
+    dotsEl.innerHTML = steps.map((_, i) => {
       let cls = 'ci-dot';
-      if (i < ciStep)      cls += ' done';
+      if (i < ciStep)        cls += ' done';
       else if (i === ciStep) cls += ' active';
       return `<div class="${cls}"></div>`;
     }).join('');
@@ -6546,16 +6967,18 @@ function renderCheckin() {
 
   // Progress bar
   const prog = document.getElementById('checkin-progress');
-  if (prog) prog.style.width = ((ciStep + 1) / CI_STEPS.length * 100) + '%';
+  if (prog) prog.style.width = ((ciStep + 1) / totalSteps * 100) + '%';
 
   const body   = document.getElementById('checkin-body');
   const footer = document.getElementById('checkin-footer');
   if (!body || !footer) return;
 
-  // ── Step 0: Mood ──────────────────────────────────────────────
-  if (ciStep === 0) {
+  const stepNum = ciStep + 1;
+
+  // ── Step: Mood ──────────────────────────────────────────────
+  if (currentStepName === 'mood') {
     body.innerHTML = `
-      <div class="ci-step-label">Step 1 of 4 · How you feel</div>
+      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · How you feel</div>
       <div class="ci-question">Good morning! How are you feeling?</div>
       <div class="ci-mood-grid">
         ${CI_MOODS.map((m, i) => `
@@ -6570,10 +6993,10 @@ function renderCheckin() {
               ${ciSel.mood === null ? 'disabled' : ''}>Continue</button>`;
   }
 
-  // ── Step 1: Sleep ─────────────────────────────────────────────
-  else if (ciStep === 1) {
+  // ── Step: Sleep ─────────────────────────────────────────────
+  else if (currentStepName === 'sleep') {
     body.innerHTML = `
-      <div class="ci-step-label">Step 2 of 4 · Sleep</div>
+      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · Sleep</div>
       <div class="ci-question">How much did you sleep last night?</div>
       <div class="ci-sleep-grid">
         ${CI_SLEEP.map((s, i) => `
@@ -6589,10 +7012,10 @@ function renderCheckin() {
               ${ciSel.sleep === null ? 'disabled' : ''}>Continue</button>`;
   }
 
-  // ── Step 2: Symptoms ──────────────────────────────────────────
-  else if (ciStep === 2) {
+  // ── Step: Symptoms ──────────────────────────────────────────
+  else if (currentStepName === 'symptoms') {
     body.innerHTML = `
-      <div class="ci-step-label">Step 3 of 4 · Symptoms</div>
+      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · Symptoms</div>
       <div class="ci-question">Any symptoms today?</div>
       <div class="ci-sym-list">
         <button class="ci-none-btn${ciSel.symptoms.length === 0 ? ' active' : ''}"
@@ -6601,15 +7024,16 @@ function renderCheckin() {
           <button class="ci-sym-btn${ciSel.symptoms.includes(s) ? ' active' : ''}"
                   onclick="ciToggleSymptom('${s}')">${s}</button>`).join('')}
       </div>`;
+    const isFirst = ciStep === 0;
     footer.innerHTML = `
-      <button class="ci-btn-secondary" onclick="ciBack()">Back</button>
+      ${!isFirst ? '<button class="ci-btn-secondary" onclick="ciBack()">Back</button>' : ''}
       <button class="ci-btn-primary" onclick="ciNext()">Continue</button>`;
   }
 
-  // ── Step 3: Hydration ─────────────────────────────────────────
-  else if (ciStep === 3) {
+  // ── Step: Hydration ─────────────────────────────────────────
+  else if (currentStepName === 'water') {
     body.innerHTML = `
-      <div class="ci-step-label">Step 4 of 4 · Hydration</div>
+      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · Hydration</div>
       <div class="ci-question">How much have you had to drink so far?</div>
       <div class="ci-water-grid">
         ${CI_WATER.map((w, i) => `
@@ -6648,12 +7072,17 @@ function ciPickWater(i) {
   renderCheckin();
 }
 function ciNext() {
+  const steps = window._ciStepsToShow || CI_STEPS;
   ciStep++;
-  renderCheckin();
+  // If we've gone past the last step, submit
+  if (ciStep >= steps.length) {
+    ciSubmit();
+  } else {
+    renderCheckin();
+  }
 }
 function ciBack() {
-  ciStep--;
-  renderCheckin();
+  if (ciStep > 0) { ciStep--; renderCheckin(); }
 }
 
 // ── Submit: save to all relevant APIs ────────────────────────────
@@ -6723,7 +7152,7 @@ async function ciSubmit() {
   await Promise.all(saves);
 
   // Mark today's check-in done
-  localStorage.setItem(`mediscan_checkin_${today}`, '1');
+  localStorage.setItem(`medeasy_checkin_${today}`, '1');
 
   // Show thank-you summary, then auto-close after 2.5s
   ciShowSummary();
@@ -7005,6 +7434,7 @@ function renderVitalChart(type, entries, meta) {
           callbacks: {
             label: ctx => {
               if (ctx.dataset.pointRadius === 0) return null; // skip ref lines in tooltip
+              if (ctx.parsed.y == null) return 'Not logged';
               return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + ' ' + meta.unit;
             },
           },
@@ -7260,16 +7690,41 @@ async function loadSleepTrend() {
     }
   }
 
-  // ── Trend chart (needs Chart.js) ──────────────────────────────
+  // ── Trend chart — always show last 7 nights ──────────────────
   const trendCard = document.getElementById('sleep-trend-card');
-  if (!trendCard || data.logs.length < 2) return;
+  if (!trendCard) return;
   trendCard.style.display = '';
 
-  const sub = document.getElementById('sleep-trend-sub');
-  if (sub) sub.textContent =
-    `${data.total} nights logged · avg ${s.avg_duration}h · ${s.good_nights} nights ≥ 7h`;
+  // Build a 7-day date range (today-6 through today)
+  const today7 = new Date();
+  const sevenDays = Array.from({length: 7}, (_, i) => {
+    const d = new Date(today7);
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().split('T')[0];
+  });
 
-  // Lazy-load Chart.js
+  // Index logs by date
+  const logByDate = {};
+  (data.logs || []).forEach(l => { logByDate[l.date_key] = l; });
+
+  const labels7    = sevenDays.map(d => {
+    const dt = new Date(d + 'T12:00:00');
+    return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+  });
+  const durations7  = sevenDays.map(d => logByDate[d]?.duration_h ?? null);
+  const qualities7  = sevenDays.map(d => logByDate[d]?.quality    ?? null);
+  const hasAnyData  = durations7.some(v => v !== null);
+
+  const sub = document.getElementById('sleep-trend-sub');
+  if (sub) {
+    if (!hasAnyData) {
+      sub.textContent = 'No nights logged yet — start tracking to see trends';
+    } else {
+      const logged = durations7.filter(v => v !== null).length;
+      sub.textContent = `${logged} of 7 nights logged · avg ${s?.avg_duration ?? '—'}h`;
+    }
+  }
+
   if (!window.Chart) {
     await new Promise((res, rej) => {
       const sc = document.createElement('script');
@@ -7284,34 +7739,27 @@ async function loadSleepTrend() {
 
   if (_sleepChart) { _sleepChart.destroy(); _sleepChart = null; }
 
-  const logs   = data.logs;
-  const labels = logs.map(l => {
-    const d = new Date(l.date_key + 'T12:00:00');
-    return (d.getMonth()+1) + '/' + d.getDate();
-  });
-  const durations = logs.map(l => l.duration_h);
-  const qualities = logs.map(l => l.quality);
-
-  // Bar color: green ≥7h, amber 6–7h, red <6h
-  const barColors = durations.map(d =>
-    d >= 7 ? '#22C55E66' : d >= 6 ? '#F59E0B66' : '#EF444466'
+  // Bar color: green ≥7h, amber 6–7h, red <6h, transparent for no data
+  const barColors  = durations7.map(d =>
+    d === null ? 'transparent' : d >= 7 ? '#22C55E66' : d >= 6 ? '#F59E0B66' : '#EF444466'
   );
-  const barBorders = durations.map(d =>
-    d >= 7 ? '#16A34A' : d >= 6 ? '#D97706' : '#DC2626'
+  const barBorders = durations7.map(d =>
+    d === null ? 'transparent' : d >= 7 ? '#16A34A'   : d >= 6 ? '#D97706'   : '#DC2626'
   );
+  const qualityData = qualities7.map(q => q ?? null);
 
-  const isDark   = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const grid     = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const tickCol  = '#888780';
+  const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const grid    = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const tickCol = '#888780';
 
   _sleepChart = new window.Chart(canvas, {
     data: {
-      labels,
+      labels: labels7,
       datasets: [
         {
           type:            'bar',
           label:           'Duration (h)',
-          data:            durations,
+          data:            durations7,
           backgroundColor: barColors,
           borderColor:     barBorders,
           borderWidth:     1,
@@ -7321,20 +7769,23 @@ async function loadSleepTrend() {
         {
           type:            'line',
           label:           'Quality',
-          data:            qualities,
+          data:            qualityData,
           borderColor:     '#0E8F7E',
           backgroundColor: 'transparent',
           borderWidth:     2,
-          pointRadius:     logs.length > 20 ? 2 : 3,
-          pointHoverRadius:5,
+          pointRadius:     4,
+          pointHoverRadius:6,
+          pointBackgroundColor: qualityData.map(q => q !== null ? '#0E8F7E' : 'transparent'),
+          pointBorderColor:     qualityData.map(q => q !== null ? '#0E8F7E' : 'transparent'),
           tension:         0.4,
           yAxisID:         'y2',
+          spanGaps:        false,
         },
-        // 7h recommended line
+        // 7h reference line
         {
           type:        'line',
           label:       '7h target',
-          data:        logs.map(() => 7),
+          data:        Array(7).fill(7),
           borderColor: '#22C55E',
           borderWidth: 1,
           borderDash:  [5, 4],
@@ -7360,13 +7811,26 @@ async function loadSleepTrend() {
           callbacks: {
             label: ctx => {
               if (ctx.dataset.label === '7h target') return null;
+              if (ctx.parsed.y === null || ctx.parsed.y === undefined) return null;
               if (ctx.dataset.label === 'Quality') {
                 const QN = {1:'Terrible',2:'Poor',3:'Okay',4:'Good',5:'Great'};
                 return ' Quality: ' + (QN[ctx.parsed.y] || ctx.parsed.y);
               }
               return ' Duration: ' + ctx.parsed.y + 'h';
             },
+            afterBody: (items) => {
+              // If all real datasets are null for this day, show "Not logged"
+              const realItems = items.filter(i =>
+                i.dataset.label !== '7h target' &&
+                (i.parsed.y === null || i.parsed.y === undefined)
+              );
+              if (realItems.length === items.filter(i => i.dataset.label !== '7h target').length) {
+                return ['  No sleep logged'];
+              }
+              return [];
+            },
           },
+          filter: item => item.dataset.label !== '7h target',
         },
       },
       scales: {
@@ -7504,7 +7968,7 @@ async function renderCalorieTrendChart(daily) {
               const idx = items[0]?.dataIndex;
               if (idx == null) return '';
               const d = daily[idx];
-              if (!d.logged) return 'No food logged';
+              if (!d.logged) return 'Not logged';
               const diff = d.net;
               return diff >= 0
                 ? `${diff} kcal under budget`
@@ -8201,7 +8665,7 @@ async function renderWeightChart(logs, projection, stats) {
         tooltip: {
           callbacks: {
             label: ctx => {
-              if (ctx.parsed.y == null) return null;
+              if (ctx.parsed.y == null) return 'Not logged';
               return ` ${ctx.dataset.label}: ${ctx.parsed.y} kg`;
             },
           },
@@ -8484,4 +8948,276 @@ function openHealthScoreModal() {
   }
 
   document.getElementById('health-score-overlay').style.display = 'flex';
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// ONBOARDING — profile setup after new account creation
+// ════════════════════════════════════════════════════════════════
+
+let _obActivity = null;
+let _obGoal     = null;
+
+function showOnboarding() {
+  document.getElementById('onboarding-overlay').style.display = '';
+}
+
+function hideOnboarding() {
+  document.getElementById('onboarding-overlay').style.display = 'none';
+}
+
+function obShowError(msg) {
+  const el = document.getElementById('ob-error');
+  if (el) { el.textContent = msg; el.style.display = ''; }
+}
+function obHideError() {
+  const el = document.getElementById('ob-error');
+  if (el) el.style.display = 'none';
+}
+
+function obSelectActivity(btn) {
+  document.querySelectorAll('#ob-activity-grid .ob-option-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _obActivity = btn.dataset.val;
+  obHideError();
+}
+
+function obSelectGoal(btn) {
+  document.querySelectorAll('#ob-goal-grid .ob-option-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _obGoal = btn.dataset.val;
+  obHideError();
+}
+
+function obNext() {
+  obHideError();
+  const name   = (document.getElementById('ob-name')?.value || '').trim();
+  const age    = document.getElementById('ob-age')?.value;
+  const gender = document.getElementById('ob-gender')?.value;
+
+  if (!name)   { obShowError('Please enter your name'); return; }
+  if (!age || parseInt(age) < 1 || parseInt(age) > 120) {
+    obShowError('Please enter a valid age'); return;
+  }
+  if (!gender) { obShowError('Please select your biological sex'); return; }
+
+  // Advance to step 2
+  document.getElementById('ob-step-1').style.display = 'none';
+  document.getElementById('ob-step-2').style.display = '';
+  document.getElementById('ob-progress').style.background = '#0E8F7E';
+}
+
+function obBack() {
+  document.getElementById('ob-step-2').style.display = 'none';
+  document.getElementById('ob-step-1').style.display = '';
+  document.getElementById('ob-progress').style.background = 'var(--gray-150)';
+  obHideError();
+}
+
+async function obSubmit() {
+  obHideError();
+
+  if (!_obActivity) { obShowError('Please select your activity level'); return; }
+  if (!_obGoal)     { obShowError('Please select your health goal');    return; }
+
+  const name   = (document.getElementById('ob-name')?.value || '').trim();
+  const age    = parseInt(document.getElementById('ob-age')?.value);
+  const gender = document.getElementById('ob-gender')?.value;
+  const weight = parseFloat(document.getElementById('ob-weight')?.value) || null;
+  const height = parseFloat(document.getElementById('ob-height')?.value) || null;
+
+  const btn = document.getElementById('ob-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+
+  const payload = {
+    name,
+    age,
+    gender,
+    activity_level: _obActivity,
+    goal:           _obGoal,
+  };
+  // Only include weight/height if provided
+  if (weight) payload.weight_kg  = weight;
+  if (height) payload.height_cm  = height;
+
+  const r = await fetch('/api/food/profile', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify(payload),
+  }).catch(() => null);
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Start using MedEasy'; }
+
+  if (!r || !r.ok) {
+    obShowError('Failed to save profile. Please try again.');
+    return;
+  }
+
+  hideOnboarding();
+  showApp();
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// SLEEP TIME DIAL — iOS-style scroll wheel picker
+// ════════════════════════════════════════════════════════════════
+
+const _dialState = {
+  'bed-h': 11, 'bed-m': 0, 'bed-p': 1,   // 11:00 PM
+  'wake-h': 7, 'wake-m': 0, 'wake-p': 0, // 7:00 AM
+};
+
+function initSleepDials() {
+  renderDial('sdial-bed-h',  _hourItems(),    _dialState['bed-h'],  'bed-h');
+  renderDial('sdial-bed-m',  _minuteItems(),  _dialState['bed-m'],  'bed-m');
+  renderDial('sdial-bed-p',  _ampmItems(),    _dialState['bed-p'],  'bed-p');
+  renderDial('sdial-wake-h', _hourItems(),    _dialState['wake-h'], 'wake-h');
+  renderDial('sdial-wake-m', _minuteItems(),  _dialState['wake-m'], 'wake-m');
+  renderDial('sdial-wake-p', _ampmItems(),    _dialState['wake-p'], 'wake-p');
+  svUpdate();
+}
+
+function _hourItems()   { return Array.from({length:12}, (_,i) => String(i+1).padStart(2,'0')); }
+function _minuteItems() { return Array.from({length:12}, (_,i) => String(i*5).padStart(2,'0')); }
+function _ampmItems()   { return ['AM','PM']; }
+
+const ITEM_H = 32;  // px per item
+
+function renderDial(elId, items, selectedIdx, dialId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '';
+  el.dataset.items  = JSON.stringify(items);
+  el.dataset.sel    = selectedIdx;
+  el.dataset.dialId = dialId;
+
+  // Build infinite-feeling list with padding items
+  const PAD = 2;
+  for (let i = -PAD; i < items.length + PAD; i++) {
+    const div = document.createElement('div');
+    div.className = 'sdial-item';
+    const idx = ((i % items.length) + items.length) % items.length;
+    div.textContent = items[idx];
+    div.dataset.idx = idx;
+    el.appendChild(div);
+  }
+
+  // Scroll to selected
+  el.style.transform = `translateY(${-(selectedIdx + PAD) * ITEM_H + ITEM_H}px)`;
+  _bindDialEvents(el, items, dialId);
+  _highlightDial(el, selectedIdx);
+}
+
+function _highlightDial(el, selIdx) {
+  el.querySelectorAll('.sdial-item').forEach(item => {
+    item.classList.toggle('sdial-item--sel', parseInt(item.dataset.idx) === selIdx);
+  });
+}
+
+function _bindDialEvents(el, items, dialId) {
+  const PAD = 2;
+  let startY = 0, currentY = 0, startTrans = 0, isDragging = false;
+
+  function getTransY() {
+    const m = new DOMMatrix(getComputedStyle(el).transform);
+    return m.m42;
+  }
+
+  function setIndex(idx) {
+    const clamped = ((idx % items.length) + items.length) % items.length;
+    _dialState[dialId] = clamped;
+    el.dataset.sel = clamped;
+    el.style.transition = 'transform .2s cubic-bezier(.25,.8,.25,1)';
+    el.style.transform = `translateY(${-(clamped + PAD) * ITEM_H + ITEM_H}px)`;
+    _highlightDial(el, clamped);
+    svUpdate();
+  }
+
+  function snapFromOffset(offset) {
+    // offset from top of drum — which item is centred?
+    const raw = -offset / ITEM_H + 1 - PAD;
+    const rounded = Math.round(raw);
+    setIndex(rounded);
+  }
+
+  // Mouse / touch drag
+  el.addEventListener('mousedown', e => {
+    isDragging = true; startY = e.clientY; startTrans = getTransY();
+    el.style.transition = 'none';
+    el.style.cursor = 'grabbing';
+  });
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    currentY = e.clientY;
+    el.style.transform = `translateY(${startTrans + currentY - startY}px)`;
+  });
+  window.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    el.style.cursor = '';
+    snapFromOffset(getTransY());
+  });
+
+  el.addEventListener('touchstart', e => {
+    startY = e.touches[0].clientY; startTrans = getTransY();
+    el.style.transition = 'none';
+  }, {passive:true});
+  el.addEventListener('touchmove', e => {
+    currentY = e.touches[0].clientY;
+    el.style.transform = `translateY(${startTrans + currentY - startY}px)`;
+  }, {passive:true});
+  el.addEventListener('touchend', () => {
+    snapFromOffset(getTransY());
+  });
+
+  // Scroll wheel
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    const cur = parseInt(el.dataset.sel || 0);
+    setIndex(cur + (e.deltaY > 0 ? 1 : -1));
+  }, {passive:false});
+}
+
+function svUpdate() {
+  // Read dial state and compute times
+  const bh  = _dialState['bed-h'];   // 0–11 (index in _hourItems)
+  const bm  = _dialState['bed-m'];   // 0–11 (index → 0,5,10...55)
+  const bp  = _dialState['bed-p'];   // 0=AM, 1=PM
+  const wh  = _dialState['wake-h'];
+  const wm  = _dialState['wake-m'];
+  const wp  = _dialState['wake-p'];
+
+  // Convert to 24h
+  function to24(hIdx, mIdx, ampm) {
+    let h = hIdx + 1;  // 1–12
+    if (ampm === 0 && h === 12) h = 0;
+    if (ampm === 1 && h !== 12) h += 12;
+    return h * 60 + mIdx * 5;
+  }
+
+  let bedMins  = to24(bh, bm, bp);
+  let wakeMins = to24(wh, wm, wp);
+  if (wakeMins <= bedMins) wakeMins += 24 * 60;  // next day
+
+  const totalMins = wakeMins - bedMins;
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+
+  // Store hidden values for saveSleepLogFromView
+  const bedH24  = Math.floor(bedMins  / 60);
+  const bedM24  = bedMins  % 60;
+  const wakeH24 = Math.floor(wakeMins / 60) % 24;
+  const wakeM24 = wakeMins % 60;
+
+  window._svBedTime  = String(bedH24).padStart(2,'0')  + ':' + String(bedM24).padStart(2,'0');
+  window._svWakeTime = String(wakeH24).padStart(2,'0') + ':' + String(wakeM24).padStart(2,'0');
+
+  // Duration chip
+  const chip = document.getElementById('sv-duration-chip');
+  if (chip) {
+    chip.textContent = `${h}h ${m > 0 ? m + 'm' : ''}`;
+    chip.className = 'sdial-duration ' +
+      (h >= 7 ? 'sdial-dur--good' : h >= 5 ? 'sdial-dur--ok' : 'sdial-dur--low');
+  }
 }

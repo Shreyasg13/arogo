@@ -1,5 +1,6 @@
 """routes/fitness.py — Fitness activities, calendar, consistency, sync."""
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from auth import require_auth
 import os, json as json_mod
 from db import *
 from config import Config
@@ -10,10 +11,12 @@ bp = Blueprint("fitness", __name__)
 # ── Fitness ───────────────────────────────────────────────────────────────────
 
 @bp.route('/api/fitness/activities', methods=['GET'])
+@require_auth
 def get_activities():
     return jsonify(list_activities())
 
 @bp.route('/api/fitness/activities', methods=['POST'])
+@require_auth
 def add_activity():
     data = request.json or {}
     data['source'] = data.get('source', 'manual')
@@ -21,31 +24,37 @@ def add_activity():
     return jsonify({'success': True, 'activity': act})
 
 @bp.route('/api/fitness/activities/<aid>', methods=['DELETE'])
+@require_auth
 def del_activity(aid):
     delete_activity(aid)
     return jsonify({'success': True})
 
 @bp.route('/api/fitness/stats')
+@require_auth
 def fit_stats():
     return jsonify(fitness_stats())
 
 @bp.route('/api/fitness/sync-log')
+@require_auth
 def sync_log():
     service = request.args.get('service')
     return jsonify(get_sync_history(service=service, limit=20))
 
 @bp.route('/api/fitness/connected')
+@require_auth
 def connected_services():
     tokens = list_tokens()
     return jsonify(tokens)
 
 @bp.route('/api/fitness/disconnect', methods=['POST'])
+@require_auth
 def disconnect_service():
     service = (request.json or {}).get('service')
     if service: delete_token(service)
     return jsonify({'success': True})
 
 @bp.route('/api/fitness/calendar')
+@require_auth
 def fitness_calendar():
     """Return all activity dates + metadata for calendar rendering."""
     import datetime as dt
@@ -70,6 +79,7 @@ def fitness_calendar():
     return jsonify(cal)
 
 @bp.route('/api/fitness/consistency')
+@require_auth
 def fitness_consistency():
     """Streak, active days, best week, monthly breakdown."""
     import datetime as dt
@@ -138,6 +148,7 @@ def fitness_consistency():
     })
 
 @bp.route('/api/fitness/service-status')
+@require_auth
 def service_status():
     """Returns which services have credentials configured and which are connected."""
     configured = {
@@ -159,6 +170,7 @@ def service_status():
     })
 
 @bp.route('/api/fitness/sync', methods=['POST'])
+@require_auth
 def manual_sync():
     """Trigger an immediate sync for one or all services."""
     service = (request.json or {}).get('service', 'all')
@@ -181,6 +193,7 @@ def manual_sync():
 # ── Apple Health import ───────────────────────────────────────────────────────
 
 @bp.route('/api/fitness/apple/import', methods=['POST'])
+@require_auth
 def apple_import():
     """
     Upload the export.xml (or a ZIP containing it) from iPhone.

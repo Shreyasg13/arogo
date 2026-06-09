@@ -1,11 +1,11 @@
 """
-config.py — Central configuration for MediScan Health OS
+config.py — Central configuration for MedEasy Health OS
 """
 import os
 
 class Config:
     # ── Database ──────────────────────────────────────────────
-    DB_PATH = os.environ.get('MEDISCAN_DB', 'mediscan.db')
+    DB_PATH = os.environ.get('MEDEASY_DB', 'medeasy.db')
 
     # ── File upload ───────────────────────────────────────────
     UPLOAD_FOLDER    = 'uploads'
@@ -28,4 +28,4 @@ class Config:
 
 class ProductionConfig(Config):
     DEBUG = False
-    DB_PATH = os.environ.get('MEDISCAN_DB', '/data/mediscan.db')
+    DB_PATH = os.environ.get('MEDEASY_DB', '/data/medeasy.db')

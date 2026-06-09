@@ -1,5 +1,6 @@
 """routes/reports.py — Medical reports: upload, list, delete, stats."""
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from auth import require_auth
 import os, json as json_mod
 from db import *
 from config import Config
@@ -11,6 +12,7 @@ bp = Blueprint("reports", __name__)
 # ── Reports ───────────────────────────────────────────────────────────────────
 
 @bp.route('/api/upload', methods=['POST'])
+@require_auth
 def upload():
     if 'file' not in request.files: return jsonify({'error': 'No file'}), 400
     f = request.files['file']
@@ -33,6 +35,7 @@ def upload():
     return jsonify({'success': True, 'report': report})
 
 @bp.route('/api/reports')
+@require_auth
 def get_reports():
     return jsonify(list_reports(
         search=request.args.get('search',''),
@@ -41,6 +44,7 @@ def get_reports():
     ))
 
 @bp.route('/api/reports/<rid>', methods=['DELETE'])
+@require_auth
 def del_report(rid):
     r = get_report(rid)
     if r:
@@ -51,10 +55,12 @@ def del_report(rid):
     return jsonify({'error': 'Not found'}), 404
 
 @bp.route('/api/stats')
+@require_auth
 def stats():
     return jsonify(report_stats())
 
 @bp.route('/uploads/<filename>')
+@require_auth
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 

@@ -1,5 +1,5 @@
 """
-app.py — MediScan Health OS.
+app.py — MedEasy Health OS.
 
 Usage:
     python app.py
@@ -51,8 +51,9 @@ def create_app(config=Config):
     app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 
-    # ── Try blueprint-based routing first, fall back to inline routes ─────────
+    # ── Register blueprints ───────────────────────────────────────────────────
     try:
+        from routes.auth     import bp as auth_bp
         from routes.reports   import bp as reports_bp
         from routes.medicines import bp as medicines_bp
         from routes.fitness   import bp as fitness_bp
@@ -61,6 +62,7 @@ def create_app(config=Config):
         from routes.wellness  import bp as wellness_bp
         from routes.insights  import bp as insights_bp
 
+        app.register_blueprint(auth_bp)
         app.register_blueprint(reports_bp)
         app.register_blueprint(medicines_bp)
         app.register_blueprint(fitness_bp)
@@ -69,10 +71,34 @@ def create_app(config=Config):
         app.register_blueprint(wellness_bp)
         app.register_blueprint(insights_bp)
 
-    except ImportError:
-        # routes/ package not present — register all routes inline from
-        # the original monolithic app logic already in database.py/app.py
+    except ImportError as e:
+        import sys
+        print(f'[WARN] Blueprint import failed: {e}', file=sys.stderr)
+        print('[WARN] Falling back to inline routes (auth will not be available)', file=sys.stderr)
         _register_inline_routes(app)
+
+    @app.after_request
+    def apply_security_headers(response):
+        try:
+            from auth import add_security_headers
+            return add_security_headers(response)
+        except Exception:
+            return response
+
+    # Return JSON for 404s instead of HTML (prevents JSON.parse errors)
+    @app.errorhandler(404)
+    def not_found(e):
+        from flask import jsonify, request
+        if request.path.startswith('/api/') or request.path.startswith('/auth/'):
+            return jsonify({'error': 'Route not found', 'path': request.path}), 404
+        return e
+
+    @app.errorhandler(405)
+    def method_not_allowed(e):
+        from flask import jsonify, request
+        if request.path.startswith('/api/') or request.path.startswith('/auth/'):
+            return jsonify({'error': 'Method not allowed'}), 405
+        return e
 
     @app.route('/')
     def index():
@@ -92,20 +118,24 @@ def _register_inline_routes(app):
 
     # ── Stats ──────────────────────────────────────────────────────────────────
     @app.route('/api/stats')
+    @require_auth
     def api_stats():
         return jsonify(report_stats())
 
     # ── Reports ────────────────────────────────────────────────────────────────
     @app.route('/api/reports')
+    @require_auth
     def api_reports():
         return jsonify(list_reports())
 
     @app.route('/api/reports/<rid>', methods=['DELETE'])
+    @require_auth
     def api_del_report(rid):
         delete_report(rid)
         return jsonify({'success': True})
 
     @app.route('/api/upload', methods=['POST'])
+    @require_auth
     def api_upload():
         from werkzeug.utils import secure_filename
         import uuid, datetime
@@ -123,35 +153,42 @@ def _register_inline_routes(app):
 
     # ── Medicines ──────────────────────────────────────────────────────────────
     @app.route('/api/medicines')
+    @require_auth
     def api_medicines():
         return jsonify(list_medicines())
 
     @app.route('/api/medicines', methods=['POST'])
+    @require_auth
     def api_add_medicine():
         med = insert_medicine(request.json or {})
         return jsonify({'success': True, 'medicine': med})
 
     @app.route('/api/medicines/<mid>', methods=['DELETE'])
+    @require_auth
     def api_del_medicine(mid):
         delete_medicine(mid)
         return jsonify({'success': True})
 
     @app.route('/api/medicines/<mid>/toggle', methods=['POST'])
+    @require_auth
     def api_toggle_medicine(mid):
         toggle_medicine(mid)
         return jsonify({'success': True})
 
     @app.route('/api/medicines/today')
+    @require_auth
     def api_today_doses():
         return jsonify(get_today_doses())
 
     @app.route('/api/medicines/<mid>/log', methods=['POST'])
+    @require_auth
     def api_log_dose(mid):
         d = request.json or {}
         log_dose(mid, d.get('scheduled',''), d.get('taken', True))
         return jsonify({'success': True})
 
     @app.route('/api/medicines/<mid>/stock', methods=['POST'])
+    @require_auth
     def api_update_stock(mid):
         d = request.json or {}
         update_medicine_stock(mid, int(d.get('pill_count',0)),
@@ -160,98 +197,119 @@ def _register_inline_routes(app):
         return jsonify({'success': True})
 
     @app.route('/api/medicines/low-stock')
+    @require_auth
     def api_low_stock():
         return jsonify(get_low_stock_medicines())
 
     @app.route('/api/medicines/adherence')
+    @require_auth
     def api_med_adherence():
         return jsonify({'medicines': list_medicines()})
 
     # ── Fitness ────────────────────────────────────────────────────────────────
     @app.route('/api/fitness/stats')
+    @require_auth
     def api_fitness_stats():
         return jsonify(fitness_stats())
 
     @app.route('/api/fitness/activities')
+    @require_auth
     def api_list_activities():
         return jsonify(list_activities())
 
     @app.route('/api/fitness/activities', methods=['POST'])
+    @require_auth
     def api_add_activity():
         act = insert_activity(request.json or {})
         return jsonify({'success': True, 'activity': act})
 
     @app.route('/api/fitness/activities/<aid>', methods=['DELETE'])
+    @require_auth
     def api_del_activity(aid):
         delete_activity(aid)
         return jsonify({'success': True})
 
     @app.route('/api/fitness/calendar')
+    @require_auth
     def api_fitness_calendar():
         return jsonify(list_activities())
 
     @app.route('/api/fitness/consistency')
+    @require_auth
     def api_fitness_consistency():
         return jsonify(list_activities())
 
     @app.route('/api/fitness/connected')
+    @require_auth
     def api_fitness_connected():
         return jsonify(list_tokens())
 
     @app.route('/api/fitness/sync', methods=['POST'])
+    @require_auth
     def api_fitness_sync():
         return jsonify({'success': True, 'synced': 0})
 
     @app.route('/api/fitness/sync-log')
+    @require_auth
     def api_sync_log():
         return jsonify(get_sync_history())
 
     @app.route('/api/fitness/service-status')
+    @require_auth
     def api_service_status():
         return jsonify({})
 
     @app.route('/api/fitness/disconnect', methods=['POST'])
+    @require_auth
     def api_disconnect():
         d = request.json or {}
         delete_token(d.get('service',''))
         return jsonify({'success': True})
 
     @app.route('/api/fitness/apple/import', methods=['POST'])
+    @require_auth
     def api_apple_import():
         return jsonify({'success': True, 'imported': 0})
 
     # ── Food ───────────────────────────────────────────────────────────────────
     @app.route('/api/food/profile')
+    @require_auth
     def api_food_profile():
         p = get_profile()
         return jsonify({'profile': p, 'targets': calc_tdee(p)})
 
     @app.route('/api/food/profile', methods=['POST'])
+    @require_auth
     def api_save_profile():
         p = update_profile(request.json or {})
         return jsonify({'success': True, 'profile': p, 'targets': calc_tdee(p)})
 
     @app.route('/api/food/log/<date_key>')
+    @require_auth
     def api_food_log(date_key):
         p = get_profile()
         return jsonify({'logs': get_food_logs(date_key), 'summary': get_nutrition_summary(date_key),
                         'targets': calc_tdee(p)})
 
     @app.route('/api/food/log', methods=['POST'])
+    @require_auth
     def api_add_food():
         entry = log_food(request.json or {})
         return jsonify({'success': True, 'entry': entry})
 
     @app.route('/api/food/log/<lid>', methods=['DELETE'])
+    @require_auth
     def api_del_food(lid):
         delete_food_log(lid)
         return jsonify({'success': True})
 
     @app.route('/api/food/weekly')
+    @require_auth
     def api_food_weekly():
         return jsonify(get_weekly_nutrition())
 
     @app.route('/api/food/db')
+    @require_auth
     def api_food_db():
         try:
             from food_data import search_food, CATEGORIES
@@ -281,6 +339,7 @@ def _register_inline_routes(app):
                         'custom_count': len(list_custom_foods())})
 
     @app.route('/api/food/custom', methods=['POST'])
+    @require_auth
     def api_save_custom():
         d = request.json or {}
         if not d.get('name'):
@@ -289,16 +348,19 @@ def _register_inline_routes(app):
         return jsonify({'success': True, 'food': food})
 
     @app.route('/api/food/custom')
+    @require_auth
     def api_list_custom():
         return jsonify(list_custom_foods())
 
     @app.route('/api/food/custom/<fid>', methods=['DELETE'])
+    @require_auth
     def api_del_custom(fid):
         execute("DELETE FROM custom_foods WHERE id=?", (fid,), commit=True)
         return jsonify({'success': True})
 
     # ── Wellness ───────────────────────────────────────────────────────────────
     @app.route('/api/wellness/today')
+    @require_auth
     def api_wellness_today():
         today = today_iso()
         hyd   = get_hydration_day(today)
@@ -314,69 +376,84 @@ def _register_inline_routes(app):
         })
 
     @app.route('/api/thoughts/<date_key>')
+    @require_auth
     def api_get_thoughts(date_key):
         return jsonify(get_thoughts(date_key))
 
     @app.route('/api/thoughts', methods=['POST'])
+    @require_auth
     def api_save_thought():
         t = save_thought(request.json or {})
         return jsonify({'success': True, 'thought': t})
 
     @app.route('/api/thoughts/<tid>', methods=['PUT'])
+    @require_auth
     def api_update_thought(tid):
         t = update_thought(tid, request.json or {})
         return jsonify({'success': True, 'thought': t})
 
     @app.route('/api/thoughts/<tid>', methods=['DELETE'])
+    @require_auth
     def api_del_thought(tid):
         delete_thought(tid)
         return jsonify({'success': True})
 
     @app.route('/api/thoughts/range/week')
+    @require_auth
     def api_thoughts_week():
         return jsonify(get_thoughts_range(7))
 
     @app.route('/api/thoughts')
+    @require_auth
     def api_thoughts_list():
         return jsonify(get_thoughts_range(30))
 
     @app.route('/api/todos')
+    @require_auth
     def api_todos():
         return jsonify({'todos': list_todos()})
 
     @app.route('/api/todos', methods=['POST'])
+    @require_auth
     def api_create_todo():
         t = create_todo(request.json or {})
         return jsonify({'success': True, 'todo': t})
 
     @app.route('/api/todos/<tid>', methods=['PUT'])
+    @require_auth
     def api_update_todo(tid):
         t = update_todo(tid, request.json or {})
         return jsonify({'success': True, 'todo': t})
 
     @app.route('/api/todos/<tid>', methods=['DELETE'])
+    @require_auth
     def api_del_todo(tid):
         delete_todo(tid)
         return jsonify({'success': True})
 
     @app.route('/api/todos/<tid>/toggle', methods=['POST'])
+    @require_auth
     def api_toggle_todo(tid):
         toggle_todo(tid)
         return jsonify({'success': True})
 
     @app.route('/api/todos/reminders/due')
+    @require_auth
     def api_due_reminders():
         return jsonify(get_due_reminders())
 
     @app.route('/api/hydration/<date_key>')
+    @require_auth
     def api_hydration_day(date_key):
         return jsonify(get_hydration_day(date_key))
 
     @app.route('/api/hydration/week')
+    @require_auth
     def api_hydration_week():
         return jsonify(get_hydration_week())
 
     @app.route('/api/hydration', methods=['POST'])
+    @require_auth
     def api_log_hydration():
         d = request.json or {}
         log_hydration(d.get('amount_ml', 250),
@@ -385,124 +462,149 @@ def _register_inline_routes(app):
         return jsonify({'success': True})
 
     @app.route('/api/hydration/<lid>', methods=['DELETE'])
+    @require_auth
     def api_del_hydration(lid):
         delete_hydration_log(lid)
         return jsonify({'success': True})
 
     @app.route('/api/sleep')
+    @require_auth
     def api_sleep():
         days = int(request.args.get('days', 14))
         return jsonify(get_sleep_logs(days))
 
     @app.route('/api/sleep', methods=['POST'])
+    @require_auth
     def api_log_sleep():
         s = log_sleep(request.json or {})
         return jsonify({'success': True, 'log': s})
 
     @app.route('/api/sleep/<lid>', methods=['DELETE'])
+    @require_auth
     def api_del_sleep(lid):
         delete_sleep_log(lid)
         return jsonify({'success': True})
 
     @app.route('/api/body-metrics')
+    @require_auth
     def api_body_metrics():
         return jsonify(get_body_metrics())
 
     @app.route('/api/body-metrics', methods=['POST'])
+    @require_auth
     def api_log_body():
         m = log_body_metric(request.json or {})
         return jsonify({'success': True, 'metric': m})
 
     @app.route('/api/habits')
+    @require_auth
     def api_habits():
         return jsonify(get_habit_stats())
 
     @app.route('/api/habits', methods=['POST'])
+    @require_auth
     def api_create_habit():
         h = create_habit(request.json or {})
         return jsonify({'success': True, 'habit': h})
 
     @app.route('/api/habits/<hid>', methods=['DELETE'])
+    @require_auth
     def api_del_habit(hid):
         delete_habit(hid)
         return jsonify({'success': True})
 
     @app.route('/api/habits/<hid>/toggle', methods=['POST'])
+    @require_auth
     def api_toggle_habit(hid):
         d = request.json or {}
         toggle_habit_log(hid, d.get('date_key', today_iso()))
         return jsonify({'success': True})
 
     @app.route('/api/symptoms')
+    @require_auth
     def api_symptoms():
         days = int(request.args.get('days', 14))
         return jsonify(get_symptoms(days))
 
     @app.route('/api/symptoms', methods=['POST'])
+    @require_auth
     def api_log_symptom():
         s = log_symptom(request.json or {})
         return jsonify({'success': True, 'symptom': s})
 
     @app.route('/api/symptoms/<sid>', methods=['DELETE'])
+    @require_auth
     def api_del_symptom(sid):
         delete_symptom(sid)
         return jsonify({'success': True})
 
     @app.route('/api/vitals')
+    @require_auth
     def api_vitals():
         return jsonify(get_vitals())
 
     @app.route('/api/vitals', methods=['POST'])
+    @require_auth
     def api_log_vital():
         v = log_vital(request.json or {})
         return jsonify({'success': True, 'vital': v})
 
     @app.route('/api/vitals/<vid>', methods=['DELETE'])
+    @require_auth
     def api_del_vital(vid):
         delete_vital(vid)
         return jsonify({'success': True})
 
     @app.route('/api/emergency')
+    @require_auth
     def api_emergency():
         return jsonify(get_emergency_info())
 
     @app.route('/api/emergency', methods=['POST'])
+    @require_auth
     def api_save_emergency():
         save_emergency_info(request.json or {})
         return jsonify({'success': True})
 
     # ── Insights ───────────────────────────────────────────────────────────────
     @app.route('/api/notifications')
+    @require_auth
     def api_notifications():
         limit = int(request.args.get('limit', 50))
         notes = get_notifications(limit)
         return jsonify({'notifications': notes, 'unread': unread_notification_count()})
 
     @app.route('/api/notifications', methods=['POST'])
+    @require_auth
     def api_add_notif():
         d = request.json or {}
         n = add_notification(d.get('type','system'), d.get('title',''), d.get('body',''))
         return jsonify({'success': True, 'notification': n})
 
     @app.route('/api/notifications/<nid>/read', methods=['POST'])
+    @require_auth
     def api_notif_read(nid):
         mark_notification_read(nid)
         return jsonify({'success': True, 'unread': unread_notification_count()})
 
     @app.route('/api/notifications/read-all', methods=['POST'])
+    @require_auth
     def api_notif_read_all():
         mark_all_notifications_read()
         return jsonify({'success': True})
 
     @app.route('/api/report/weekly')
+    @require_auth
     def api_weekly_report():
         return jsonify(generate_weekly_report())
 
     @app.route('/api/progress')
+    @require_auth
     def api_progress():
         return jsonify(get_goal_progress())
 
     @app.route('/api/search')
+    @require_auth
     def api_search():
         q = request.args.get('q','').strip()
         if len(q) < 2:
@@ -510,6 +612,7 @@ def _register_inline_routes(app):
         return jsonify(global_search(q))
 
     @app.route('/api/export/counts')
+    @require_auth
     def api_export_counts():
         from_d = request.args.get('from', '2000-01-01')
         to_d   = request.args.get('to',   today_iso())
@@ -529,6 +632,7 @@ def _register_inline_routes(app):
         return jsonify(counts)
 
     @app.route('/api/export')
+    @require_auth
     def api_export():
         import csv, io
         fmt      = request.args.get('format', 'json')
@@ -556,12 +660,12 @@ def _register_inline_routes(app):
 
         import datetime as _dt
         meta = {'exported_at': _dt.datetime.now().isoformat(), 'from': from_d, 'to': to_d,
-                'sections': list(data.keys()), 'app': 'MediScan Health OS'}
+                'sections': list(data.keys()), 'app': 'MedEasy Health OS'}
 
-        fname = f"mediscan_{from_d}_to_{to_d}"
+        fname = f"medeasy_{from_d}_to_{to_d}"
         if fmt == 'csv':
             output = io.StringIO()
-            output.write("# MediScan Health OS Export\n")
+            output.write("# MedEasy Health OS Export\n")
             for sec, rows in data.items():
                 if not rows: continue
                 output.write(f"\n# {sec.upper().replace('_',' ')}\n")

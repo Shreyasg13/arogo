@@ -3754,15 +3754,15 @@ body { font-family:'DM Sans',sans-serif; background:var(--gray-25); color:var(--
    ════════════════════════════════════════ */
 
 .sleep-stat-card {
-  background: var(--gray-50); border-radius: 10px; padding: 12px 14px;
+  background: var(--gray-50); border-radius: 10px; padding: 10px 12px;
   text-align: center;
 }
 .sleep-stat-val {
-  font-size: 18px; font-weight: 700; color: var(--gray-900);
-  font-family: 'DM Serif Display', serif; line-height: 1.1;
+  font-size: 16px; font-weight: 700; color: var(--gray-900);
+  font-family: 'DM Sans', sans-serif; letter-spacing: -.02em; line-height: 1.2;
 }
 .sleep-stat-lab {
-  font-size: 11px; color: var(--gray-400); margin-top: 4px;
+  font-size: 10.5px; color: var(--gray-400); margin-top: 3px; letter-spacing: .01em;
 }
 
 .sleep-week-card {
@@ -4237,3 +4237,120 @@ body { font-family:'DM Sans',sans-serif; background:var(--gray-25); color:var(--
   background: var(--gray-50); border-radius: 8px;
   font-size: 12.5px; color: var(--gray-500); text-align: center;
 }
+
+/* ════════════════════════════════════════
+   ONBOARDING MODAL
+   ════════════════════════════════════════ */
+.ob-option-btn {
+  padding: 12px 14px; border: 1.5px solid var(--gray-150);
+  border-radius: 10px; cursor: pointer; background: var(--gray-0);
+  text-align: left; transition: all .15s; width: 100%;
+  font-family: 'DM Sans', sans-serif;
+}
+.ob-option-btn:hover   { border-color: var(--teal-400); background: var(--teal-50); }
+.ob-option-btn.active  { border-color: var(--teal-600); background: var(--teal-50); }
+.ob-opt-title { font-size: 13px; font-weight: 600; color: var(--gray-800); }
+.ob-opt-sub   { font-size: 11.5px; color: var(--gray-400); margin-top: 2px; }
+
+
+
+
+
+/* ════════════════════════════════════════
+   SLEEP STEPPER PICKER
+   ════════════════════════════════════════ */
+
+.stp-row {
+  display: flex; align-items: flex-start; gap: 6px;
+  margin-bottom: 4px;
+}
+
+.stp-block {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.stp-icon  { font-size: 18px; line-height: 1; }
+.stp-label {
+  font-size: 12px; font-weight: 600; color: var(--gray-700);
+  letter-spacing: .01em;
+}
+.stp-sub { font-size: 10.5px; color: var(--gray-400); margin-bottom: 6px; }
+
+.stp-mid {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding-top: 48px; flex-shrink: 0;
+}
+.stp-arrow-icon { font-size: 16px; color: var(--gray-300); }
+
+/* Duration chip */
+.stp-dur-chip {
+  font-size: 12px; font-weight: 700; padding: 4px 10px;
+  border-radius: 99px; white-space: nowrap; letter-spacing: -.01em;
+}
+.stp-dur--good { background: #DCFCE7; color: #15803D; }
+.stp-dur--ok   { background: #FEF3C7; color: #92400E; }
+.stp-dur--low  { background: #FEE2E2; color: #DC2626; }
+
+/* Picker widget */
+.stp-picker {
+  display: flex; align-items: center; gap: 2px;
+  background: var(--gray-50); border: 1px solid var(--gray-150);
+  border-radius: 12px; padding: 6px 8px;
+  width: 100%;
+}
+.stp-col {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+}
+.stp-col--ampm { flex: 0 0 34px; }
+
+.stp-arrow {
+  width: 28px; height: 22px; border: none; background: none;
+  color: var(--gray-300); font-size: 10px; cursor: pointer;
+  border-radius: 6px; transition: all .1s;
+  display: flex; align-items: center; justify-content: center;
+}
+.stp-arrow:hover { background: var(--gray-100); color: var(--gray-600); }
+.stp-arrow:active { transform: scale(.92); }
+
+.stp-val {
+  font-size: 26px; font-weight: 700; color: var(--gray-900);
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: -.03em; line-height: 1;
+  min-width: 36px; text-align: center;
+}
+
+.stp-colon {
+  font-size: 22px; font-weight: 700; color: var(--gray-400);
+  padding: 0 1px; line-height: 1; margin-top: 4px;
+}
+
+.stp-ampm-btn {
+  width: 34px; height: 34px; border: none; border-radius: 8px;
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  background: var(--gray-100); color: var(--gray-600);
+  font-family: 'DM Sans', sans-serif;
+  transition: all .15s; letter-spacing: .02em;
+}
+.stp-ampm-btn:hover { opacity: .85; }
+
+/* Section labels */
+.stp-section-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--gray-400); margin-bottom: 8px;
+}
+
+/* Quality buttons (reused from dial) */
+.sdial-quality-row {
+  display: flex; gap: 6px;
+}
+.sdial-q-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 8px 4px; border: 1.5px solid var(--gray-150); border-radius: 10px;
+  cursor: pointer; background: var(--gray-0); transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.sdial-q-btn:hover  { border-color: var(--teal-300); background: var(--teal-50); }
+.sdial-q-btn.active { border-color: var(--teal-600); background: var(--teal-50); }
+.sdial-q-emoji { font-size: 18px; line-height: 1; }
+.sdial-q-label { font-size: 10.5px; color: var(--gray-500); font-weight: 500; }
+.sdial-q-btn.active .sdial-q-label { color: var(--teal-700); }
