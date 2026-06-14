@@ -5,6 +5,32 @@
 
 let _currentUser = null;
 
+// ── Date helpers — always use LOCAL date, never UTC ───────────
+// new Date().toISOString() returns UTC — wrong for users in UTC+N timezones.
+// Example: in India (UTC+5:30) at 11pm, toISOString() gives yesterday's date.
+function localToday() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function localDatetime(date) {
+  // Return YYYY-MM-DDTHH:MM in local time for datetime-local inputs
+  const d = date || new Date();
+  const y  = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  const da = String(d.getDate()).padStart(2, '0');
+  const h  = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${mo}-${da}T${h}:${mi}`;
+}
+
+function browserTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 // Called on page load — check if we have a valid session
 async function initAuth() {
   const r = await fetch('/auth/me', {credentials: 'same-origin'}).catch(() => null);
@@ -37,6 +63,14 @@ function showApp() {
   const nameEl = document.getElementById('header-user-name');
   if (nameEl && _currentUser) nameEl.textContent = _currentUser.name || _currentUser.email;
 
+  // Sync browser timezone to profile (silently, no await needed)
+  fetch('/api/food/profile', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({ timezone: browserTimezone() }),
+  }).catch(() => {});
+
   // Run all setup functions that DOMContentLoaded used to run
   try { setGreeting(); }             catch(e) {}
   try { setDates(); }                catch(e) {}
@@ -56,7 +90,7 @@ function showApp() {
   try { scheduleTodoReminderChecks(); } catch(e) {}
 
   const tdp = document.getElementById('thoughts-date-picker');
-  if (tdp) tdp.value = new Date().toISOString().split('T')[0];
+  if (tdp) tdp.value = localToday();
 
   // Load the dashboard
   switchView('dashboard');
@@ -223,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
   scheduleTodoReminderChecks();
   // Init date pickers
   const tdp = document.getElementById('thoughts-date-picker');
-  if (tdp) tdp.value = new Date().toISOString().split('T')[0];
+  if (tdp) tdp.value = localToday();
 });
 
 // ── Greeting & Date ──
@@ -239,7 +273,7 @@ function setGreeting() {
 }
 
 function setDates() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   ['report-date','med-start-date','activity-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = today;
@@ -273,7 +307,7 @@ function switchView(view) {
   if (navEl)  navEl.classList.add('active');
 
   if (view === 'dashboard')     { loadDashboard(); loadWellnessStrip(); }
-  if (view === 'food')          { loadFoodTracker(); loadHydration(new Date().toISOString().split('T')[0]); }
+  if (view === 'food')          { loadFoodTracker(); loadHydration(localToday()); }
   if (view === 'fitness')       { loadFitness(); loadConnectedServices(); }
   if (view === 'medicines')     loadMedicines();
   if (view === 'reports')       loadReports();
@@ -288,7 +322,7 @@ function switchView(view) {
 
 // ── Dashboard ──
 async function loadDashboard() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   const [doses, fitnessStats, reportStats, foodDay, profile] = await Promise.all([
     fetch('/api/medicines/today').then(r => r.json()).catch(() => []),
     fetch('/api/fitness/stats').then(r => r.json()).catch(() => ({})),
@@ -415,7 +449,7 @@ async function openCalorieBreakdown() {
   const budget   = t.budget   || target;   // target + burned
   const net      = t.net      || 0;
   const pct      = Math.min(Math.round((eaten / budget) * 100), 150);
-  const today    = new Date().toISOString().split('T')[0];
+  const today    = localToday();
 
   // Date label
   const d = new Date(today + 'T12:00:00');
@@ -551,7 +585,7 @@ function renderWeeklyChart(days) {
   el.innerHTML = entries.map(([date, data], i) => {
     const calH = Math.round((data.calories / maxCal) * 90);
     const minH = Math.round((data.duration / maxMin) * 90);
-    const isToday = date === new Date().toISOString().split('T')[0];
+    const isToday = date === localToday();
     return `
       <div class="week-bar-col">
         <div class="week-bar-wrap">
@@ -862,7 +896,7 @@ function renderMedicinesGrid(meds) {
 }
 
 async function markDoseTaken(medId, time, el) {
-  const date = new Date().toISOString().split('T')[0];
+  const date = localToday();
   await fetch(`/api/medicines/${medId}/log`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ date, time, taken:true }) });
   showToast('Dose marked as taken ✓', 'success');
   loadMedicines();
@@ -1050,7 +1084,7 @@ self.addEventListener('notificationclick', e => {
       fetch('/api/medicines/' + med_id + '/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: new Date().toISOString().split('T')[0], time, taken: true })
+        body: JSON.stringify({ date: localToday(), time, taken: true })
       }).then(() =>
         self.registration.showNotification('Dose Logged', {
           body: med_name + ' marked as taken',
@@ -1103,7 +1137,7 @@ function openActivityModal() {
 function openConnectModal() { document.getElementById('connect-modal-overlay').style.display = 'flex'; }
 
 async function loadFitness() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   const [stats, activities, consistency, foodDay, profile] = await Promise.all([
     fetch('/api/fitness/stats').then(r => r.json()).catch(() => ({})),
     fetch('/api/fitness/activities').then(r => r.json()).catch(() => []),
@@ -2412,7 +2446,7 @@ function formatDate(dateStr) {
 // FOOD TRACKER
 // ════════════════════════════════════════════════════════════════
 
-let foodDate    = new Date().toISOString().split('T')[0];
+let foodDate    = localToday();
 let foodTargets = {};
 let selectedMealType = 'lunch';
 let selectedFoodItem = null;
@@ -2460,7 +2494,7 @@ async function loadFoodTracker() {
   const lbl = document.getElementById('food-date-label');
   if (lbl) {
     const d = new Date(foodDate + 'T12:00:00');
-    const today = new Date().toISOString().split('T')[0];
+    const today = localToday();
     lbl.textContent = foodDate === today
       ? "Today's nutrition"
       : d.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
@@ -2495,24 +2529,35 @@ async function loadFoodTracker() {
 
 // ── Macro rings ──────────────────────────────────────────────────────────────
 function updateRings(totals, targets) {
-  const rings = [
-    { key:'calories', id:'cal',   target: targets.target_calories || 2000, unit:'kcal', fmt: v => Math.round(v) },
-    { key:'protein',  id:'prot',  target: targets.protein_g || 56,         unit:'g',    fmt: v => Math.round(v) },
-    { key:'carbs',    id:'carbs', target: targets.carbs_g || 250,           unit:'g',    fmt: v => Math.round(v) },
-    { key:'fat',      id:'fat',   target: targets.fat_g || 65,              unit:'g',    fmt: v => Math.round(v) },
-    { key:'fiber',    id:'fiber', target: targets.fiber_g || 30,            unit:'g',    fmt: v => Math.round(v) },
+  const macros = [
+    { key:'calories', id:'cal',   target: targets?.target_calories || 2000, unit:'kcal', color:'#0E8F7E' },
+    { key:'protein',  id:'prot',  target: targets?.protein_g  || 56,        unit:'g',    color:'#2563EB' },
+    { key:'carbs',    id:'carbs', target: targets?.carbs_g    || 250,        unit:'g',    color:'#D97706' },
+    { key:'fat',      id:'fat',   target: targets?.fat_g      || 65,         unit:'g',    color:'#7C3AED' },
+    { key:'fiber',    id:'fiber', target: targets?.fiber_g    || 30,         unit:'g',    color:'#16A34A' },
   ];
 
-  const C = 201; // stroke-dasharray = 2 * π * r(32) ≈ 201
+  macros.forEach(m => {
+    const val = Math.round(totals?.[m.key] || 0);
+    const pct = Math.min((val / m.target) * 100, 100).toFixed(0);
 
-  rings.forEach(r => {
-    const val  = totals[r.key] || 0;
-    const pct  = Math.min(val / r.target, 1);
-    const offset = C - pct * C;
-    const ring = document.getElementById(`ring-${r.id}`);
-    if (ring) ring.style.strokeDashoffset = offset.toFixed(1);
-    setText(`ring-${r.id}-val`,    r.fmt(val));
-    setText(`ring-${r.id}-target`, `/ ${r.fmt(r.target)}${r.unit !== 'kcal' ? r.unit : ''}`);
+    // Compact bar — value
+    const valEl = document.getElementById(`fmc-${m.id}`);
+    if (valEl) valEl.textContent = m.id === 'cal' ? val : val + 'g';
+
+    // Compact bar — progress bar width
+    const barEl = document.getElementById(`fmc-bar-${m.id}`);
+    if (barEl) barEl.style.width = pct + '%';
+
+    // Compact bar — target label
+    const tgtEl = document.getElementById(`fmc-${m.id}-target`);
+    if (tgtEl) tgtEl.textContent = `/ ${m.target}${m.id !== 'cal' ? 'g' : ''}`;
+
+    // Legacy ring SVG support (kept in case rings still exist somewhere)
+    const ring = document.getElementById(`ring-${m.id}`);
+    if (ring) ring.style.strokeDashoffset = (201 - (pct / 100) * 201).toFixed(1);
+    setText(`ring-${m.id}-val`,    val);
+    setText(`ring-${m.id}-target`, `/ ${m.target}${m.unit !== 'kcal' ? m.unit : ''}`);
   });
 }
 
@@ -2521,32 +2566,59 @@ function renderMealSections(byMeal) {
   const el = document.getElementById('meal-sections');
   if (!el) return;
 
-  // Always render all 4 meal sections in fixed order,
-  // whether or not anything has been logged for the day.
-  el.innerHTML = MEAL_ORDER.map(mtype => {
+  const today    = localToday();
+  const isPast   = foodDate < today;
+  const isFuture = foodDate > today;
+
+  // Past date banner
+  const pastBanner = isPast ? `
+    <div style="background:var(--teal-50);border:1px solid var(--teal-100);border-radius:10px;
+                padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;
+                font-size:13px;color:var(--teal-800)">
+      <span>📅</span>
+      <span>Viewing <strong>${new Date(foodDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</strong>
+       — you can still add, edit, or delete items for this day.</span>
+    </div>` : '';
+
+  el.innerHTML = pastBanner + MEAL_ORDER.map(mtype => {
     const meal = byMeal[mtype] || { calories:0, protein:0, carbs:0, fat:0, items:[] };
     const meta = MEAL_TYPES.find(m => m.id === mtype);
 
     const itemsHtml = meal.items.map(item => `
-      <div class="food-log-row">
+      <div class="food-log-row" id="flr-${item.id}">
         <div class="food-log-emoji">${getFoodEmoji(item.food_id)}</div>
         <div style="flex:1;min-width:0">
           <div class="food-log-name">${escHtml(item.food_name)}</div>
-          <div class="food-log-qty">${item.quantity_g}g</div>
+          <div class="food-log-qty">
+            <span id="flq-${item.id}">${item.quantity_g}g</span>
+            <span style="color:var(--gray-300);margin:0 4px">·</span>
+            <span style="color:var(--gray-400)">${Math.round(item.calories)} kcal</span>
+          </div>
         </div>
         <div class="food-log-macros">
-          <span class="food-macro-chip fmc-cal">${Math.round(item.calories)} kcal</span>
           <span class="food-macro-chip fmc-prot">${Math.round(item.protein)}g P</span>
           <span class="food-macro-chip fmc-carb">${Math.round(item.carbs)}g C</span>
           <span class="food-macro-chip fmc-fat">${Math.round(item.fat)}g F</span>
         </div>
-        <button class="btn-icon" onclick="removeFoodLog('${item.id}')" title="Remove"
-                style="color:var(--gray-300);flex-shrink:0">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-               stroke-width="2.5" stroke-linecap="round">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn-icon" title="Edit quantity"
+                  onclick="editFoodQty('${item.id}',${item.quantity_g},'${escHtml(item.food_name)}')"
+                  style="color:var(--gray-400);padding:4px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="btn-icon" title="Remove"
+                  onclick="removeFoodLog('${item.id}')"
+                  style="color:var(--gray-300);padding:4px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
       </div>`).join('');
 
     const headerRight = meal.items.length > 0
@@ -2630,9 +2702,12 @@ function renderFoodWeeklyChart(weekData, targets) {
 function foodDateShift(delta) {
   const d = new Date(foodDate + 'T12:00:00');
   d.setDate(d.getDate() + delta);
-  const today = new Date();
-  if (d > today) return;
-  foodDate = d.toISOString().split('T')[0];
+  const todayStr = localToday();
+  const shiftedStr = d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0');
+  if (shiftedStr > todayStr) return;  // don't go into future
+  foodDate = shiftedStr;
   const picker = document.getElementById('food-date-picker');
   if (picker) picker.value = foodDate;
   loadFoodTracker();
@@ -3273,10 +3348,31 @@ async function logSelectedFood() {
 }
 
 async function removeFoodLog(id) {
+  if (!confirm('Remove this item?')) return;
   await fetch(`/api/food/log/${id}`, { method: 'DELETE' });
-  showToast('Removed from log');
+  showToast('Removed');
   loadFoodTracker();
   loadDashboard();
+}
+
+async function editFoodQty(id, currentQty, foodName) {
+  const newQty = prompt(`Edit quantity for "${foodName}" (grams):`, currentQty);
+  if (newQty === null) return;  // cancelled
+  const qty = parseFloat(newQty);
+  if (!qty || qty <= 0 || qty > 5000) { showToast('Invalid quantity', 'error'); return; }
+
+  const r = await fetch(`/api/food/log/${id}`, {
+    method: 'PATCH',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ quantity_g: qty }),
+  }).then(r => r.json()).catch(() => null);
+
+  if (r?.success) {
+    showToast(`Updated to ${qty}g`, 'success');
+    loadFoodTracker();
+  } else {
+    showToast('Failed to update', 'error');
+  }
 }
 
 // ── User Profile Modal ────────────────────────────────────────────────────────
@@ -3376,7 +3472,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Init food date picker
   const fp = document.getElementById('food-date-picker');
-  if (fp) fp.value = new Date().toISOString().split('T')[0];
+  if (fp) fp.value = localToday();
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -3529,7 +3625,7 @@ const MOOD_COLOR = {
   anxious:'#8B5CF6', tired:'#9CA3AF', sad:'#3B82F6', angry:'#EF4444'
 };
 
-let currentThoughtsDate = new Date().toISOString().split('T')[0];
+let currentThoughtsDate = localToday();
 let selectedMood = 'neutral';
 let editingThoughtId = null;
 
@@ -3553,7 +3649,7 @@ async function loadThoughts(dateStr) {
   const titleEl = document.getElementById('thoughts-feed-title');
   if (titleEl) {
     const d = new Date(currentThoughtsDate + 'T12:00:00');
-    const today = new Date().toISOString().split('T')[0];
+    const today = localToday();
     titleEl.textContent = currentThoughtsDate === today
       ? "Today's thoughts"
       : d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
@@ -3736,7 +3832,7 @@ async function loadTodos() {
   // Stats
   const pending = allTodos.filter(t => t.status === 'pending');
   const done    = allTodos.filter(t => t.status === 'done');
-  const today   = new Date().toISOString().split('T')[0];
+  const today   = localToday();
   const overdue = pending.filter(t => t.due_date && t.due_date < today);
   const total   = allTodos.length;
   const donePct = total > 0 ? Math.round((done.length / total) * 100) : 0;
@@ -3759,7 +3855,7 @@ async function loadTodos() {
 }
 
 function renderTodos() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   const sort  = document.getElementById('todo-sort')?.value || 'priority';
   const PORD  = { high: 0, medium: 1, low: 2 };
 
@@ -4015,7 +4111,7 @@ function scheduleTodoReminderChecks() {
 // ════════════════════════════════════════════════════════════
 
 async function loadWellnessStrip() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
 
   // Fetch hydration directly — separate call ensures freshest data
   const [hyd, r] = await Promise.all([
@@ -4186,7 +4282,7 @@ async function saveBodyMetric() {
       body_fat_pct: parseFloat(document.getElementById('body-fat')?.value) || null,
       waist_cm:     parseFloat(document.getElementById('body-waist')?.value) || null,
       notes:        document.getElementById('body-notes')?.value || '',
-      date_key:     document.getElementById('body-date-input')?.value || new Date().toISOString().split('T')[0]
+      date_key:     document.getElementById('body-date-input')?.value || localToday()
     })
   }).then(r => r.json());
   if (r.success) {
@@ -4201,7 +4297,7 @@ async function loadBodyMetrics() {
   const el = document.getElementById('body-metrics-chart');
   // Init date
   const di = document.getElementById('body-date-input');
-  if (di && !di.value) di.value = new Date().toISOString().split('T')[0];
+  if (di && !di.value) di.value = localToday();
   if (!el) return;
   if (!r.length) {
     el.innerHTML = '<div class="todo-empty"><div class="todo-empty-icon">📊</div><div class="todo-empty-text">No metrics logged yet</div></div>';
@@ -4314,7 +4410,7 @@ async function saveHabit() {
 
 async function loadHabits() {
   const r = await fetch('/api/habits').then(r => r.json()).catch(() => ({habits:[]}));
-  const today  = r.date || new Date().toISOString().split('T')[0];
+  const today  = r.date || localToday();
   const habits = r.habits || [];
 
   // ── Update page subtitle with today's date ──
@@ -4530,7 +4626,7 @@ async function logSymptoms() {
   const severity  = +document.getElementById('symptom-severity').value;
   const timeOfDay = document.getElementById('symptom-time').value;
   const notes     = document.getElementById('symptom-notes')?.value || '';
-  const dateKey   = new Date().toISOString().split('T')[0];
+  const dateKey   = localToday();
   const btn = document.getElementById('log-symptoms-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
@@ -4586,7 +4682,7 @@ async function logSymptom() {
       name, severity: +document.getElementById('symptom-severity').value,
       time_of_day: document.getElementById('symptom-time').value,
       notes: document.getElementById('symptom-notes')?.value || '',
-      date_key: new Date().toISOString().split('T')[0]
+      date_key: localToday()
     })
   }).then(r => r.json());
   if (r.success) {
@@ -4619,7 +4715,7 @@ async function loadSymptoms() {
 
   el.innerHTML = Object.entries(byDate).map(([date, syms]) => {
     const d = new Date(date+'T12:00:00');
-    const today = new Date().toISOString().split('T')[0];
+    const today = localToday();
     const dateLabel = date === today ? 'Today' :
       d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 
@@ -4816,7 +4912,7 @@ async function saveEmergencyInfo() {
 // ════════════════════════════════════════════════════════════
 
 async function loadHydration(dateStr) {
-  const date = dateStr || new Date().toISOString().split('T')[0];
+  const date = dateStr || localToday();
   const r = await fetch(`/api/hydration/${date}`, {cache: 'no-store'}).then(r => r.json()).catch(() => null);
   if (!r) return;
 
@@ -4863,7 +4959,7 @@ async function loadHydration(dateStr) {
 }
 
 async function quickAddWater(ml) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   const res = await fetch('/api/hydration', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -4878,7 +4974,7 @@ async function quickAddWater(ml) {
 }
 
 async function delHydration(id) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   await fetch(`/api/hydration/${id}`, {method: 'DELETE'});
   await loadHydration(today);
   showToast('Entry removed', 'success');
@@ -4916,7 +5012,7 @@ async function loadDashboardTodos() {
     </div>`;
     return;
   }
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   const PRI = { high:'🔴', medium:'🟡', low:'🟢' };
   el.innerHTML = todos.map(t => {
     const isOverdue = t.due_date && t.due_date < today;
@@ -6529,7 +6625,7 @@ async function saveSleepLogFromView() {
   const wakeTime = window._svWakeTime;
   if (!bedTime || !wakeTime) { showToast('Set bedtime and wake time', 'error'); return; }
 
-  const today     = new Date().toISOString().split('T')[0];
+  const today     = localToday();
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const bed  = yesterday + 'T' + bedTime;
   const wake = today     + 'T' + wakeTime;
@@ -6582,7 +6678,7 @@ async function loadBodyView() {
             </div>
             <div class="form-group">
               <label class="form-label">Date</label>
-              <input type="date" class="form-input" id="bv-date" value="${new Date().toISOString().split('T')[0]}">
+              <input type="date" class="form-input" id="bv-date" value="${localToday()}">
             </div>
           </div>
           <button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveBodyMetricFromView()">Save</button>
@@ -6665,7 +6761,7 @@ async function saveBodyMetricFromView() {
     weight_kg:    parseFloat(document.getElementById('bv-weight')?.value) || null,
     body_fat_pct: parseFloat(document.getElementById('bv-bodyfat')?.value) || null,
     waist_cm:     parseFloat(document.getElementById('bv-waist')?.value) || null,
-    date_key:     document.getElementById('bv-date')?.value || new Date().toISOString().split('T')[0],
+    date_key:     document.getElementById('bv-date')?.value || localToday(),
   };
   if (!data.weight_kg && !data.body_fat_pct && !data.waist_cm) {
     showToast('Enter at least one measurement', 'error'); return;
@@ -6686,7 +6782,7 @@ async function saveVitalFromView() {
   const r = await fetch('/api/vitals', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ type: window._bvVitalType, value1: v1, value2: v2,
-                           unit: window._bvVitalUnit, date_key: new Date().toISOString().split('T')[0] })
+                           unit: window._bvVitalUnit, date_key: localToday() })
   }).then(r => r.json()).catch(() => null);
   if (r?.success) { showToast('Logged ✓', 'success'); loadVitalsView(); }
   else showToast('Failed to save', 'error');
@@ -6897,7 +6993,7 @@ const CI_WATER = [
 
 // ── Trigger: call from loadDashboard ─────────────────────────────
 async function initDailyCheckin() {
-  const today     = new Date().toISOString().split('T')[0];
+  const today     = localToday();
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const key       = `medeasy_checkin_${today}`;
   if (localStorage.getItem(key)) return;  // already done today
@@ -7087,7 +7183,7 @@ function ciBack() {
 
 // ── Submit: save to all relevant APIs ────────────────────────────
 async function ciSubmit() {
-  const today     = new Date().toISOString().split('T')[0];
+  const today     = localToday();
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const saves     = [];
 
@@ -7271,13 +7367,17 @@ const VITAL_META = {
 // Chart.js instance cache so we can destroy before re-render
 const _vitalCharts = {};
 
-async function loadVitalTrends() {
+let _vitalTrendDays = 30;
+
+async function loadVitalTrends(days) {
+  if (days) _vitalTrendDays = days;
+  const d = _vitalTrendDays;
+
   const section = document.getElementById('bv-trend-section');
   if (!section) return;
 
   section.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:20px 0;text-align:center">Loading trend charts…</div>';
 
-  // Load Chart.js if not already present
   if (!window.Chart) {
     await new Promise((res, rej) => {
       const s = document.createElement('script');
@@ -7287,7 +7387,7 @@ async function loadVitalTrends() {
     });
   }
 
-  const data = await fetch('/api/vitals/trend?days=30', { cache: 'no-store' })
+  const data = await fetch(`/api/vitals/trend?days=${d}`, { cache: 'no-store' })
     .then(r => r.json()).catch(() => null);
 
   if (!data) {
@@ -7298,16 +7398,28 @@ async function loadVitalTrends() {
   const groups  = data.groups || {};
   const hasData = Object.keys(groups).some(k => groups[k].length > 0);
 
+  const toggleHTML = `
+    <div class="trend-toggle">
+      <button class="trend-toggle-btn${d===7?' active':''}"  onclick="loadVitalTrends(7)">Weekly</button>
+      <button class="trend-toggle-btn${d===30?' active':''}" onclick="loadVitalTrends(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===90?' active':''}" onclick="loadVitalTrends(90)">3 months</button>
+    </div>`;
+
   if (!hasData) {
     section.innerHTML = `
-      <div class="panel" style="padding:28px;text-align:center">
-        <div style="font-size:15px;font-weight:600;color:var(--gray-700);margin-bottom:6px">No vital trends yet</div>
-        <div style="font-size:13px;color:var(--gray-400)">Log your first vital above — charts appear once you have data.</div>
+      <div class="panel" style="padding:20px 22px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <span style="font-size:14px;font-weight:600;color:var(--gray-700)">Vital trends</span>
+          ${toggleHTML}
+        </div>
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:6px">No vitals logged yet</div>
+          <div style="font-size:13px;color:var(--gray-400)">Log your first vital above — charts appear once you have data.</div>
+        </div>
       </div>`;
     return;
   }
 
-  // Build a chart card for each type that has data
   const CHART_ORDER = ['blood_pressure','heart_rate','blood_sugar','spo2','temperature'];
   const chartsHTML  = CHART_ORDER
     .filter(t => groups[t] && groups[t].length >= 1)
@@ -7318,13 +7430,16 @@ async function loadVitalTrends() {
       const latestVal = latest.value2
         ? `${latest.value1}/${latest.value2}`
         : latest.value1;
+      const periodLabel = d === 7 ? 'this week' : d === 30 ? 'this month' : 'last 3 months';
       return `
         <div class="panel" style="padding:16px 20px 20px">
-          <div class="panel-header" style="margin-bottom:4px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
             <h2 class="panel-title">${meta.label}</h2>
             <span class="panel-badge">${latestVal} ${meta.unit}</span>
           </div>
-          <div style="font-size:11.5px;color:var(--gray-400);margin-bottom:12px">${entries.length} reading${entries.length !== 1 ? 's' : ''} in last 30 days</div>
+          <div style="font-size:11.5px;color:var(--gray-400);margin-bottom:12px">
+            ${entries.length} reading${entries.length !== 1 ? 's' : ''} ${periodLabel}
+          </div>
           <div style="position:relative;height:160px">
             <canvas id="vchart-${t}"></canvas>
           </div>
@@ -7333,10 +7448,12 @@ async function loadVitalTrends() {
     }).join('');
 
   section.innerHTML = `
-    <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:12px">30-day trends</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px">
+      <span style="font-size:13px;font-weight:600;color:var(--gray-700)">Vital trends</span>
+      ${toggleHTML}
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">${chartsHTML}</div>`;
 
-  // Render each chart after DOM is ready
   requestAnimationFrame(() => {
     CHART_ORDER.filter(t => groups[t] && groups[t].length >= 1).forEach(t => {
       renderVitalChart(t, groups[t], VITAL_META[t]);
@@ -7473,8 +7590,7 @@ function renderVitalChart(type, entries, meta) {
 const _origSaveVitalFromView = saveVitalFromView;
 saveVitalFromView = async function() {
   await _origSaveVitalFromView.apply(this, arguments);
-  // Refresh trends section after a short delay to let the save complete
-  setTimeout(loadVitalTrends, 400);
+  setTimeout(loadVitalTrends, 400);  // preserves _vitalTrendDays
 };
 
 
@@ -8088,23 +8204,34 @@ async function loadFitnessPRs() {
 // ════════════════════════════════════════════════════════════════
 
 let _moodSleepChart = null;
+let _moodSleepDays  = 30;   // default Monthly
 
-async function loadMoodSleepCorrelation() {
+async function loadMoodSleepCorrelation(days) {
+  if (days) _moodSleepDays = days;
+  const d = _moodSleepDays;
+
   const section = document.getElementById('mood-sleep-section');
   if (!section) return;
 
-  const data = await fetch('/api/mood-sleep/correlation?days=90', {cache: 'no-store'})
+  const data = await fetch(`/api/mood-sleep/correlation?days=${d}`, {cache: 'no-store'})
     .then(r => r.json()).catch(() => null);
 
   if (!data) return;
+
+  const mscToggle = `
+    <div class="trend-toggle">
+      <button class="trend-toggle-btn${d===30?' active':''}"  onclick="loadMoodSleepCorrelation(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===90?' active':''}"  onclick="loadMoodSleepCorrelation(90)">3 months</button>
+    </div>`;
 
   // Not enough data yet
   if (!data.has_data || data.need_more) {
     const needed = data.need_count || 5;
     section.innerHTML = `
       <div class="panel" style="padding:20px 24px">
-        <div class="panel-header" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <h2 class="panel-title">Mood × Sleep correlation</h2>
+          ${mscToggle}
         </div>
         <div style="text-align:center;padding:24px 0">
           <div style="font-size:28px;margin-bottom:10px">🌙😊</div>
@@ -8152,14 +8279,15 @@ async function loadMoodSleepCorrelation() {
 
   section.innerHTML = `
     <div class="panel" style="padding:18px 20px 20px">
-      <div class="panel-header" style="margin-bottom:14px">
-        <h2 class="panel-title">Mood × Sleep correlation</h2>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="panel-badge" style="background:${strengthColor}22;color:${strengthColor}">
-            ${strength} correlation
-          </span>
-          <span class="panel-badge">${matched_days} days</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:14px">
+        <div>
+          <h2 class="panel-title">Mood × Sleep correlation</h2>
+          <div style="font-size:12px;margin-top:3px;display:flex;gap:8px;align-items:center">
+            <span style="background:${strengthColor}22;color:${strengthColor};padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600">${strength} correlation</span>
+            <span style="color:var(--gray-400)">${matched_days} matched days</span>
+          </div>
         </div>
+        ${mscToggle}
       </div>
 
       <!-- Insight banner -->
@@ -8434,12 +8562,16 @@ async function loadWeeklyDigest() {
 // ════════════════════════════════════════════════════════════════
 
 let _weightChart = null;
+let _weightTrendDays = 90;  // default 3 months
 
-async function loadWeightProgressChart() {
+async function loadWeightProgressChart(days) {
+  if (days) _weightTrendDays = days;
+  const d = _weightTrendDays;
+
   const section = document.getElementById('bv-weight-chart-section');
   if (!section) return;
 
-  const data = await fetch('/api/body-metrics/trend?days=365', {cache: 'no-store'})
+  const data = await fetch(`/api/body-metrics/trend?days=${d}`, {cache: 'no-store'})
     .then(r => r.json()).catch(() => null);
 
   if (!data) return;
@@ -8502,13 +8634,23 @@ async function loadWeightProgressChart() {
       <div class="wpc-stat-label">${c.label}</div>
     </div>`).join('');
 
+  const toggleHTML = `
+    <div class="trend-toggle">
+      <button class="trend-toggle-btn${d===30?' active':''}"  onclick="loadWeightProgressChart(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===90?' active':''}"  onclick="loadWeightProgressChart(90)">3 months</button>
+      <button class="trend-toggle-btn${d===180?' active':''}" onclick="loadWeightProgressChart(180)">6 months</button>
+    </div>`;
+
   section.innerHTML = `
     <div class="panel" style="padding:18px 20px 20px">
-      <div class="panel-header" style="margin-bottom:12px">
-        <h2 class="panel-title">Weight progress</h2>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${etaText ? `<span class="panel-badge" style="background:#DCFCE7;color:#15803D">${escHtml(etaText)}</span>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px">
+        <div>
+          <h2 class="panel-title">Weight progress</h2>
+          ${etaText ? `<div style="font-size:12px;color:#15803D;margin-top:3px">${escHtml(etaText)}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
           <span class="panel-badge">${GOAL_LABELS[goal] || goal}</span>
+          ${toggleHTML}
         </div>
       </div>
 
@@ -8747,7 +8889,7 @@ async function loadQuickMeals() {
   const MEAL_ICONS = {breakfast:'🌅',lunch:'☀️',snack:'🍎',dinner:'🌙'};
 
   // ── Yesterday shortcut (if has data and we're viewing today) ──
-  const today = new Date().toISOString().split('T')[0];
+  const today = localToday();
   const isToday = foodDate === today;
   const ystdHtml = isToday && Object.keys(yesterday).length
     ? `<div class="qm-yesterday-banner">
@@ -9019,6 +9161,24 @@ function obNext() {
   document.getElementById('ob-step-1').style.display = 'none';
   document.getElementById('ob-step-2').style.display = '';
   document.getElementById('ob-progress').style.background = '#0E8F7E';
+
+  // Populate timezone dropdown with detected value
+  const detected = browserTimezone();
+  const tzSel = document.getElementById('ob-timezone');
+  const tzDetected = document.getElementById('ob-tz-detected');
+  if (tzSel && detected) {
+    const COMMON_TZ = [
+      'Pacific/Honolulu','America/Anchorage','America/Los_Angeles','America/Denver',
+      'America/Chicago','America/New_York','America/Sao_Paulo','Europe/London',
+      'Europe/Paris','Europe/Berlin','Europe/Moscow','Asia/Dubai','Asia/Kolkata',
+      'Asia/Bangkok','Asia/Singapore','Asia/Shanghai','Asia/Tokyo','Australia/Sydney',
+    ];
+    const allTz = COMMON_TZ.includes(detected) ? COMMON_TZ : [detected, ...COMMON_TZ];
+    tzSel.innerHTML = allTz.map(tz =>
+      `<option value="${tz}" ${tz === detected ? 'selected' : ''}>${tz.replace('_',' ')}</option>`
+    ).join('');
+    if (tzDetected) tzDetected.textContent = `Detected: ${detected.replace('_',' ')}`;
+  }
 }
 
 function obBack() {
@@ -9043,12 +9203,14 @@ async function obSubmit() {
   const btn = document.getElementById('ob-submit-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
+  const tz = document.getElementById('ob-timezone')?.value || browserTimezone();
   const payload = {
     name,
     age,
     gender,
     activity_level: _obActivity,
     goal:           _obGoal,
+    timezone:       tz,
   };
   // Only include weight/height if provided
   if (weight) payload.weight_kg  = weight;

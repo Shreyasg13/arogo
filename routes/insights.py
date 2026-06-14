@@ -1,4 +1,5 @@
 """routes/insights.py — Health report, goal progress, global search, data export, notifications."""
+from db.food import get_user_timezone
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from auth import require_auth
 import os, json as json_mod
@@ -764,7 +765,7 @@ def api_export_counts():
     """Return row counts per section for the export preview."""
     from database import execute
     from_date = request.args.get('from', '2000-01-01')
-    to_date   = request.args.get('to',   today_iso())
+    to_date   = request.args.get('to',   today_iso(get_user_timezone()))
     counts = {
         'food_logs':          execute("SELECT COUNT(*) as n FROM food_logs WHERE date_key BETWEEN ? AND ?",       (from_date, to_date), fetchone=True)['n'],
         'fitness_activities': execute("SELECT COUNT(*) as n FROM fitness_activities WHERE date BETWEEN ? AND ?",  (from_date, to_date), fetchone=True)['n'],
@@ -787,7 +788,7 @@ def api_export():
     fmt       = request.args.get('format', 'json')
     sections  = request.args.get('sections', 'all')  # comma-separated or 'all'
     from_date = request.args.get('from', '2000-01-01')
-    to_date   = request.args.get('to', today_iso())
+    to_date   = request.args.get('to', today_iso(get_user_timezone()))
 
     wanted = sections.split(',') if sections != 'all' else None
     def want(k): return wanted is None or k in wanted
@@ -839,15 +840,15 @@ def api_export():
         'to_date': to_date,
         'sections': list(data.keys()),
         'total_records': sum(len(v) for v in data.values()),
-        'app': 'MediScan Health OS'
+        'app': 'MedEasy Health OS'
     }
 
-    fname_base = f"mediscan_{from_date}_to_{to_date}"
+    fname_base = f"medeasy_{from_date}_to_{to_date}"
 
     if fmt == 'csv':
         output = io.StringIO()
         # Write metadata as comments
-        output.write("# MediScan Health OS Export\n")
+        output.write("# MedEasy Health OS Export\n")
         output.write('# Exported: ' + meta['exported_at'] + '\n')
         output.write('# Period: ' + from_date + ' to ' + to_date + '\n\n')
         for section, rows in data.items():
@@ -889,7 +890,7 @@ def api_hydration_day(date_key):
 def api_log_hydration():
     data = request.json or {}
     log = log_hydration(int(data.get('amount_ml', 250)), data.get('drink_type','water'),
-                        data.get('date_key', today_iso()))
+                        data.get('date_key', today_iso(get_user_timezone())))
     return jsonify({'success': True, 'log': log})
 
 @bp.route('/api/hydration/<lid>', methods=['DELETE'])
@@ -957,7 +958,7 @@ def api_get_body_metrics():
 @require_auth
 def api_log_body_metric():
     data = request.json or {}
-    data.setdefault('date_key', today_iso())
+    data.setdefault('date_key', today_iso(get_user_timezone()))
     profile = get_profile()
     data.setdefault('height_cm', profile.get('height_cm', 170))
     m = log_body_metric(data)
@@ -990,7 +991,7 @@ def api_delete_habit(hid):
 @bp.route('/api/habits/<hid>/toggle', methods=['POST'])
 @require_auth
 def api_toggle_habit(hid):
-    date_key = (request.json or {}).get('date_key', today_iso())
+    date_key = (request.json or {}).get('date_key', today_iso(get_user_timezone()))
     result = toggle_habit_log(hid, date_key)
     return jsonify({'success': True, **result})
 
@@ -1068,7 +1069,7 @@ def api_save_emergency():
 @bp.route('/api/wellness/today')
 @require_auth
 def api_wellness_today():
-    day = today_iso()
+    day = today_iso(get_user_timezone())
     hydration = get_hydration_day(day)
     profile   = get_profile()
     goal_ml   = round(float(profile.get('weight_kg', 70)) * 35)
@@ -1110,7 +1111,7 @@ def api_save_thought():
         return jsonify({'success': False, 'error': 'Content required'}), 400
     if len(content) > 1000:
         return jsonify({'success': False, 'error': 'Max 1000 characters'}), 400
-    date_key = data.get('date_key', today_iso())
+    date_key = data.get('date_key', today_iso(get_user_timezone()))
     mood = data.get('mood', 'neutral')
     try:
         thought = save_thought(content, mood, date_key)

@@ -1202,114 +1202,53 @@
     </div>
   </div>
 
-  <!-- Macro rings row -->
-  <div class="food-macro-bar" id="food-macro-bar">
-    <div class="macro-ring-card macro-ring-card--cal">
-      <div class="macro-ring-wrap">
-        <svg class="macro-ring-svg" viewBox="0 0 80 80">
-          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
-          <circle class="macro-ring-fg" id="ring-cal" cx="40" cy="40" r="32" stroke="#0E8F7E"/>
-        </svg>
-        <div class="macro-ring-center">
-          <div class="macro-ring-val" id="ring-cal-val">0</div>
-          <div class="macro-ring-unit">kcal</div>
-        </div>
-      </div>
-      <div class="macro-ring-label">Calories</div>
-      <div class="macro-ring-target" id="ring-cal-target">/ 2000</div>
-    </div>
-    <div class="macro-ring-card macro-ring-card--protein">
-      <div class="macro-ring-wrap">
-        <svg class="macro-ring-svg" viewBox="0 0 80 80">
-          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
-          <circle class="macro-ring-fg" id="ring-prot" cx="40" cy="40" r="32" stroke="#2563EB"/>
-        </svg>
-        <div class="macro-ring-center">
-          <div class="macro-ring-val" id="ring-prot-val">0</div>
-          <div class="macro-ring-unit">g</div>
-        </div>
-      </div>
-      <div class="macro-ring-label">Protein</div>
-      <div class="macro-ring-target" id="ring-prot-target">/ 56g</div>
-    </div>
-    <div class="macro-ring-card macro-ring-card--carbs">
-      <div class="macro-ring-wrap">
-        <svg class="macro-ring-svg" viewBox="0 0 80 80">
-          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
-          <circle class="macro-ring-fg" id="ring-carbs" cx="40" cy="40" r="32" stroke="#D97706"/>
-        </svg>
-        <div class="macro-ring-center">
-          <div class="macro-ring-val" id="ring-carbs-val">0</div>
-          <div class="macro-ring-unit">g</div>
-        </div>
-      </div>
-      <div class="macro-ring-label">Carbs</div>
-      <div class="macro-ring-target" id="ring-carbs-target">/ 250g</div>
-    </div>
-    <div class="macro-ring-card macro-ring-card--fat">
-      <div class="macro-ring-wrap">
-        <svg class="macro-ring-svg" viewBox="0 0 80 80">
-          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
-          <circle class="macro-ring-fg" id="ring-fat" cx="40" cy="40" r="32" stroke="#7C3AED"/>
-        </svg>
-        <div class="macro-ring-center">
-          <div class="macro-ring-val" id="ring-fat-val">0</div>
-          <div class="macro-ring-unit">g</div>
-        </div>
-      </div>
-      <div class="macro-ring-label">Fat</div>
-      <div class="macro-ring-target" id="ring-fat-target">/ 65g</div>
-    </div>
-    <div class="macro-ring-card macro-ring-card--fiber">
-      <div class="macro-ring-wrap">
-        <svg class="macro-ring-svg" viewBox="0 0 80 80">
-          <circle class="macro-ring-bg" cx="40" cy="40" r="32"/>
-          <circle class="macro-ring-fg" id="ring-fiber" cx="40" cy="40" r="32" stroke="#16A34A"/>
-        </svg>
-        <div class="macro-ring-center">
-          <div class="macro-ring-val" id="ring-fiber-val">0</div>
-          <div class="macro-ring-unit">g</div>
-        </div>
-      </div>
-      <div class="macro-ring-label">Fiber</div>
-      <div class="macro-ring-target" id="ring-fiber-target">/ 30g</div>
-    </div>
-  </div>
-
   <div class="food-body-grid">
 
-    <!-- LEFT: meal log + AI insights + micronutrients -->
+    <!-- LEFT (primary): macro summary bar + meal log -->
     <div class="food-left">
 
-      <!-- Meals by type -->
-      <div class="meal-sections" id="meal-sections"></div>
-
-      <!-- AI Insights — below meal log -->
-      <div class="panel">
-        <div class="panel-header">
-          <h2 class="panel-title">Nutrition Insights</h2>
-          <span class="panel-badge panel-badge--ai">✦ AI</span>
-        </div>
-        <div id="food-suggestions" class="suggestions-list">
-          <div style="color:var(--gray-400);font-size:13px">Log meals to see personalised suggestions.</div>
-        </div>
-      </div>
-
-      <!-- Micronutrients — below AI insights, collapsed by default -->
-      <div class="panel">
-        <div class="panel-header panel-header--clickable" onclick="toggleMicroPanel()" style="cursor:pointer">
-          <h2 class="panel-title">Micronutrients</h2>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="panel-badge">Daily</span>
-            <svg id="micro-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transform:rotate(-90deg);transition:transform .2s;color:var(--gray-400)"><polyline points="6 9 12 15 18 9"/></svg>
+      <!-- Compact macro summary bar -->
+      <div class="panel" style="padding:14px 18px;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:0" id="food-macro-compact">
+          <!-- Filled by renderMealSections / renderFoodDay -->
+          <div class="fmc-item">
+            <div class="fmc-val" id="fmc-cal">0</div>
+            <div class="fmc-bar-wrap"><div class="fmc-bar fmc-bar--cal" id="fmc-bar-cal" style="width:0%"></div></div>
+            <div class="fmc-label">Calories <span id="fmc-cal-target" class="fmc-target"></span></div>
+          </div>
+          <div class="fmc-divider"></div>
+          <div class="fmc-item">
+            <div class="fmc-val" id="fmc-prot">0g</div>
+            <div class="fmc-bar-wrap"><div class="fmc-bar fmc-bar--prot" id="fmc-bar-prot" style="width:0%"></div></div>
+            <div class="fmc-label">Protein <span id="fmc-prot-target" class="fmc-target"></span></div>
+          </div>
+          <div class="fmc-divider"></div>
+          <div class="fmc-item">
+            <div class="fmc-val" id="fmc-carbs">0g</div>
+            <div class="fmc-bar-wrap"><div class="fmc-bar fmc-bar--carbs" id="fmc-bar-carbs" style="width:0%"></div></div>
+            <div class="fmc-label">Carbs <span id="fmc-carbs-target" class="fmc-target"></span></div>
+          </div>
+          <div class="fmc-divider"></div>
+          <div class="fmc-item">
+            <div class="fmc-val" id="fmc-fat">0g</div>
+            <div class="fmc-bar-wrap"><div class="fmc-bar fmc-bar--fat" id="fmc-bar-fat" style="width:0%"></div></div>
+            <div class="fmc-label">Fat <span id="fmc-fat-target" class="fmc-target"></span></div>
+          </div>
+          <div class="fmc-divider"></div>
+          <div class="fmc-item">
+            <div class="fmc-val" id="fmc-fiber">0g</div>
+            <div class="fmc-bar-wrap"><div class="fmc-bar fmc-bar--fiber" id="fmc-bar-fiber" style="width:0%"></div></div>
+            <div class="fmc-label">Fiber <span id="fmc-fiber-target" class="fmc-target"></span></div>
           </div>
         </div>
-        <div id="micro-panel" class="micro-panel" style="display:none"></div>
       </div>
+
+      <!-- Meal sections — primary action, takes all remaining left-col space -->
+      <div class="meal-sections" id="meal-sections"></div>
 
     </div>
 
-    <!-- RIGHT: quick add + hydration -->
+    <!-- RIGHT (sidebar): quick add + hydration + insights + micros -->
     <div class="food-right">
 
       <!-- Quick add recent meals -->
@@ -1325,6 +1264,7 @@
         </div>
       </div>
 
+      <!-- Hydration -->
       <div class="panel">
         <div class="panel-header">
           <h2 class="panel-title">💧 Hydration</h2>
@@ -1347,6 +1287,30 @@
           <div class="hydration-logs-wrap" id="hydration-logs-wrap"></div>
         </div>
       </div>
+
+      <!-- AI Nutrition Insights -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">Nutrition Insights</h2>
+          <span class="panel-badge panel-badge--ai">✦ AI</span>
+        </div>
+        <div id="food-suggestions" class="suggestions-list">
+          <div style="color:var(--gray-400);font-size:13px;padding:4px 0">Log meals to see personalised suggestions.</div>
+        </div>
+      </div>
+
+      <!-- Micronutrients -->
+      <div class="panel">
+        <div class="panel-header panel-header--clickable" onclick="toggleMicroPanel()" style="cursor:pointer">
+          <h2 class="panel-title">Micronutrients</h2>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="panel-badge">Daily</span>
+            <svg id="micro-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transform:rotate(-90deg);transition:transform .2s;color:var(--gray-400)"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div id="micro-panel" class="micro-panel" style="display:none"></div>
+      </div>
+
     </div>
 
   </div>

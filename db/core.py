@@ -70,7 +70,16 @@ def jload(v, default=None):
     except Exception: return [] if default is None else default
 
 def now_iso():   return datetime.datetime.now().isoformat()
-def today_iso(): return datetime.date.today().isoformat()
+def today_iso(tz: str = None) -> str:
+    """Return today's date in YYYY-MM-DD format, respecting timezone."""
+    try:
+        if tz:
+            import zoneinfo
+            zone = zoneinfo.ZoneInfo(tz)
+            return datetime.datetime.now(zone).date().isoformat()
+    except Exception:
+        pass
+    return datetime.date.today().isoformat()
 def new_id():    return uuid.uuid4().hex
 
 
@@ -133,6 +142,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     age INTEGER DEFAULT NULL, gender TEXT DEFAULT NULL,
     activity_level TEXT DEFAULT NULL, goal TEXT DEFAULT NULL,
     target_weight_kg REAL DEFAULT NULL,
+    timezone TEXT DEFAULT NULL,
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS food_logs (
@@ -275,6 +285,14 @@ def migrate_fix_profile_defaults():
                 pass
         conn.execute('DROP TABLE IF EXISTS user_profile_old')
 
+def migrate_add_timezone():
+    """Add timezone column to user_profile if missing."""
+    conn = get_db()
+    try:
+        conn.execute("ALTER TABLE user_profile ADD COLUMN timezone TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
 def migrate_add_user_id():
     """Add user_id column to all data tables. Safe to run multiple times."""
     tables = [
@@ -311,4 +329,5 @@ def init_db():
             conn.execute(stmt)
     migrate_add_user_id()
     migrate_fix_profile_defaults()
+    migrate_add_timezone()
     print(f"[DB] Ready — {DB_PATH}")

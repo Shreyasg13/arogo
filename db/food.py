@@ -33,7 +33,7 @@ def update_profile(data: dict) -> dict:
 
     execute("""UPDATE user_profile SET
         name=?, weight_kg=?, height_cm=?, age=?, gender=?,
-        activity_level=?, goal=?, target_weight_kg=?, updated_at=?
+        activity_level=?, goal=?, target_weight_kg=?, timezone=?, updated_at=?
         WHERE id=?""",
         (data.get('name', p['name']) or '',
          _float('weight_kg', p.get('weight_kg')),
@@ -43,6 +43,7 @@ def update_profile(data: dict) -> dict:
          data.get('activity_level', p.get('activity_level')),
          data.get('goal', p.get('goal')),
          new_target,
+         data.get('timezone', p.get('timezone')),
          now_iso(), p['id']), commit=True)
     return get_profile()
 
@@ -178,3 +179,8 @@ def list_custom_foods() -> list:
 # ── Thoughts / Daily Journal ───────────────────────────────────────────────────
 
 MAX_THOUGHTS_PER_DAY = 10
+
+def get_user_timezone() -> str:
+    """Return the user's stored timezone, or None."""
+    p = get_profile()
+    return p.get('timezone') if p else None

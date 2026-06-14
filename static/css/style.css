@@ -4375,3 +4375,41 @@ body { font-family:'DM Sans',sans-serif; background:var(--gray-25); color:var(--
   color: var(--teal-700); font-weight: 600;
   border-bottom-color: var(--teal-600);
 }
+
+/* ════════════════════════════════════════
+   COMPACT MACRO BAR (Food Tracker)
+   ════════════════════════════════════════ */
+#food-macro-compact {
+  display: flex; align-items: stretch; gap: 0;
+}
+.fmc-item {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 5px; padding: 4px 8px;
+  min-width: 0;
+}
+.fmc-val {
+  font-size: 18px; font-weight: 700;
+  color: var(--gray-900); letter-spacing: -.02em;
+  font-family: 'DM Sans', sans-serif; line-height: 1;
+}
+.fmc-bar-wrap {
+  width: 100%; height: 4px;
+  background: var(--gray-100); border-radius: 99px; overflow: hidden;
+}
+.fmc-bar {
+  height: 100%; border-radius: 99px; transition: width .4s ease;
+}
+.fmc-bar--cal   { background: #0E8F7E; }
+.fmc-bar--prot  { background: #2563EB; }
+.fmc-bar--carbs { background: #D97706; }
+.fmc-bar--fat   { background: #7C3AED; }
+.fmc-bar--fiber { background: #16A34A; }
+.fmc-label {
+  font-size: 11px; color: var(--gray-400); font-weight: 500;
+  letter-spacing: .01em; text-align: center;
+}
+.fmc-target { color: var(--gray-300); font-weight: 400; }
+.fmc-divider {
+  width: 1px; background: var(--gray-100); align-self: stretch;
+  margin: 4px 0; flex-shrink: 0;
+}

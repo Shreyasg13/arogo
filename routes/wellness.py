@@ -1,5 +1,6 @@
 """routes/wellness.py — Hydration, sleep, body metrics, thoughts, todos,
    habits, symptoms, vitals, emergency, medicine stock, notifications."""
+from db.food import get_user_timezone
 from flask import Blueprint, request, jsonify
 from auth import require_auth
 from db import *
@@ -154,7 +155,7 @@ def api_hydration_week():
 def api_log_hydration():
     d = request.json or {}
     log_hydration(d.get('amount_ml', 250), d.get('drink_type','water'),
-                  d.get('date_key', today_iso()))
+                  d.get('date_key', today_iso(get_user_timezone())))
     return jsonify({'success': True})
 
 @bp.route('/api/hydration/<lid>', methods=['DELETE'])
@@ -362,7 +363,7 @@ def api_get_thoughts(date_key):
 @require_auth
 def api_save_thought():
     d = request.json or {}
-    t = save_thought(d.get('content',''), d.get('mood','neutral'), d.get('date_key', today_iso()))
+    t = save_thought(d.get('content',''), d.get('mood','neutral'), d.get('date_key', today_iso(get_user_timezone())))
     return jsonify({'success': True, 'thought': t})
 
 @bp.route('/api/thoughts/<tid>', methods=['PUT'])
@@ -440,7 +441,7 @@ def api_del_habit(hid):
 @require_auth
 def api_toggle_habit(hid):
     d = request.json or {}
-    toggle_habit_log(hid, d.get('date_key', today_iso()))
+    toggle_habit_log(hid, d.get('date_key', today_iso(get_user_timezone())))
     return jsonify({'success': True, 'done': True})
 
 # ── Symptoms ──────────────────────────────────────────────────────────────────
@@ -650,7 +651,7 @@ def api_save_emergency():
 @bp.route('/api/wellness/today')
 @require_auth
 def api_wellness_today():
-    today = today_iso()
+    today = today_iso(get_user_timezone())
     hyd   = get_hydration_day(today)
     sl    = get_sleep_logs(1)
     hab   = get_habit_stats(1)
@@ -735,7 +736,7 @@ def api_save_reminder_settings():
 def api_water_status():
     """Return today's hydration status for smart reminder logic."""
     from db.core import today_iso
-    hyd = get_hydration_day(today_iso())
+    hyd = get_hydration_day(today_iso(get_user_timezone()))
     return jsonify({
         'total_ml':  hyd.get('total_ml', 0),
         'goal_ml':   hyd.get('goal_ml', 2450),

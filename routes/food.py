@@ -1,4 +1,5 @@
 """routes/food.py — Food logging, nutrition DB, custom foods, profile."""
+from db.food import get_user_timezone
 from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from auth import require_auth
 import os, json as json_mod
@@ -82,7 +83,7 @@ def add_food_log():
             'food_id':   data.get('food_id', 'custom'),
             'food_name': data.get('food_name', 'Food'),
             'meal_type': data.get('meal_type', 'lunch'),
-            'date_key':  data.get('date_key', today_iso()),
+            'date_key':  data.get('date_key', today_iso(get_user_timezone())),
             'quantity_g': qty,
             'calories':  float(data.get('calories', 0)),
             'protein':   float(data.get('protein',  0)),
@@ -103,7 +104,7 @@ def add_food_log():
             'food_id':   food_item['id'],
             'food_name': food_item['name'],
             'meal_type': data.get('meal_type', 'lunch'),
-            'date_key':  data.get('date_key', today_iso()),
+            'date_key':  data.get('date_key', today_iso(get_user_timezone())),
             'quantity_g': qty,
             'calories':  round(food_item.get('calories', food_item.get('cal', 0)) * scale, 1),
             'protein':   round(food_item.get('protein', 0) * scale, 1),
@@ -144,6 +145,27 @@ def get_food_log(date_key):
         'profile': profile,
         'suggestions': suggestions
     })
+
+
+@bp.route('/api/food/log/<lid>', methods=['PATCH'])
+@require_auth
+def api_update_food_log(lid):
+    from db.core import execute
+    d       = request.json or {}
+    new_qty = float(d.get('quantity_g', 0))
+    if not new_qty or new_qty <= 0:
+        return jsonify({'error': 'Invalid quantity'}), 400
+    row = execute('SELECT * FROM food_logs WHERE id=?', (lid,), fetchone=True)
+    if not row:
+        return jsonify({'error': 'Not found'}), 404
+    old_qty = float(row['quantity_g']) or 100
+    scale   = new_qty / old_qty
+    execute('UPDATE food_logs SET quantity_g=?,calories=?,protein=?,carbs=?,fat=?,fiber=? WHERE id=?',
+        (new_qty,
+         round((row['calories'] or 0)*scale,1), round((row['protein'] or 0)*scale,1),
+         round((row['carbs'] or 0)*scale,1),    round((row['fat'] or 0)*scale,1),
+         round((row['fiber'] or 0)*scale,1),    lid), commit=True)
+    return jsonify({'success': True})
 
 @bp.route('/api/food/log/<lid>', methods=['DELETE'])
 @require_auth
@@ -294,12 +316,12 @@ def generate_nutrition_suggestions(totals, targets, profile):
     vit_c = totals.get('vit_c', 0)
     vit_d = totals.get('vit_d', 0)
     calcium = totals.get('calcium', 0)
-    t_cal  = targets.get('target_calories', 2000)
-    t_prot = targets.get('protein_g', 56)
-    t_fat  = targets.get('fat_g', 65)
-    t_carb = targets.get('carbs_g', 250)
-    goal   = profile.get('goal', 'maintain')
-    gender = profile.get('gender', 'male')
+    t_cal  = targets.get('target_calories') or 2000
+    t_prot = targets.get('protein_g') or 56
+    t_fat  = targets.get('fat_g') or 65
+    t_carb = targets.get('carbs_g') or 250
+    goal   = profile.get('goal') or 'maintain'
+    gender = profile.get('gender') or 'other'
 
     deficit = t_cal - cal
 
