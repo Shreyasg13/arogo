@@ -15,9 +15,11 @@ from auth import (
     hash_password, check_password, validate_password_strength,
     set_auth_cookie, clear_auth_cookie,
     make_verify_token, read_verify_token,
+    make_reset_token, read_reset_token,
     rate_limit_auth, require_auth,
 )
 from db.core import execute, new_id, now_iso
+import mailer
 
 bp = Blueprint('auth', __name__)
 
@@ -70,10 +72,8 @@ def register():
         commit=True,
     )
 
-    # In production: send verify_token by email
-    # For now: log it so dev can verify manually
-    import sys
-    print(f'[AUTH] Verify token for {email}: {verify_token}', file=sys.stderr)
+    # Send verification email (logged to stderr when SMTP isn't configured)
+    mailer.send_verification_email(email, verify_token)
 
     resp = make_response(jsonify({
         'success': True,
@@ -168,6 +168,49 @@ def verify_email(token):
     execute('UPDATE users SET verified = 1, verify_token = NULL WHERE id = ?',
             (uid,), commit=True)
     return jsonify({'success': True, 'message': 'Email verified successfully'})
+
+
+# ── Password reset ─────────────────────────────────────────────────────────────
+
+@bp.route('/auth/forgot-password', methods=['POST'])
+@rate_limit_auth
+def forgot_password():
+    d     = request.json or {}
+    email = (d.get('email') or '').strip().lower()
+    if not email or not EMAIL_RE.match(email):
+        return jsonify({'error': 'Valid email address required'}), 400
+
+    # Always report success — never reveal whether the email is registered
+    row = execute('SELECT id FROM users WHERE email = ?', (email,), fetchone=True)
+    if row:
+        mailer.send_password_reset_email(email, make_reset_token(row['id']))
+
+    return jsonify({'success': True,
+                    'message': 'If that email is registered, a reset link is on its way.'})
+
+
+@bp.route('/auth/reset-password', methods=['POST'])
+@rate_limit_auth
+def reset_password():
+    d      = request.json or {}
+    token  = d.get('token') or ''
+    new_pw = d.get('password') or ''
+
+    uid = read_reset_token(token)
+    if not uid:
+        return jsonify({'error': 'Invalid or expired reset link. Request a new one.'}), 400
+
+    pw_err = validate_password_strength(new_pw)
+    if pw_err:
+        return jsonify({'error': pw_err}), 400
+
+    row = execute('SELECT id FROM users WHERE id = ?', (uid,), fetchone=True)
+    if not row:
+        return jsonify({'error': 'User not found'}), 404
+
+    execute('UPDATE users SET password_hash = ? WHERE id = ?',
+            (hash_password(new_pw), uid), commit=True)
+    return jsonify({'success': True, 'message': 'Password updated. You can log in now.'})
 
 
 # ── Change password ────────────────────────────────────────────────────────────

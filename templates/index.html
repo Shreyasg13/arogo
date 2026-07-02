@@ -50,6 +50,11 @@
              border-radius:8px;padding:10px 14px;margin-bottom:16px;
              font-size:13px;color:#DC2626;"></div>
 
+        <!-- Success banner -->
+        <div id="auth-success" style="display:none;background:#ECFDF5;border:1px solid #A7F3D0;
+             border-radius:8px;padding:10px 14px;margin-bottom:16px;
+             font-size:13px;color:#047857;"></div>
+
         <!-- Login form -->
         <div id="auth-form-login">
           <div class="form-group">
@@ -66,6 +71,12 @@
                   onclick="submitLogin()" id="login-btn">
             Sign in
           </button>
+          <p style="text-align:center;margin-top:12px">
+            <a href="#" onclick="showForgotForm();return false"
+               style="font-size:13px;color:#0E6B5E;text-decoration:none">
+              Forgot password?
+            </a>
+          </p>
         </div>
 
         <!-- Register form (hidden) -->
@@ -86,6 +97,49 @@
                   onclick="submitRegister()" id="register-btn">
             Create account
           </button>
+        </div>
+
+        <!-- Forgot password form (hidden) -->
+        <div id="auth-form-forgot" style="display:none">
+          <p style="font-size:13px;color:var(--gray-400);margin-bottom:16px;line-height:1.5">
+            Enter your email and we'll send you a link to reset your password.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Email address</label>
+            <input type="email" class="form-input" id="forgot-email"
+                   placeholder="you@example.com" autocomplete="email">
+          </div>
+          <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
+                  onclick="submitForgot()" id="forgot-btn">
+            Send reset link
+          </button>
+          <p style="text-align:center;margin-top:12px">
+            <a href="#" onclick="backToLogin();return false"
+               style="font-size:13px;color:#0E6B5E;text-decoration:none">
+              &larr; Back to sign in
+            </a>
+          </p>
+        </div>
+
+        <!-- Reset password form (hidden — shown when URL has ?reset=token) -->
+        <div id="auth-form-reset" style="display:none">
+          <div class="form-group">
+            <label class="form-label">New password
+              <span style="font-weight:400;color:var(--gray-400)"> — 8+ characters</span>
+            </label>
+            <input type="password" class="form-input" id="reset-password"
+                   placeholder="Choose a new password" autocomplete="new-password">
+          </div>
+          <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
+                  onclick="submitReset()" id="reset-btn">
+            Set new password
+          </button>
+          <p style="text-align:center;margin-top:12px">
+            <a href="#" onclick="backToLogin();return false"
+               style="font-size:13px;color:#0E6B5E;text-decoration:none">
+              &larr; Back to sign in
+            </a>
+          </p>
         </div>
 
         <!-- Footer note -->

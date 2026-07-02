@@ -127,6 +127,21 @@ def read_verify_token(token: str) -> str | None:
         return None
 
 
+def make_reset_token(user_id: str) -> str:
+    """One-time password reset token (1h)."""
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-reset')
+    return s.dumps({'uid': user_id})
+
+
+def read_reset_token(token: str) -> str | None:
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-reset')
+    try:
+        data = s.loads(token, max_age=3600)
+        return data.get('uid')
+    except Exception:
+        return None
+
+
 # ── Cookie helpers ─────────────────────────────────────────────────────────────
 
 def set_auth_cookie(response, user_id: str):

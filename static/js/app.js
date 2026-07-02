@@ -33,6 +33,14 @@ function browserTimezone() {
 
 // Called on page load — check if we have a valid session
 async function initAuth() {
+  // Arriving from a password-reset email link (/?reset=TOKEN)
+  const resetToken = new URLSearchParams(location.search).get('reset');
+  if (resetToken) {
+    _resetToken = resetToken;
+    showAuthScreen();
+    showAuthForm('auth-form-reset');
+    return;
+  }
   const r = await fetch('/auth/me', {credentials: 'same-origin'}).catch(() => null);
   if (r && r.ok) {
     _currentUser = await r.json();
@@ -96,16 +104,27 @@ function showApp() {
   switchView('dashboard');
 }
 
+// Show one auth form, hide the others (login / register / forgot / reset)
+function showAuthForm(id) {
+  for (const f of ['auth-form-login', 'auth-form-register', 'auth-form-forgot', 'auth-form-reset']) {
+    const el = document.getElementById(f);
+    if (el) el.style.display = (f === id) ? '' : 'none';
+  }
+  hideAuthError();
+  hideAuthSuccess();
+}
+
 function switchAuthTab(tab) {
   const isLogin = tab === 'login';
-  document.getElementById('auth-form-login').style.display    = isLogin ? '' : 'none';
-  document.getElementById('auth-form-register').style.display = isLogin ? 'none' : '';
+  showAuthForm(isLogin ? 'auth-form-login' : 'auth-form-register');
   document.getElementById('auth-tab-login').style.background    = isLogin ? 'var(--gray-0)' : 'transparent';
   document.getElementById('auth-tab-login').style.color         = isLogin ? 'var(--gray-800)' : 'var(--gray-400)';
   document.getElementById('auth-tab-register').style.background = isLogin ? 'transparent' : 'var(--gray-0)';
   document.getElementById('auth-tab-register').style.color      = isLogin ? 'var(--gray-400)' : 'var(--gray-800)';
-  hideAuthError();
 }
+
+function showForgotForm() { showAuthForm('auth-form-forgot'); }
+function backToLogin()    { switchAuthTab('login'); }
 
 function showAuthError(msg) {
   const el = document.getElementById('auth-error');
@@ -113,6 +132,14 @@ function showAuthError(msg) {
 }
 function hideAuthError() {
   const el = document.getElementById('auth-error');
+  if (el) el.style.display = 'none';
+}
+function showAuthSuccess(msg) {
+  const el = document.getElementById('auth-success');
+  if (el) { el.textContent = msg; el.style.display = ''; }
+}
+function hideAuthSuccess() {
+  const el = document.getElementById('auth-success');
   if (el) el.style.display = 'none';
 }
 
@@ -211,6 +238,60 @@ async function submitRegister() {
   showOnboarding();
 }
 
+let _resetToken = null;
+
+async function submitForgot() {
+  hideAuthError(); hideAuthSuccess();
+  const email = (document.getElementById('forgot-email')?.value || '').trim();
+  if (!email) { showAuthError('Please enter your email address'); return; }
+
+  setAuthBtnLoading('forgot-btn', true, 'Send reset link');
+  try {
+    const r = await fetch('/auth/forgot-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({email}),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { showAuthError(data.error || 'Could not send reset link'); return; }
+    showAuthSuccess(data.message || 'If that email is registered, a reset link is on its way.');
+  } catch (err) {
+    showAuthError('Could not reach server. Is Flask running?');
+    console.error('Forgot-password fetch error:', err);
+  } finally {
+    setAuthBtnLoading('forgot-btn', false, 'Send reset link');
+  }
+}
+
+async function submitReset() {
+  hideAuthError(); hideAuthSuccess();
+  const pw = document.getElementById('reset-password')?.value || '';
+  if (!pw)          { showAuthError('Please choose a new password (8+ characters)'); return; }
+  if (!_resetToken) { showAuthError('Reset link missing — open the link from your email again.'); return; }
+
+  setAuthBtnLoading('reset-btn', true, 'Set new password');
+  try {
+    const r = await fetch('/auth/reset-password', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({token: _resetToken, password: pw}),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { showAuthError(data.error || 'Password reset failed'); return; }
+    _resetToken = null;
+    history.replaceState({}, '', location.pathname);   // drop ?reset=… from the URL
+    switchAuthTab('login');
+    showAuthSuccess(data.message || 'Password updated. You can log in now.');
+  } catch (err) {
+    showAuthError('Could not reach server. Is Flask running?');
+    console.error('Reset-password fetch error:', err);
+  } finally {
+    setAuthBtnLoading('reset-btn', false, 'Set new password');
+  }
+}
+
 async function signOut() {
   await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
   _currentUser = null;
@@ -222,9 +303,11 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   const screen = document.getElementById('auth-screen');
   if (!screen || screen.style.display === 'none') return;
-  const loginVisible = document.getElementById('auth-form-login')?.style.display !== 'none';
-  if (loginVisible) submitLogin();
-  else              submitRegister();
+  const visible = id => document.getElementById(id)?.style.display !== 'none';
+  if      (visible('auth-form-reset'))  submitReset();
+  else if (visible('auth-form-forgot')) submitForgot();
+  else if (visible('auth-form-login'))  submitLogin();
+  else                                  submitRegister();
 });
 
 // ── State ──
