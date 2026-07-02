@@ -69,6 +69,25 @@ def jload(v, default=None):
     try:   return json.loads(v) if v else ([] if default is None else default)
     except Exception: return [] if default is None else default
 
+def current_user_id() -> str:
+    """
+    Return the authenticated user's id for the current request.
+
+    Reads flask.g.user_id (set by @require_auth). Falls back to 'default'
+    outside a request context (CLI scripts, scheduler) so legacy single-user
+    tools keep working.
+    """
+    try:
+        from flask import g, has_request_context
+        if has_request_context():
+            uid = getattr(g, 'user_id', None)
+            if uid:
+                return uid
+    except Exception:
+        pass
+    return 'default'
+
+
 def now_iso():   return datetime.datetime.now().isoformat()
 def today_iso(tz: str = None) -> str:
     """Return today's date in YYYY-MM-DD format, respecting timezone."""
@@ -320,6 +339,38 @@ def migrate_add_user_id():
         except Exception:
             pass
 
+DATA_TABLES = [
+    'food_logs', 'custom_foods', 'thoughts', 'todos',
+    'hydration_logs', 'sleep_logs', 'body_metrics',
+    'habits', 'habit_logs', 'symptoms', 'vitals',
+    'emergency_info', 'notification_log', 'reminder_settings',
+    'fitness_activities', 'medicines', 'dose_logs', 'reports',
+    'user_profile', 'oauth_tokens',
+]
+
+
+def migrate_claim_default_data():
+    """
+    One-time upgrade for single-user installs: if exactly one real user
+    exists, assign all legacy rows (user_id='default') to that user so
+    their data survives the switch to per-user isolation.
+    With zero or 2+ users we can't know who owns 'default' rows, so we
+    leave them untouched.
+    """
+    conn = get_db()
+    users = conn.execute("SELECT id FROM users").fetchall()
+    if len(users) != 1:
+        return
+    uid = users[0][0]
+    for table in DATA_TABLES:
+        try:
+            conn.execute(
+                f"UPDATE {table} SET user_id=? WHERE user_id='default'", (uid,)
+            )
+        except Exception:
+            pass
+
+
 def init_db():
     """Create all tables. Safe to call every startup — uses IF NOT EXISTS."""
     conn = get_db()
@@ -330,4 +381,5 @@ def init_db():
     migrate_add_user_id()
     migrate_fix_profile_defaults()
     migrate_add_timezone()
+    migrate_claim_default_data()
     print(f"[DB] Ready — {DB_PATH}")

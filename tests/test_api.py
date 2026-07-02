@@ -11,8 +11,8 @@ Run:
 """
 import os, sys, datetime, json
 
-# ── Ensure MEDISCAN_DB=:memory: before any app import ─────────────────────────
-os.environ.setdefault("MEDISCAN_DB", ":memory:")
+# ── Ensure MEDEASY_DB=:memory: before any app import ──────────────────────────
+os.environ["MEDEASY_DB"] = ":memory:"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
@@ -40,6 +40,20 @@ YESTERDAY = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
 # Fixtures
 # ══════════════════════════════════════════════════════════════════════════════
 
+TEST_EMAIL = "tester@medeasy.test"
+TEST_PW    = "test-password-123"
+
+
+def make_authed_client(application, email, password=TEST_PW):
+    """Return a test client logged in as `email` (registers on first use)."""
+    c = application.test_client()
+    r = c.post("/auth/register", json={"email": email, "password": password})
+    if r.status_code == 409:  # already registered — just log in
+        r = c.post("/auth/login", json={"email": email, "password": password})
+    assert r.status_code in (200, 201), f"auth failed: {r.status_code} {r.get_json()}"
+    return c
+
+
 @pytest.fixture(scope="session")
 def app():
     application = create_app()
@@ -50,7 +64,8 @@ def app():
 
 @pytest.fixture(scope="session")
 def client(app):
-    return app.test_client()
+    """Authenticated client — all API routes require a session cookie."""
+    return make_authed_client(app, TEST_EMAIL)
 
 
 @pytest.fixture(autouse=True)
@@ -298,7 +313,8 @@ class TestFood:
     def test_food_profile_update(self, client):
         code, d = jpost(client, "/api/food/profile",
                         {"name":"Ayush","weight_kg":70,"height_cm":175,
-                         "age":25,"activity_level":"moderate","goal":"maintain"})
+                         "age":25,"gender":"male",
+                         "activity_level":"moderate","goal":"maintain"})
         assert code == 200 and d["success"]
         assert d["targets"]["target_calories"] > 0
 

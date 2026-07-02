@@ -1,46 +1,52 @@
 """
 db/fitness.py — Fitness activities, OAuth tokens, sync history.
 
+All queries are scoped to the authenticated user via current_user_id().
 """
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id
+from __future__ import annotations
+
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
 
 
 def insert_activity(data: dict, check_duplicate=True) -> dict | None:
-    """Insert activity; skip if external_id already exists."""
+    """Insert activity; skip if external_id already exists for this user."""
+    uid = current_user_id()
     if check_duplicate and data.get('external_id'):
-        exists = execute("SELECT id FROM fitness_activities WHERE external_id=?",
-                         (data['external_id'],), fetchone=True)
+        exists = execute("SELECT id FROM fitness_activities WHERE external_id=? AND user_id=?",
+                         (data['external_id'], uid), fetchone=True)
         if exists: return None   # already imported
 
     aid = new_id()
     execute("""
         INSERT INTO fitness_activities
           (id,type,name,date,duration,distance,calories,heart_rate_avg,
-           heart_rate_max,steps,elevation,notes,source,external_id,created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+           heart_rate_max,steps,elevation,notes,source,external_id,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (aid, data.get('type','running'), data.get('name',''),
           data.get('date', today_iso()), int(data.get('duration',0)),
           float(data.get('distance',0)), int(data.get('calories',0)),
           int(data.get('heart_rate_avg',0)), int(data.get('heart_rate_max',0)),
           int(data.get('steps',0)), float(data.get('elevation',0)),
           data.get('notes',''), data.get('source','manual'),
-          data.get('external_id',''), now_iso()), commit=True)
+          data.get('external_id',''), now_iso(), uid), commit=True)
     return get_activity(aid)
 
 
 def get_activity(aid):
-    r = execute("SELECT * FROM fitness_activities WHERE id=?", (aid,), fetchone=True)
+    r = execute("SELECT * FROM fitness_activities WHERE id=? AND user_id=?",
+                (aid, current_user_id()), fetchone=True)
     return dict(r) if r else None
 
 
 def list_activities():
-    rows = execute("SELECT * FROM fitness_activities ORDER BY date DESC, created_at DESC",
-                   fetchall=True)
+    rows = execute("SELECT * FROM fitness_activities WHERE user_id=? ORDER BY date DESC, created_at DESC",
+                   (current_user_id(),), fetchall=True)
     return [dict(r) for r in rows]
 
 
 def delete_activity(aid):
-    execute("DELETE FROM fitness_activities WHERE id=?", (aid,), commit=True)
+    execute("DELETE FROM fitness_activities WHERE id=? AND user_id=?",
+            (aid, current_user_id()), commit=True)
 
 
 def fitness_stats():
@@ -107,48 +113,52 @@ def fitness_stats():
 # ── OAuth Tokens ──────────────────────────────────────────────────────────────
 
 def save_token(service, token_data: dict):
-    existing = execute("SELECT id FROM oauth_tokens WHERE service=?", (service,), fetchone=True)
+    uid = current_user_id()
+    existing = execute("SELECT id FROM oauth_tokens WHERE service=? AND user_id=?",
+                       (service, uid), fetchone=True)
     if existing:
         execute("""
             UPDATE oauth_tokens SET
               access_token=?, refresh_token=?, token_type=?, expires_at=?,
               scope=?, athlete_id=?, athlete_name=?, last_sync=?
-            WHERE service=?
+            WHERE service=? AND user_id=?
         """, (token_data.get('access_token',''), token_data.get('refresh_token',''),
               token_data.get('token_type','Bearer'), token_data.get('expires_at',''),
               token_data.get('scope',''), token_data.get('athlete_id',''),
-              token_data.get('athlete_name',''), '', service), commit=True)
+              token_data.get('athlete_name',''), '', service, uid), commit=True)
     else:
         execute("""
             INSERT INTO oauth_tokens
               (id,service,access_token,refresh_token,token_type,expires_at,
-               scope,athlete_id,athlete_name,connected_at,last_sync)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+               scope,athlete_id,athlete_name,connected_at,last_sync,user_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """, (new_id(), service, token_data.get('access_token',''),
               token_data.get('refresh_token',''), token_data.get('token_type','Bearer'),
               token_data.get('expires_at',''), token_data.get('scope',''),
               token_data.get('athlete_id',''), token_data.get('athlete_name',''),
-              now_iso(), ''), commit=True)
+              now_iso(), '', uid), commit=True)
 
 
 def get_token(service) -> dict | None:
-    r = execute("SELECT * FROM oauth_tokens WHERE service=?", (service,), fetchone=True)
+    r = execute("SELECT * FROM oauth_tokens WHERE service=? AND user_id=?",
+                (service, current_user_id()), fetchone=True)
     return dict(r) if r else None
 
 
 def list_tokens():
-    rows = execute("SELECT service,athlete_name,connected_at,last_sync FROM oauth_tokens",
-                   fetchall=True)
+    rows = execute("SELECT service,athlete_name,connected_at,last_sync FROM oauth_tokens WHERE user_id=?",
+                   (current_user_id(),), fetchall=True)
     return [dict(r) for r in rows]
 
 
 def update_last_sync(service):
-    execute("UPDATE oauth_tokens SET last_sync=? WHERE service=?",
-            (now_iso(), service), commit=True)
+    execute("UPDATE oauth_tokens SET last_sync=? WHERE service=? AND user_id=?",
+            (now_iso(), service, current_user_id()), commit=True)
 
 
 def delete_token(service):
-    execute("DELETE FROM oauth_tokens WHERE service=?", (service,), commit=True)
+    execute("DELETE FROM oauth_tokens WHERE service=? AND user_id=?",
+            (service, current_user_id()), commit=True)
 
 
 # ── Sync Log ──────────────────────────────────────────────────────────────────
@@ -169,6 +179,3 @@ def get_sync_history(service=None, limit=20):
         rows = execute("SELECT * FROM sync_log ORDER BY synced_at DESC LIMIT ?",
                        (limit,), fetchall=True)
     return [dict(r) for r in rows]
-
-
-# ── User Profile ──────────────────────────────────────────────────────────────

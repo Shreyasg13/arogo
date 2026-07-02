@@ -55,10 +55,11 @@ def api_medicine_streaks():
         expected = len(times)   # doses expected per day
 
         # Fetch all dose_logs for this medicine in range
+        from db.core import current_user_id
         logs = execute(
             """SELECT date_key, time_key, taken FROM dose_logs
-               WHERE medicine_id=? AND date_key >= ? ORDER BY date_key""",
-            (mid, date_range[0]), fetchall=True)
+               WHERE medicine_id=? AND date_key >= ? AND user_id=? ORDER BY date_key""",
+            (mid, date_range[0], current_user_id()), fetchall=True)
         log_lookup = {}
         for lg in logs:
             log_lookup[(lg['date_key'], lg['time_key'])] = bool(lg['taken'])
@@ -274,10 +275,11 @@ def api_body_metrics_trend():
 
     days   = int(request.args.get('days', 365))
     start  = (dt.date.today() - dt.timedelta(days=days)).isoformat()
+    from db.core import current_user_id
     rows   = execute(
         "SELECT date_key, weight_kg, body_fat_pct, bmi FROM body_metrics "
-        "WHERE weight_kg IS NOT NULL AND date_key >= ? ORDER BY date_key",
-        (start,), fetchall=True)
+        "WHERE weight_kg IS NOT NULL AND date_key >= ? AND user_id=? ORDER BY date_key",
+        (start, current_user_id()), fetchall=True)
     logs   = [dict(r) for r in rows]
 
     profile = get_profile()
@@ -672,8 +674,9 @@ def api_wellness_today():
 @bp.route('/api/reminders/settings')
 @require_auth
 def api_get_reminder_settings():
-    from db.core import execute, new_id, now_iso
-    row = execute("SELECT * FROM reminder_settings LIMIT 1", fetchone=True)
+    from db.core import execute, new_id, now_iso, current_user_id
+    uid = current_user_id()
+    row = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     if not row:
         # Create defaults
         rid = new_id()
@@ -681,18 +684,19 @@ def api_get_reminder_settings():
             (id,water_enabled,water_interval_h,water_start,water_end,water_goal_ml,
              habit_reminder_enabled,habit_reminder_time,
              sleep_reminder_enabled,sleep_reminder_time,
-             mood_reminder_enabled,mood_reminder_time,updated_at)
-            VALUES (?,1,2.0,'08:00','21:00',2450,1,'20:00',1,'22:00',1,'18:00',?)""",
-            (rid, now_iso()), commit=True)
-        row = execute("SELECT * FROM reminder_settings LIMIT 1", fetchone=True)
+             mood_reminder_enabled,mood_reminder_time,updated_at,user_id)
+            VALUES (?,1,2.0,'08:00','21:00',2450,1,'20:00',1,'22:00',1,'18:00',?,?)""",
+            (rid, now_iso(), uid), commit=True)
+        row = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     return jsonify(dict(row))
 
 @bp.route('/api/reminders/settings', methods=['POST'])
 @require_auth
 def api_save_reminder_settings():
-    from db.core import execute, new_id, now_iso
+    from db.core import execute, new_id, now_iso, current_user_id
+    uid = current_user_id()
     d = request.json or {}
-    row = execute("SELECT id FROM reminder_settings LIMIT 1", fetchone=True)
+    row = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     if row:
         execute("""UPDATE reminder_settings SET
             water_enabled=?, water_interval_h=?, water_start=?, water_end=?,
@@ -718,8 +722,8 @@ def api_save_reminder_settings():
             (id,water_enabled,water_interval_h,water_start,water_end,water_goal_ml,
              habit_reminder_enabled,habit_reminder_time,
              sleep_reminder_enabled,sleep_reminder_time,
-             mood_reminder_enabled,mood_reminder_time,updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+             mood_reminder_enabled,mood_reminder_time,updated_at,user_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (rid, int(d.get('water_enabled',1)),
              float(d.get('water_interval_h',2.0)),
              d.get('water_start','08:00'), d.get('water_end','21:00'),
@@ -727,8 +731,8 @@ def api_save_reminder_settings():
              int(d.get('habit_reminder_enabled',1)), d.get('habit_reminder_time','20:00'),
              int(d.get('sleep_reminder_enabled',1)), d.get('sleep_reminder_time','22:00'),
              int(d.get('mood_reminder_enabled',1)), d.get('mood_reminder_time','18:00'),
-             now_iso()), commit=True)
-    updated = execute("SELECT * FROM reminder_settings LIMIT 1", fetchone=True)
+             now_iso(), uid), commit=True)
+    updated = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     return jsonify({'success': True, 'settings': dict(updated)})
 
 @bp.route('/api/reminders/water-status')

@@ -64,9 +64,9 @@ def register():
     execute(
         '''INSERT OR IGNORE INTO user_profile
            (id, name, weight_kg, height_cm, age, gender,
-            activity_level, goal, updated_at)
-           VALUES (?, '', NULL, NULL, NULL, NULL, NULL, NULL, ?)''',
-        (nid(), now_iso()),
+            activity_level, goal, updated_at, user_id)
+           VALUES (?, '', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)''',
+        (nid(), now_iso(), uid),
         commit=True,
     )
 

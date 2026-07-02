@@ -11,6 +11,8 @@ Usage:
     from auth import require_auth, hash_password, check_password,
                      make_token, read_token
 """
+from __future__ import annotations
+
 
 import hashlib
 import hmac

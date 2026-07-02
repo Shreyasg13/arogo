@@ -1,14 +1,24 @@
 """
 db/food.py — Food logging, nutrition summary, custom foods, user profile, TDEE.
 
+All queries are scoped to the authenticated user via current_user_id().
 """
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
 
 
 def get_profile() -> dict:
-    r = execute("SELECT * FROM user_profile LIMIT 1", fetchone=True)
+    uid = current_user_id()
+    r = execute("SELECT * FROM user_profile WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     if r: return dict(r)
-    return {}  # No profile yet — onboarding will create it
+    # Lazily create an empty profile row for this user (register normally
+    # does this, but legacy accounts or direct db calls may not have one)
+    execute("""INSERT INTO user_profile
+               (id, name, weight_kg, height_cm, age, gender,
+                activity_level, goal, updated_at, user_id)
+               VALUES (?, '', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)""",
+            (new_id(), now_iso(), uid), commit=True)
+    r = execute("SELECT * FROM user_profile WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
+    return dict(r) if r else {}
 
 def update_profile(data: dict) -> dict:
     p = get_profile()
@@ -34,8 +44,8 @@ def update_profile(data: dict) -> dict:
     execute("""UPDATE user_profile SET
         name=?, weight_kg=?, height_cm=?, age=?, gender=?,
         activity_level=?, goal=?, target_weight_kg=?, timezone=?, updated_at=?
-        WHERE id=?""",
-        (data.get('name', p['name']) or '',
+        WHERE id=? AND user_id=?""",
+        (data.get('name', p.get('name')) or '',
          _float('weight_kg', p.get('weight_kg')),
          _float('height_cm', p.get('height_cm')),
          _int('age', p.get('age')),
@@ -44,7 +54,7 @@ def update_profile(data: dict) -> dict:
          data.get('goal', p.get('goal')),
          new_target,
          data.get('timezone', p.get('timezone')),
-         now_iso(), p['id']), commit=True)
+         now_iso(), p['id'], current_user_id()), commit=True)
     return get_profile()
 
 def calc_tdee(profile: dict) -> dict:
@@ -101,8 +111,8 @@ def log_food(data: dict) -> dict:
     fid = new_id()
     execute("""INSERT INTO food_logs
         (id,food_id,food_name,meal_type,date_key,quantity_g,
-         calories,protein,carbs,fat,fiber,sugar,sodium,nutrients,logged_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+         calories,protein,carbs,fat,fiber,sugar,sodium,nutrients,logged_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (fid, data.get('food_id','custom'), data.get('food_name',''),
          data.get('meal_type','lunch'), data.get('date_key', today_iso()),
          float(data.get('quantity_g',100)),
@@ -110,18 +120,19 @@ def log_food(data: dict) -> dict:
          float(data.get('carbs',0)), float(data.get('fat',0)),
          float(data.get('fiber',0)), float(data.get('sugar',0)),
          float(data.get('sodium',0)), jdump(data.get('nutrients',{})),
-         now_iso()), commit=True)
+         now_iso(), current_user_id()), commit=True)
     r = execute("SELECT * FROM food_logs WHERE id=?", (fid,), fetchone=True)
     return _fmt_food_log(r)
 
 def get_food_logs(date_key: str) -> list:
     rows = execute(
-        "SELECT * FROM food_logs WHERE date_key=? ORDER BY logged_at",
-        (date_key,), fetchall=True)
+        "SELECT * FROM food_logs WHERE date_key=? AND user_id=? ORDER BY logged_at",
+        (date_key, current_user_id()), fetchall=True)
     return [_fmt_food_log(r) for r in rows]
 
 def delete_food_log(lid: str):
-    execute("DELETE FROM food_logs WHERE id=?", (lid,), commit=True)
+    execute("DELETE FROM food_logs WHERE id=? AND user_id=?",
+            (lid, current_user_id()), commit=True)
 
 def _fmt_food_log(r) -> dict:
     d = dict(r)
@@ -162,21 +173,23 @@ def get_weekly_nutrition(days: int = 7) -> list:
 def save_custom_food(data: dict) -> dict:
     fid = new_id()
     execute("""INSERT INTO custom_foods
-        (id,name,category,emoji,serving_g,calories,protein,carbs,fat,fiber,created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+        (id,name,category,emoji,serving_g,calories,protein,carbs,fat,fiber,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
         (fid, data['name'], data.get('category','Custom'), data.get('emoji','🍽️'),
          float(data.get('serving_g',100)), float(data['calories']),
          float(data.get('protein',0)), float(data.get('carbs',0)),
-         float(data.get('fat',0)), float(data.get('fiber',0)), now_iso()), commit=True)
+         float(data.get('fat',0)), float(data.get('fiber',0)), now_iso(),
+         current_user_id()), commit=True)
     r = execute("SELECT * FROM custom_foods WHERE id=?", (fid,), fetchone=True)
     return dict(r)
 
 def list_custom_foods() -> list:
-    rows = execute("SELECT * FROM custom_foods ORDER BY name", fetchall=True)
+    rows = execute("SELECT * FROM custom_foods WHERE user_id=? ORDER BY name",
+                   (current_user_id(),), fetchall=True)
     return [dict(r) for r in rows]
 
 
-# ── Thoughts / Daily Journal ───────────────────────────────────────────────────
+# ── User timezone ─────────────────────────────────────────────────────────────
 
 MAX_THOUGHTS_PER_DAY = 10
 

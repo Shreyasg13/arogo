@@ -25,6 +25,8 @@ SETUP INSTRUCTIONS (per service):
 
 All secrets go in .env (never committed). python-dotenv loads them automatically.
 """
+from __future__ import annotations
+
 
 import os, json, time, hashlib, hmac, base64, urllib.parse, datetime, requests, xml.etree.ElementTree as ET
 from database import (insert_activity, get_token, save_token, update_last_sync,

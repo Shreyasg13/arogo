@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+medeasy.db
+.env
+.pytest_cache/

@@ -155,16 +155,18 @@ def api_update_food_log(lid):
     new_qty = float(d.get('quantity_g', 0))
     if not new_qty or new_qty <= 0:
         return jsonify({'error': 'Invalid quantity'}), 400
-    row = execute('SELECT * FROM food_logs WHERE id=?', (lid,), fetchone=True)
+    from db.core import current_user_id
+    row = execute('SELECT * FROM food_logs WHERE id=? AND user_id=?',
+                  (lid, current_user_id()), fetchone=True)
     if not row:
         return jsonify({'error': 'Not found'}), 404
     old_qty = float(row['quantity_g']) or 100
     scale   = new_qty / old_qty
-    execute('UPDATE food_logs SET quantity_g=?,calories=?,protein=?,carbs=?,fat=?,fiber=? WHERE id=?',
+    execute('UPDATE food_logs SET quantity_g=?,calories=?,protein=?,carbs=?,fat=?,fiber=? WHERE id=? AND user_id=?',
         (new_qty,
          round((row['calories'] or 0)*scale,1), round((row['protein'] or 0)*scale,1),
          round((row['carbs'] or 0)*scale,1),    round((row['fat'] or 0)*scale,1),
-         round((row['fiber'] or 0)*scale,1),    lid), commit=True)
+         round((row['fiber'] or 0)*scale,1),    lid, current_user_id()), commit=True)
     return jsonify({'success': True})
 
 @bp.route('/api/food/log/<lid>', methods=['DELETE'])
@@ -211,13 +213,14 @@ def api_recent_meals():
     yesterday = (today - dt.timedelta(days=1)).isoformat()
     start     = (today - dt.timedelta(days=14)).isoformat()
 
+    from db.core import current_user_id
     rows = execute(
         """SELECT id, food_id, food_name, meal_type, date_key,
                   quantity_g, calories, protein, carbs, fat, fiber
            FROM food_logs
-           WHERE date_key >= ? AND date_key < ?
+           WHERE date_key >= ? AND date_key < ? AND user_id=?
            ORDER BY date_key DESC, logged_at ASC""",
-        (start, today.isoformat()), fetchall=True)
+        (start, today.isoformat(), current_user_id()), fetchall=True)
 
     # Group by (date_key, meal_type)
     combos_raw = defaultdict(list)
@@ -272,8 +275,8 @@ def api_recent_meals():
     yesterday_rows = execute(
         """SELECT id, food_id, food_name, meal_type, date_key,
                   quantity_g, calories, protein, carbs, fat, fiber
-           FROM food_logs WHERE date_key = ? ORDER BY meal_type, logged_at""",
-        (yesterday,), fetchall=True)
+           FROM food_logs WHERE date_key = ? AND user_id=? ORDER BY meal_type, logged_at""",
+        (yesterday, current_user_id()), fetchall=True)
 
     yesterday_by_meal = defaultdict(list)
     for r in yesterday_rows:

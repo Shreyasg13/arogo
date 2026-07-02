@@ -5,6 +5,8 @@ Each item: { name, category, serving_g, calories, protein, carbs, fat, fiber,
              minerals: {calcium,iron,magnesium,phosphorus,potassium,zinc} }
 All values per 100g unless noted.
 """
+from __future__ import annotations
+
 
 FOOD_DB = [
   # ══ INDIAN STAPLES ══

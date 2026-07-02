@@ -7,6 +7,8 @@ Switch to Postgres:
   export DATABASE_URL="postgresql://user:pass@host:5432/mediscan"
   pip install psycopg2-binary   # on your machine
 """
+from __future__ import annotations
+
 
 import os, sqlite3, json, datetime, uuid, threading
 

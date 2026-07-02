@@ -763,21 +763,22 @@ def api_global_search():
 @require_auth
 def api_export_counts():
     """Return row counts per section for the export preview."""
-    from database import execute
+    from db.core import execute, current_user_id
+    uid = current_user_id()
     from_date = request.args.get('from', '2000-01-01')
     to_date   = request.args.get('to',   today_iso(get_user_timezone()))
     counts = {
-        'food_logs':          execute("SELECT COUNT(*) as n FROM food_logs WHERE date_key BETWEEN ? AND ?",       (from_date, to_date), fetchone=True)['n'],
-        'fitness_activities': execute("SELECT COUNT(*) as n FROM fitness_activities WHERE date BETWEEN ? AND ?",  (from_date, to_date), fetchone=True)['n'],
-        'sleep_logs':         execute("SELECT COUNT(*) as n FROM sleep_logs WHERE date_key BETWEEN ? AND ?",      (from_date, to_date), fetchone=True)['n'],
-        'symptoms':           execute("SELECT COUNT(*) as n FROM symptoms WHERE date_key BETWEEN ? AND ?",        (from_date, to_date), fetchone=True)['n'],
-        'vitals':             execute("SELECT COUNT(*) as n FROM vitals WHERE date_key BETWEEN ? AND ?",          (from_date, to_date), fetchone=True)['n'],
-        'thoughts':           execute("SELECT COUNT(*) as n FROM thoughts WHERE date_key BETWEEN ? AND ?",        (from_date, to_date), fetchone=True)['n'],
-        'todos':              execute("SELECT COUNT(*) as n FROM todos WHERE created_at BETWEEN ? AND ?",         (from_date, to_date+'T23:59:59'), fetchone=True)['n'],
-        'body_metrics':       execute("SELECT COUNT(*) as n FROM body_metrics WHERE date_key BETWEEN ? AND ?",    (from_date, to_date), fetchone=True)['n'],
-        'hydration_logs':     execute("SELECT COUNT(*) as n FROM hydration_logs WHERE date_key BETWEEN ? AND ?",  (from_date, to_date), fetchone=True)['n'],
-        'habits':             execute("SELECT COUNT(*) as n FROM habits WHERE active=1",                          fetchone=True)['n'],
-        'medicines':          execute("SELECT COUNT(*) as n FROM medicines WHERE active=1",                       fetchone=True)['n'],
+        'food_logs':          execute("SELECT COUNT(*) as n FROM food_logs WHERE date_key BETWEEN ? AND ? AND user_id=?",       (from_date, to_date, uid), fetchone=True)['n'],
+        'fitness_activities': execute("SELECT COUNT(*) as n FROM fitness_activities WHERE date BETWEEN ? AND ? AND user_id=?",  (from_date, to_date, uid), fetchone=True)['n'],
+        'sleep_logs':         execute("SELECT COUNT(*) as n FROM sleep_logs WHERE date_key BETWEEN ? AND ? AND user_id=?",      (from_date, to_date, uid), fetchone=True)['n'],
+        'symptoms':           execute("SELECT COUNT(*) as n FROM symptoms WHERE date_key BETWEEN ? AND ? AND user_id=?",        (from_date, to_date, uid), fetchone=True)['n'],
+        'vitals':             execute("SELECT COUNT(*) as n FROM vitals WHERE date_key BETWEEN ? AND ? AND user_id=?",          (from_date, to_date, uid), fetchone=True)['n'],
+        'thoughts':           execute("SELECT COUNT(*) as n FROM thoughts WHERE date_key BETWEEN ? AND ? AND user_id=?",        (from_date, to_date, uid), fetchone=True)['n'],
+        'todos':              execute("SELECT COUNT(*) as n FROM todos WHERE created_at BETWEEN ? AND ? AND user_id=?",         (from_date, to_date+'T23:59:59', uid), fetchone=True)['n'],
+        'body_metrics':       execute("SELECT COUNT(*) as n FROM body_metrics WHERE date_key BETWEEN ? AND ? AND user_id=?",    (from_date, to_date, uid), fetchone=True)['n'],
+        'hydration_logs':     execute("SELECT COUNT(*) as n FROM hydration_logs WHERE date_key BETWEEN ? AND ? AND user_id=?",  (from_date, to_date, uid), fetchone=True)['n'],
+        'habits':             execute("SELECT COUNT(*) as n FROM habits WHERE active=1 AND user_id=?",                          (uid,), fetchone=True)['n'],
+        'medicines':          execute("SELECT COUNT(*) as n FROM medicines WHERE active=1 AND user_id=?",                       (uid,), fetchone=True)['n'],
     }
     return jsonify(counts)
 
@@ -793,43 +794,44 @@ def api_export():
     wanted = sections.split(',') if sections != 'all' else None
     def want(k): return wanted is None or k in wanted
 
-    from database import execute
+    from db.core import execute, current_user_id
+    uid = current_user_id()
     data = {}
 
     if want('food_logs'):
-        rows = execute("SELECT * FROM food_logs WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM food_logs WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['food_logs'] = [dict(r) for r in rows]
     if want('fitness_activities'):
-        rows = execute("SELECT * FROM fitness_activities WHERE date BETWEEN ? AND ? ORDER BY date DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM fitness_activities WHERE date BETWEEN ? AND ? AND user_id=? ORDER BY date DESC", (from_date, to_date, uid), fetchall=True)
         data['fitness_activities'] = [dict(r) for r in rows]
     if want('sleep_logs'):
-        rows = execute("SELECT * FROM sleep_logs WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM sleep_logs WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['sleep_logs'] = [dict(r) for r in rows]
     if want('symptoms'):
-        rows = execute("SELECT * FROM symptoms WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM symptoms WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['symptoms'] = [dict(r) for r in rows]
     if want('vitals'):
-        rows = execute("SELECT * FROM vitals WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM vitals WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['vitals'] = [dict(r) for r in rows]
     if want('thoughts'):
-        rows = execute("SELECT * FROM thoughts WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM thoughts WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['thoughts'] = [dict(r) for r in rows]
     if want('todos'):
-        rows = execute("SELECT * FROM todos WHERE created_at BETWEEN ? AND ? ORDER BY created_at DESC", (from_date, to_date+'T23:59:59'), fetchall=True)
+        rows = execute("SELECT * FROM todos WHERE created_at BETWEEN ? AND ? AND user_id=? ORDER BY created_at DESC", (from_date, to_date+'T23:59:59', uid), fetchall=True)
         data['todos'] = [dict(r) for r in rows]
     if want('body_metrics'):
-        rows = execute("SELECT * FROM body_metrics WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM body_metrics WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['body_metrics'] = [dict(r) for r in rows]
     if want('hydration_logs'):
-        rows = execute("SELECT * FROM hydration_logs WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        rows = execute("SELECT * FROM hydration_logs WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['hydration_logs'] = [dict(r) for r in rows]
     if want('habits'):
-        rows = execute("SELECT * FROM habits WHERE active=1 ORDER BY created_at", fetchall=True)
+        rows = execute("SELECT * FROM habits WHERE active=1 AND user_id=? ORDER BY created_at", (uid,), fetchall=True)
         data['habits'] = [dict(r) for r in rows]
-        log_rows = execute("SELECT * FROM habit_logs WHERE date_key BETWEEN ? AND ? ORDER BY date_key DESC", (from_date, to_date), fetchall=True)
+        log_rows = execute("SELECT * FROM habit_logs WHERE date_key BETWEEN ? AND ? AND user_id=? ORDER BY date_key DESC", (from_date, to_date, uid), fetchall=True)
         data['habit_logs'] = [dict(r) for r in log_rows]
     if want('medicines'):
-        rows = execute("SELECT * FROM medicines WHERE active=1 ORDER BY name", fetchall=True)
+        rows = execute("SELECT * FROM medicines WHERE active=1 AND user_id=? ORDER BY name", (uid,), fetchall=True)
         data['medicines'] = [dict(r) for r in rows]
 
     # Add metadata header
