@@ -108,6 +108,7 @@ def create_app(config=Config):
 def _register_inline_routes(app):
     """Inline route registration — used when routes/ package is absent."""
     from flask import request, jsonify
+    from auth import require_auth
     import json as _json
 
     # ── Stats ──────────────────────────────────────────────────────────────────

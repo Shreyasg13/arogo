@@ -756,7 +756,7 @@ class TestIntegration:
 # ══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    os.environ["MEDISCAN_DB"] = ":memory:"
+    os.environ["MEDEASY_DB"] = ":memory:"
     init_db()
     app = create_app()
     app.config["TESTING"] = True
