@@ -62,7 +62,7 @@ def register():
     # Create blank user_profile row for this user (onboarding will fill it)
     from db.core import new_id as nid
     execute(
-        '''INSERT OR IGNORE INTO user_profile
+        '''INSERT INTO user_profile
            (id, name, weight_kg, height_cm, age, gender,
             activity_level, goal, updated_at, user_id)
            VALUES (?, '', NULL, NULL, NULL, NULL, NULL, NULL, ?, ?)''',

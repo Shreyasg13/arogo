@@ -1,47 +1,83 @@
 """
 db/core.py — Database connection, schema, and helpers.
-"""
-import os, sqlite3, json, datetime, uuid, threading
 
-# ── Path ─────────────────────────────────────────────────────────────────────
+Backends:
+  - SQLite (default): medeasy.db in the repo root, or MEDEASY_DB env override.
+  - PostgreSQL: set DATABASE_URL=postgresql://user:pass@host:5432/dbname
+    (needs psycopg2-binary). All SQL in this codebase sticks to the portable
+    subset both engines accept; execute() rewrites '?' placeholders to '%s'
+    for Postgres.
+"""
+import os, json, datetime, uuid, threading
+
+# ── Backend selection ─────────────────────────────────────────────────────────
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH  = os.environ.get("MEDEASY_DB", os.path.join(ROOT_DIR, "medeasy.db"))
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+IS_POSTGRES  = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 # ── Connection ────────────────────────────────────────────────────────────────
 _conn  = None
 _mutex = threading.Lock()
 
 
-def get_db() -> sqlite3.Connection:
+def _connect_sqlite():
+    import sqlite3
+    # Remove stale WAL/SHM files left by a crashed session.
+    # On Windows NTFS (/mnt/d/...) these cause "locking protocol" errors.
+    for ext in ("-wal", "-shm"):
+        stale = DB_PATH + ext
+        if os.path.exists(stale):
+            try:
+                os.remove(stale)
+            except OSError:
+                pass
+
+    # isolation_level=None → autocommit mode.
+    # SQLite never opens an implicit write transaction that stays open
+    # between calls, which is what causes locking errors on NTFS mounts.
+    conn = sqlite3.connect(
+        DB_PATH,
+        check_same_thread=False,
+        isolation_level=None,
+    )
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _connect_postgres():
+    import psycopg2
+    import psycopg2.extras
+    conn = psycopg2.connect(DATABASE_URL,
+                            cursor_factory=psycopg2.extras.RealDictCursor)
+    # Autocommit matches the SQLite setup above, and keeps a failed ALTER in
+    # the idempotent migrations from aborting the whole connection.
+    conn.autocommit = True
+    return conn
+
+
+def get_db():
     global _conn
     with _mutex:
         if _conn is None:
-            # Remove stale WAL/SHM files left by a crashed session.
-            # On Windows NTFS (/mnt/d/...) these cause "locking protocol" errors.
-            for ext in ("-wal", "-shm"):
-                stale = DB_PATH + ext
-                if os.path.exists(stale):
-                    try:
-                        os.remove(stale)
-                    except OSError:
-                        pass
-
-            # isolation_level=None → autocommit mode.
-            # SQLite never opens an implicit write transaction that stays open
-            # between calls, which is what causes locking errors on NTFS mounts.
-            _conn = sqlite3.connect(
-                DB_PATH,
-                check_same_thread=False,
-                isolation_level=None,
-            )
-            _conn.row_factory = sqlite3.Row
+            _conn = _connect_postgres() if IS_POSTGRES else _connect_sqlite()
         return _conn
 
 
 # ── Query helper ──────────────────────────────────────────────────────────────
+def _adapt(sql: str) -> str:
+    # No SQL in this codebase contains a literal '?', so plain replace is safe.
+    return sql.replace("?", "%s") if IS_POSTGRES else sql
+
+
 def execute(sql: str, params=(), *, fetchone=False, fetchall=False, commit=False):
     conn = get_db()
-    cur  = conn.execute(sql, params)
+    if IS_POSTGRES:
+        cur = conn.cursor()
+        # psycopg2 %-formats the SQL only when params is not None
+        cur.execute(_adapt(sql), tuple(params) if params else None)
+    else:
+        cur = conn.execute(sql, params)
     # commit kwarg kept for API compatibility; in autocommit mode every
     # statement commits itself, so this is a no-op but harmless.
     if fetchone:
@@ -54,7 +90,10 @@ def execute(sql: str, params=(), *, fetchone=False, fetchall=False, commit=False
 
 def executemany(sql: str, param_list):
     conn = get_db()
-    conn.executemany(sql, param_list)
+    if IS_POSTGRES:
+        conn.cursor().executemany(_adapt(sql), [tuple(p) for p in param_list])
+    else:
+        conn.executemany(sql, param_list)
 
 
 def commit():
@@ -261,6 +300,8 @@ def migrate_fix_profile_defaults():
     Drop the old user_profile table with hardcoded defaults and recreate with NULL defaults.
     Safe to run multiple times — checks if migration is needed first.
     """
+    if IS_POSTGRES:
+        return  # PRAGMA-based fix for legacy SQLite files; PG schemas start correct
     conn = get_db()
     # Check if weight_kg still has old default of 70
     cols = conn.execute('PRAGMA table_info(user_profile)').fetchall()
@@ -306,9 +347,8 @@ def migrate_fix_profile_defaults():
 
 def migrate_add_timezone():
     """Add timezone column to user_profile if missing."""
-    conn = get_db()
     try:
-        conn.execute("ALTER TABLE user_profile ADD COLUMN timezone TEXT DEFAULT NULL")
+        execute("ALTER TABLE user_profile ADD COLUMN timezone TEXT DEFAULT NULL")
     except Exception:
         pass  # already exists
 
@@ -322,10 +362,9 @@ def migrate_add_user_id():
         'fitness_activities', 'medicines', 'dose_logs', 'reports',
         'user_profile', 'oauth_tokens',
     ]
-    conn = get_db()
     for table in tables:
         try:
-            conn.execute(
+            execute(
                 f"ALTER TABLE {table} ADD COLUMN user_id TEXT NOT NULL DEFAULT 'default'"
             )
         except Exception:
@@ -333,7 +372,7 @@ def migrate_add_user_id():
     # Index for fast per-user queries on the most-queried tables
     for table in ['food_logs','sleep_logs','hydration_logs','habits','symptoms','vitals']:
         try:
-            conn.execute(
+            execute(
                 f"CREATE INDEX IF NOT EXISTS idx_{table}_user ON {table}(user_id)"
             )
         except Exception:
@@ -357,14 +396,13 @@ def migrate_claim_default_data():
     With zero or 2+ users we can't know who owns 'default' rows, so we
     leave them untouched.
     """
-    conn = get_db()
-    users = conn.execute("SELECT id FROM users").fetchall()
+    users = execute("SELECT id FROM users", fetchall=True)
     if len(users) != 1:
         return
-    uid = users[0][0]
+    uid = users[0]['id']
     for table in DATA_TABLES:
         try:
-            conn.execute(
+            execute(
                 f"UPDATE {table} SET user_id=? WHERE user_id='default'", (uid,)
             )
         except Exception:
@@ -373,13 +411,12 @@ def migrate_claim_default_data():
 
 def init_db():
     """Create all tables. Safe to call every startup — uses IF NOT EXISTS."""
-    conn = get_db()
     for stmt in SCHEMA.strip().split(";"):
         stmt = stmt.strip()
         if stmt:
-            conn.execute(stmt)
+            execute(stmt)
     migrate_add_user_id()
     migrate_fix_profile_defaults()
     migrate_add_timezone()
     migrate_claim_default_data()
-    print(f"[DB] Ready — {DB_PATH}")
+    print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

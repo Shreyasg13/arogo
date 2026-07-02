@@ -92,7 +92,7 @@ def generate_weekly_report() -> dict:
     # Hydration avg
     hyd = execute("""SELECT AVG(daily_total) as avg FROM
                      (SELECT date_key, SUM(amount_ml) as daily_total FROM hydration_logs
-                      WHERE date_key >= ? AND date_key <= ? AND user_id=? GROUP BY date_key)""",
+                      WHERE date_key >= ? AND date_key <= ? AND user_id=? GROUP BY date_key) AS daily""",
                   (week_start, today_iso_v, uid), fetchone=True)
     avg_hydration = round(hyd['avg'] or 0) if hyd else 0
 

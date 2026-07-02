@@ -10,7 +10,8 @@ from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_
                           log_dose, get_today_doses, get_adherence_stats,
                           update_medicine_stock, decrement_pill_count, get_low_stock_medicines)
 from .fitness     import (insert_activity, list_activities, delete_activity, fitness_stats,
-                          save_token, get_token, list_tokens, delete_token, log_sync, get_sync_history)
+                          save_token, get_token, list_tokens, delete_token, update_last_sync,
+                          log_sync, get_sync_history)
 from .food        import (get_profile, update_profile, calc_tdee,
                           log_food, get_food_logs, delete_food_log, get_nutrition_summary, get_weekly_nutrition,
                           save_custom_food, list_custom_foods)
@@ -36,7 +37,8 @@ __all__ = [
     "log_dose", "get_today_doses", "get_adherence_stats",
     "update_medicine_stock", "decrement_pill_count", "get_low_stock_medicines",
     "insert_activity", "list_activities", "delete_activity", "fitness_stats",
-    "save_token", "get_token", "list_tokens", "delete_token", "log_sync", "get_sync_history",
+    "save_token", "get_token", "list_tokens", "delete_token", "update_last_sync",
+    "log_sync", "get_sync_history",
     "get_profile", "update_profile", "calc_tdee", "log_food", "get_food_logs", "delete_food_log",
     "get_nutrition_summary", "get_weekly_nutrition", "save_custom_food", "list_custom_foods",
     "get_thoughts", "save_thought", "update_thought", "delete_thought",

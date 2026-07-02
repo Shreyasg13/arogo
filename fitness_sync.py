@@ -29,8 +29,8 @@ from __future__ import annotations
 
 
 import os, json, time, hashlib, hmac, base64, urllib.parse, datetime, requests, xml.etree.ElementTree as ET
-from database import (insert_activity, get_token, save_token, update_last_sync,
-                      log_sync, list_activities, new_id, now_iso, today_iso)
+from db import (insert_activity, get_token, save_token, update_last_sync,
+                log_sync, list_activities, new_id, now_iso, today_iso)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,14 @@
+flask
+itsdangerous
+requests
+
+# Optional — background job runner (scheduler.py falls back to stdlib without it)
+schedule
+
+# Optional — PostgreSQL backend; activate by setting
+#   DATABASE_URL=postgresql://user:pass@host:5432/medeasy
+# (default backend is SQLite, no extra install needed)
+psycopg2-binary
+
+# Dev / tests
+pytest

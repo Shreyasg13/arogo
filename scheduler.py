@@ -8,7 +8,7 @@ Jobs:
   - check_missed_doses()  : every hour
 """
 import threading, time, datetime, os
-from database import get_today_doses, log_sync, get_sync_history
+from db import get_today_doses, log_sync, get_sync_history
 
 _scheduler_thread = None
 

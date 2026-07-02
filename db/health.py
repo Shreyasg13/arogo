@@ -44,7 +44,9 @@ def toggle_habit_log(habit_id: str, date_key: str) -> dict:
                 (habit_id, date_key, uid), commit=True)
         return {'done': False}
     else:
-        execute("INSERT OR REPLACE INTO habit_logs (id,habit_id,date_key,done,logged_at,user_id) VALUES (?,?,?,1,?,?)",
+        # plain INSERT is portable (SQLite + Postgres); the branch above
+        # guarantees no row exists for this (habit_id, date_key, user_id)
+        execute("INSERT INTO habit_logs (id,habit_id,date_key,done,logged_at,user_id) VALUES (?,?,?,1,?,?)",
                 (new_id(), habit_id, date_key, now_iso(), uid), commit=True)
         return {'done': True}
 
