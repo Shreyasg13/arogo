@@ -41,6 +41,15 @@ from db import (
 def create_app(config=Config):
     app = Flask(__name__)
     app.config.from_object(config)
+
+    # Refuse to run in production mode with the dev secret — session and
+    # email tokens are all signed with SECRET_KEY
+    if not app.config.get('DEBUG') and \
+            app.config.get('SECRET_KEY') == 'dev-secret-change-in-production':
+        raise RuntimeError(
+            'SECRET_KEY is not set. Generate one with '
+            '"python -c \"import secrets; print(secrets.token_hex(32))\"" '
+            'and set it in the environment before running with FLASK_DEBUG=0.')
     app.config['UPLOAD_FOLDER']      = config.UPLOAD_FOLDER
     app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)

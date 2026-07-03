@@ -31,6 +31,9 @@ TOKEN_MAX_AGE  = 86400 * 7      # 7 days
 PBKDF2_ITERS   = 260_000        # OWASP 2023 recommendation for SHA-256
 SALT_BYTES     = 32
 
+# Set COOKIE_SECURE=1 when serving over HTTPS (production)
+COOKIE_SECURE  = os.environ.get('COOKIE_SECURE', '').lower() in ('1', 'true')
+
 # ── Rate limiter (in-memory, per IP) ──────────────────────────────────────────
 # { ip: [timestamp, timestamp, ...] }
 _rate_buckets: dict[str, list[float]] = defaultdict(list)
@@ -167,7 +170,7 @@ def set_auth_cookie(response, user_id: str):
         token,
         max_age   = TOKEN_MAX_AGE,
         httponly  = True,
-        secure    = False,   # set True in production (HTTPS only)
+        secure    = COOKIE_SECURE,   # COOKIE_SECURE=1 env when behind HTTPS
         samesite  = 'Lax',
         path      = '/',
     )
@@ -206,11 +209,34 @@ def require_auth(f):
 
 # ── Security headers ───────────────────────────────────────────────────────────
 
+# Pragmatic CSP: the frontend uses inline onclick handlers throughout, and CSP
+# nonces do NOT apply to event-handler attributes — so script-src keeps
+# 'unsafe-inline' until the handlers are refactored to addEventListener.
+# The policy still pins scripts/styles/fonts/images to known origins and
+# blocks plugins, base-tag hijacks, and framing by other sites.
+# Disable with CSP_ENABLED=0 if it ever gets in the way during development.
+CSP_ENABLED = os.environ.get('CSP_ENABLED', '1') == '1'
+CSP_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data: blob: https://upload.wikimedia.org; "
+    "connect-src 'self'; "
+    "object-src 'none'; "
+    "base-uri 'self'; "
+    "frame-ancestors 'self'"
+)
+
+
 def add_security_headers(response):
     """Add security headers to every response."""
     response.headers['X-Frame-Options']        = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
-    # NOTE: CSP intentionally omitted during development — add back for production
-    # with a proper nonce-based policy once the app is stable.
+    if CSP_ENABLED:
+        response.headers['Content-Security-Policy'] = CSP_POLICY
+    if COOKIE_SECURE:
+        # Only meaningful over HTTPS — enabled together with the secure cookie
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
