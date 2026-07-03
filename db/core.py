@@ -275,6 +275,32 @@ CREATE TABLE IF NOT EXISTS notification_log (
     body TEXT DEFAULT '', source_id TEXT DEFAULT NULL,
     read INTEGER DEFAULT 0, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS family_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT 'My Family',
+    owner_id TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS family_members (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT DEFAULT 'member',
+    share_sleep INTEGER DEFAULT 0,
+    share_vitals INTEGER DEFAULT 0,
+    share_medicines INTEGER DEFAULT 0,
+    share_food INTEGER DEFAULT 0,
+    share_symptoms INTEGER DEFAULT 0,
+    joined_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS family_invites (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    invited_by TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS reminder_settings (
     id TEXT PRIMARY KEY,
     water_enabled INTEGER DEFAULT 1,

@@ -74,6 +74,20 @@ def send_verification_email(to: str, token: str) -> bool:
     )
 
 
+def send_family_invite_email(to: str, token: str, inviter: str, group: str) -> bool:
+    link = f'{APP_BASE_URL}/?family_invite={token}'
+    return send_email(
+        to,
+        f'{inviter} invited you to their MedEasy family group',
+        f'{inviter} invited you to join the family group "{group}" on MedEasy.\n\n'
+        'Family members choose exactly which health categories they share —\n'
+        'nothing is visible unless you turn it on.\n\n'
+        'Open this link to join (valid for 72 hours):\n\n'
+        f'    {link}\n\n'
+        "If you don't want to join, just ignore this email.\n",
+    )
+
+
 def send_password_reset_email(to: str, token: str) -> bool:
     link = f'{APP_BASE_URL}/?reset={token}'
     return send_email(

@@ -127,6 +127,21 @@ def read_verify_token(token: str) -> str | None:
         return None
 
 
+def make_family_invite_token(invite_id: str) -> str:
+    """Family invite token (72h) carrying the invite row id."""
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-family')
+    return s.dumps({'iid': invite_id})
+
+
+def read_family_invite_token(token: str) -> str | None:
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-family')
+    try:
+        data = s.loads(token, max_age=86400 * 3)
+        return data.get('iid')
+    except Exception:
+        return None
+
+
 def make_reset_token(user_id: str) -> str:
     """One-time password reset token (1h)."""
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-reset')

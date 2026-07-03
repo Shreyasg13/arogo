@@ -41,6 +41,13 @@ async function initAuth() {
     showAuthForm('auth-form-reset');
     return;
   }
+  // Arriving from a family invite link (/?family_invite=TOKEN) —
+  // stash it; it's redeemed in showApp() once the user is signed in
+  const inviteToken = new URLSearchParams(location.search).get('family_invite');
+  if (inviteToken) {
+    sessionStorage.setItem('me_family_invite', inviteToken);
+    history.replaceState({}, '', location.pathname);
+  }
   const r = await fetch('/auth/me', {credentials: 'same-origin'}).catch(() => null);
   if (r && r.ok) {
     _currentUser = await r.json();
@@ -99,6 +106,21 @@ function showApp() {
 
   const tdp = document.getElementById('thoughts-date-picker');
   if (tdp) tdp.value = localToday();
+
+  // Redeem a pending family invite (user arrived via emailed link)
+  const inviteToken = sessionStorage.getItem('me_family_invite');
+  if (inviteToken) {
+    sessionStorage.removeItem('me_family_invite');
+    fetch('/api/family/invite/accept', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin', body: JSON.stringify({token: inviteToken}),
+    }).then(async r => {
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) { showToast('You joined the family group 🎉'); switchView('family'); }
+      else      { showToast(d.error || 'Invite could not be accepted', 'error'); switchView('dashboard'); }
+    }).catch(() => switchView('dashboard'));
+    return;
+  }
 
   // Load the dashboard
   switchView('dashboard');
@@ -400,7 +422,227 @@ function switchView(view) {
   if (view === 'body')          loadBodyView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
+  if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
+}
+
+// ── Family sharing (Phase 3) ──────────────────────────────────────
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+const FAMILY_CATEGORIES = [
+  ['share_sleep',     '🌙', 'Sleep'],
+  ['share_vitals',    '❤️', 'Vitals'],
+  ['share_medicines', '💊', 'Medicines'],
+  ['share_food',      '🍽️', 'Food'],
+  ['share_symptoms',  '🤒', 'Symptoms'],
+];
+
+async function loadFamily() {
+  const box = document.getElementById('family-content');
+  if (!box) return;
+  const r = await fetch('/api/family', {credentials: 'same-origin'}).catch(() => null);
+  const group = r && r.ok ? (await r.json()).group : null;
+  box.innerHTML = group ? renderFamilyGroup(group) : renderFamilyEmpty();
+}
+
+function renderFamilyEmpty() {
+  return `
+    <div class="panel" style="padding:32px;text-align:center;max-width:480px">
+      <div style="font-size:34px;margin-bottom:10px">👨‍👩‍👧</div>
+      <h2 style="font-size:17px;font-weight:700;margin-bottom:6px">Create your family group</h2>
+      <p style="font-size:13px;color:var(--gray-400);margin-bottom:18px;line-height:1.6">
+        Invite family members by email. Everyone chooses exactly which
+        categories they share — nothing is visible unless they turn it on.
+      </p>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <input type="text" class="form-input" id="family-group-name" placeholder="Group name (e.g. The Guptas)"
+               style="max-width:220px">
+        <button class="btn-primary" onclick="createFamilyGroup()">Create group</button>
+      </div>
+    </div>`;
+}
+
+function renderFamilyGroup(g) {
+  const isOwner = g.my_role === 'owner';
+
+  const memberCards = g.members.map(m => {
+    const shared = FAMILY_CATEGORIES.filter(([f]) => m.shares[f]);
+    const badges = shared.length
+      ? shared.map(([, icon, label]) =>
+          `<span style="font-size:11px;background:var(--gray-50);border-radius:6px;padding:2px 8px">${icon} ${label}</span>`).join(' ')
+      : '<span style="font-size:11px;color:var(--gray-400)">Shares nothing yet</span>';
+    const isMe = _currentUser && m.user_id === _currentUser.id;
+    const actions = [];
+    if (!isMe && shared.length)
+      actions.push(`<button class="btn-outline" style="font-size:12px" onclick="toggleFamilySummary('${m.user_id}')">View shared data</button>`);
+    if (isOwner && !isMe)
+      actions.push(`<button class="btn-outline" style="font-size:12px;color:#DC2626" onclick="removeFamilyMember('${m.user_id}')">Remove</button>`);
+    return `
+      <div class="panel" style="padding:16px 18px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div style="font-size:14px;font-weight:600">${escapeHtml(m.name || m.email)}
+              ${m.role === 'owner' ? '<span style="font-size:10px;color:var(--gray-400);margin-left:6px">OWNER</span>' : ''}
+              ${isMe ? '<span style="font-size:10px;color:#0E6B5E;margin-left:6px">YOU</span>' : ''}
+            </div>
+            <div style="font-size:12px;color:var(--gray-400)">${escapeHtml(m.email)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">${badges}</div>
+          ${actions.join(' ')}
+        </div>
+        <div id="family-summary-${m.user_id}" style="display:none;margin-top:14px"></div>
+      </div>`;
+  }).join('');
+
+  const consentToggles = FAMILY_CATEGORIES.map(([f, icon, label]) => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+      <input type="checkbox" ${g.my_consent[f] ? 'checked' : ''}
+             onchange="saveFamilyConsent('${f}', this.checked)">
+      ${icon} ${label}
+    </label>`).join('');
+
+  const inviteSection = isOwner ? `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">Invite someone</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input type="email" class="form-input" id="family-invite-email"
+               placeholder="their-email@example.com" style="max-width:260px">
+        <button class="btn-primary" onclick="sendFamilyInvite()">Send invite</button>
+      </div>
+      ${(g.pending_invites || []).length ? `
+        <div style="margin-top:14px">
+          <div style="font-size:12px;color:var(--gray-400);margin-bottom:6px">Pending invites</div>
+          ${g.pending_invites.map(i => `
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:4px 0">
+              <span style="flex:1">${escapeHtml(i.email)}</span>
+              <button class="btn-outline" style="font-size:11px" onclick="revokeFamilyInvite('${i.id}')">Revoke</button>
+            </div>`).join('')}
+        </div>` : ''}
+    </div>` : '';
+
+  const dangerBtn = isOwner
+    ? `<button class="btn-outline" style="color:#DC2626" onclick="deleteFamilyGroup()">Delete group</button>`
+    : `<button class="btn-outline" style="color:#DC2626" onclick="leaveFamilyGroup()">Leave group</button>`;
+
+  return `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <h2 class="panel-title" style="flex:1">${escapeHtml(g.name)}</h2>
+        ${dangerBtn}
+      </div>
+      <p style="font-size:12px;color:var(--gray-400)">You share only what you switch on below. Changes apply immediately.</p>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">${consentToggles}</div>
+    </div>
+    ${inviteSection}
+    <div>${memberCards}</div>`;
+}
+
+async function createFamilyGroup() {
+  const name = document.getElementById('family-group-name')?.value || '';
+  const r = await fetch('/api/family', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify({name}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not create group', 'error'); return; }
+  loadFamily();
+}
+
+async function saveFamilyConsent(field, on) {
+  await fetch('/api/family/consent', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify({[field]: on}),
+  }).catch(() => {});
+  loadFamily();
+}
+
+async function sendFamilyInvite() {
+  const email = (document.getElementById('family-invite-email')?.value || '').trim();
+  if (!email) { showToast('Enter an email address', 'error'); return; }
+  const r = await fetch('/api/family/invite', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify({email}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not send invite', 'error'); return; }
+  showToast('Invite sent to ' + email);
+  loadFamily();
+}
+
+async function revokeFamilyInvite(id) {
+  await fetch('/api/family/invite/' + id, {method: 'DELETE', credentials: 'same-origin'}).catch(() => {});
+  loadFamily();
+}
+
+async function removeFamilyMember(uid) {
+  if (!confirm('Remove this member from the group?')) return;
+  const r = await fetch('/api/family/member/' + uid, {method: 'DELETE', credentials: 'same-origin'});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not remove member', 'error'); return; }
+  loadFamily();
+}
+
+async function leaveFamilyGroup() {
+  if (!confirm('Leave this family group?')) return;
+  const r = await fetch('/api/family/leave', {method: 'POST', credentials: 'same-origin'});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not leave group', 'error'); return; }
+  loadFamily();
+}
+
+async function deleteFamilyGroup() {
+  if (!confirm('Delete this family group? Members must be removed first.')) return;
+  const r = await fetch('/api/family', {method: 'DELETE', credentials: 'same-origin'});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not delete group', 'error'); return; }
+  loadFamily();
+}
+
+async function toggleFamilySummary(uid) {
+  const el = document.getElementById('family-summary-' + uid);
+  if (!el) return;
+  if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = '<div style="font-size:12px;color:var(--gray-400)">Loading…</div>';
+  const r = await fetch(`/api/family/member/${uid}/summary`, {credentials: 'same-origin'});
+  const s = await r.json().catch(() => null);
+  if (!r.ok || !s) {
+    el.innerHTML = '<div style="font-size:12px;color:#DC2626">Could not load shared data</div>';
+    return;
+  }
+  el.innerHTML = renderFamilySummary(s);
+}
+
+function renderFamilySummary(s) {
+  const rows = [];
+  if (s.sleep)
+    rows.push(`🌙 <b>Sleep:</b> ${s.sleep.nights} night(s) logged this week` +
+              (s.sleep.avg_hours != null ? `, avg ${s.sleep.avg_hours}h` : ''));
+  if (s.vitals && Object.keys(s.vitals).length) {
+    const parts = Object.entries(s.vitals).map(([t, v]) =>
+      `${t.replace('_', ' ')}: ${v.value1}${v.value2 ? '/' + v.value2 : ''} ${v.unit || ''}`);
+    rows.push(`❤️ <b>Vitals:</b> ${parts.join(' · ')}`);
+  } else if (s.vitals) {
+    rows.push('❤️ <b>Vitals:</b> nothing logged yet');
+  }
+  if (s.medicines)
+    rows.push(`💊 <b>Medicines:</b> ${s.medicines.active.length} active — ` +
+              `${s.medicines.today.taken}/${s.medicines.today.total} doses taken today`);
+  if (s.food)
+    rows.push(`🍽️ <b>Food:</b> ${s.food.today_calories} kcal across ${s.food.today_logs} log(s) today`);
+  if (s.symptoms)
+    rows.push(`🤒 <b>Symptoms (7d):</b> ` + (s.symptoms.length
+      ? s.symptoms.slice(0, 5).map(x => `${escapeHtml(x.name)} (${x.severity}/10)`).join(', ')
+      : 'none reported'));
+  if (!rows.length)
+    rows.push('This member is not sharing any categories with the group.');
+  return `<div style="border-top:1px solid var(--gray-100);padding-top:12px;
+               display:flex;flex-direction:column;gap:8px;font-size:13px">
+            ${rows.map(x => `<div>${x}</div>`).join('')}
+          </div>`;
 }
 
 // ── Dashboard ──

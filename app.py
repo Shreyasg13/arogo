@@ -55,6 +55,7 @@ def create_app(config=Config):
         from routes.food      import bp as food_bp
         from routes.wellness  import bp as wellness_bp
         from routes.insights  import bp as insights_bp
+        from routes.family    import bp as family_bp
 
         app.register_blueprint(auth_bp)
         app.register_blueprint(reports_bp)
@@ -64,6 +65,7 @@ def create_app(config=Config):
         app.register_blueprint(food_bp)
         app.register_blueprint(wellness_bp)
         app.register_blueprint(insights_bp)
+        app.register_blueprint(family_bp)
 
     except ImportError as e:
         import sys
