@@ -8,7 +8,7 @@ Jobs:
   - check_missed_doses()  : every hour
 """
 import threading, time, datetime, os
-from db import get_today_doses, log_sync, get_sync_history
+from db import get_today_doses, log_sync, get_sync_history, execute, user_context
 
 _scheduler_thread = None
 
@@ -22,11 +22,15 @@ def _daily_sync():
 
 def _check_missed_doses():
     try:
-        doses = get_today_doses()
         now = datetime.datetime.now().strftime('%H:%M')
-        missed = [d for d in doses if not d['taken'] and d['time'] < now]
-        if missed:
-            print(f"[scheduler] {len(missed)} missed dose(s) as of {now}")
+        users = execute("SELECT DISTINCT user_id FROM medicines WHERE active=1", fetchall=True)
+        total_missed = 0
+        for u in users:
+            with user_context(u['user_id']):
+                doses = get_today_doses()
+                total_missed += len([d for d in doses if not d['taken'] and d['time'] < now])
+        if total_missed:
+            print(f"[scheduler] {total_missed} missed dose(s) as of {now}")
     except Exception as e:
         print(f"[scheduler] Missed dose check error: {e}")
 

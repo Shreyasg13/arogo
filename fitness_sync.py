@@ -650,24 +650,30 @@ class AppleHealthParser:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def sync_all_connected():
-    """Sync all connected services. Call daily from scheduler."""
+    """Sync all connected services for every user with stored tokens.
+    Called daily from the scheduler (no request context)."""
+    from db import execute, user_context
     results = {}
     clients = {
         'strava':     StravaClient(),
         'garmin':     GarminClient(),
         'google_fit': GoogleFitClient()
     }
-    for service, client in clients.items():
-        tok = get_token(service)
-        if not tok: continue
-        try:
-            count = client.sync_activities(days_back=2)   # daily: last 2 days
-            results[service] = {'status': 'ok', 'count': count}
-            print(f"[sync] {service}: +{count}")
-        except Exception as e:
-            log_sync(service, 'error', 0, str(e))
-            results[service] = {'status': 'error', 'message': str(e)}
-            print(f"[sync] {service} error: {e}")
+    rows = execute("SELECT DISTINCT user_id FROM oauth_tokens", fetchall=True)
+    for row in rows:
+        uid = row['user_id']
+        with user_context(uid):
+            for service, client in clients.items():
+                tok = get_token(service)
+                if not tok: continue
+                try:
+                    count = client.sync_activities(days_back=2)   # daily: last 2 days
+                    results.setdefault(uid, {})[service] = {'status': 'ok', 'count': count}
+                    print(f"[sync] user={uid[:8]} {service}: +{count}")
+                except Exception as e:
+                    log_sync(service, 'error', 0, str(e))
+                    results.setdefault(uid, {})[service] = {'status': 'error', 'message': str(e)}
+                    print(f"[sync] user={uid[:8]} {service} error: {e}")
     return results
 
 

@@ -250,3 +250,27 @@ class TestSearchAndInsightsIsolation:
         # Alice logged food earlier in this run; Bob logged none
         assert alice_counts["food_logs"] >= 1
         assert bob_counts["food_logs"] == 0
+
+
+class TestUserContext:
+    def test_background_jobs_scope_queries_per_user(self, alice, app):
+        """user_context() drives current_user_id() outside a request —
+        this is how the scheduler and OAuth sync stay per-user."""
+        from db.core import current_user_id, user_context
+
+        alice_id = alice.get("/auth/me").get_json()["id"]
+        assert current_user_id() == "default"          # no request, no override
+        with user_context(alice_id):
+            assert current_user_id() == alice_id
+            with user_context("someone-else"):         # nesting restores properly
+                assert current_user_id() == "someone-else"
+            assert current_user_id() == alice_id
+        assert current_user_id() == "default"
+
+        # Scoped read actually returns that user's rows
+        from db import get_food_logs
+        import datetime
+        today = datetime.date.today().isoformat()
+        with user_context(alice_id):
+            names = {l["food_name"] for l in get_food_logs(today)}
+        assert "Alice Secret Salad" in names

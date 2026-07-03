@@ -26,7 +26,7 @@ from flask import g, jsonify, request, current_app
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 # ── Constants ──────────────────────────────────────────────────────────────────
-COOKIE_NAME    = 'ms_session'
+COOKIE_NAME    = 'me_session'   # renamed from ms_session (MediScan era); old sessions just re-login
 TOKEN_MAX_AGE  = 86400 * 7      # 7 days
 PBKDF2_ITERS   = 260_000        # OWASP 2023 recommendation for SHA-256
 SALT_BYTES     = 32

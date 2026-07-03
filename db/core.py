@@ -108,14 +108,40 @@ def jload(v, default=None):
     try:   return json.loads(v) if v else ([] if default is None else default)
     except Exception: return [] if default is None else default
 
+_user_override = threading.local()
+
+
+def user_context(uid: str):
+    """Context manager: run scoped DB calls as `uid` outside a request.
+
+    Used by background jobs (scheduler, OAuth sync) to iterate users:
+
+        with user_context(row['user_id']):
+            get_today_doses()   # scoped to that user
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _ctx():
+        prev = getattr(_user_override, 'uid', None)
+        _user_override.uid = uid
+        try:
+            yield
+        finally:
+            _user_override.uid = prev
+    return _ctx()
+
+
 def current_user_id() -> str:
     """
-    Return the authenticated user's id for the current request.
+    Return the user id for the current scoped operation.
 
-    Reads flask.g.user_id (set by @require_auth). Falls back to 'default'
-    outside a request context (CLI scripts, scheduler) so legacy single-user
-    tools keep working.
+    Priority: explicit user_context() override (background jobs) →
+    flask.g.user_id (set by @require_auth) → 'default' (legacy CLI use).
     """
+    uid = getattr(_user_override, 'uid', None)
+    if uid:
+        return uid
     try:
         from flask import g, has_request_context
         if has_request_context():
