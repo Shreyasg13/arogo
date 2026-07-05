@@ -156,19 +156,30 @@ def me():
 
 @bp.route('/auth/verify/<token>')
 def verify_email(token):
+    """Opened from the email link in a browser — redirect into the SPA,
+    which shows a toast based on ?verified=1/0."""
+    from flask import redirect
     uid = read_verify_token(token)
-    if not uid:
-        return jsonify({'error': 'Invalid or expired verification link'}), 400
+    row = execute('SELECT id, verified FROM users WHERE id = ?', (uid,), fetchone=True) if uid else None
+    if not row:
+        return redirect('/?verified=0')
+    if not row['verified']:
+        execute('UPDATE users SET verified = 1, verify_token = NULL WHERE id = ?',
+                (uid,), commit=True)
+    return redirect('/?verified=1')
 
-    row = execute('SELECT id, verified FROM users WHERE id = ?', (uid,), fetchone=True)
+
+@bp.route('/auth/resend-verification', methods=['POST'])
+@require_auth
+@rate_limit_auth
+def resend_verification():
+    row = execute('SELECT email, verified FROM users WHERE id = ?', (g.user_id,), fetchone=True)
     if not row:
         return jsonify({'error': 'User not found'}), 404
     if row['verified']:
-        return jsonify({'message': 'Email already verified'}), 200
-
-    execute('UPDATE users SET verified = 1, verify_token = NULL WHERE id = ?',
-            (uid,), commit=True)
-    return jsonify({'success': True, 'message': 'Email verified successfully'})
+        return jsonify({'success': True, 'message': 'Your email is already verified'})
+    mailer.send_verification_email(row['email'], make_verify_token(g.user_id))
+    return jsonify({'success': True, 'message': f"Verification email sent to {row['email']}"})
 
 
 # ── Password reset ─────────────────────────────────────────────────────────────

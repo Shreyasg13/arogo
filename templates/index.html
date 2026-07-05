@@ -289,6 +289,16 @@
 <!-- ── MAIN ── -->
 <main class="main-content" id="app-main">
 
+<!-- Unverified-email banner (shown by showApp when needed) -->
+<div id="verify-banner" style="display:none;background:#FFFBEB;border:1px solid #FDE68A;
+     border-radius:10px;padding:10px 16px;margin-bottom:16px;
+     font-size:13px;color:#92400E;align-items:center;gap:10px">
+  <span style="flex:1">📧 Please verify your email address — check your inbox for the link.</span>
+  <button class="btn-outline" style="font-size:12px;white-space:nowrap" onclick="resendVerification()">
+    Resend email
+  </button>
+</div>
+
 <!-- ═══════════ DASHBOARD ═══════════ -->
 <div id="view-dashboard" class="view active">
   <div class="page-header">

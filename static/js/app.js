@@ -48,6 +48,14 @@ async function initAuth() {
     sessionStorage.setItem('me_family_invite', inviteToken);
     history.replaceState({}, '', location.pathname);
   }
+  // Landing back from the email verification link (/?verified=1|0)
+  const verified = new URLSearchParams(location.search).get('verified');
+  if (verified !== null) {
+    history.replaceState({}, '', location.pathname);
+    setTimeout(() => showToast(
+      verified === '1' ? 'Email verified ✅'
+                       : 'Verification link is invalid or expired', verified === '1' ? '' : 'error'), 400);
+  }
   const r = await fetch('/auth/me', {credentials: 'same-origin'}).catch(() => null);
   if (r && r.ok) {
     _currentUser = await r.json();
@@ -77,6 +85,11 @@ function showApp() {
   // Populate user name in header
   const nameEl = document.getElementById('header-user-name');
   if (nameEl && _currentUser) nameEl.textContent = _currentUser.name || _currentUser.email;
+
+  // Nudge unverified accounts (banner has a resend button)
+  const vBanner = document.getElementById('verify-banner');
+  if (vBanner) vBanner.style.display =
+    (_currentUser && _currentUser.verified === false) ? 'flex' : 'none';
 
   // Sync browser timezone to profile (silently, no await needed)
   fetch('/api/food/profile', {
@@ -312,6 +325,14 @@ async function submitReset() {
   } finally {
     setAuthBtnLoading('reset-btn', false, 'Set new password');
   }
+}
+
+async function resendVerification() {
+  const r = await fetch('/auth/resend-verification', {method: 'POST', credentials: 'same-origin'})
+    .catch(() => null);
+  const d = r ? await r.json().catch(() => ({})) : {};
+  if (r && r.ok) showToast(d.message || 'Verification email sent');
+  else           showToast(d.error || 'Could not send verification email', 'error');
 }
 
 async function signOut() {

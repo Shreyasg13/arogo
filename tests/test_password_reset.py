@@ -66,9 +66,31 @@ class TestVerificationEmail:
         assert r.status_code == 201
         token = _extract(r"/auth/verify/(\S+)", sent)
         assert token, "no verification email captured"
-        assert c.get(f"/auth/verify/{token}").status_code == 200
+        # The link redirects into the SPA with ?verified=1
+        rv = c.get(f"/auth/verify/{token}")
+        assert rv.status_code == 302 and "verified=1" in rv.headers["Location"]
         me = c.get("/auth/me").get_json()
         assert me["verified"] is True
+
+    def test_bad_verify_link_redirects_with_failure_flag(self, app):
+        c = app.test_client()
+        rv = c.get("/auth/verify/garbage-token")
+        assert rv.status_code == 302 and "verified=0" in rv.headers["Location"]
+
+    def test_resend_verification(self, app, sent):
+        c = app.test_client()
+        c.post("/auth/register", json={"email": "resend@medeasy.test", "password": PW_OLD})
+        sent.clear()
+        r = c.post("/auth/resend-verification")
+        assert r.status_code == 200 and r.get_json()["success"]
+        token = _extract(r"/auth/verify/(\S+)", sent)
+        assert token, "resend did not produce a verification email"
+        assert "verified=1" in c.get(f"/auth/verify/{token}").headers["Location"]
+        # Second resend after verification: success but no email
+        sent.clear()
+        r = c.post("/auth/resend-verification")
+        assert r.status_code == 200 and "already verified" in r.get_json()["message"]
+        assert not sent
 
 
 class TestForgotPassword:
