@@ -176,6 +176,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL DEFAULT '',
     verified    INTEGER DEFAULT 0,
     verify_token TEXT DEFAULT NULL,
+    token_version INTEGER NOT NULL DEFAULT 0,
     created_at  TEXT NOT NULL,
     last_login  TEXT DEFAULT NULL
 );
@@ -404,6 +405,14 @@ def migrate_add_timezone():
     except Exception:
         pass  # already exists
 
+
+def migrate_add_token_version():
+    """users.token_version — bumped to revoke all of a user's sessions."""
+    try:
+        execute("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0")
+    except Exception:
+        pass  # already exists
+
 def migrate_add_user_id():
     """Add user_id column to all data tables. Safe to run multiple times."""
     tables = [
@@ -470,5 +479,6 @@ def init_db():
     migrate_add_user_id()
     migrate_fix_profile_defaults()
     migrate_add_timezone()
+    migrate_add_token_version()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

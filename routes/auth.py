@@ -16,6 +16,7 @@ from auth import (
     set_auth_cookie, clear_auth_cookie,
     make_verify_token, read_verify_token,
     make_reset_token, read_reset_token,
+    bump_token_version,
     rate_limit_auth, require_auth,
 )
 from db.core import execute, new_id, now_iso
@@ -210,6 +211,7 @@ def reset_password():
 
     execute('UPDATE users SET password_hash = ? WHERE id = ?',
             (hash_password(new_pw), uid), commit=True)
+    bump_token_version(uid)   # log out every existing session
     return jsonify({'success': True, 'message': 'Password updated. You can log in now.'})
 
 
@@ -236,4 +238,9 @@ def change_password():
 
     execute('UPDATE users SET password_hash = ? WHERE id = ?',
             (hash_password(new_pw), g.user_id), commit=True)
-    return jsonify({'success': True, 'message': 'Password updated'})
+    # Revoke all sessions (including this one), then keep the current
+    # browser signed in with a freshly-minted cookie
+    bump_token_version(g.user_id)
+    resp = make_response(jsonify({'success': True, 'message': 'Password updated'}))
+    set_auth_cookie(resp, g.user_id)
+    return resp

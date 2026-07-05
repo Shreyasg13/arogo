@@ -99,6 +99,27 @@ class TestForgotPassword:
         assert c.post("/auth/login",
                       json={"email": EMAIL, "password": PW_NEW}).status_code == 200
 
+    def test_reset_revokes_existing_sessions(self, app, sent):
+        """A stolen/old session cookie must die when the password is reset."""
+        email = "revoke-me@medeasy.test"
+        old_session = app.test_client()
+        r = old_session.post("/auth/register", json={"email": email, "password": PW_OLD})
+        assert r.status_code == 201
+        assert old_session.get("/auth/me").status_code == 200
+
+        # Reset the password from a different client
+        other = app.test_client()
+        other.post("/auth/forgot-password", json={"email": email})
+        token = _extract(r"\?reset=(\S+)", sent)
+        assert other.post("/auth/reset-password",
+                          json={"token": token, "password": PW_NEW}).status_code == 200
+
+        # The pre-reset session is now invalid; a fresh login works
+        assert old_session.get("/auth/me").status_code == 401
+        assert old_session.post("/auth/login",
+                                json={"email": email, "password": PW_NEW}).status_code == 200
+        assert old_session.get("/auth/me").status_code == 200
+
     def test_reset_rejects_garbage_token(self, app):
         c = app.test_client()
         r = c.post("/auth/reset-password",

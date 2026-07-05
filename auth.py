@@ -101,16 +101,34 @@ def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-session')
 
 
+def _token_version(user_id: str) -> int:
+    """Current token_version for a user — bumping it revokes all sessions."""
+    from db.core import execute
+    r = execute("SELECT token_version FROM users WHERE id=?", (user_id,), fetchone=True)
+    return (r.get('token_version') or 0) if r else 0
+
+
+def bump_token_version(user_id: str):
+    """Invalidate every existing session token for this user."""
+    from db.core import execute
+    execute("UPDATE users SET token_version = COALESCE(token_version,0) + 1 WHERE id=?",
+            (user_id,), commit=True)
+
+
 def make_token(user_id: str) -> str:
-    """Create a signed, time-stamped token carrying user_id."""
-    return _serializer().dumps({'uid': user_id})
+    """Create a signed, time-stamped token carrying user_id + token version."""
+    return _serializer().dumps({'uid': user_id, 'ver': _token_version(user_id)})
 
 
 def read_token(token: str) -> str | None:
-    """Verify token and return user_id, or None if invalid/expired."""
+    """Verify token and return user_id, or None if invalid/expired/revoked."""
     try:
         data = _serializer().loads(token, max_age=TOKEN_MAX_AGE)
-        return data.get('uid')
+        uid = data.get('uid')
+        # Tokens minted before a password change carry a stale version
+        if uid is None or data.get('ver', 0) != _token_version(uid):
+            return None
+        return uid
     except (SignatureExpired, BadSignature, Exception):
         return None
 
