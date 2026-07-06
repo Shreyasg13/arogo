@@ -19,7 +19,6 @@ import hmac
 import os
 import secrets
 import time
-from collections import defaultdict
 from functools import wraps
 
 from flask import g, jsonify, request, current_app
@@ -34,25 +33,40 @@ SALT_BYTES     = 32
 # Set COOKIE_SECURE=1 when serving over HTTPS (production)
 COOKIE_SECURE  = os.environ.get('COOKIE_SECURE', '').lower() in ('1', 'true')
 
-# ── Rate limiter (in-memory, per IP) ──────────────────────────────────────────
-# { ip: [timestamp, timestamp, ...] }
-_rate_buckets: dict[str, list[float]] = defaultdict(list)
+# ── Rate limiter (DB-backed, per IP) ──────────────────────────────────────────
+# Stored in the auth_attempts table so the limit holds across multiple
+# gunicorn workers (in-memory buckets were per-process).
 
 RATE_LIMIT_MAX    = 10          # attempts
 RATE_LIMIT_WINDOW = 60          # seconds
 
 
 def _check_rate_limit(ip: str) -> bool:
-    """Return True if request is allowed, False if rate-limited."""
-    now = time.time()
-    window_start = now - RATE_LIMIT_WINDOW
-    bucket = _rate_buckets[ip]
-    # Drop old entries outside the window
-    _rate_buckets[ip] = [t for t in bucket if t > window_start]
-    if len(_rate_buckets[ip]) >= RATE_LIMIT_MAX:
-        return False
-    _rate_buckets[ip].append(now)
-    return True
+    """Return True if request is allowed, False if rate-limited.
+    Fails open if the DB is unavailable — auth still works, just unthrottled."""
+    try:
+        from db.core import execute
+        now = time.time()
+        execute("DELETE FROM auth_attempts WHERE ts < ?",
+                (now - RATE_LIMIT_WINDOW,), commit=True)
+        row = execute("SELECT COUNT(*) AS n FROM auth_attempts WHERE ip = ?",
+                      (ip,), fetchone=True)
+        if row and (row['n'] or 0) >= RATE_LIMIT_MAX:
+            return False
+        execute("INSERT INTO auth_attempts (ip, ts) VALUES (?, ?)",
+                (ip, now), commit=True)
+        return True
+    except Exception:
+        return True
+
+
+def reset_rate_limiter():
+    """Clear all recorded attempts (used by tests)."""
+    try:
+        from db.core import execute
+        execute("DELETE FROM auth_attempts", commit=True)
+    except Exception:
+        pass
 
 
 def rate_limit_auth(f):

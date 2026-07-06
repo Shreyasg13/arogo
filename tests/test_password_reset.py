@@ -36,9 +36,9 @@ def app():
 @pytest.fixture(autouse=True)
 def no_rate_limit():
     """These tests hammer auth routes; don't let the IP limiter interfere."""
-    auth_module._rate_buckets.clear()
+    auth_module.reset_rate_limiter()
     yield
-    auth_module._rate_buckets.clear()
+    auth_module.reset_rate_limiter()
 
 
 @pytest.fixture()
@@ -91,6 +91,19 @@ class TestVerificationEmail:
         r = c.post("/auth/resend-verification")
         assert r.status_code == 200 and "already verified" in r.get_json()["message"]
         assert not sent
+
+
+class TestRateLimiter:
+    def test_blocks_after_max_attempts(self, app):
+        """DB-backed limiter: attempt N+1 within the window gets 429."""
+        c = app.test_client()
+        for _ in range(auth_module.RATE_LIMIT_MAX):
+            r = c.post("/auth/login", json={"email": "rl@medeasy.test",
+                                            "password": "wrong-password"})
+            assert r.status_code == 401
+        r = c.post("/auth/login", json={"email": "rl@medeasy.test",
+                                        "password": "wrong-password"})
+        assert r.status_code == 429
 
 
 class TestForgotPassword:

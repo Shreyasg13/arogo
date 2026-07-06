@@ -34,9 +34,12 @@ click-through is the real confirmation.
   because the frontend uses inline `onclick` handlers (CSP nonces don't apply
   to event-handler attributes). Tightening it means refactoring handlers to
   `addEventListener` — tracked as future work.
-- Auth routes are rate-limited in-process (10/min/IP). Behind a proxy, make
-  sure `X-Forwarded-For` is set by the proxy, not the client.
-- Scheduler/OAuth sync run per-user based on stored tokens.
+- Auth rate limiting (10/min/IP) is stored in the database, so it holds
+  across multiple workers. Behind a proxy, make sure `X-Forwarded-For`
+  is set by the proxy, not the client.
+- Scheduler/OAuth sync run per-user based on stored tokens. With more
+  than one worker/process, set `SCHEDULER_ENABLED=0` on all but one so
+  jobs don't run twice.
 
 ## Serving
 
@@ -47,6 +50,7 @@ pip install gunicorn
 gunicorn -w 2 -b 0.0.0.0:8000 "app:create_app()"
 ```
 
-Note: the in-memory rate limiter and reminder scheduler are per-process;
-keep workers low (or move rate limiting to the proxy) until they're
-externalized.
+Note: `gunicorn "app:create_app()"` does not run the `__main__` block, so
+the background scheduler doesn't start there. Either run the app once as
+`python app.py`, or start the scheduler from a separate small process
+(`python -c "from db.core import init_db; from scheduler import start_scheduler; import time; init_db(); start_scheduler(); time.sleep(1e9)"`).

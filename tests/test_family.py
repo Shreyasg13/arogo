@@ -37,9 +37,9 @@ def app():
 
 @pytest.fixture(autouse=True)
 def no_rate_limit():
-    auth_module._rate_buckets.clear()
+    auth_module.reset_rate_limiter()
     yield
-    auth_module._rate_buckets.clear()
+    auth_module.reset_rate_limiter()
 
 
 @pytest.fixture(scope="module")

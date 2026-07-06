@@ -302,6 +302,11 @@ CREATE TABLE IF NOT EXISTS notification_log (
     body TEXT DEFAULT '', source_id TEXT DEFAULT NULL,
     read INTEGER DEFAULT 0, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS auth_attempts (
+    ip TEXT NOT NULL,
+    ts REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_auth_attempts_ip ON auth_attempts(ip);
 CREATE TABLE IF NOT EXISTS family_groups (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL DEFAULT 'My Family',

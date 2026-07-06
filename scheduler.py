@@ -60,6 +60,11 @@ def _run_loop_stdlib():
 
 def start_scheduler():
     global _scheduler_thread
+    # With multiple gunicorn workers, enable the scheduler in ONE process
+    # only (SCHEDULER_ENABLED=0 on the rest) to avoid duplicate job runs
+    if os.environ.get('SCHEDULER_ENABLED', '1') != '1':
+        print('[scheduler] Disabled via SCHEDULER_ENABLED=0')
+        return
     if _scheduler_thread and _scheduler_thread.is_alive():
         return
     try:

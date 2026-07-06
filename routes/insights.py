@@ -1192,13 +1192,3 @@ def api_due_reminders():
         mark_reminder_sent(r['id'])
     return jsonify({'reminders': reminders})
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Startup
-# ══════════════════════════════════════════════════════════════════════════════
-
-if __name__ == '__main__':
-    os.makedirs('uploads', exist_ok=True)
-    init_db()
-    from scheduler import start_scheduler
-    start_scheduler()
-    app.run(debug=True, port=5000, use_reloader=False)
