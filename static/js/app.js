@@ -5,6 +5,91 @@
 
 let _currentUser = null;
 
+// ── CSP-safe event dispatch ───────────────────────────────────────
+// Inline on*="…" attributes are blocked by our Content-Security-Policy
+// (script-src carries no 'unsafe-inline'). Markup uses data-ev-click /
+// data-ev-change / data-ev-input / data-ev-keydown instead, and this
+// dispatcher interprets the expression WITHOUT eval: semicolon-separated
+// calls fn(arg,…) where each arg is a string/number/bool literal, `this`,
+// `event`, `this.value`, `this.checked`, or a JSON object/array.
+
+function _evTokenize(expr, sep) {
+  // Split on `sep` at bracket depth 0, outside quotes
+  const parts = [];
+  let depth = 0, q = null, cur = '';
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i];
+    if (q) {
+      cur += ch;
+      if (ch === '\\') cur += expr[++i] || '';
+      else if (ch === q) q = null;
+    } else if (ch === "'" || ch === '"') { q = ch; cur += ch; }
+    else if ('([{'.includes(ch)) { depth++; cur += ch; }
+    else if (')]}'.includes(ch)) { depth--; cur += ch; }
+    else if (ch === sep && depth === 0) { parts.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  if (cur.trim()) parts.push(cur);
+  return parts.map(s => s.trim()).filter(Boolean);
+}
+
+function _evArg(a, el, ev) {
+  if (a === 'this')         return el;
+  if (a === 'event')        return ev;
+  if (a === 'this.value')   return el.value;
+  if (a === 'this.checked') return el.checked;
+  if (a === 'true')  return true;
+  if (a === 'false') return false;
+  if (a === 'null')  return null;
+  if (/^-?\d+(\.\d+)?$/.test(a)) return parseFloat(a);
+  if ((a[0] === "'" || a[0] === '"') && a[a.length - 1] === a[0])
+    return a.slice(1, -1).replace(/\\(['"\\])/g, '$1');
+  if (a[0] === '{' || a[0] === '[') return JSON.parse(a);
+  console.warn('[ev] unsupported arg:', a);
+  return undefined;
+}
+
+function _evRun(expr, el, ev) {
+  for (const stmt of _evTokenize(expr, ';')) {
+    if (stmt === 'return false' ||
+        stmt === 'event.preventDefault()') { ev.preventDefault(); continue; }
+    if (stmt === 'event.stopPropagation()') { ev.stopPropagation(); continue; }
+    const m = stmt.match(/^([A-Za-z_$][\w$]*)\((.*)\)$/s);
+    if (!m || typeof window[m[1]] !== 'function') {
+      console.warn('[ev] unsupported statement:', stmt);
+      continue;
+    }
+    window[m[1]].apply(el, _evTokenize(m[2], ',').map(a => _evArg(a, el, ev)));
+  }
+}
+
+for (const _t of ['click', 'change', 'input', 'keydown']) {
+  document.addEventListener(_t, ev => {
+    const el = ev.target && ev.target.closest && ev.target.closest(`[data-ev-${_t}]`);
+    if (!el) return;
+    if (el.tagName === 'A') ev.preventDefault();
+    try { _evRun(el.getAttribute(`data-ev-${_t}`), el, ev); }
+    catch (err) { console.error('[ev]', el.getAttribute(`data-ev-${_t}`), err); }
+  });
+}
+
+// Named replacements for what used to be inline JS expressions
+function hideEl(id)  { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
+function clickEl(id) { const el = document.getElementById(id); if (el) el.click(); }
+function backdropClose(ev, el, fnName) { if (ev.target === el) window[fnName](); }
+function quickAdd(view) {
+  switchView(view);
+  const openers = { food: 'openAddFoodModal', fitness: 'openActivityModal', todos: 'openTodoModal' };
+  setTimeout(() => { const f = window[openers[view]]; if (f) f(); }, 200);
+}
+function enterAddCustomSymptom(ev) {
+  if (ev.key === 'Enter') { addCustomSymptom(); ev.preventDefault(); }
+}
+function setGymField(subId, i, field, val) {
+  if (typeof gymSets !== 'undefined' && gymSets[subId] && gymSets[subId][i])
+    gymSets[subId][i][field] = val;
+}
+
 // ── Date helpers — always use LOCAL date, never UTC ───────────
 // new Date().toISOString() returns UTC — wrong for users in UTC+N timezones.
 // Example: in India (UTC+5:30) at 11pm, toISOString() gives yesterday's date.
@@ -481,7 +566,7 @@ function renderFamilyEmpty() {
       <div style="display:flex;gap:8px;justify-content:center">
         <input type="text" class="form-input" id="family-group-name" placeholder="Group name (e.g. The Guptas)"
                style="max-width:220px">
-        <button class="btn-primary" onclick="createFamilyGroup()">Create group</button>
+        <button class="btn-primary" data-ev-click="createFamilyGroup()">Create group</button>
       </div>
     </div>`;
 }
@@ -498,9 +583,9 @@ function renderFamilyGroup(g) {
     const isMe = _currentUser && m.user_id === _currentUser.id;
     const actions = [];
     if (!isMe && shared.length)
-      actions.push(`<button class="btn-outline" style="font-size:12px" onclick="toggleFamilySummary('${m.user_id}')">View shared data</button>`);
+      actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="toggleFamilySummary('${m.user_id}')">View shared data</button>`);
     if (isOwner && !isMe)
-      actions.push(`<button class="btn-outline" style="font-size:12px;color:#DC2626" onclick="removeFamilyMember('${m.user_id}')">Remove</button>`);
+      actions.push(`<button class="btn-outline" style="font-size:12px;color:#DC2626" data-ev-click="removeFamilyMember('${m.user_id}')">Remove</button>`);
     return `
       <div class="panel" style="padding:16px 18px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -521,7 +606,7 @@ function renderFamilyGroup(g) {
   const consentToggles = FAMILY_CATEGORIES.map(([f, icon, label]) => `
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
       <input type="checkbox" ${g.my_consent[f] ? 'checked' : ''}
-             onchange="saveFamilyConsent('${f}', this.checked)">
+             data-ev-change="saveFamilyConsent('${f}', this.checked)">
       ${icon} ${label}
     </label>`).join('');
 
@@ -531,7 +616,7 @@ function renderFamilyGroup(g) {
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input type="email" class="form-input" id="family-invite-email"
                placeholder="their-email@example.com" style="max-width:260px">
-        <button class="btn-primary" onclick="sendFamilyInvite()">Send invite</button>
+        <button class="btn-primary" data-ev-click="sendFamilyInvite()">Send invite</button>
       </div>
       ${(g.pending_invites || []).length ? `
         <div style="margin-top:14px">
@@ -539,14 +624,14 @@ function renderFamilyGroup(g) {
           ${g.pending_invites.map(i => `
             <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:4px 0">
               <span style="flex:1">${escapeHtml(i.email)}</span>
-              <button class="btn-outline" style="font-size:11px" onclick="revokeFamilyInvite('${i.id}')">Revoke</button>
+              <button class="btn-outline" style="font-size:11px" data-ev-click="revokeFamilyInvite('${i.id}')">Revoke</button>
             </div>`).join('')}
         </div>` : ''}
     </div>` : '';
 
   const dangerBtn = isOwner
-    ? `<button class="btn-outline" style="color:#DC2626" onclick="deleteFamilyGroup()">Delete group</button>`
-    : `<button class="btn-outline" style="color:#DC2626" onclick="leaveFamilyGroup()">Leave group</button>`;
+    ? `<button class="btn-outline" style="color:#DC2626" data-ev-click="deleteFamilyGroup()">Delete group</button>`
+    : `<button class="btn-outline" style="color:#DC2626" data-ev-click="leaveFamilyGroup()">Leave group</button>`;
 
   return `
     <div class="panel" style="padding:18px 20px;margin-bottom:16px">
@@ -735,10 +820,10 @@ async function loadDashboard() {
   const medList = document.getElementById('dash-medicine-list');
   if (medList) {
     if (doses.length === 0) {
-      medList.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;text-align:center">No medicines scheduled today.<br><a href="#" onclick="switchView(\'medicines\');return false" style="color:var(--teal-600)">Add medicine →</a></div>';
+      medList.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;text-align:center">No medicines scheduled today.<br><a href="#" data-ev-click="switchView(\'medicines\');return false" style="color:var(--teal-600)">Add medicine →</a></div>';
     } else {
       medList.innerHTML = doses.slice(0,5).map(d => `
-        <div class="dash-dose-item ${d.taken ? 'taken' : ''}" onclick="markDoseTaken('${d.med_id}','${d.time}',this)">
+        <div class="dash-dose-item ${d.taken ? 'taken' : ''}" data-ev-click="markDoseTaken('${d.med_id}','${d.time}',this)">
           <div class="dash-dose-icon">${d.icon}</div>
           <div class="dash-dose-info">
             <div class="dash-dose-name">${escHtml(d.med_name)}</div>
@@ -963,11 +1048,11 @@ async function loadReports() {
   const grid = document.getElementById('reports-grid');
   if (!grid) return;
   if (reports.length === 0) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No reports found</div><div class="empty-sub">Upload your first medical report</div><button class="btn-primary" onclick="openUploadModal()">Upload Report</button></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No reports found</div><div class="empty-sub">Upload your first medical report</div><button class="btn-primary" data-ev-click="openUploadModal()">Upload Report</button></div>`;
     return;
   }
   grid.innerHTML = reports.map(r => `
-    <div class="report-card" onclick="openReportDetail(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+    <div class="report-card" data-ev-click="openReportDetail(${JSON.stringify(r).replace(/"/g,'&quot;')})">
       <div class="report-card-header">
         <div class="report-card-file-icon">${fileIcon(r.file_ext)}</div>
         <div class="report-card-info">
@@ -981,10 +1066,10 @@ async function loadReports() {
       <div class="report-card-footer">
         <span class="report-card-date">${r.report_date}</span>
         <div class="report-card-actions">
-          <button class="btn-icon" title="Download" onclick="event.stopPropagation();downloadFile('/uploads/${r.filename}',r.original_name)">
+          <button class="btn-icon" title="Download" data-ev-click="event.stopPropagation();downloadFile('/uploads/${r.filename}',r.original_name)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
-          <button class="btn-icon" title="Delete" onclick="event.stopPropagation();deleteReport('${r.id}')">
+          <button class="btn-icon" title="Delete" data-ev-click="event.stopPropagation();deleteReport('${r.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
           </button>
         </div>
@@ -1009,8 +1094,8 @@ function openReportDetail(r) {
     ${r.tags?.length?`<div style="margin-bottom:18px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:8px">Tags</div><div style="display:flex;flex-wrap:wrap;gap:6px">${r.tags.map(t=>`<span class="report-tag">${escHtml(t)}</span>`).join('')}</div></div>`:''}
     ${r.analysis_notes?`<div style="margin-bottom:18px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:8px">Analysis Notes</div><div style="font-size:13.5px;line-height:1.7;color:var(--gray-700);background:var(--gray-25);border:1px solid var(--gray-100);border-radius:var(--r-md);padding:12px">${escHtml(r.analysis_notes)}</div></div>`:''}
     <div class="form-actions" style="margin-top:16px;padding-top:16px">
-      <button class="btn-primary" onclick="downloadFile('/uploads/${r.filename}','${r.original_name}')">Download</button>
-      <button class="btn-danger" onclick="deleteReport('${r.id}');closeModal('report-detail-overlay')">Delete</button>
+      <button class="btn-primary" data-ev-click="downloadFile('/uploads/${r.filename}','${r.original_name}')">Download</button>
+      <button class="btn-danger" data-ev-click="deleteReport('${r.id}');closeModal('report-detail-overlay')">Delete</button>
     </div>
   `;
   document.getElementById('report-detail-overlay').style.display = 'flex';
@@ -1077,7 +1162,7 @@ function renderSelectedTags() {
   const el = document.getElementById('selected-tags');
   if (!el) return;
   el.innerHTML = selectedTags.map(tag => `
-    <span class="selected-tag">${escHtml(tag)}<span class="selected-tag-remove" onclick="removeTag('${escHtml(tag)}')">×</span></span>
+    <span class="selected-tag">${escHtml(tag)}<span class="selected-tag-remove" data-ev-click="removeTag('${escHtml(tag)}')">×</span></span>
   `).join('');
 }
 
@@ -1142,7 +1227,7 @@ function renderTodayTimeline(doses) {
   if (fill) fill.style.width = total ? `${(taken/total*100).toFixed(0)}%` : '0%';
   if (label) label.textContent = `${taken} of ${total} taken`;
   if (doses.length === 0) {
-    el.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;text-align:center">No doses scheduled. <a href="#" onclick="openMedModal();return false" style="color:var(--teal-600)">Add a medicine →</a></div>';
+    el.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;text-align:center">No doses scheduled. <a href="#" data-ev-click="openMedModal();return false" style="color:var(--teal-600)">Add a medicine →</a></div>';
     return;
   }
   // Group by time
@@ -1164,7 +1249,7 @@ function renderTodayTimeline(doses) {
         </div>
         <div class="dose-cards-col">
           ${group.map(d => `
-            <div class="dose-card ${d.taken ? 'taken' : ''}" onclick="markDoseTaken('${d.med_id}','${d.time}',this)">
+            <div class="dose-card ${d.taken ? 'taken' : ''}" data-ev-click="markDoseTaken('${d.med_id}','${d.time}',this)">
               <div class="dose-card-emoji">${d.icon}</div>
               <div class="dose-card-info">
                 <div class="dose-card-name">${escHtml(d.med_name)}</div>
@@ -1183,7 +1268,7 @@ function renderMedicinesGrid(meds) {
   const grid = document.getElementById('medicines-grid');
   if (!grid) return;
   if (meds.length === 0) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-text">No medicines added</div><div class="empty-sub">Add your first medicine to track doses</div><button class="btn-primary" onclick="openMedModal()">Add Medicine</button></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-text">No medicines added</div><div class="empty-sub">Add your first medicine to track doses</div><button class="btn-primary" data-ev-click="openMedModal()">Add Medicine</button></div>`;
     return;
   }
   grid.innerHTML = meds.map(m => {
@@ -1202,14 +1287,14 @@ function renderMedicinesGrid(meds) {
           <span class="med-pill-count-label" style="color:${stockColor}">
             ${isLow ? '⚠️' : '💊'} ${m.pill_count} pills · ${daysLeft}d left
           </span>
-          <button class="med-restock-btn" onclick="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Restock</button>
+          <button class="med-restock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Restock</button>
         </div>
         <div class="med-pill-bar-track">
           <div class="med-pill-bar-fill" style="width:${fillPct}%;background:${stockColor}"></div>
         </div>
       </div>` : `
       <div class="med-pill-track med-pill-track--empty">
-        <button class="med-add-stock-btn" onclick="openRestockModal('${m.id}','${escHtml(m.name)}',0,1,7)">+ Track pill count</button>
+        <button class="med-add-stock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',0,1,7)">+ Track pill count</button>
       </div>`;
 
     return `<div class="med-card med-card--${m.color}${isLow?' med-card--low-stock':''}">
@@ -1229,10 +1314,10 @@ function renderMedicinesGrid(meds) {
       <div class="med-card-footer">
         <span class="med-card-status ${m.active ? 'active' : ''}">● ${m.active ? 'Active' : 'Paused'}</span>
         <div class="med-card-actions">
-          <button class="btn-icon" title="${m.active ? 'Pause' : 'Activate'}" onclick="toggleMed('${m.id}')">
+          <button class="btn-icon" title="${m.active ? 'Pause' : 'Activate'}" data-ev-click="toggleMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${m.active ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}</svg>
           </button>
-          <button class="btn-icon" title="Delete" onclick="deleteMed('${m.id}')">
+          <button class="btn-icon" title="Delete" data-ev-click="deleteMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
           </button>
         </div>
@@ -1313,7 +1398,7 @@ function addTimeSlot() {
   const slots = document.getElementById('time-slots');
   const row = document.createElement('div');
   row.className = 'time-slot-row';
-  row.innerHTML = `<input type="time" class="form-input time-input" value="12:00"><button type="button" class="btn-icon slot-remove" onclick="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+  row.innerHTML = `<input type="time" class="form-input time-input" value="12:00"><button type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
   slots.appendChild(row);
 }
 
@@ -1324,7 +1409,7 @@ function removeTimeSlot(btn) {
 
 function resetTimeSlots() {
   const slots = document.getElementById('time-slots');
-  if (slots) slots.innerHTML = `<div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" onclick="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
+  if (slots) slots.innerHTML = `<div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
 }
 
 function setupFreqPicker() {
@@ -1617,7 +1702,7 @@ function renderActivityFeed(activities) {
   const el = document.getElementById('activity-feed');
   if (!el) return;
   if (activities.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-text">No activities yet</div><div class="empty-sub">Log a workout or connect a fitness app</div><button class="btn-primary" onclick="openActivityModal()">Log Activity</button></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-text">No activities yet</div><div class="empty-sub">Log a workout or connect a fitness app</div><button class="btn-primary" data-ev-click="openActivityModal()">Log Activity</button></div>`;
     return;
   }
   const actColors = { running:'#E4F5F2', cycling:'#EFF6FF', walking:'#FFFBEB', swimming:'#F5F3FF', yoga:'#F0FDF4', gym:'#FFF0EF', hiking:'#FEF3C7', stretching:'#ECFDF5', tennis:'#FFF0F0', pickleball:'#FFF0F0', basketball:'#FFF3E0', football:'#F0FDF4', badminton:'#FFF0F0', volleyball:'#FFF3E0', baseball:'#F0F4FF', cricket:'#F0FDF4', golf:'#F0FDF4', boxing:'#FFF0EF', martial_arts:'#FFF0EF', dancing:'#FDF0FF', rowing:'#EFF6FF', climbing:'#FEF3C7', skiing:'#EFF6FF', snowboarding:'#EFF6FF', skating:'#EFF6FF', cycling_indoor:'#EFF6FF', pilates:'#F5F3FF', crossfit:'#FFF0EF', other:'#F3F4F6' };
@@ -1638,7 +1723,7 @@ function renderActivityFeed(activities) {
         ${a.distance ? `<div class="act-stat"><div class="act-stat-val">${a.distance}km</div><div class="act-stat-label">distance</div></div>` : ''}
         ${a.heart_rate_avg ? `<div class="act-stat"><div class="act-stat-val">${a.heart_rate_avg}</div><div class="act-stat-label">bpm avg</div></div>` : ''}
       </div>
-      <button class="btn-icon act-delete" onclick="deleteActivity('${a.id}')">
+      <button class="btn-icon act-delete" data-ev-click="deleteActivity('${a.id}')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
     </div>
@@ -1861,7 +1946,7 @@ function renderGymFields(container) {
     return `<button type="button"
       class="gym-sub-btn ${active ? 'selected' : ''}"
       data-sub="${s.id}"
-      onclick="toggleGymSub('${s.id}')"
+      data-ev-click="toggleGymSub('${s.id}')"
       style="${active ? `background:${s.color};border-color:${s.color}` : ''}"
     >${s.label}</button>`;
   }).join('');
@@ -1977,22 +2062,22 @@ function renderSetsTable(subId) {
     <tr>
       <td><input type="text"   class="form-input" style="font-size:12px;padding:5px 8px"
                  placeholder="e.g. Bench Press"
-                 oninput="gymSets['${subId}'][${i}].exercise=this.value"
+                 data-ev-input="setGymField('${subId}',${i},'exercise',this.value)"
                  value="${escHtml(s.exercise)}"></td>
       <td><input type="number" class="form-input" style="font-size:12px;padding:5px 8px;width:54px"
                  placeholder="3"
-                 oninput="gymSets['${subId}'][${i}].sets=this.value"
+                 data-ev-input="setGymField('${subId}',${i},'sets',this.value)"
                  value="${s.sets}"></td>
       <td><input type="number" class="form-input" style="font-size:12px;padding:5px 8px;width:54px"
                  placeholder="10"
-                 oninput="gymSets['${subId}'][${i}].reps=this.value"
+                 data-ev-input="setGymField('${subId}',${i},'reps',this.value)"
                  value="${s.reps}"></td>
       <td><input type="number" class="form-input" style="font-size:12px;padding:5px 8px;width:68px"
                  placeholder="—" step="0.5"
-                 oninput="gymSets['${subId}'][${i}].weight=this.value"
+                 data-ev-input="setGymField('${subId}',${i},'weight',this.value)"
                  value="${s.weight}"></td>
       <td><button type="button" class="btn-icon"
-          onclick="removeGymSet('${subId}',${i})"
+          data-ev-click="removeGymSet('${subId}',${i})"
           style="width:24px;height:24px;color:var(--gray-300)">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -2007,7 +2092,7 @@ function renderSetsTable(subId) {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <button type="button" class="sets-add-btn" onclick="addGymSet('${subId}')">+ Add exercise</button>
+    <button type="button" class="sets-add-btn" data-ev-click="addGymSet('${subId}')">+ Add exercise</button>
   </div>`;
 }
 
@@ -2261,8 +2346,8 @@ function renderConnectedPanel(tokens, syncLog) {
           <div class="cs-meta">${t.athlete_name ? escHtml(t.athlete_name) + ' · ' : ''}Last sync: ${syncLabel}</div>
         </div>
         <div class="cs-actions">
-          <button class="btn-outline-sm" onclick="triggerSync('${t.service}')">Sync now</button>
-          <button class="btn-icon" onclick="disconnectService('${t.service}')" title="Disconnect" style="color:var(--red-400)">
+          <button class="btn-outline-sm" data-ev-click="triggerSync('${t.service}')">Sync now</button>
+          <button class="btn-icon" data-ev-click="disconnectService('${t.service}')" title="Disconnect" style="color:var(--red-400)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -2554,7 +2639,7 @@ function renderCalendar() {
     ].filter(Boolean).join(' ');
 
     const onclick = (!otherMonth && !isFuture && count > 0)
-      ? `onclick="showDayDetail('${dateStr}')"` : '';
+      ? `data-ev-click="showDayDetail('${dateStr}')"` : '';
 
     const tooltip = count > 0
       ? `${count} workout${count>1?'s':''} · ${dateStr}` : dateStr;
@@ -2737,7 +2822,7 @@ function renderHistoryFeed() {
         ${a.heart_rate_avg? `<div class="act-stat"><div class="act-stat-val">${a.heart_rate_avg}</div><div class="act-stat-label">bpm</div></div>` : ''}
         ${a.steps         ? `<div class="act-stat"><div class="act-stat-val">${a.steps.toLocaleString()}</div><div class="act-stat-label">steps</div></div>` : ''}
       </div>
-      <button class="btn-icon act-delete" onclick="deleteActivityHistory('${a.id}')" title="Delete">
+      <button class="btn-icon act-delete" data-ev-click="deleteActivityHistory('${a.id}')" title="Delete">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
     </div>
@@ -2948,7 +3033,7 @@ function renderMealSections(byMeal) {
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
           <button class="btn-icon" title="Edit quantity"
-                  onclick="editFoodQty('${item.id}',${item.quantity_g},'${escHtml(item.food_name)}')"
+                  data-ev-click="editFoodQty('${item.id}',${item.quantity_g},'${escHtml(item.food_name)}')"
                   style="color:var(--gray-400);padding:4px">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2.5" stroke-linecap="round">
@@ -2957,7 +3042,7 @@ function renderMealSections(byMeal) {
             </svg>
           </button>
           <button class="btn-icon" title="Remove"
-                  onclick="removeFoodLog('${item.id}')"
+                  data-ev-click="removeFoodLog('${item.id}')"
                   style="color:var(--gray-300);padding:4px">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2.5" stroke-linecap="round">
@@ -2977,7 +3062,7 @@ function renderMealSections(byMeal) {
         ${headerRight}
       </div>
       ${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
-      <button class="meal-add-btn" onclick="openAddFoodModal('${mtype}')">
+      <button class="meal-add-btn" data-ev-click="openAddFoodModal('${mtype}')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.5" stroke-linecap="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -3422,7 +3507,7 @@ async function searchFoodDB(query) {
     }
     el.innerHTML = all.map(f => {
       const json = JSON.stringify(f).replace(/"/g, '&quot;');
-      return `<div class="food-result-row" onclick="selectFoodItem(${json})">
+      return `<div class="food-result-row" data-ev-click="selectFoodItem(${json})">
         <div class="food-result-emoji">${f.emoji || '🍽️'}</div>
         <div class="food-result-info">
           <div class="food-result-name">
@@ -3437,7 +3522,7 @@ async function searchFoodDB(query) {
         <div style="text-align:right;flex-shrink:0">
           <div class="food-result-cal">${Math.round(f.calories || f.cal || 0)} kcal</div>
           <div style="font-size:10.5px;color:var(--gray-400)">${f.protein}g P</div>
-          ${f.is_custom ? `<button style="font-size:10px;color:var(--red-400);background:none;border:none;cursor:pointer;margin-top:2px" onclick="event.stopPropagation();deleteCustomFood('${f.id}')">✕ remove</button>` : ''}
+          ${f.is_custom ? `<button style="font-size:10px;color:var(--red-400);background:none;border:none;cursor:pointer;margin-top:2px" data-ev-click="event.stopPropagation();deleteCustomFood('${f.id}')">✕ remove</button>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -3478,7 +3563,7 @@ function selectFoodItem(food) {
         <div class="food-qty-single-row">
           <input type="number" class="form-input" id="food-qty-input"
                  value="${servingG}" min="1" step="5"
-                 oninput="updateFoodPreview(this.value)">
+                 data-ev-input="updateFoodPreview(this.value)">
           <span class="food-qty-unit-badge">g</span>
         </div>
       </div>`;
@@ -3506,14 +3591,14 @@ function selectFoodItem(food) {
       '<div class="food-qty-header">' +
         '<label class="form-label" style="margin:0">Quantity</label>' +
         '<div class="food-unit-toggle" id="food-unit-toggle">' +
-          '<button class="fut-btn active" id="fut-btn-primary" onclick="switchQtyUnit(\'primary\',' + servingG + ',\'' + qtyMode + '\')">' + unit1 + '</button>' +
-          '<button class="fut-btn" id="fut-btn-secondary" onclick="switchQtyUnit(\'secondary\',' + servingG + ',\'' + qtyMode + '\')">' + unit2 + '</button>' +
+          '<button class="fut-btn active" id="fut-btn-primary" data-ev-click="switchQtyUnit(\'primary\',' + servingG + ',\'' + qtyMode + '\')">' + unit1 + '</button>' +
+          '<button class="fut-btn" id="fut-btn-secondary" data-ev-click="switchQtyUnit(\'secondary\',' + servingG + ',\'' + qtyMode + '\')">' + unit2 + '</button>' +
         '</div>' +
       '</div>' +
       '<div class="food-qty-single-row">' +
         '<input type="number" class="form-input" id="food-qty-input"' +
                ' value="' + default1 + '" min="0.25" step="' + step1 + '"' +
-               ' oninput="updateFoodPreviewSmart(this.value,\'primary\',' + servingG + ',\'' + qtyMode + '\')">' +
+               ' data-ev-input="updateFoodPreviewSmart(this.value,\'primary\',' + servingG + ',\'' + qtyMode + '\')">' +
         '<span class="food-qty-unit-badge" id="food-qty-unit-badge">' + unit1 + '</span>' +
       '</div>' +
       '<div class="food-qty-hint" id="food-qty-hint">' + hint + '</div>' +
@@ -3522,7 +3607,7 @@ function selectFoodItem(food) {
 
   const mealBtns = MEAL_TYPES.map(m => `
     <button type="button" class="meal-type-btn ${selectedMealType===m.id?'selected':''}"
-      onclick="selectMealType('${m.id}')">${m.icon} ${m.label}</button>`).join('');
+      data-ev-click="selectMealType('${m.id}')">${m.icon} ${m.label}</button>`).join('');
 
   col.innerHTML = `<div class="food-add-form">
     <div class="food-add-header">
@@ -3546,7 +3631,7 @@ function selectFoodItem(food) {
       <label class="form-label">Meal</label>
       <div class="meal-type-picker">${mealBtns}</div>
     </div>
-    <button class="btn-primary" style="width:100%" onclick="logSelectedFood()">
+    <button class="btn-primary" style="width:100%" data-ev-click="logSelectedFood()">
       Add to ${MEAL_TYPES.find(m=>m.id===selectedMealType)?.label || 'Meal'}
     </button>
   </div>`;
@@ -4035,10 +4120,10 @@ function renderThoughtsList(thoughts) {
           <span class="thought-time">${time}</span>
         </div>
         <div class="thought-card-actions">
-          <button class="thought-action-btn" onclick="startEditThought('${t.id}')" title="Edit">
+          <button class="thought-action-btn" data-ev-click="startEditThought('${t.id}')" title="Edit">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          <button class="thought-action-btn del" onclick="deleteThought('${t.id}')" title="Delete">
+          <button class="thought-action-btn del" data-ev-click="deleteThought('${t.id}')" title="Delete">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>
@@ -4047,8 +4132,8 @@ function renderThoughtsList(thoughts) {
       <div class="thought-edit-wrap" id="te-${t.id}" style="display:none">
         <textarea class="thought-edit-area" id="tea-${t.id}">${escHtml(t.content)}</textarea>
         <div class="thought-edit-actions">
-          <button class="btn-outline" style="padding:5px 12px;font-size:12px" onclick="cancelEditThought('${t.id}')">Cancel</button>
-          <button class="btn-primary" style="padding:5px 12px;font-size:12px" onclick="saveEditThought('${t.id}','${mood}')">Save</button>
+          <button class="btn-outline" style="padding:5px 12px;font-size:12px" data-ev-click="cancelEditThought('${t.id}')">Cancel</button>
+          <button class="btn-primary" style="padding:5px 12px;font-size:12px" data-ev-click="saveEditThought('${t.id}','${mood}')">Save</button>
         </div>
       </div>
     </div>`;
@@ -4269,17 +4354,17 @@ function renderTodoCard(t, today) {
   }
 
   return `<div class="todo-card pri-${t.priority} ${isDone?'done':''}" data-id="${t.id}">
-    <div class="todo-checkbox ${isDone?'checked':''}" onclick="toggleTodo('${t.id}')"></div>
+    <div class="todo-checkbox ${isDone?'checked':''}" data-ev-click="toggleTodo('${t.id}')"></div>
     <div class="todo-content">
       <div class="todo-title">${escHtml(t.title)}</div>
       ${t.notes ? `<div class="todo-notes">${escHtml(t.notes)}</div>` : ''}
       <div class="todo-meta-row">${metaHtml}</div>
     </div>
     <div class="todo-card-actions">
-      ${!isDone ? `<button class="todo-act-btn" onclick="openEditTodo('${t.id}')" title="Edit">
+      ${!isDone ? `<button class="todo-act-btn" data-ev-click="openEditTodo('${t.id}')" title="Edit">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>` : ''}
-      <button class="todo-act-btn del" onclick="deleteTodo('${t.id}')" title="Delete">
+      <button class="todo-act-btn del" data-ev-click="deleteTodo('${t.id}')" title="Delete">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
       </button>
     </div>
@@ -4602,7 +4687,7 @@ async function loadSleepData() {
       <div class="sleep-log-dur">${s.duration_h}h</div>
       <div class="sleep-bar-col"><div class="sleep-bar-fill ${QCLS[s.quality]||'ok'}" style="width:${pct}%"></div></div>
       <div class="sleep-log-qual">${QMAP[s.quality]||'😐'}</div>
-      <button class="todo-act-btn del" onclick="delSleep('${s.id}')">
+      <button class="todo-act-btn del" data-ev-click="delSleep('${s.id}')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
     </div>`;
@@ -4789,7 +4874,7 @@ async function loadHabits() {
       }
 
       checklist.innerHTML = habits.map(h => `
-        <div class="habit-check-row ${h.done_today ? 'is-done' : ''}" onclick="toggleHabit('${h.id}','${today}')">
+        <div class="habit-check-row ${h.done_today ? 'is-done' : ''}" data-ev-click="toggleHabit('${h.id}','${today}')">
           <!-- Color accent -->
           <div class="hcr-accent" style="background:${h.color}"></div>
 
@@ -4822,7 +4907,7 @@ async function loadHabits() {
   if (!habits.length) {
     el.innerHTML = `
       <!-- "+" add card only when no habits -->
-      <div class="habit-add-card" onclick="openHabitModal()">
+      <div class="habit-add-card" data-ev-click="openHabitModal()">
         <div class="habit-add-icon">+</div>
         <div class="habit-add-label">Add first habit</div>
       </div>`;
@@ -4850,7 +4935,7 @@ async function loadHabits() {
         <div class="hc2-emoji">${h.emoji}</div>
         <div class="hc2-name">${escHtml(h.name)}</div>
         <div class="hc2-streak" title="Current streak">🔥 ${h.streak}</div>
-        <button class="hc2-delete" onclick="event.stopPropagation();deleteHabit('${h.id}')" title="Remove habit">
+        <button class="hc2-delete" data-ev-click="event.stopPropagation();deleteHabit('${h.id}')" title="Remove habit">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -4868,7 +4953,7 @@ async function loadHabits() {
 
       <!-- Toggle button -->
       <button class="hc2-toggle-btn ${h.done_today ? 'done' : ''}"
-              onclick="toggleHabit('${h.id}','${today}')"
+              data-ev-click="toggleHabit('${h.id}','${today}')"
               style="--habit-color:${h.color}">
         ${h.done_today
           ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done today — tap to undo`
@@ -4877,7 +4962,7 @@ async function loadHabits() {
     </div>`;
   }).join('') +
   // "+" add card at the end
-  `<div class="habit-add-card" onclick="openHabitModal()">
+  `<div class="habit-add-card" data-ev-click="openHabitModal()">
     <div class="habit-add-icon">+</div>
     <div class="habit-add-label">New habit</div>
   </div>`;
@@ -4962,7 +5047,7 @@ function updateSymptomChips() {
 
   if (list) {
     list.innerHTML = [...selectedSymptoms].map(n =>
-      `<span class="sym-chip">${escHtml(n)}<button class="sym-chip-del" onclick="removeSymptomChip('${escHtml(n).replace(/'/g,'\'')}')">×</button></span>`
+      `<span class="sym-chip">${escHtml(n)}<button class="sym-chip-del" data-ev-click="removeSymptomChip('${escHtml(n).replace(/'/g,'\'')}')">×</button></span>`
     ).join('');
   }
 }
@@ -5075,7 +5160,7 @@ async function loadSymptoms() {
         <span class="symptom-severity-badge" style="background:${sevColor(s.severity)}1A;color:${sevColor(s.severity)}">
           ${s.severity}/10 · ${sevLabel(s.severity)}
         </span>
-        <button class="todo-act-btn del" onclick="delSymptom('${s.id}')" title="Remove">
+        <button class="todo-act-btn del" data-ev-click="delSymptom('${s.id}')" title="Remove">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
         </button>
       </div>`).join('');
@@ -5197,7 +5282,7 @@ async function loadVitals() {
         <div class="vital-meta">${v.date_key} ${v.notes ? '· '+escHtml(v.notes) : ''}</div>
       </div>
       <span class="vital-flag ${flagStr}">${flagStr.charAt(0).toUpperCase()+flagStr.slice(1)}</span>
-      <button class="todo-act-btn del" onclick="delVital('${v.id}')">
+      <button class="todo-act-btn del" data-ev-click="delVital('${v.id}')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
     </div>`;
@@ -5296,7 +5381,7 @@ async function loadHydration(dateStr) {
       <span class="hli-icon">${DTYPE[l.drink_type] || '💧'}</span>
       <span class="hli-type">${l.drink_type || 'water'}</span>
       <span class="hli-amount">${l.amount_ml}ml</span>
-      <button class="hli-delete" onclick="delHydration('${l.id}')" title="Remove">
+      <button class="hli-delete" data-ev-click="delHydration('${l.id}')" title="Remove">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
@@ -5354,7 +5439,7 @@ async function loadDashboardTodos() {
   const todos = (r?.todos || []).slice(0, 5);
   if (todos.length === 0) {
     el.innerHTML = `<div style="color:var(--gray-400);font-size:13px;padding:12px 14px;text-align:center">
-      🎉 No pending tasks! <a href="#" onclick="switchView('todos');return false" style="color:var(--teal-600)">Add one →</a>
+      🎉 No pending tasks! <a href="#" data-ev-click="switchView('todos');return false" style="color:var(--teal-600)">Add one →</a>
     </div>`;
     return;
   }
@@ -5363,8 +5448,8 @@ async function loadDashboardTodos() {
   el.innerHTML = todos.map(t => {
     const isOverdue = t.due_date && t.due_date < today;
     const dueStr = t.due_date === today ? 'Today' : t.due_date ? t.due_date.slice(5) : '';
-    return `<div class="dash-todo-row" onclick="switchView('todos')">
-      <div class="dash-todo-check" onclick="event.stopPropagation();dashToggleTodo('${t.id}')"></div>
+    return `<div class="dash-todo-row" data-ev-click="switchView('todos')">
+      <div class="dash-todo-check" data-ev-click="event.stopPropagation();dashToggleTodo('${t.id}')"></div>
       <div class="dash-todo-title">${escHtml(t.title)}</div>
       <span class="dash-todo-pri">${PRI[t.priority]||'🟡'}</span>
       ${dueStr ? `<span class="dash-todo-due ${isOverdue?'overdue':''}">${dueStr}</span>` : ''}
@@ -5372,7 +5457,7 @@ async function loadDashboardTodos() {
   }).join('');
   if (r.todos.length > 5) {
     el.innerHTML += `<div style="text-align:center;padding:6px 0">
-      <a href="#" onclick="switchView('todos');return false" style="font-size:12px;color:var(--teal-600)">+${r.todos.length-5} more tasks →</a>
+      <a href="#" data-ev-click="switchView('todos');return false" style="font-size:12px;color:var(--teal-600)">+${r.todos.length-5} more tasks →</a>
     </div>`;
   }
 }
@@ -5660,7 +5745,7 @@ async function runGlobalSearch(q) {
         if (s.type==='report')   { title=item.filename||'Report'; meta=`${item.date||''} · ${item.severity||''}`; }
         if (s.type==='medicine') { title=item.name; meta=`${item.dosage} ${item.unit} · ${(item.frequency||'').replace('_',' ')}`; }
 
-        return `<div class="gs-result-row" onclick="closeGlobalSearch();switchView('${VIEW_MAP[s.type]||s.type}')">
+        return `<div class="gs-result-row" data-ev-click="closeGlobalSearch();switchView('${VIEW_MAP[s.type]||s.type}')">
           <div class="gs-result-icon">${TYPE_ICON[s.type]||'📄'}</div>
           <div class="gs-result-main">
             <div class="gs-result-title">${hlText(title, q)}</div>
@@ -5748,7 +5833,7 @@ function renderNotifications() {
     const rows = notifs.map(n => {
       const style = NOTIF_STYLES[n.type] || NOTIF_STYLES.system;
       const ago   = timeAgo(n.created_at);
-      return `<div class="notif-row ${n.read?'':'unread'}" onclick="markNotifRead('${n.id}')">
+      return `<div class="notif-row ${n.read?'':'unread'}" data-ev-click="markNotifRead('${n.id}')">
         <div class="notif-icon" style="background:${style.bg};border:1px solid ${style.border}">${NOTIF_ICONS[n.type]||style.icon}</div>
         <div class="notif-body">
           <div class="notif-title">${escHtml(n.title)}</div>
@@ -6109,7 +6194,7 @@ function renderProgress(r) {
           <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--gray-50)">
             <span style="font-size:20px">${m.icon||'💊'}</span>
             <div style="flex:1"><div style="font-size:14px;font-weight:600">${escHtml(m.name)}</div><div style="font-size:12px;color:var(--red-500)">${m.pill_count} pills · ${m.days_left} days remaining</div></div>
-            <button class="btn-outline" style="font-size:12px;padding:5px 12px" onclick="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Restock →</button>
+            <button class="btn-outline" style="font-size:12px;padding:5px 12px" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Restock →</button>
           </div>`).join('')}
       </div>
     </div>` : ''}
@@ -6184,7 +6269,7 @@ async function loadReport() {
         <span style="font-weight:800">${healthScore}</span>/100 · ${scoreLabel}
       </div>` : ''}
     </div>
-    <button class="btn-primary" onclick="printReport()">
+    <button class="btn-primary" data-ev-click="printReport()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Download PDF
     </button>
@@ -6639,7 +6724,7 @@ async function loadReminderSettingsUI() {
       badge.textContent = '🔔 Notifications on';
       badge.style.background = '#DCFCE7'; badge.style.color = '#15803D';
     } else {
-      badge.innerHTML = '<a href="#" onclick="requestNotifPermission();return false" style="color:inherit">Enable notifications →</a>';
+      badge.innerHTML = '<a href="#" data-ev-click="requestNotifPermission();return false" style="color:inherit">Enable notifications →</a>';
       badge.style.background = '#FEF3C7'; badge.style.color = '#92400E';
     }
   }
@@ -6744,18 +6829,18 @@ async function loadSleepView() {
               <div class="stp-sub">Last night</div>
               <div class="stp-picker">
                 <div class="stp-col">
-                  <button class="stp-arrow" onclick="stpStep('bed','h',-1)">▲</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('bed','h',-1)">▲</button>
                   <div class="stp-val" id="stp-bed-h">11</div>
-                  <button class="stp-arrow" onclick="stpStep('bed','h',1)">▼</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('bed','h',1)">▼</button>
                 </div>
                 <div class="stp-colon">:</div>
                 <div class="stp-col">
-                  <button class="stp-arrow" onclick="stpStep('bed','m',-1)">▲</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('bed','m',-1)">▲</button>
                   <div class="stp-val" id="stp-bed-m">00</div>
-                  <button class="stp-arrow" onclick="stpStep('bed','m',1)">▼</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('bed','m',1)">▼</button>
                 </div>
                 <div class="stp-col stp-col--ampm">
-                  <button class="stp-ampm-btn" id="stp-bed-ampm" onclick="stpToggleAmpm('bed')">PM</button>
+                  <button class="stp-ampm-btn" id="stp-bed-ampm" data-ev-click="stpToggleAmpm('bed')">PM</button>
                 </div>
               </div>
             </div>
@@ -6773,18 +6858,18 @@ async function loadSleepView() {
               <div class="stp-sub">This morning</div>
               <div class="stp-picker">
                 <div class="stp-col">
-                  <button class="stp-arrow" onclick="stpStep('wake','h',-1)">▲</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('wake','h',-1)">▲</button>
                   <div class="stp-val" id="stp-wake-h">7</div>
-                  <button class="stp-arrow" onclick="stpStep('wake','h',1)">▼</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('wake','h',1)">▼</button>
                 </div>
                 <div class="stp-colon">:</div>
                 <div class="stp-col">
-                  <button class="stp-arrow" onclick="stpStep('wake','m',-1)">▲</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('wake','m',-1)">▲</button>
                   <div class="stp-val" id="stp-wake-m">00</div>
-                  <button class="stp-arrow" onclick="stpStep('wake','m',1)">▼</button>
+                  <button class="stp-arrow" data-ev-click="stpStep('wake','m',1)">▼</button>
                 </div>
                 <div class="stp-col stp-col--ampm">
-                  <button class="stp-ampm-btn" id="stp-wake-ampm" onclick="stpToggleAmpm('wake')">AM</button>
+                  <button class="stp-ampm-btn" id="stp-wake-ampm" data-ev-click="stpToggleAmpm('wake')">AM</button>
                 </div>
               </div>
             </div>
@@ -6803,7 +6888,7 @@ async function loadSleepView() {
                 {q:5,emoji:'😴',label:'Great'},
               ].map(({q,emoji,label}) => `
                 <button class="sdial-q-btn${q===4?' active':''}" data-q="${q}"
-                        onclick="selectSleepQ(${q},'sv')">
+                        data-ev-click="selectSleepQ(${q},'sv')">
                   <span class="sdial-q-emoji">${emoji}</span>
                   <span class="sdial-q-label">${label}</span>
                 </button>`).join('')}
@@ -6819,7 +6904,7 @@ async function loadSleepView() {
           </div>
 
           <button class="btn-primary" style="width:100%;font-size:14px;font-weight:600"
-                  onclick="saveSleepLogFromView()">
+                  data-ev-click="saveSleepLogFromView()">
             Save sleep log
           </button>
         </div>
@@ -7027,7 +7112,7 @@ async function loadBodyView() {
               <input type="date" class="form-input" id="bv-date" value="${localToday()}">
             </div>
           </div>
-          <button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveBodyMetricFromView()">Save</button>
+          <button class="btn-primary" style="width:100%;margin-top:4px" data-ev-click="saveBodyMetricFromView()">Save</button>
         </div>
         <div id="bv-metric-history" style="padding:0 20px 16px"></div>
       </div>
@@ -7046,7 +7131,7 @@ async function loadBodyView() {
                 {id:'temperature',    label:'Temperature',    unit:'°C'},
                 {id:'spo2',           label:'SpO₂',      unit:'%'},
               ].map(v =>
-                '<button class="vital-chip" data-type="'+v.id+'" data-unit="'+v.unit+'" onclick="selectVitalTypeView(this)">'+v.label+'</button>'
+                '<button class="vital-chip" data-type="'+v.id+'" data-unit="'+v.unit+'" data-ev-click="selectVitalTypeView(this)">'+v.label+'</button>'
               ).join('')}
             </div>
           </div>
@@ -7061,7 +7146,7 @@ async function loadBodyView() {
                 <input type="number" class="form-input" id="bv-v2" step="0.1">
               </div>
             </div>
-            <button class="btn-primary" style="width:100%;margin-top:4px" onclick="saveVitalFromView()">Log vital</button>
+            <button class="btn-primary" style="width:100%;margin-top:4px" data-ev-click="saveVitalFromView()">Log vital</button>
           </div>
         </div>
         <div id="bv-vital-history" style="padding:0 20px 16px"></div>
@@ -7227,7 +7312,7 @@ function renderExportSections() {
     const selected = _exportSelected.has(s.key);
     const count = _exportCounts[s.key];
     const countStr = count != null ? `${count} record${count!==1?'s':''}` : '—';
-    return `<div class="export-section-card ${selected?'selected':''}" onclick="toggleExportSection('${s.key}')">
+    return `<div class="export-section-card ${selected?'selected':''}" data-ev-click="toggleExportSection('${s.key}')">
       <div class="export-section-check"></div>
       <div class="export-section-icon">${s.icon}</div>
       <div class="export-section-info">
@@ -7425,13 +7510,13 @@ function renderCheckin() {
       <div class="ci-mood-grid">
         ${CI_MOODS.map((m, i) => `
           <button class="ci-mood-btn${ciSel.mood === i ? ' active' : ''}"
-                  onclick="ciPickMood(${i})">
+                  data-ev-click="ciPickMood(${i})">
             <span class="ci-mood-emoji">${m.emoji}</span>
             <span class="ci-mood-label">${m.label}</span>
           </button>`).join('')}
       </div>`;
     footer.innerHTML = `
-      <button class="ci-btn-primary" onclick="ciNext()"
+      <button class="ci-btn-primary" data-ev-click="ciNext()"
               ${ciSel.mood === null ? 'disabled' : ''}>Continue</button>`;
   }
 
@@ -7443,14 +7528,14 @@ function renderCheckin() {
       <div class="ci-sleep-grid">
         ${CI_SLEEP.map((s, i) => `
           <button class="ci-sleep-btn${ciSel.sleep === i ? ' active' : ''}"
-                  onclick="ciPickSleep(${i})">
+                  data-ev-click="ciPickSleep(${i})">
             <div class="ci-sleep-dur">${s.label}</div>
             <div class="ci-sleep-qual">${s.sub}</div>
           </button>`).join('')}
       </div>`;
     footer.innerHTML = `
-      <button class="ci-btn-secondary" onclick="ciBack()">Back</button>
-      <button class="ci-btn-primary" onclick="ciNext()"
+      <button class="ci-btn-secondary" data-ev-click="ciBack()">Back</button>
+      <button class="ci-btn-primary" data-ev-click="ciNext()"
               ${ciSel.sleep === null ? 'disabled' : ''}>Continue</button>`;
   }
 
@@ -7461,15 +7546,15 @@ function renderCheckin() {
       <div class="ci-question">Any symptoms today?</div>
       <div class="ci-sym-list">
         <button class="ci-none-btn${ciSel.symptoms.length === 0 ? ' active' : ''}"
-                onclick="ciClearSymptoms()">None, feeling fine</button>
+                data-ev-click="ciClearSymptoms()">None, feeling fine</button>
         ${CI_SYMPTOMS.map(s => `
           <button class="ci-sym-btn${ciSel.symptoms.includes(s) ? ' active' : ''}"
-                  onclick="ciToggleSymptom('${s}')">${s}</button>`).join('')}
+                  data-ev-click="ciToggleSymptom('${s}')">${s}</button>`).join('')}
       </div>`;
     const isFirst = ciStep === 0;
     footer.innerHTML = `
-      ${!isFirst ? '<button class="ci-btn-secondary" onclick="ciBack()">Back</button>' : ''}
-      <button class="ci-btn-primary" onclick="ciNext()">Continue</button>`;
+      ${!isFirst ? '<button class="ci-btn-secondary" data-ev-click="ciBack()">Back</button>' : ''}
+      <button class="ci-btn-primary" data-ev-click="ciNext()">Continue</button>`;
   }
 
   // ── Step: Hydration ─────────────────────────────────────────
@@ -7480,13 +7565,13 @@ function renderCheckin() {
       <div class="ci-water-grid">
         ${CI_WATER.map((w, i) => `
           <button class="ci-water-btn${ciSel.water === i ? ' active' : ''}"
-                  onclick="ciPickWater(${i})">
+                  data-ev-click="ciPickWater(${i})">
             <div>${w.label}</div>
           </button>`).join('')}
       </div>`;
     footer.innerHTML = `
-      <button class="ci-btn-secondary" onclick="ciBack()">Back</button>
-      <button class="ci-btn-primary" onclick="ciSubmit()">Done</button>`;
+      <button class="ci-btn-secondary" data-ev-click="ciBack()">Back</button>
+      <button class="ci-btn-primary" data-ev-click="ciSubmit()">Done</button>`;
   }
 }
 
@@ -7642,7 +7727,7 @@ function ciShowSummary() {
     </div>`;
 
   footer.innerHTML = `
-    <button class="ci-btn-primary" onclick="closeCheckin()">Go to dashboard</button>`;
+    <button class="ci-btn-primary" data-ev-click="closeCheckin()">Go to dashboard</button>`;
 
   setTimeout(closeCheckin, 3000);
 }
@@ -7746,9 +7831,9 @@ async function loadVitalTrends(days) {
 
   const toggleHTML = `
     <div class="trend-toggle">
-      <button class="trend-toggle-btn${d===7?' active':''}"  onclick="loadVitalTrends(7)">Weekly</button>
-      <button class="trend-toggle-btn${d===30?' active':''}" onclick="loadVitalTrends(30)">Monthly</button>
-      <button class="trend-toggle-btn${d===90?' active':''}" onclick="loadVitalTrends(90)">3 months</button>
+      <button class="trend-toggle-btn${d===7?' active':''}"  data-ev-click="loadVitalTrends(7)">Weekly</button>
+      <button class="trend-toggle-btn${d===30?' active':''}" data-ev-click="loadVitalTrends(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===90?' active':''}" data-ev-click="loadVitalTrends(90)">3 months</button>
     </div>`;
 
   if (!hasData) {
@@ -8145,7 +8230,7 @@ async function loadSleepTrend(days) {
             <div class="sleep-bar-fill ${QCLS[r.quality]||'ok'}" style="width:${pct}%"></div>
           </div>
           <div class="sleep-log-qual">${QMAP[r.quality]||'😐'}</div>
-          <button class="todo-act-btn del" onclick="delSleep('${r.id}')" title="Delete">
+          <button class="todo-act-btn del" data-ev-click="delSleep('${r.id}')" title="Delete">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
           </button>
         </div>`;
@@ -8162,9 +8247,9 @@ async function loadSleepTrend(days) {
   if (badge) {
     badge.innerHTML = `
       <div class="trend-toggle">
-        <button class="trend-toggle-btn${d===7?' active':''}"  onclick="loadSleepTrend(7)">Weekly</button>
-        <button class="trend-toggle-btn${d===14?' active':''}" onclick="loadSleepTrend(14)">Bi-weekly</button>
-        <button class="trend-toggle-btn${d===30?' active':''}" onclick="loadSleepTrend(30)">Monthly</button>
+        <button class="trend-toggle-btn${d===7?' active':''}"  data-ev-click="loadSleepTrend(7)">Weekly</button>
+        <button class="trend-toggle-btn${d===14?' active':''}" data-ev-click="loadSleepTrend(14)">Bi-weekly</button>
+        <button class="trend-toggle-btn${d===30?' active':''}" data-ev-click="loadSleepTrend(30)">Monthly</button>
       </div>`;
   }
 
@@ -8566,8 +8651,8 @@ async function loadMoodSleepCorrelation(days) {
 
   const mscToggle = `
     <div class="trend-toggle">
-      <button class="trend-toggle-btn${d===30?' active':''}"  onclick="loadMoodSleepCorrelation(30)">Monthly</button>
-      <button class="trend-toggle-btn${d===90?' active':''}"  onclick="loadMoodSleepCorrelation(90)">3 months</button>
+      <button class="trend-toggle-btn${d===30?' active':''}"  data-ev-click="loadMoodSleepCorrelation(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===90?' active':''}"  data-ev-click="loadMoodSleepCorrelation(90)">3 months</button>
     </div>`;
 
   // Not enough data yet
@@ -8982,9 +9067,9 @@ async function loadWeightProgressChart(days) {
 
   const toggleHTML = `
     <div class="trend-toggle">
-      <button class="trend-toggle-btn${d===30?' active':''}"  onclick="loadWeightProgressChart(30)">Monthly</button>
-      <button class="trend-toggle-btn${d===90?' active':''}"  onclick="loadWeightProgressChart(90)">3 months</button>
-      <button class="trend-toggle-btn${d===180?' active':''}" onclick="loadWeightProgressChart(180)">6 months</button>
+      <button class="trend-toggle-btn${d===30?' active':''}"  data-ev-click="loadWeightProgressChart(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===90?' active':''}"  data-ev-click="loadWeightProgressChart(90)">3 months</button>
+      <button class="trend-toggle-btn${d===180?' active':''}" data-ev-click="loadWeightProgressChart(180)">6 months</button>
     </div>`;
 
   section.innerHTML = `
@@ -9006,7 +9091,7 @@ async function loadWeightProgressChart(days) {
         <input type="number" class="form-input wpc-goal-input" id="wpc-target-weight"
                placeholder="e.g. 68.0" step="0.5"
                value="${s.target_weight || ''}"
-               onchange="saveTargetWeight(this.value)">
+               data-ev-change="saveTargetWeight(this.value)">
         <span style="font-size:12.5px;color:var(--gray-500);flex-shrink:0">kg</span>
         ${hasGoal && s.pct_to_goal != null ? `
           <div class="wpc-progress-pill">
@@ -9243,7 +9328,7 @@ async function loadQuickMeals() {
           <div class="qm-yday-title">📋 Same as yesterday</div>
           <div class="qm-yday-sub">${Math.round(yesterday_total_cal)} kcal total</div>
         </div>
-        <button class="qm-yday-btn" onclick="copyYesterdayMeals()">Copy all</button>
+        <button class="qm-yday-btn" data-ev-click="copyYesterdayMeals()">Copy all</button>
        </div>`
     : '';
 
@@ -9254,7 +9339,7 @@ async function loadQuickMeals() {
     const macros   = `${Math.round(combo.total_cal)} kcal · ${combo.total_prot}g P`;
 
     return `
-      <div class="qm-combo" onclick="repeatMealCombo(${idx})">
+      <div class="qm-combo" data-ev-click="repeatMealCombo(${idx})">
         <div class="qm-combo-top">
           <span class="qm-combo-icon">${icon}</span>
           <span class="qm-combo-meal">${combo.meal_type}</span>

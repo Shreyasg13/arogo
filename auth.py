@@ -241,16 +241,16 @@ def require_auth(f):
 
 # ── Security headers ───────────────────────────────────────────────────────────
 
-# Pragmatic CSP: the frontend uses inline onclick handlers throughout, and CSP
-# nonces do NOT apply to event-handler attributes — so script-src keeps
-# 'unsafe-inline' until the handlers are refactored to addEventListener.
-# The policy still pins scripts/styles/fonts/images to known origins and
-# blocks plugins, base-tag hijacks, and framing by other sites.
+# Strict script CSP: no 'unsafe-inline' — the frontend has no inline
+# <script> blocks or on*= handler attributes. Interactivity runs through the
+# data-ev-* dispatcher in app.js (see "CSP-safe event dispatch").
+# style-src keeps 'unsafe-inline' for the style="" attributes used across
+# the markup — far lower risk than inline script.
 # Disable with CSP_ENABLED=0 if it ever gets in the way during development.
 CSP_ENABLED = os.environ.get('CSP_ENABLED', '1') == '1'
 CSP_POLICY = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+    "script-src 'self' https://cdnjs.cloudflare.com; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
     "img-src 'self' data: blob: https://upload.wikimedia.org; "

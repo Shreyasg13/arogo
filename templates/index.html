@@ -29,14 +29,14 @@
         <!-- Tab toggle -->
         <div style="display:flex;gap:0;background:var(--gray-50);border-radius:10px;
                     padding:4px;margin-bottom:24px">
-          <button id="auth-tab-login" onclick="switchAuthTab('login')"
+          <button id="auth-tab-login" data-ev-click="switchAuthTab('login')"
                   style="flex:1;padding:8px;border:none;border-radius:8px;
                          font-size:14px;font-weight:600;cursor:pointer;
                          background:var(--gray-0);color:var(--gray-800);
                          font-family:'DM Sans',sans-serif;transition:all .15s">
             Sign in
           </button>
-          <button id="auth-tab-register" onclick="switchAuthTab('register')"
+          <button id="auth-tab-register" data-ev-click="switchAuthTab('register')"
                   style="flex:1;padding:8px;border:none;border-radius:8px;
                          font-size:14px;font-weight:600;cursor:pointer;
                          background:transparent;color:var(--gray-400);
@@ -68,11 +68,11 @@
                    placeholder="Your password" autocomplete="current-password">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  onclick="submitLogin()" id="login-btn">
+                  data-ev-click="submitLogin()" id="login-btn">
             Sign in
           </button>
           <p style="text-align:center;margin-top:12px">
-            <a href="#" onclick="showForgotForm();return false"
+            <a href="#" data-ev-click="showForgotForm();return false"
                style="font-size:13px;color:#0E6B5E;text-decoration:none">
               Forgot password?
             </a>
@@ -94,7 +94,7 @@
                    placeholder="Choose a strong password" autocomplete="new-password">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  onclick="submitRegister()" id="register-btn">
+                  data-ev-click="submitRegister()" id="register-btn">
             Create account
           </button>
         </div>
@@ -110,11 +110,11 @@
                    placeholder="you@example.com" autocomplete="email">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  onclick="submitForgot()" id="forgot-btn">
+                  data-ev-click="submitForgot()" id="forgot-btn">
             Send reset link
           </button>
           <p style="text-align:center;margin-top:12px">
-            <a href="#" onclick="backToLogin();return false"
+            <a href="#" data-ev-click="backToLogin();return false"
                style="font-size:13px;color:#0E6B5E;text-decoration:none">
               &larr; Back to sign in
             </a>
@@ -131,11 +131,11 @@
                    placeholder="Choose a new password" autocomplete="new-password">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  onclick="submitReset()" id="reset-btn">
+                  data-ev-click="submitReset()" id="reset-btn">
             Set new password
           </button>
           <p style="text-align:center;margin-top:12px">
-            <a href="#" onclick="backToLogin();return false"
+            <a href="#" data-ev-click="backToLogin();return false"
                style="font-size:13px;color:#0E6B5E;text-decoration:none">
               &larr; Back to sign in
             </a>
@@ -236,38 +236,38 @@
   </nav>
 
     <!-- Global search overlay -->
-  <div class="global-search-wrap" id="global-search-wrap" style="display:none" onclick="if(event.target===this)closeGlobalSearch()">
+  <div class="global-search-wrap" id="global-search-wrap" style="display:none" data-ev-click="backdropClose(event,this,'closeGlobalSearch')">
     <div class="gs-modal">
       <div class="gs-header">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;color:var(--gray-400)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="global-search-input"
           placeholder="Search symptoms, meals, tasks, thoughts…"
-          oninput="runGlobalSearch(this.value)"
-          onkeydown="handleSearchKey(event)"
+          data-ev-input="runGlobalSearch(this.value)"
+          data-ev-keydown="handleSearchKey(event)"
           autocomplete="off" spellcheck="false">
         <div class="gs-kbd">Esc</div>
       </div>
       <!-- Quick filters -->
       <div class="gs-filters">
-        <button class="gs-filter-btn active" data-type="all"      onclick="setSearchType('all')">All</button>
-        <button class="gs-filter-btn" data-type="food"     onclick="setSearchType('food')">🍽️ Food</button>
-        <button class="gs-filter-btn" data-type="symptom"  onclick="setSearchType('symptom')">🩺 Symptoms</button>
-        <button class="gs-filter-btn" data-type="todo"     onclick="setSearchType('todo')">✅ Tasks</button>
-        <button class="gs-filter-btn" data-type="thought"  onclick="setSearchType('thought')">💭 Thoughts</button>
-        <button class="gs-filter-btn" data-type="activity" onclick="setSearchType('activity')">🏃 Workouts</button>
+        <button class="gs-filter-btn active" data-type="all"      data-ev-click="setSearchType('all')">All</button>
+        <button class="gs-filter-btn" data-type="food"     data-ev-click="setSearchType('food')">🍽️ Food</button>
+        <button class="gs-filter-btn" data-type="symptom"  data-ev-click="setSearchType('symptom')">🩺 Symptoms</button>
+        <button class="gs-filter-btn" data-type="todo"     data-ev-click="setSearchType('todo')">✅ Tasks</button>
+        <button class="gs-filter-btn" data-type="thought"  data-ev-click="setSearchType('thought')">💭 Thoughts</button>
+        <button class="gs-filter-btn" data-type="activity" data-ev-click="setSearchType('activity')">🏃 Workouts</button>
       </div>
       <!-- Hints shown before typing -->
       <div class="gs-hints" id="gs-hints">
         <div class="gs-hints-title">Try searching for</div>
         <div class="gs-hints-grid">
-          <div class="gs-hint-chip" onclick="fillSearch('back pain')">back pain</div>
-          <div class="gs-hint-chip" onclick="fillSearch('chicken')">chicken</div>
-          <div class="gs-hint-chip" onclick="fillSearch('last tuesday')">last tuesday</div>
-          <div class="gs-hint-chip" onclick="fillSearch('this week')">this week</div>
-          <div class="gs-hint-chip" onclick="fillSearch('headache last week')">headache last week</div>
-          <div class="gs-hint-chip" onclick="fillSearch('yesterday')">yesterday</div>
-          <div class="gs-hint-chip" onclick="fillSearch('running')">running</div>
-          <div class="gs-hint-chip" onclick="fillSearch('high priority')">high priority</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('back pain')">back pain</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('chicken')">chicken</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('last tuesday')">last tuesday</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('this week')">this week</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('headache last week')">headache last week</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('yesterday')">yesterday</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('running')">running</div>
+          <div class="gs-hint-chip" data-ev-click="fillSearch('high priority')">high priority</div>
         </div>
       </div>
       <div id="global-search-results" class="global-search-results"></div>
@@ -294,7 +294,7 @@
      border-radius:10px;padding:10px 16px;margin-bottom:16px;
      font-size:13px;color:#92400E;align-items:center;gap:10px">
   <span style="flex:1">📧 Please verify your email address — check your inbox for the link.</span>
-  <button class="btn-outline" style="font-size:12px;white-space:nowrap" onclick="resendVerification()">
+  <button class="btn-outline" style="font-size:12px;white-space:nowrap" data-ev-click="resendVerification()">
     Resend email
   </button>
 </div>
@@ -308,15 +308,15 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <!-- Consistency shortcut -->
-      <button class="dash-icon-btn" onclick="switchView('consistency')" title="Consistency Tracker" id="dash-consistency-btn">
+      <button class="dash-icon-btn" data-ev-click="switchView('consistency')" title="Consistency Tracker" id="dash-consistency-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span class="dash-icon-btn-badge" id="dash-streak-badge" style="display:none">0</span>
       </button>
       <!-- Profile icon only -->
-      <button class="dash-icon-btn" onclick="openProfileModal()" title="Health Profile">
+      <button class="dash-icon-btn" data-ev-click="openProfileModal()" title="Health Profile">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
       </button>
-      <button class="dash-icon-btn" onclick="openGlobalSearch()" title="Search everything (Ctrl+K)">
+      <button class="dash-icon-btn" data-ev-click="openGlobalSearch()" title="Search everything (Ctrl+K)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
       <div class="header-date" id="header-date"></div>
@@ -326,7 +326,7 @@
   <div class="dash-hero-grid" id="dash-hero-grid">
     <!-- Health Score — always first, always visible -->
     <div class="hero-card hero-card--score dash-clickable" id="dash-score-card"
-         onclick="openHealthScoreModal()" style="cursor:pointer;position:relative;overflow:hidden">
+         data-ev-click="openHealthScoreModal()" style="cursor:pointer;position:relative;overflow:hidden">
       <div class="hero-card-label">Health Score</div>
       <div class="hero-score-wrap">
         <svg class="hero-score-ring" viewBox="0 0 56 56">
@@ -349,7 +349,7 @@
     </div>
     <!-- Active minutes — always shown, clickable to Fitness -->
     <div class="hero-card hero-card--blue dash-clickable" id="dash-active-card"
-         onclick="switchView('fitness')" title="Go to Fitness Journey" style="cursor:pointer">
+         data-ev-click="switchView('fitness')" title="Go to Fitness Journey" style="cursor:pointer">
       <div class="hero-card-label">Active Minutes</div>
       <div class="hero-card-value" id="dash-active-min">—</div>
       <div class="hero-card-sub">this week</div>
@@ -358,7 +358,7 @@
     </div>
     <!-- Calorie balance — always shown, clickable for breakdown -->
     <div class="hero-card hero-card--amber dash-clickable" id="dash-caldeficit-card"
-         onclick="openCalorieBreakdown()" title="View calorie breakdown" style="cursor:pointer">
+         data-ev-click="openCalorieBreakdown()" title="View calorie breakdown" style="cursor:pointer">
       <div class="hero-card-label">Calorie Balance</div>
       <div class="hero-card-value" id="dash-cal-deficit">—</div>
       <div class="hero-card-sub" id="dash-cal-deficit-sub">today</div>
@@ -403,13 +403,13 @@
         <div class="dnb-macro-key">fiber</div>
       </div>
     </div>
-    <a href="#" class="dnb-link" onclick="switchView('food');return false">Log food →</a>
+    <a href="#" class="dnb-link" data-ev-click="switchView('food');return false">Log food →</a>
   </div>
 
   <!-- Wellness quick-strip (hydration, sleep, habits) -->
   <div class="dash-wellness-strip" id="dash-wellness-strip">
     <!-- Hydration -->
-    <div class="dws-item" onclick="switchView('food')" title="Log food & water">
+    <div class="dws-item" data-ev-click="switchView('food')" title="Log food & water">
       <div class="dws-icon">💧</div>
       <div class="dws-content">
         <div class="dws-label">Hydration</div>
@@ -421,7 +421,7 @@
     </div>
     <div class="dws-sep"></div>
     <!-- Sleep -->
-    <div class="dws-item" onclick="switchView('sleep')" title="View sleep tracker">
+    <div class="dws-item" data-ev-click="switchView('sleep')" title="View sleep tracker">
       <div class="dws-icon">🌙</div>
       <div class="dws-content">
         <div class="dws-label">Sleep</div>
@@ -431,7 +431,7 @@
     </div>
     <div class="dws-sep"></div>
     <!-- Habits -->
-    <div class="dws-item" onclick="switchView('habits')" title="View habits">
+    <div class="dws-item" data-ev-click="switchView('habits')" title="View habits">
       <div class="dws-icon">⭐</div>
       <div class="dws-content">
         <div class="dws-label">Habits</div>
@@ -441,7 +441,7 @@
     </div>
     <div class="dws-sep"></div>
     <!-- Symptoms -->
-    <div class="dws-item" onclick="switchView('reports')" title="Log symptoms">
+    <div class="dws-item" data-ev-click="switchView('reports')" title="Log symptoms">
       <div class="dws-icon">🩺</div>
       <div class="dws-content">
         <div class="dws-label">Symptoms</div>
@@ -452,27 +452,27 @@
 
   <!-- Quick-log action bar -->
   <div class="quick-log-bar">
-    <button class="ql-btn" onclick="quickAddWater(250)">
+    <button class="ql-btn" data-ev-click="quickAddWater(250)">
       <span class="ql-icon">💧</span>
       <span class="ql-label">Log Water</span>
       <span class="ql-hint">250ml</span>
     </button>
-    <button class="ql-btn" onclick="switchView('food');setTimeout(()=>openAddFoodModal(),200)">
+    <button class="ql-btn" data-ev-click="quickAdd('food')">
       <span class="ql-icon">🍽️</span>
       <span class="ql-label">Log Meal</span>
       <span class="ql-hint">food tracker</span>
     </button>
-    <button class="ql-btn" onclick="switchView('fitness');setTimeout(()=>openActivityModal(),200)">
+    <button class="ql-btn" data-ev-click="quickAdd('fitness')">
       <span class="ql-icon">🏃</span>
       <span class="ql-label">Log Workout</span>
       <span class="ql-hint">fitness</span>
     </button>
-    <button class="ql-btn" onclick="switchView('thoughts')">
+    <button class="ql-btn" data-ev-click="switchView('thoughts')">
       <span class="ql-icon">💭</span>
       <span class="ql-label">Add Thought</span>
       <span class="ql-hint">journal</span>
     </button>
-    <button class="ql-btn" onclick="switchView('todos');setTimeout(()=>openTodoModal(),200)">
+    <button class="ql-btn" data-ev-click="quickAdd('todos')">
       <span class="ql-icon">✅</span>
       <span class="ql-label">Add Task</span>
       <span class="ql-hint">to-do list</span>
@@ -484,7 +484,7 @@
     <div class="panel">
       <div class="panel-header">
         <h2 class="panel-title">Today's Medicines</h2>
-        <a href="#" class="panel-link" onclick="switchView('medicines');return false">Manage →</a>
+        <a href="#" class="panel-link" data-ev-click="switchView('medicines');return false">Manage →</a>
       </div>
       <div id="dash-medicine-list" class="dash-dose-list"></div>
     </div>
@@ -493,7 +493,7 @@
     <div class="panel">
       <div class="panel-header">
         <h2 class="panel-title">Pending Tasks</h2>
-        <a href="#" class="panel-link" onclick="switchView('todos');return false">All tasks →</a>
+        <a href="#" class="panel-link" data-ev-click="switchView('todos');return false">All tasks →</a>
       </div>
       <div id="dash-todos-list" class="dash-todos-list"></div>
     </div>
@@ -528,7 +528,7 @@
       <h1 class="page-title">Medical Reports</h1>
       <p class="page-subtitle" id="reports-count-label">Upload and track your reports</p>
     </div>
-    <button class="btn-primary" onclick="openUploadModal()">
+    <button class="btn-primary" data-ev-click="openUploadModal()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Upload Report
     </button>
@@ -556,9 +556,9 @@
 
   <!-- Medical sub-tabs -->
   <div class="medical-tabs" style="margin-top:24px">
-    <button class="wellness-tab" data-tab="symptoms" onclick="switchMedTab('symptoms')">🩺 Symptoms</button>
-    <button class="wellness-tab" data-tab="vitals" onclick="switchMedTab('vitals')">❤️ Vitals</button>
-    <button class="wellness-tab" data-tab="emergency" onclick="switchMedTab('emergency')">🆘 Health Card</button>
+    <button class="wellness-tab" data-tab="symptoms" data-ev-click="switchMedTab('symptoms')">🩺 Symptoms</button>
+    <button class="wellness-tab" data-tab="vitals" data-ev-click="switchMedTab('vitals')">❤️ Vitals</button>
+    <button class="wellness-tab" data-tab="emergency" data-ev-click="switchMedTab('emergency')">🆘 Health Card</button>
   </div>
 
   <!-- SYMPTOMS -->
@@ -575,30 +575,30 @@
 
           <!-- Full-width toggle grid -->
           <div class="sym-full-grid" id="symptom-multi-grid">
-            <button type="button" class="sym-toggle-btn" data-sym="Headache"       onclick="toggleSymptom(this)">🤕 Headache</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Fatigue"        onclick="toggleSymptom(this)">😴 Fatigue</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Nausea"         onclick="toggleSymptom(this)">🤢 Nausea</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Back Pain"      onclick="toggleSymptom(this)">🦴 Back Pain</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Chest Pain"     onclick="toggleSymptom(this)">💔 Chest Pain</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Dizziness"      onclick="toggleSymptom(this)">💫 Dizziness</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Breathlessness" onclick="toggleSymptom(this)">😮‍💨 Breathless</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Fever"          onclick="toggleSymptom(this)">🌡️ Fever</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Joint Pain"     onclick="toggleSymptom(this)">🦵 Joint Pain</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Anxiety"        onclick="toggleSymptom(this)">😰 Anxiety</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Cough"          onclick="toggleSymptom(this)">🫁 Cough</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Bloating"       onclick="toggleSymptom(this)">🫃 Bloating</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Insomnia"       onclick="toggleSymptom(this)">🌙 Insomnia</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Muscle Cramps"  onclick="toggleSymptom(this)">💪 Cramps</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Eye Strain"     onclick="toggleSymptom(this)">👁️ Eye Strain</button>
-            <button type="button" class="sym-toggle-btn" data-sym="Migraine"       onclick="toggleSymptom(this)">⚡ Migraine</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Headache"       data-ev-click="toggleSymptom(this)">🤕 Headache</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Fatigue"        data-ev-click="toggleSymptom(this)">😴 Fatigue</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Nausea"         data-ev-click="toggleSymptom(this)">🤢 Nausea</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Back Pain"      data-ev-click="toggleSymptom(this)">🦴 Back Pain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Chest Pain"     data-ev-click="toggleSymptom(this)">💔 Chest Pain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Dizziness"      data-ev-click="toggleSymptom(this)">💫 Dizziness</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Breathlessness" data-ev-click="toggleSymptom(this)">😮‍💨 Breathless</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Fever"          data-ev-click="toggleSymptom(this)">🌡️ Fever</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Joint Pain"     data-ev-click="toggleSymptom(this)">🦵 Joint Pain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Anxiety"        data-ev-click="toggleSymptom(this)">😰 Anxiety</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Cough"          data-ev-click="toggleSymptom(this)">🫁 Cough</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Bloating"       data-ev-click="toggleSymptom(this)">🫃 Bloating</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Insomnia"       data-ev-click="toggleSymptom(this)">🌙 Insomnia</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Muscle Cramps"  data-ev-click="toggleSymptom(this)">💪 Cramps</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Eye Strain"     data-ev-click="toggleSymptom(this)">👁️ Eye Strain</button>
+            <button type="button" class="sym-toggle-btn" data-sym="Migraine"       data-ev-click="toggleSymptom(this)">⚡ Migraine</button>
           </div>
 
           <!-- Custom symptom input -->
           <div class="sym-custom-row">
             <input type="text" class="form-input" id="symptom-custom-input"
                    placeholder="Type a custom symptom and press Enter…"
-                   onkeydown="if(event.key==='Enter'){addCustomSymptom();event.preventDefault()}">
-            <button type="button" class="btn-outline" onclick="addCustomSymptom()"
+                   data-ev-keydown="enterAddCustomSymptom(event)">
+            <button type="button" class="btn-outline" data-ev-click="addCustomSymptom()"
                     style="padding:0 16px;white-space:nowrap;flex-shrink:0">+ Add</button>
           </div>
 
@@ -614,7 +614,7 @@
               <label class="form-label">Severity (1–10)</label>
               <div class="severity-slider-wrap">
                 <input type="range" id="symptom-severity" min="1" max="10" value="5"
-                       oninput="updateSeverityLabel(this.value)" class="severity-slider">
+                       data-ev-input="updateSeverityLabel(this.value)" class="severity-slider">
                 <span class="severity-label" id="severity-label">5 — Moderate</span>
               </div>
             </div>
@@ -640,7 +640,7 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               Select at least one symptom above
             </div>
-            <button class="btn-primary" id="log-symptoms-btn" onclick="logSymptoms()" disabled>
+            <button class="btn-primary" id="log-symptoms-btn" data-ev-click="logSymptoms()" disabled>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
               Log Symptoms
             </button>
@@ -672,11 +672,11 @@
             <div class="form-group">
               <label class="form-label">Type</label>
               <div class="vital-type-picker" id="vital-type-picker">
-                <button type="button" class="vital-type-btn selected" data-type="blood_pressure" onclick="selectVitalType('blood_pressure')">❤️ Blood Pressure</button>
-                <button type="button" class="vital-type-btn" data-type="blood_sugar" onclick="selectVitalType('blood_sugar')">🩸 Blood Sugar</button>
-                <button type="button" class="vital-type-btn" data-type="heart_rate" onclick="selectVitalType('heart_rate')">💓 Heart Rate</button>
-                <button type="button" class="vital-type-btn" data-type="temperature" onclick="selectVitalType('temperature')">🌡️ Temperature</button>
-                <button type="button" class="vital-type-btn" data-type="oxygen_sat" onclick="selectVitalType('oxygen_sat')">💨 SpO2</button>
+                <button type="button" class="vital-type-btn selected" data-type="blood_pressure" data-ev-click="selectVitalType('blood_pressure')">❤️ Blood Pressure</button>
+                <button type="button" class="vital-type-btn" data-type="blood_sugar" data-ev-click="selectVitalType('blood_sugar')">🩸 Blood Sugar</button>
+                <button type="button" class="vital-type-btn" data-type="heart_rate" data-ev-click="selectVitalType('heart_rate')">💓 Heart Rate</button>
+                <button type="button" class="vital-type-btn" data-type="temperature" data-ev-click="selectVitalType('temperature')">🌡️ Temperature</button>
+                <button type="button" class="vital-type-btn" data-type="oxygen_sat" data-ev-click="selectVitalType('oxygen_sat')">💨 SpO2</button>
               </div>
             </div>
             <div id="vital-value-fields"></div>
@@ -684,7 +684,7 @@
               <label class="form-label">Notes</label>
               <input type="text" class="form-input" id="vital-notes" placeholder="e.g. Before breakfast, after walk…">
             </div>
-            <button class="btn-primary" style="width:100%" onclick="logVital()">Save Reading</button>
+            <button class="btn-primary" style="width:100%" data-ev-click="logVital()">Save Reading</button>
           </div>
         </div>
       </div>
@@ -742,7 +742,7 @@
                 <input type="tel" class="form-input" id="em-c2-phone" placeholder="Phone number">
               </div>
             </div>
-            <button class="btn-primary" style="width:100%" onclick="saveEmergencyInfo()">Save Health Card</button>
+            <button class="btn-primary" style="width:100%" data-ev-click="saveEmergencyInfo()">Save Health Card</button>
           </div>
         </div>
       </div>
@@ -784,7 +784,7 @@
       <h1 class="page-title">Medicine Tracker</h1>
       <p class="page-subtitle">Daily doses and reminders</p>
     </div>
-    <button class="btn-primary" onclick="openMedModal()">
+    <button class="btn-primary" data-ev-click="openMedModal()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add Medicine
     </button>
@@ -826,18 +826,18 @@
     </div>
     <div class="header-actions">
       <span id="header-user-name" style="font-size:13px;color:var(--gray-500);margin-right:4px"></span>
-      <button class="btn-outline" onclick="signOut()" style="font-size:12px;padding:6px 12px">
+      <button class="btn-outline" data-ev-click="signOut()" style="font-size:12px;padding:6px 12px">
         Sign out
       </button>
-      <button class="btn-icon-labeled" onclick="switchView('consistency')" title="Consistency Tracker">
+      <button class="btn-icon-labeled" data-ev-click="switchView('consistency')" title="Consistency Tracker">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg>
         <span id="fitness-streak-badge" class="streak-pill" style="display:none"></span>
       </button>
-      <button class="btn-outline" onclick="openConnectModal()">
+      <button class="btn-outline" data-ev-click="openConnectModal()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
         Connect App
       </button>
-      <button class="btn-primary" onclick="openActivityModal()">
+      <button class="btn-primary" data-ev-click="openActivityModal()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Log Activity
       </button>
@@ -877,7 +877,7 @@
         </div>
         <span class="cdb-progress-pct" id="cdb-progress-pct">0%</span>
       </div>
-      <a href="#" class="cdb-food-link" onclick="switchView('food');return false">
+      <a href="#" class="cdb-food-link" data-ev-click="switchView('food');return false">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Log food
       </a>
@@ -913,7 +913,7 @@
   <div class="fit-nutrition-strip" id="fit-nutrition-strip">
     <div class="fns-header">
       <span class="fns-title">🥗 Today's Nutrition</span>
-      <a href="#" class="fns-link" onclick="switchView('food');return false">Full tracker →</a>
+      <a href="#" class="fns-link" data-ev-click="switchView('food');return false">Full tracker →</a>
     </div>
     <div class="fns-macros">
       <div class="fns-macro">
@@ -985,22 +985,22 @@
           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Garmin_logo.svg/200px-Garmin_logo.svg.png" class="app-logo" alt="Garmin" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
           <div class="app-logo-fallback" style="display:none">G</div>
           <div class="app-info"><div class="app-name">Garmin Connect</div><div class="app-desc">GPS watches & fitness trackers</div></div>
-          <button class="btn-connect" onclick="connectService('garmin')">Connect</button>
+          <button class="btn-connect" data-ev-click="connectService('garmin')">Connect</button>
         </div>
         <div class="app-connect-row" data-service="strava">
           <div class="app-logo-fallback app-logo-fallback--orange">S</div>
           <div class="app-info"><div class="app-name">Strava</div><div class="app-desc">Running, cycling & more</div></div>
-          <button class="btn-connect" onclick="connectService('strava')">Connect</button>
+          <button class="btn-connect" data-ev-click="connectService('strava')">Connect</button>
         </div>
         <div class="app-connect-row" data-service="apple_health">
           <div class="app-logo-fallback app-logo-fallback--gray">🍎</div>
           <div class="app-info"><div class="app-name">Apple Health</div><div class="app-desc">Steps, workouts, vitals</div></div>
-          <button class="btn-connect" onclick="connectService('apple_health')">Connect</button>
+          <button class="btn-connect" data-ev-click="connectService('apple_health')">Connect</button>
         </div>
         <div class="app-connect-row" data-service="google_fit">
           <div class="app-logo-fallback app-logo-fallback--blue">G</div>
           <div class="app-info"><div class="app-name">Google Fit</div><div class="app-desc">Android health data</div></div>
-          <button class="btn-connect" onclick="connectService('google_fit')">Connect</button>
+          <button class="btn-connect" data-ev-click="connectService('google_fit')">Connect</button>
         </div>
       </div>
     </div>
@@ -1028,11 +1028,11 @@
     </div>
     <div class="header-actions">
       <div class="cal-nav">
-        <button class="btn-icon cal-prev" onclick="calPrevMonth()">
+        <button class="btn-icon cal-prev" data-ev-click="calPrevMonth()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <span class="cal-month-label" id="cal-month-label">Loading…</span>
-        <button class="btn-icon cal-next" onclick="calNextMonth()">
+        <button class="btn-icon cal-next" data-ev-click="calNextMonth()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -1127,7 +1127,7 @@
               <div class="cal-detail-date-dot"></div>
               <span id="cal-detail-date"></span>
             </div>
-            <button class="btn-icon" onclick="document.getElementById('cal-day-detail').style.display='none'" style="width:22px;height:22px">
+            <button class="btn-icon" data-ev-click="hideEl('cal-day-detail')" style="width:22px;height:22px">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -1218,7 +1218,7 @@
     <div class="history-stats-bar" id="history-stats-bar"></div>
     <div id="history-feed" class="activity-feed"></div>
     <div class="history-load-more" id="history-load-more" style="display:none">
-      <button class="btn-outline" onclick="loadMoreHistory()">Load more</button>
+      <button class="btn-outline" data-ev-click="loadMoreHistory()">Load more</button>
     </div>
   </div>
 </div>
@@ -1255,15 +1255,15 @@
     </div>
     <div class="header-actions">
       <div class="food-date-nav">
-        <button class="btn-icon" onclick="foodDateShift(-1)">
+        <button class="btn-icon" data-ev-click="foodDateShift(-1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <input type="date" class="form-input" id="food-date-picker" onchange="loadFoodDay(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
-        <button class="btn-icon" onclick="foodDateShift(1)">
+        <input type="date" class="form-input" id="food-date-picker" data-ev-change="loadFoodDay(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
+        <button class="btn-icon" data-ev-click="foodDateShift(1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
-      <button class="btn-primary" onclick="openAddFoodModal()">
+      <button class="btn-primary" data-ev-click="openAddFoodModal()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Add Food
       </button>
@@ -1347,10 +1347,10 @@
             <div class="hydration-pct" id="hydration-pct">0%</div>
           </div>
           <div class="hydration-quick-add">
-            <button class="hydration-btn" onclick="quickAddWater(150)">☕ 150</button>
-            <button class="hydration-btn" onclick="quickAddWater(250)">🥛 250</button>
-            <button class="hydration-btn" onclick="quickAddWater(500)">🍶 500</button>
-            <button class="hydration-btn" onclick="quickAddWater(1000)">🫙 1L</button>
+            <button class="hydration-btn" data-ev-click="quickAddWater(150)">☕ 150</button>
+            <button class="hydration-btn" data-ev-click="quickAddWater(250)">🥛 250</button>
+            <button class="hydration-btn" data-ev-click="quickAddWater(500)">🍶 500</button>
+            <button class="hydration-btn" data-ev-click="quickAddWater(1000)">🫙 1L</button>
           </div>
           <div class="hydration-logs-wrap" id="hydration-logs-wrap"></div>
         </div>
@@ -1369,7 +1369,7 @@
 
       <!-- Micronutrients -->
       <div class="panel">
-        <div class="panel-header panel-header--clickable" onclick="toggleMicroPanel()" style="cursor:pointer">
+        <div class="panel-header panel-header--clickable" data-ev-click="toggleMicroPanel()" style="cursor:pointer">
           <h2 class="panel-title">Micronutrients</h2>
           <div style="display:flex;align-items:center;gap:8px">
             <span class="panel-badge">Daily</span>
@@ -1403,11 +1403,11 @@
     </div>
     <div class="header-actions">
       <div class="thoughts-date-nav">
-        <button class="btn-icon" onclick="thoughtsDateShift(-1)">
+        <button class="btn-icon" data-ev-click="thoughtsDateShift(-1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <input type="date" class="form-input" id="thoughts-date-picker" onchange="loadThoughts(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
-        <button class="btn-icon" onclick="thoughtsDateShift(1)">
+        <input type="date" class="form-input" id="thoughts-date-picker" data-ev-change="loadThoughts(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
+        <button class="btn-icon" data-ev-click="thoughtsDateShift(1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -1423,14 +1423,14 @@
         <div class="composer-mood-row">
           <span class="composer-label">How are you feeling?</span>
           <div class="mood-picker" id="mood-picker">
-            <button type="button" class="mood-btn selected" data-mood="neutral" onclick="selectMood('neutral')" title="Neutral">😐</button>
-            <button type="button" class="mood-btn" data-mood="happy"   onclick="selectMood('happy')"   title="Happy">😊</button>
-            <button type="button" class="mood-btn" data-mood="excited" onclick="selectMood('excited')" title="Excited">🤩</button>
-            <button type="button" class="mood-btn" data-mood="calm"    onclick="selectMood('calm')"    title="Calm">😌</button>
-            <button type="button" class="mood-btn" data-mood="anxious" onclick="selectMood('anxious')" title="Anxious">😰</button>
-            <button type="button" class="mood-btn" data-mood="tired"   onclick="selectMood('tired')"   title="Tired">😴</button>
-            <button type="button" class="mood-btn" data-mood="sad"     onclick="selectMood('sad')"     title="Sad">😞</button>
-            <button type="button" class="mood-btn" data-mood="angry"   onclick="selectMood('angry')"   title="Angry">😤</button>
+            <button type="button" class="mood-btn selected" data-mood="neutral" data-ev-click="selectMood('neutral')" title="Neutral">😐</button>
+            <button type="button" class="mood-btn" data-mood="happy"   data-ev-click="selectMood('happy')"   title="Happy">😊</button>
+            <button type="button" class="mood-btn" data-mood="excited" data-ev-click="selectMood('excited')" title="Excited">🤩</button>
+            <button type="button" class="mood-btn" data-mood="calm"    data-ev-click="selectMood('calm')"    title="Calm">😌</button>
+            <button type="button" class="mood-btn" data-mood="anxious" data-ev-click="selectMood('anxious')" title="Anxious">😰</button>
+            <button type="button" class="mood-btn" data-mood="tired"   data-ev-click="selectMood('tired')"   title="Tired">😴</button>
+            <button type="button" class="mood-btn" data-mood="sad"     data-ev-click="selectMood('sad')"     title="Sad">😞</button>
+            <button type="button" class="mood-btn" data-mood="angry"   data-ev-click="selectMood('angry')"   title="Angry">😤</button>
           </div>
         </div>
         <div class="thoughts-quota" id="thoughts-quota">
@@ -1440,10 +1440,10 @@
       <div class="composer-body">
         <textarea id="thought-textarea" class="thought-textarea"
           placeholder="What's on your mind right now? …"
-          maxlength="1000" oninput="updateThoughtCounter(this)"></textarea>
+          maxlength="1000" data-ev-input="updateThoughtCounter(this)"></textarea>
         <div class="composer-footer">
           <span class="thought-char-count" id="thought-char-count">0 / 1000</span>
-          <button class="btn-primary" id="thought-submit-btn" onclick="submitThought()" disabled>
+          <button class="btn-primary" id="thought-submit-btn" data-ev-click="submitThought()" disabled>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             Save thought
           </button>
@@ -1479,7 +1479,7 @@
       <h1 class="page-title">Tasks</h1>
       <p class="page-subtitle">Tasks, reminders and things to get done</p>
     </div>
-    <button class="btn-primary" onclick="openTodoModal()">
+    <button class="btn-primary" data-ev-click="openTodoModal()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Add Task
     </button>
@@ -1511,12 +1511,12 @@
 
   <!-- Filters -->
   <div class="todo-filters">
-    <button class="todo-filter-btn active" data-filter="all"     onclick="setTodoFilter('all')">All</button>
-    <button class="todo-filter-btn"        data-filter="pending" onclick="setTodoFilter('pending')">Pending</button>
-    <button class="todo-filter-btn"        data-filter="done"    onclick="setTodoFilter('done')">Completed</button>
+    <button class="todo-filter-btn active" data-filter="all"     data-ev-click="setTodoFilter('all')">All</button>
+    <button class="todo-filter-btn"        data-filter="pending" data-ev-click="setTodoFilter('pending')">Pending</button>
+    <button class="todo-filter-btn"        data-filter="done"    data-ev-click="setTodoFilter('done')">Completed</button>
     <div style="flex:1"></div>
     <div class="todo-sort-wrap">
-      <select class="filter-select" id="todo-sort" onchange="loadTodos()" style="font-size:12px;padding:6px 28px 6px 10px">
+      <select class="filter-select" id="todo-sort" data-ev-change="loadTodos()" style="font-size:12px;padding:6px 28px 6px 10px">
         <option value="priority">By priority</option>
         <option value="due_date">By due date</option>
         <option value="created">By created</option>
@@ -1554,10 +1554,10 @@
     <div class="header-actions">
       <!-- Period toggle -->
       <div class="prog-period-toggle">
-        <button class="prog-period-btn active" data-period="month" onclick="setProgressPeriod('month')">This month</button>
-        <button class="prog-period-btn" data-period="week" onclick="setProgressPeriod('week')">7 days</button>
+        <button class="prog-period-btn active" data-period="month" data-ev-click="setProgressPeriod('month')">This month</button>
+        <button class="prog-period-btn" data-period="week" data-ev-click="setProgressPeriod('week')">7 days</button>
       </div>
-      <button class="btn-outline" onclick="loadProgress()">
+      <button class="btn-outline" data-ev-click="loadProgress()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
         Refresh
       </button>
@@ -1607,11 +1607,11 @@
       <p class="page-subtitle">Last 7 days — shareable summary</p>
     </div>
     <div class="header-actions">
-      <button class="btn-outline" onclick="printReport()">
+      <button class="btn-outline" data-ev-click="printReport()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         Print / Save PDF
       </button>
-      <button class="btn-primary" onclick="loadReport()">
+      <button class="btn-primary" data-ev-click="loadReport()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
         Generate Report
       </button>
@@ -1639,11 +1639,11 @@
       <p class="page-subtitle">Reminders and alerts</p>
     </div>
     <div class="header-actions">
-      <button class="btn-outline" onclick="toggleReminderSettings()">
+      <button class="btn-outline" data-ev-click="toggleReminderSettings()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
         Settings
       </button>
-      <button class="btn-outline" onclick="markAllRead()">
+      <button class="btn-outline" data-ev-click="markAllRead()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
         Mark all read
       </button>
@@ -1667,14 +1667,14 @@
             <div class="rs-section-sub">Smart nudges based on your hydration progress</div>
           </div>
           <label class="rs-toggle">
-            <input type="checkbox" id="rs-water-enabled" onchange="saveReminderSettings()">
+            <input type="checkbox" id="rs-water-enabled" data-ev-change="saveReminderSettings()">
             <span class="rs-toggle-track"></span>
           </label>
         </div>
         <div class="rs-section-body" id="rs-water-body">
           <div class="rs-row">
             <label class="rs-label">Remind every</label>
-            <select class="form-input rs-select" id="rs-water-interval" onchange="saveReminderSettings()">
+            <select class="form-input rs-select" id="rs-water-interval" data-ev-change="saveReminderSettings()">
               <option value="1">1 hour</option>
               <option value="1.5">1.5 hours</option>
               <option value="2" selected>2 hours</option>
@@ -1685,9 +1685,9 @@
           <div class="rs-row">
             <label class="rs-label">Between</label>
             <div style="display:flex;gap:8px;align-items:center">
-              <input type="time" class="form-input rs-time" id="rs-water-start" value="08:00" onchange="saveReminderSettings()">
+              <input type="time" class="form-input rs-time" id="rs-water-start" value="08:00" data-ev-change="saveReminderSettings()">
               <span style="color:var(--gray-400);font-size:12px">and</span>
-              <input type="time" class="form-input rs-time" id="rs-water-end" value="21:00" onchange="saveReminderSettings()">
+              <input type="time" class="form-input rs-time" id="rs-water-end" value="21:00" data-ev-change="saveReminderSettings()">
             </div>
           </div>
           <div class="rs-hint">Only fires if you're behind on your goal — won't bother you when you're on track</div>
@@ -1703,14 +1703,14 @@
             <div class="rs-section-sub">Reminds you to tick off habits before bed</div>
           </div>
           <label class="rs-toggle">
-            <input type="checkbox" id="rs-habit-enabled" onchange="saveReminderSettings()">
+            <input type="checkbox" id="rs-habit-enabled" data-ev-change="saveReminderSettings()">
             <span class="rs-toggle-track"></span>
           </label>
         </div>
         <div class="rs-section-body" id="rs-habit-body">
           <div class="rs-row">
             <label class="rs-label">Remind at</label>
-            <input type="time" class="form-input rs-time" id="rs-habit-time" value="20:00" onchange="saveReminderSettings()">
+            <input type="time" class="form-input rs-time" id="rs-habit-time" value="20:00" data-ev-change="saveReminderSettings()">
           </div>
           <div class="rs-hint">Only fires if you have unchecked habits for the day</div>
         </div>
@@ -1725,14 +1725,14 @@
             <div class="rs-section-sub">Nudge to log last night's sleep if you haven't</div>
           </div>
           <label class="rs-toggle">
-            <input type="checkbox" id="rs-sleep-enabled" onchange="saveReminderSettings()">
+            <input type="checkbox" id="rs-sleep-enabled" data-ev-change="saveReminderSettings()">
             <span class="rs-toggle-track"></span>
           </label>
         </div>
         <div class="rs-section-body" id="rs-sleep-body">
           <div class="rs-row">
             <label class="rs-label">Remind at</label>
-            <input type="time" class="form-input rs-time" id="rs-sleep-time" value="22:00" onchange="saveReminderSettings()">
+            <input type="time" class="form-input rs-time" id="rs-sleep-time" value="22:00" data-ev-change="saveReminderSettings()">
           </div>
         </div>
       </div>
@@ -1746,14 +1746,14 @@
             <div class="rs-section-sub">Prompt to log your mood if you haven't today</div>
           </div>
           <label class="rs-toggle">
-            <input type="checkbox" id="rs-mood-enabled" onchange="saveReminderSettings()">
+            <input type="checkbox" id="rs-mood-enabled" data-ev-change="saveReminderSettings()">
             <span class="rs-toggle-track"></span>
           </label>
         </div>
         <div class="rs-section-body" id="rs-mood-body">
           <div class="rs-row">
             <label class="rs-label">Remind at</label>
-            <input type="time" class="form-input rs-time" id="rs-mood-time" value="18:00" onchange="saveReminderSettings()">
+            <input type="time" class="form-input rs-time" id="rs-mood-time" value="18:00" data-ev-change="saveReminderSettings()">
           </div>
         </div>
       </div>
@@ -1763,11 +1763,11 @@
 
   <!-- Filter tabs -->
   <div class="notif-filter-bar">
-    <button class="notif-filter-btn active" data-f="all"      onclick="setNotifFilter('all')">All</button>
-    <button class="notif-filter-btn"        data-f="medicine" onclick="setNotifFilter('medicine')">💊 Medicine</button>
-    <button class="notif-filter-btn"        data-f="hydration" onclick="setNotifFilter('hydration')">💧 Water</button>
-    <button class="notif-filter-btn"        data-f="refill"   onclick="setNotifFilter('refill')">⚠️ Refill</button>
-    <button class="notif-filter-btn"        data-f="system"   onclick="setNotifFilter('system')">🔔 System</button>
+    <button class="notif-filter-btn active" data-f="all"      data-ev-click="setNotifFilter('all')">All</button>
+    <button class="notif-filter-btn"        data-f="medicine" data-ev-click="setNotifFilter('medicine')">💊 Medicine</button>
+    <button class="notif-filter-btn"        data-f="hydration" data-ev-click="setNotifFilter('hydration')">💧 Water</button>
+    <button class="notif-filter-btn"        data-f="refill"   data-ev-click="setNotifFilter('refill')">⚠️ Refill</button>
+    <button class="notif-filter-btn"        data-f="system"   data-ev-click="setNotifFilter('system')">🔔 System</button>
     <div style="flex:1"></div>
     <span class="notif-unread-total" id="notif-unread-total"></span>
   </div>
@@ -1814,12 +1814,12 @@
       <div class="export-format-group">
         <div class="export-ctrl-label">Format</div>
         <div class="export-format-toggle">
-          <button class="export-fmt-btn active" data-fmt="json" onclick="setExportFmt('json')">
+          <button class="export-fmt-btn active" data-fmt="json" data-ev-click="setExportFmt('json')">
             <span class="export-fmt-icon">{ }</span>
             <span class="export-fmt-name">JSON</span>
             <span class="export-fmt-desc">Structured, for developers</span>
           </button>
-          <button class="export-fmt-btn" data-fmt="csv" onclick="setExportFmt('csv')">
+          <button class="export-fmt-btn" data-fmt="csv" data-ev-click="setExportFmt('csv')">
             <span class="export-fmt-icon">⊞</span>
             <span class="export-fmt-name">CSV</span>
             <span class="export-fmt-desc">For Excel / Google Sheets</span>
@@ -1839,10 +1839,10 @@
             <input type="date" class="form-input" id="export-to-date" style="font-size:13px">
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;padding-top:20px">
-            <button class="export-preset-btn" onclick="setExportPreset(30)">Last 30 days</button>
-            <button class="export-preset-btn" onclick="setExportPreset(90)">Last 90 days</button>
-            <button class="export-preset-btn" onclick="setExportPreset(365)">Last year</button>
-            <button class="export-preset-btn" onclick="setExportPreset(0)">All time</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(30)">Last 30 days</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(90)">Last 90 days</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(365)">Last year</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(0)">All time</button>
           </div>
         </div>
       </div>
@@ -1857,11 +1857,11 @@
   <!-- Select all + download -->
   <div class="export-action-bar">
     <div class="export-action-left">
-      <button class="btn-outline" onclick="setAllExportSections(true)">Select all</button>
-      <button class="btn-outline" onclick="setAllExportSections(false)">Deselect all</button>
+      <button class="btn-outline" data-ev-click="setAllExportSections(true)">Select all</button>
+      <button class="btn-outline" data-ev-click="setAllExportSections(false)">Deselect all</button>
       <span class="export-size-estimate" id="export-size-estimate"></span>
     </div>
-    <button class="btn-primary export-download-btn" onclick="doExport()" id="export-download-btn">
+    <button class="btn-primary export-download-btn" data-ev-click="doExport()" id="export-download-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Download JSON
     </button>
@@ -1878,7 +1878,7 @@
 <div class="modal modal--wide">
   <div class="modal-head">
     <h2 class="modal-title">Upload Medical Report</h2>
-    <button class="modal-close" onclick="closeModal('upload-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('upload-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -1891,7 +1891,7 @@
         <div class="dropzone-text">Drop file here</div>
         <div class="dropzone-sub">PDF · PNG · JPG · TXT · CSV</div>
         <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.txt,.csv" style="display:none">
-        <button type="button" class="btn-outline" onclick="document.getElementById('file-input').click()">Browse</button>
+        <button type="button" class="btn-outline" data-ev-click="clickEl('file-input')">Browse</button>
       </div>
       <div class="file-preview" id="file-preview" style="display:none">
         <div class="file-preview-icon" id="file-preview-icon">📄</div>
@@ -1899,7 +1899,7 @@
           <div class="file-preview-name" id="file-preview-name"></div>
           <div class="file-preview-size" id="file-preview-size"></div>
         </div>
-        <button class="btn-icon" onclick="clearFile()">
+        <button class="btn-icon" data-ev-click="clearFile()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -1927,14 +1927,14 @@
         <div class="tags-picker" id="tags-picker">
           {% for tag in tags %}<button type="button" class="tag-btn" data-tag="{{ tag }}">{{ tag }}</button>{% endfor %}
         </div>
-        <div class="custom-tag-row"><input type="text" class="form-input" id="custom-tag-input" placeholder="Custom tag…" style="flex:1"><button type="button" class="btn-outline-sm" onclick="addCustomTag()">Add</button></div>
+        <div class="custom-tag-row"><input type="text" class="form-input" id="custom-tag-input" placeholder="Custom tag…" style="flex:1"><button type="button" class="btn-outline-sm" data-ev-click="addCustomTag()">Add</button></div>
         <div class="selected-tags" id="selected-tags"></div>
       </div>
       <div class="form-group"><label class="form-label">Analysis Notes</label>
         <textarea class="form-input form-textarea" name="analysis_notes" rows="3" placeholder="Clinical observations, findings…"></textarea>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-outline" onclick="closeModal('upload-modal-overlay')">Cancel</button>
+        <button type="button" class="btn-outline" data-ev-click="closeModal('upload-modal-overlay')">Cancel</button>
         <button type="submit" class="btn-primary" id="submit-btn">Upload & Save</button>
       </div>
     </form>
@@ -1951,7 +1951,7 @@
       <h2 class="modal-title">Update Pill Stock</h2>
       <p class="modal-subtitle" id="restock-med-name" style="font-size:13px;color:var(--gray-400);margin-top:2px"></p>
     </div>
-    <button class="modal-close" onclick="closeModal('restock-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('restock-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -1960,19 +1960,19 @@
     <div class="form-group">
       <label class="form-label">Current pill count</label>
       <div class="restock-count-row">
-        <button type="button" class="restock-step-btn" onclick="stepRestock(-10)">−10</button>
-        <button type="button" class="restock-step-btn" onclick="stepRestock(-1)">−1</button>
+        <button type="button" class="restock-step-btn" data-ev-click="stepRestock(-10)">−10</button>
+        <button type="button" class="restock-step-btn" data-ev-click="stepRestock(-1)">−1</button>
         <input type="number" class="form-input" id="restock-pill-count" min="0"
-               oninput="updateRestockPreview()"
+               data-ev-input="updateRestockPreview()"
                style="text-align:center;font-size:24px;font-weight:700;width:100px;flex-shrink:0">
-        <button type="button" class="restock-step-btn" onclick="stepRestock(1)">+1</button>
-        <button type="button" class="restock-step-btn restock-step-btn--add" onclick="stepRestock(30)">+30</button>
+        <button type="button" class="restock-step-btn" data-ev-click="stepRestock(1)">+1</button>
+        <button type="button" class="restock-step-btn restock-step-btn--add" data-ev-click="stepRestock(30)">+30</button>
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Pills per dose</label>
-        <input type="number" class="form-input" id="restock-pills-per-dose" min="1" value="1" oninput="updateRestockPreview()">
+        <input type="number" class="form-input" id="restock-pills-per-dose" min="1" value="1" data-ev-input="updateRestockPreview()">
       </div>
       <div class="form-group">
         <label class="form-label">Alert below (days)</label>
@@ -1981,8 +1981,8 @@
     </div>
     <div class="restock-days-preview" id="restock-days-preview"></div>
     <div class="form-actions">
-      <button type="button" class="btn-outline" onclick="closeModal('restock-modal-overlay')">Cancel</button>
-      <button type="button" class="btn-primary" onclick="saveRestock()">Save Stock</button>
+      <button type="button" class="btn-outline" data-ev-click="closeModal('restock-modal-overlay')">Cancel</button>
+      <button type="button" class="btn-primary" data-ev-click="saveRestock()">Save Stock</button>
     </div>
   </div>
 </div>
@@ -1992,7 +1992,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title">Add Medicine</h2>
-    <button class="modal-close" onclick="closeModal('med-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('med-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2018,9 +2018,9 @@
       </div>
       <div class="form-group"><label class="form-label">Reminder Times</label>
         <div id="time-slots" class="time-slots">
-          <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" onclick="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+          <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
         </div>
-        <button type="button" class="btn-outline-sm" onclick="addTimeSlot()" style="margin-top:8px">+ Add time</button>
+        <button type="button" class="btn-outline-sm" data-ev-click="addTimeSlot()" style="margin-top:8px">+ Add time</button>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Start Date</label><input type="date" class="form-input" name="start_date" id="med-start-date"></div>
@@ -2058,7 +2058,7 @@
       </div>
       <!-- Refill tracking -->
       <div class="refill-section">
-        <button type="button" class="refill-toggle-btn" onclick="toggleRefillSection()">
+        <button type="button" class="refill-toggle-btn" data-ev-click="toggleRefillSection()">
           💊 Track remaining pills <span id="refill-status-text" style="color:var(--gray-400);font-weight:400"></span>
           <svg id="refill-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-left:auto;transform:rotate(-90deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
@@ -2080,7 +2080,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-outline" onclick="closeModal('med-modal-overlay')">Cancel</button>
+        <button type="button" class="btn-outline" data-ev-click="closeModal('med-modal-overlay')">Cancel</button>
         <button type="submit" class="btn-primary">Add Medicine</button>
       </div>
     </form>
@@ -2093,7 +2093,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title">Log Activity</h2>
-    <button class="modal-close" onclick="closeModal('activity-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('activity-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2183,7 +2183,7 @@
         <input type="text" class="form-input" name="notes" placeholder="How did it feel?">
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-outline" onclick="closeModal('activity-modal-overlay')">Cancel</button>
+        <button type="button" class="btn-outline" data-ev-click="closeModal('activity-modal-overlay')">Cancel</button>
         <button type="submit" class="btn-primary">Save Activity</button>
       </div>
     </form>
@@ -2196,7 +2196,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title">Connect Fitness App</h2>
-    <button class="modal-close" onclick="closeModal('connect-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('connect-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2204,7 +2204,7 @@
     <p style="color:var(--gray-500);font-size:13.5px;margin-bottom:20px;line-height:1.6">Connect your fitness apps to automatically import workouts. Each service requires API credentials in your <code style="background:var(--gray-50);padding:1px 6px;border-radius:4px;font-size:12px">.env</code> file.</p>
     <div class="connect-grid">
 
-      <div class="connect-card" id="connect-card-strava" onclick="connectService('strava')">
+      <div class="connect-card" id="connect-card-strava" data-ev-click="connectService('strava')">
         <div class="connect-card-icon" style="background:#FC4C02;color:#fff">S</div>
         <div class="connect-card-name">Strava</div>
         <div class="connect-card-desc">Running, cycling & more</div>
@@ -2213,10 +2213,10 @@
           <div class="setup-step">2. Set redirect: <code>localhost:5000/oauth/strava/callback</code></div>
           <div class="setup-step">3. Add <code>STRAVA_CLIENT_ID</code> + <code>STRAVA_CLIENT_SECRET</code> to .env</div>
         </div>
-        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('strava')">Connect Strava →</button>
+        <button class="connect-card-btn" data-ev-click="event.stopPropagation();connectService('strava')">Connect Strava →</button>
       </div>
 
-      <div class="connect-card" id="connect-card-garmin" onclick="connectService('garmin')">
+      <div class="connect-card" id="connect-card-garmin" data-ev-click="connectService('garmin')">
         <div class="connect-card-icon" style="background:#007CC3;color:#fff">G</div>
         <div class="connect-card-name">Garmin Connect</div>
         <div class="connect-card-desc">GPS watches & fitness trackers</div>
@@ -2224,10 +2224,10 @@
           <div class="setup-step">1. Apply at <a href="https://developer.garmin.com/gc-developer-program/" target="_blank">developer.garmin.com</a></div>
           <div class="setup-step">2. Add <code>GARMIN_CONSUMER_KEY</code> + <code>GARMIN_CONSUMER_SECRET</code> to .env</div>
         </div>
-        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('garmin')">Connect Garmin →</button>
+        <button class="connect-card-btn" data-ev-click="event.stopPropagation();connectService('garmin')">Connect Garmin →</button>
       </div>
 
-      <div class="connect-card" id="connect-card-apple_health" onclick="connectService('apple_health')">
+      <div class="connect-card" id="connect-card-apple_health" data-ev-click="connectService('apple_health')">
         <div class="connect-card-icon" style="background:#1C1C1E;color:#fff">🍎</div>
         <div class="connect-card-name">Apple Health</div>
         <div class="connect-card-desc">iPhone & Apple Watch</div>
@@ -2235,10 +2235,10 @@
           <div class="setup-step">1. iPhone → Health → Profile → Export All Health Data</div>
           <div class="setup-step">2. Upload the ZIP file here — no API keys needed</div>
         </div>
-        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('apple_health')">Import Export →</button>
+        <button class="connect-card-btn" data-ev-click="event.stopPropagation();connectService('apple_health')">Import Export →</button>
       </div>
 
-      <div class="connect-card" id="connect-card-google_fit" onclick="connectService('google_fit')">
+      <div class="connect-card" id="connect-card-google_fit" data-ev-click="connectService('google_fit')">
         <div class="connect-card-icon" style="background:#4285F4;color:#fff">G</div>
         <div class="connect-card-name">Google Fit</div>
         <div class="connect-card-desc">Android & Wear OS</div>
@@ -2246,7 +2246,7 @@
           <div class="setup-step">1. <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → Enable Fitness API</div>
           <div class="setup-step">2. Add <code>GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_SECRET</code> to .env</div>
         </div>
-        <button class="connect-card-btn" onclick="event.stopPropagation();connectService('google_fit')">Connect Google →</button>
+        <button class="connect-card-btn" data-ev-click="event.stopPropagation();connectService('google_fit')">Connect Google →</button>
       </div>
 
     </div>
@@ -2259,7 +2259,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="rdetail-title">Report</h2>
-    <button class="modal-close" onclick="closeModal('report-detail-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('report-detail-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2270,8 +2270,8 @@
 <!-- Notification permission banner -->
 <div class="notif-banner" id="notif-banner" style="display:none">
   <span>🔔 Enable notifications to receive medicine reminders</span>
-  <button class="btn-outline-sm" onclick="requestNotifPermission()">Enable</button>
-  <button class="btn-icon" onclick="document.getElementById('notif-banner').style.display='none'" style="color:#fff">✕</button>
+  <button class="btn-outline-sm" data-ev-click="requestNotifPermission()">Enable</button>
+  <button class="btn-icon" data-ev-click="hideEl('notif-banner')" style="color:#fff">✕</button>
 </div>
 
 
@@ -2280,7 +2280,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title">Import Apple Health</h2>
-    <button class="modal-close" onclick="closeModal('apple-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('apple-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2297,7 +2297,7 @@
         <input type="file" id="apple-health-file" class="form-input" accept=".zip,.xml">
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-outline" onclick="closeModal('apple-modal-overlay')">Cancel</button>
+        <button type="button" class="btn-outline" data-ev-click="closeModal('apple-modal-overlay')">Cancel</button>
         <button type="submit" class="btn-primary">Import</button>
       </div>
     </form>
@@ -2311,7 +2311,7 @@
 <div class="modal modal--wide">
   <div class="modal-head">
     <h2 class="modal-title">Add Food</h2>
-    <button class="modal-close" onclick="closeModal('add-food-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('add-food-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2321,8 +2321,8 @@
       <div class="food-search-bar-wrap">
         <div class="search-box">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" class="search-input" id="food-search-input" placeholder="Search any food…" oninput="searchFoodDB(this.value)">
-          <button class="food-search-clear" id="food-search-clear" onclick="clearFoodSearch()" style="display:none">
+          <input type="text" class="search-input" id="food-search-input" placeholder="Search any food…" data-ev-input="searchFoodDB(this.value)">
+          <button class="food-search-clear" id="food-search-clear" data-ev-click="clearFoodSearch()" style="display:none">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -2335,7 +2335,7 @@
           Cuisine / Category
         </label>
         <div class="food-cat-select-wrap">
-          <select id="food-cat-select" class="food-cat-select" onchange="filterFoodCat(this.value)">
+          <select id="food-cat-select" class="food-cat-select" data-ev-change="filterFoodCat(this.value)">
             <option value="">🌍 All Foods</option>
           </select>
           <svg class="food-cat-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -2343,21 +2343,21 @@
         <!-- Active category badge -->
         <div class="food-cat-active-badge" id="food-cat-active-badge" style="display:none">
           <span id="food-cat-active-text"></span>
-          <button onclick="filterFoodCat('')" class="food-cat-clear-btn">✕</button>
+          <button data-ev-click="filterFoodCat('')" class="food-cat-clear-btn">✕</button>
         </div>
       </div>
 
       <!-- Count + results -->
       <div class="food-results-header">
         <span class="food-results-count" id="food-results-count">Loading…</span>
-        <button class="food-add-custom-btn" onclick="openCustomFoodForm()" id="custom-food-toggle-btn">+ Custom food</button>
+        <button class="food-add-custom-btn" data-ev-click="openCustomFoodForm()" id="custom-food-toggle-btn">+ Custom food</button>
       </div>
 
       <!-- Custom food inline form — hidden by default -->
       <div id="custom-food-form" class="custom-food-form" style="display:none">
         <div class="custom-food-form-header">
           <span style="font-weight:700;font-size:13px;color:var(--gray-800)">Create custom food</span>
-          <button type="button" onclick="closeCustomFoodForm()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1">×</button>
+          <button type="button" data-ev-click="closeCustomFoodForm()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1">×</button>
         </div>
         <div class="form-group">
           <label class="form-label">Food name *</label>
@@ -2388,8 +2388,8 @@
           </div>
         </div>
         <div class="form-actions" style="margin-top:4px">
-          <button type="button" class="btn-outline" onclick="closeCustomFoodForm()">Cancel</button>
-          <button type="button" class="btn-primary" onclick="saveCustomFood()">Save & Add to Meal</button>
+          <button type="button" class="btn-outline" data-ev-click="closeCustomFoodForm()">Cancel</button>
+          <button type="button" class="btn-primary" data-ev-click="saveCustomFood()">Save & Add to Meal</button>
         </div>
       </div>
 
@@ -2416,7 +2416,7 @@
       <h2 class="modal-title">Today's Calorie Balance</h2>
       <p style="font-size:12px;color:var(--gray-400);margin-top:2px" id="cbd-date-label">Today</p>
     </div>
-    <button class="modal-close" onclick="closeModal('calorie-breakdown-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('calorie-breakdown-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2499,11 +2499,11 @@
     <div class="cbd-cta" id="cbd-cta">
       <div class="cbd-cta-text" id="cbd-cta-text">Track your meals for a complete picture.</div>
       <div style="display:flex;gap:10px">
-        <button class="btn-primary" onclick="closeModal('calorie-breakdown-overlay');switchView('food')">
+        <button class="btn-primary" data-ev-click="closeModal('calorie-breakdown-overlay');switchView('food')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Log food
         </button>
-        <button class="btn-outline" onclick="closeModal('calorie-breakdown-overlay');switchView('fitness')">
+        <button class="btn-outline" data-ev-click="closeModal('calorie-breakdown-overlay');switchView('fitness')">
           Log workout
         </button>
       </div>
@@ -2517,7 +2517,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title">Health Profile</h2>
-    <button class="modal-close" onclick="closeModal('profile-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('profile-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2540,12 +2540,12 @@
         <div class="prof-label-row">
           <label class="form-label">Weight</label>
           <div class="unit-toggle" id="weight-unit-toggle">
-            <button type="button" class="unit-btn active" data-unit="kg" onclick="setWeightUnit('kg')">kg</button>
-            <button type="button" class="unit-btn" data-unit="lbs" onclick="setWeightUnit('lbs')">lbs</button>
+            <button type="button" class="unit-btn active" data-unit="kg" data-ev-click="setWeightUnit('kg')">kg</button>
+            <button type="button" class="unit-btn" data-unit="lbs" data-ev-click="setWeightUnit('lbs')">lbs</button>
           </div>
         </div>
         <input type="number" class="form-input" id="weight-display-input"
-               placeholder="70" step="0.1" oninput="syncWeightInput(this.value)"
+               placeholder="70" step="0.1" data-ev-input="syncWeightInput(this.value)"
                style="font-size:15px;font-weight:600">
         <input type="hidden" name="weight_kg" id="weight-kg-hidden">
         <div class="prof-unit-hint" id="weight-unit-hint"></div>
@@ -2556,24 +2556,24 @@
         <div class="prof-label-row">
           <label class="form-label">Height</label>
           <div class="unit-toggle" id="height-unit-toggle">
-            <button type="button" class="unit-btn active" data-unit="cm" onclick="setHeightUnit('cm')">cm</button>
-            <button type="button" class="unit-btn" data-unit="ft" onclick="setHeightUnit('ft')">ft / in</button>
+            <button type="button" class="unit-btn active" data-unit="cm" data-ev-click="setHeightUnit('cm')">cm</button>
+            <button type="button" class="unit-btn" data-unit="ft" data-ev-click="setHeightUnit('ft')">ft / in</button>
           </div>
         </div>
         <!-- cm input -->
         <input type="number" class="form-input" id="height-cm-input"
-               placeholder="170" oninput="syncHeightInput()"
+               placeholder="170" data-ev-input="syncHeightInput()"
                style="font-size:15px;font-weight:600">
         <!-- ft/in inputs -->
         <div id="height-ftin-inputs" style="display:none;gap:8px" class="form-row" style="margin-bottom:0">
           <div class="form-group" style="margin-bottom:0">
             <input type="number" class="form-input" id="height-ft-input"
-                   placeholder="5" min="3" max="8" oninput="syncHeightInput()">
+                   placeholder="5" min="3" max="8" data-ev-input="syncHeightInput()">
             <div class="prof-unit-hint">feet</div>
           </div>
           <div class="form-group" style="margin-bottom:0">
             <input type="number" class="form-input" id="height-in-input"
-                   placeholder="8" min="0" max="11" oninput="syncHeightInput()">
+                   placeholder="8" min="0" max="11" data-ev-input="syncHeightInput()">
             <div class="prof-unit-hint">inches</div>
           </div>
         </div>
@@ -2622,7 +2622,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn-outline" onclick="closeModal('profile-modal-overlay')">Cancel</button>
+        <button type="button" class="btn-outline" data-ev-click="closeModal('profile-modal-overlay')">Cancel</button>
         <button type="submit" class="btn-primary">Save &amp; Apply</button>
       </div>
       <div style="border-top:1px solid var(--gray-100);margin-top:18px;padding-top:14px">
@@ -2643,7 +2643,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="todo-modal-title">Add Task</h2>
-    <button class="modal-close" onclick="closeModal('todo-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('todo-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2661,9 +2661,9 @@
       <div class="form-group">
         <label class="form-label">Priority</label>
         <div class="todo-priority-picker" id="todo-priority-picker">
-          <button type="button" class="todo-pri-btn" data-p="low"    onclick="selectTodoPriority('low')">🟢 Low</button>
-          <button type="button" class="todo-pri-btn selected" data-p="medium" onclick="selectTodoPriority('medium')">🟡 Medium</button>
-          <button type="button" class="todo-pri-btn" data-p="high"   onclick="selectTodoPriority('high')">🔴 High</button>
+          <button type="button" class="todo-pri-btn" data-p="low"    data-ev-click="selectTodoPriority('low')">🟢 Low</button>
+          <button type="button" class="todo-pri-btn selected" data-p="medium" data-ev-click="selectTodoPriority('medium')">🟡 Medium</button>
+          <button type="button" class="todo-pri-btn" data-p="high"   data-ev-click="selectTodoPriority('high')">🔴 High</button>
         </div>
       </div>
       <div class="form-group">
@@ -2678,7 +2678,7 @@
       </label>
       <div class="reminder-toggle-row">
         <label class="toggle-switch">
-          <input type="checkbox" id="todo-reminder-toggle" onchange="toggleReminderPicker(this.checked)">
+          <input type="checkbox" id="todo-reminder-toggle" data-ev-change="toggleReminderPicker(this.checked)">
           <span class="toggle-slider"></span>
         </label>
         <span class="reminder-toggle-label">Set a reminder</span>
@@ -2689,8 +2689,8 @@
       </div>
     </div>
     <div class="form-actions">
-      <button type="button" class="btn-outline" onclick="closeModal('todo-modal-overlay')">Cancel</button>
-      <button type="button" class="btn-primary" onclick="saveTodo()">Save Task</button>
+      <button type="button" class="btn-outline" data-ev-click="closeModal('todo-modal-overlay')">Cancel</button>
+      <button type="button" class="btn-primary" data-ev-click="saveTodo()">Save Task</button>
     </div>
   </div>
 </div>
@@ -2702,7 +2702,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title">Add New Habit</h2>
-    <button class="modal-close" onclick="closeModal('habit-modal-overlay')">
+    <button class="modal-close" data-ev-click="closeModal('habit-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -2711,14 +2711,14 @@
     <div class="form-group">
       <label class="form-label">Quick presets</label>
       <div class="habit-presets">
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Morning walk','🚶','#0E8F7E')">🚶 Morning walk</button>
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Meditate','🧘','#7C3AED')">🧘 Meditate</button>
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Read 20 pages','📚','#2563EB')">📚 Read</button>
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Drink 2L water','💧','#06B6D4')">💧 Hydration</button>
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('No sugar','🍭','#DC2626')">🍭 No sugar</button>
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Sleep by 10pm','😴','#6366F1')">😴 Early sleep</button>
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Workout','💪','#D97706')">💪 Workout</button>
-        <button type="button" class="habit-preset-btn" onclick="fillHabitPreset('Journaling','✍️','#16A34A')">✍️ Journal</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('Morning walk','🚶','#0E8F7E')">🚶 Morning walk</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('Meditate','🧘','#7C3AED')">🧘 Meditate</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('Read 20 pages','📚','#2563EB')">📚 Read</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('Drink 2L water','💧','#06B6D4')">💧 Hydration</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('No sugar','🍭','#DC2626')">🍭 No sugar</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('Sleep by 10pm','😴','#6366F1')">😴 Early sleep</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('Workout','💪','#D97706')">💪 Workout</button>
+        <button type="button" class="habit-preset-btn" data-ev-click="fillHabitPreset('Journaling','✍️','#16A34A')">✍️ Journal</button>
       </div>
     </div>
     <div class="form-group">
@@ -2739,20 +2739,20 @@
     <div class="form-group">
       <label class="form-label">Colour</label>
       <div class="habit-color-picker" id="habit-color-picker">
-        <button type="button" class="habit-color-btn selected" data-color="#0E8F7E" onclick="selectHabitColor('#0E8F7E')" style="background:#0E8F7E" title="Teal"></button>
-        <button type="button" class="habit-color-btn" data-color="#2563EB" onclick="selectHabitColor('#2563EB')" style="background:#2563EB" title="Blue"></button>
-        <button type="button" class="habit-color-btn" data-color="#7C3AED" onclick="selectHabitColor('#7C3AED')" style="background:#7C3AED" title="Purple"></button>
-        <button type="button" class="habit-color-btn" data-color="#D97706" onclick="selectHabitColor('#D97706')" style="background:#D97706" title="Amber"></button>
-        <button type="button" class="habit-color-btn" data-color="#DC2626" onclick="selectHabitColor('#DC2626')" style="background:#DC2626" title="Red"></button>
-        <button type="button" class="habit-color-btn" data-color="#16A34A" onclick="selectHabitColor('#16A34A')" style="background:#16A34A" title="Green"></button>
-        <button type="button" class="habit-color-btn" data-color="#06B6D4" onclick="selectHabitColor('#06B6D4')" style="background:#06B6D4" title="Cyan"></button>
-        <button type="button" class="habit-color-btn" data-color="#EC4899" onclick="selectHabitColor('#EC4899')" style="background:#EC4899" title="Pink"></button>
-        <button type="button" class="habit-color-btn" data-color="#6366F1" onclick="selectHabitColor('#6366F1')" style="background:#6366F1" title="Indigo"></button>
+        <button type="button" class="habit-color-btn selected" data-color="#0E8F7E" data-ev-click="selectHabitColor('#0E8F7E')" style="background:#0E8F7E" title="Teal"></button>
+        <button type="button" class="habit-color-btn" data-color="#2563EB" data-ev-click="selectHabitColor('#2563EB')" style="background:#2563EB" title="Blue"></button>
+        <button type="button" class="habit-color-btn" data-color="#7C3AED" data-ev-click="selectHabitColor('#7C3AED')" style="background:#7C3AED" title="Purple"></button>
+        <button type="button" class="habit-color-btn" data-color="#D97706" data-ev-click="selectHabitColor('#D97706')" style="background:#D97706" title="Amber"></button>
+        <button type="button" class="habit-color-btn" data-color="#DC2626" data-ev-click="selectHabitColor('#DC2626')" style="background:#DC2626" title="Red"></button>
+        <button type="button" class="habit-color-btn" data-color="#16A34A" data-ev-click="selectHabitColor('#16A34A')" style="background:#16A34A" title="Green"></button>
+        <button type="button" class="habit-color-btn" data-color="#06B6D4" data-ev-click="selectHabitColor('#06B6D4')" style="background:#06B6D4" title="Cyan"></button>
+        <button type="button" class="habit-color-btn" data-color="#EC4899" data-ev-click="selectHabitColor('#EC4899')" style="background:#EC4899" title="Pink"></button>
+        <button type="button" class="habit-color-btn" data-color="#6366F1" data-ev-click="selectHabitColor('#6366F1')" style="background:#6366F1" title="Indigo"></button>
       </div>
     </div>
     <div class="form-actions">
-      <button type="button" class="btn-outline" onclick="closeModal('habit-modal-overlay')">Cancel</button>
-      <button type="button" class="btn-primary" id="habit-save-btn" onclick="saveHabit()">Create Habit</button>
+      <button type="button" class="btn-outline" data-ev-click="closeModal('habit-modal-overlay')">Cancel</button>
+      <button type="button" class="btn-primary" id="habit-save-btn" data-ev-click="saveHabit()">Create Habit</button>
     </div>
   </div>
 </div>
@@ -2770,7 +2770,7 @@
     <!-- Progress dots + close -->
     <div class="modal-head" style="padding-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px" id="checkin-dots"></div>
-      <button class="modal-close" onclick="closeCheckin()" aria-label="Skip check-in">
+      <button class="modal-close" data-ev-click="closeCheckin()" aria-label="Skip check-in">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -2795,7 +2795,7 @@
   <div class="modal" style="max-width:440px;width:100%">
     <div class="modal-head">
       <h2 class="modal-title" id="hs-modal-title">Today's Health Score</h2>
-      <button class="modal-close" onclick="closeModal('health-score-overlay')">
+      <button class="modal-close" data-ev-click="closeModal('health-score-overlay')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="2.2" stroke-linecap="round">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -2899,7 +2899,7 @@
           </div>
 
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px;margin-top:4px"
-                  onclick="obNext()">
+                  data-ev-click="obNext()">
             Continue
           </button>
           <p style="font-size:12px;color:var(--gray-400);text-align:center;margin-top:12px">
@@ -2914,19 +2914,19 @@
           <div class="form-group">
             <label class="form-label">Activity level <span style="color:#EF4444">*</span></label>
             <div id="ob-activity-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <button class="ob-option-btn" data-val="sedentary" onclick="obSelectActivity(this)">
+              <button class="ob-option-btn" data-val="sedentary" data-ev-click="obSelectActivity(this)">
                 <div class="ob-opt-title">Sedentary</div>
                 <div class="ob-opt-sub">Desk job, little exercise</div>
               </button>
-              <button class="ob-option-btn" data-val="light" onclick="obSelectActivity(this)">
+              <button class="ob-option-btn" data-val="light" data-ev-click="obSelectActivity(this)">
                 <div class="ob-opt-title">Lightly active</div>
                 <div class="ob-opt-sub">1–3 days/week exercise</div>
               </button>
-              <button class="ob-option-btn" data-val="moderate" onclick="obSelectActivity(this)">
+              <button class="ob-option-btn" data-val="moderate" data-ev-click="obSelectActivity(this)">
                 <div class="ob-opt-title">Moderately active</div>
                 <div class="ob-opt-sub">3–5 days/week exercise</div>
               </button>
-              <button class="ob-option-btn" data-val="active" onclick="obSelectActivity(this)">
+              <button class="ob-option-btn" data-val="active" data-ev-click="obSelectActivity(this)">
                 <div class="ob-opt-title">Very active</div>
                 <div class="ob-opt-sub">Daily intense exercise</div>
               </button>
@@ -2937,19 +2937,19 @@
           <div class="form-group">
             <label class="form-label">Your main health goal <span style="color:#EF4444">*</span></label>
             <div id="ob-goal-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <button class="ob-option-btn" data-val="lose_fast" onclick="obSelectGoal(this)">
+              <button class="ob-option-btn" data-val="lose_fast" data-ev-click="obSelectGoal(this)">
                 <div class="ob-opt-title">Lose weight fast</div>
                 <div class="ob-opt-sub">−500 kcal/day</div>
               </button>
-              <button class="ob-option-btn" data-val="lose" onclick="obSelectGoal(this)">
+              <button class="ob-option-btn" data-val="lose" data-ev-click="obSelectGoal(this)">
                 <div class="ob-opt-title">Lose weight</div>
                 <div class="ob-opt-sub">−250 kcal/day</div>
               </button>
-              <button class="ob-option-btn" data-val="maintain" onclick="obSelectGoal(this)">
+              <button class="ob-option-btn" data-val="maintain" data-ev-click="obSelectGoal(this)">
                 <div class="ob-opt-title">Maintain weight</div>
                 <div class="ob-opt-sub">Stay at current weight</div>
               </button>
-              <button class="ob-option-btn" data-val="gain" onclick="obSelectGoal(this)">
+              <button class="ob-option-btn" data-val="gain" data-ev-click="obSelectGoal(this)">
                 <div class="ob-opt-title">Build muscle</div>
                 <div class="ob-opt-sub">+250 kcal/day</div>
               </button>
@@ -2976,9 +2976,9 @@
           </div>
 
           <div style="display:flex;gap:10px">
-            <button class="btn-outline" style="padding:11px 16px" onclick="obBack()">Back</button>
+            <button class="btn-outline" style="padding:11px 16px" data-ev-click="obBack()">Back</button>
             <button class="btn-primary" style="flex:1;padding:12px;font-size:14px"
-                    onclick="obSubmit()" id="ob-submit-btn">
+                    data-ev-click="obSubmit()" id="ob-submit-btn">
               Start using MedEasy
             </button>
           </div>
