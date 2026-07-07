@@ -245,6 +245,7 @@ function showApp() {
   try { setupFilters(); }            catch(e) {}
   try { updateSidebarUser(); }       catch(e) {}
   try { checkNotifPermission(); }    catch(e) {}
+  try { setupPushSubscription(); }   catch(e) {}
   try { scheduleReminderChecks(); }  catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
 
@@ -470,6 +471,38 @@ async function signOut() {
   await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
   _currentUser = null;
   showAuthScreen();
+}
+
+// ── Web Push subscription ─────────────────────────────────────────
+function _urlB64ToUint8(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function setupPushSubscription() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const cfg = await fetch('/api/push/vapid-public-key', {credentials: 'same-origin'})
+        .then(r => r.json()).catch(() => null);
+      if (!cfg || !cfg.enabled || !cfg.key) return;
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlB64ToUint8(cfg.key),
+      });
+    }
+    await fetch('/api/push/subscribe', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({subscription: sub.toJSON()}),
+    });
+  } catch (e) {
+    console.warn('[push] subscription setup failed:', e);
+  }
 }
 
 // ── PWA: register the service worker ─────────────────────────────
@@ -1527,7 +1560,11 @@ function requestNotifPermission() {
   Notification.requestPermission().then(perm => {
     notifPermission = perm;
     document.getElementById('notif-banner').style.display = 'none';
-    if (perm === 'granted') { showToast('Notifications enabled! 🔔', 'success'); scheduleReminderChecks(); }
+    if (perm === 'granted') {
+      showToast('Notifications enabled! 🔔', 'success');
+      scheduleReminderChecks();
+      setupPushSubscription();   // server-sent reminders even when the tab is closed
+    }
   });
 }
 

@@ -302,6 +302,17 @@ CREATE TABLE IF NOT EXISTS notification_log (
     body TEXT DEFAULT '', source_id TEXT DEFAULT NULL,
     read INTEGER DEFAULT 0, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id TEXT PRIMARY KEY,
+    endpoint TEXT UNIQUE NOT NULL,
+    sub_json TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    user_id TEXT NOT NULL DEFAULT 'default'
+);
+CREATE TABLE IF NOT EXISTS app_config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS auth_attempts (
     ip TEXT NOT NULL,
     ts REAL NOT NULL

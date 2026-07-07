@@ -34,6 +34,120 @@ def _check_missed_doses():
     except Exception as e:
         print(f"[scheduler] Missed dose check error: {e}")
 
+# ── Server-sent push reminders (works with the browser tab closed) ───────────
+
+def _user_local_now(uid):
+    """Current datetime in the user's profile timezone (server tz fallback)."""
+    try:
+        from db.food import get_user_timezone
+        tz = get_user_timezone()
+        if tz:
+            import zoneinfo
+            return datetime.datetime.now(zoneinfo.ZoneInfo(tz))
+    except Exception:
+        pass
+    return datetime.datetime.now()
+
+
+def _mins_since(hhmm, now_hhmm):
+    """Minutes from hhmm to now_hhmm, or None if unparsable."""
+    try:
+        h1, m1 = map(int, hhmm.split(':'))
+        h2, m2 = map(int, now_hhmm.split(':'))
+        return (h2 * 60 + m2) - (h1 * 60 + m1)
+    except Exception:
+        return None
+
+
+def _pushed_today(uid, key, today):
+    return execute(
+        "SELECT 1 FROM notification_log WHERE user_id=? AND source_id=? AND created_at>=? LIMIT 1",
+        (uid, key, today), fetchone=True)
+
+
+def _mark_pushed(uid, key, title, body):
+    from db.core import new_id, now_iso
+    execute("""INSERT INTO notification_log (id,type,title,body,source_id,read,created_at,user_id)
+               VALUES (?,?,?,?,?,0,?,?)""",
+            (new_id(), 'push', title, body, key, now_iso(), uid), commit=True)
+
+
+def _push_reminders_for_user(uid):
+    import push
+    from db import get_today_doses
+    from db.wellness import get_hydration_day
+
+    now = _user_local_now(uid)
+    today, hhmm = now.strftime('%Y-%m-%d'), now.strftime('%H:%M')
+    rs = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1",
+                 (uid,), fetchone=True) or {}
+
+    def notify(key, title, body):
+        if _pushed_today(uid, key, today):
+            return
+        if push.push_to_user(uid, title, body):
+            _mark_pushed(uid, key, title, body)
+
+    # 1. Medicine doses that came due in the last 15 minutes and aren't taken
+    for d in get_today_doses():
+        if d.get('taken'):
+            continue
+        mins = _mins_since(d.get('time') or '', hhmm)
+        if mins is not None and 0 <= mins <= 15:
+            notify(f"med:{d['med_id']}:{d['time']}:{today}",
+                   f"💊 Time for {d.get('med_name', 'your medicine')}",
+                   f"Scheduled at {d['time']}" + (' · take with food' if d.get('with_food') else ''))
+
+    # 2. Water — only when enabled, inside the active window, and behind pace
+    if rs.get('water_enabled'):
+        start, end = rs.get('water_start') or '08:00', rs.get('water_end') or '21:00'
+        if start <= hhmm <= end:
+            interval_h = float(rs.get('water_interval_h') or 2.0)
+            day = get_hydration_day(today)
+            goal = rs.get('water_goal_ml') or day.get('goal_ml') or 2450
+            s_mins = _mins_since('00:00', start) or 0
+            e_mins = _mins_since('00:00', end) or 1
+            n_mins = _mins_since('00:00', hhmm) or 0
+            window = max(e_mins - s_mins, 1)
+            expected = goal * min(max((n_mins - s_mins) / window, 0), 1)
+            if day.get('total_ml', 0) < expected * 0.8:
+                bucket = int((n_mins - s_mins) / max(int(interval_h * 60), 30))
+                remaining = int(goal - day.get('total_ml', 0))
+                notify(f"water:{today}:{bucket}",
+                       '💧 Hydration check',
+                       f"You're behind on water — about {remaining}ml to go today.")
+
+    # 3. Evening habit / sleep / mood nudges at their configured times
+    for flag, tkey, key, title, body in [
+        ('habit_reminder_enabled', 'habit_reminder_time', 'habit',
+         '⭐ Evening habit check', 'Tick off what you completed today.'),
+        ('sleep_reminder_enabled', 'sleep_reminder_time', 'sleep',
+         '🌙 Wind-down time', "Log last night's sleep and get ready for bed."),
+        ('mood_reminder_enabled', 'mood_reminder_time', 'mood',
+         '😊 How was your day?', 'A one-line journal entry keeps the streak alive.'),
+    ]:
+        if rs.get(flag):
+            mins = _mins_since(rs.get(tkey) or '', hhmm)
+            if mins is not None and 0 <= mins <= 15:
+                notify(f"{key}:{today}", title, body)
+
+
+def _push_reminders():
+    try:
+        import push
+        if not push.PUSH_AVAILABLE:
+            return
+        users = execute("SELECT DISTINCT user_id FROM push_subscriptions", fetchall=True)
+        for u in users:
+            with user_context(u['user_id']):
+                try:
+                    _push_reminders_for_user(u['user_id'])
+                except Exception as e:
+                    print(f"[scheduler] push reminders for {u['user_id'][:8]}: {e}")
+    except Exception as e:
+        print(f'[scheduler] Push reminder error: {e}')
+
+
 def _send_weekly_digests():
     """Email the weekly digest to every opted-in user (Sunday evenings).
     Deduped per user per week via notification_log."""
@@ -75,6 +189,7 @@ def _run_loop():
     import schedule
     schedule.every().day.at("05:00").do(_daily_sync)
     schedule.every().hour.do(_check_missed_doses)
+    schedule.every(5).minutes.do(_push_reminders)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     # Also do an initial sync 30 s after startup
     schedule.every(30).seconds.do(lambda: (schedule.cancel_job(schedule.jobs[-1]), _daily_sync()))
@@ -100,6 +215,8 @@ def _run_loop_stdlib():
                 last_digest = day_key
         if now.minute == 0:
             _check_missed_doses()
+        if now.minute % 5 == 0:
+            _push_reminders()
         time.sleep(60)
 
 def start_scheduler():
