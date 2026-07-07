@@ -472,6 +472,14 @@ async function signOut() {
   showAuthScreen();
 }
 
+// ── PWA: register the service worker ─────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(err =>
+      console.warn('[pwa] service worker registration failed:', err));
+  });
+}
+
 // ── Keyboard: Enter submits the active form ──────────────────────
 document.addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;

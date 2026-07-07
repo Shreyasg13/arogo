@@ -113,6 +113,12 @@ def create_app(config=Config):
     def uploaded_file(filename):
         return send_from_directory(config.UPLOAD_FOLDER, filename)
 
+    @app.route('/sw.js')
+    def service_worker():
+        # Served from the root path so the service worker scope covers '/'
+        return send_from_directory(app.static_folder, 'sw.js',
+                                   mimetype='application/javascript')
+
     return app
 
 
