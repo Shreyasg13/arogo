@@ -968,8 +968,74 @@ function renderFamilySummary(s) {
           </div>`;
 }
 
+// ── First-run "get started" checklist ─────────────────────────────
+const FIRSTRUN_STEPS = [
+  {key: 'food_logs',      icon: '🍽️', label: 'Log your first meal',  ev: "quickAdd('food')"},
+  {key: 'hydration_logs', icon: '💧', label: 'Log a glass of water', ev: 'quickWater(250)'},
+  {key: 'habits',         icon: '⭐', label: 'Create a habit',       ev: "switchView('habits')"},
+  {key: 'medicines',      icon: '💊', label: 'Add a medicine',       ev: "switchView('medicines')"},
+];
+
+async function checkFirstRun() {
+  const el = document.getElementById('firstrun-card');
+  if (!el || !_currentUser) return;
+  const dismissKey = 'me_firstrun_' + _currentUser.id;
+  if (localStorage.getItem(dismissKey)) { el.style.display = 'none'; return; }
+
+  const counts = await fetch('/api/export/counts', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!counts) return;
+
+  const remaining = FIRSTRUN_STEPS.filter(s => !(counts[s.key] > 0)).length;
+  if (remaining === 0) {
+    // Everything done — celebrate once, then never show again
+    localStorage.setItem(dismissKey, '1');
+    el.style.display = 'none';
+    showToast('🎉 You’re all set up!');
+    return;
+  }
+
+  el.style.display = '';
+  el.innerHTML = `
+    <div class="panel" style="padding:18px 20px;border-color:var(--teal-200);background:linear-gradient(135deg,#F0FDFA,#FFFFFF)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="font-size:15px;font-weight:700;color:var(--gray-900);flex:1">
+          👋 Welcome to MedEasy — ${FIRSTRUN_STEPS.length - remaining}/${FIRSTRUN_STEPS.length} done
+        </div>
+        <a href="#" style="font-size:12px;color:var(--gray-400);text-decoration:none"
+           data-ev-click="dismissFirstRun()">Dismiss</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${FIRSTRUN_STEPS.map(s => {
+          const done = counts[s.key] > 0;
+          return done
+            ? `<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gray-400)">
+                 <span style="width:20px;height:20px;border-radius:50%;background:var(--teal-600);color:#fff;
+                              display:inline-flex;align-items:center;justify-content:center;font-size:11px">✓</span>
+                 <span style="text-decoration:line-through">${s.icon} ${s.label}</span>
+               </div>`
+            : `<button style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gray-700);
+                              background:var(--gray-0);border:1px solid var(--gray-100);border-radius:10px;
+                              padding:10px 12px;cursor:pointer;text-align:left;font-family:inherit;min-height:42px"
+                       data-ev-click="${s.ev}">
+                 <span style="width:20px;height:20px;border-radius:50%;border:2px solid var(--gray-200);flex-shrink:0"></span>
+                 ${s.icon} ${s.label}
+                 <span style="margin-left:auto;color:var(--teal-600);font-weight:600">→</span>
+               </button>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+function dismissFirstRun() {
+  if (_currentUser) localStorage.setItem('me_firstrun_' + _currentUser.id, '1');
+  const el = document.getElementById('firstrun-card');
+  if (el) el.style.display = 'none';
+}
+
 // ── Dashboard ──
 async function loadDashboard() {
+  try { checkFirstRun(); } catch (e) {}
   const today = localToday();
   const [doses, fitnessStats, reportStats, foodDay, profile] = await Promise.all([
     fetch('/api/medicines/today').then(r => r.json()).catch(() => []),
