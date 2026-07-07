@@ -539,12 +539,23 @@ function setDates() {
 
 // ── Navigation ──
 function setupNavigation() {
-  document.querySelectorAll('.nav-item').forEach(item => {
+  // Sidebar items, mobile tab bar and the mobile "More" sheet all navigate
+  document.querySelectorAll('[data-view]').forEach(item => {
     item.addEventListener('click', e => {
       e.preventDefault();
       switchView(item.dataset.view);
     });
   });
+}
+
+// ── Mobile "More" sheet ──
+function toggleMobileMore() {
+  const sheet = document.getElementById('mobile-more-sheet');
+  if (sheet) sheet.style.display = sheet.style.display === 'none' ? '' : 'none';
+}
+function closeMobileMore() {
+  const sheet = document.getElementById('mobile-more-sheet');
+  if (sheet) sheet.style.display = 'none';
 }
 
 function switchView(view) {
@@ -557,11 +568,12 @@ function switchView(view) {
   view = REDIRECT[view] || view;
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('active'));
   const viewEl = document.getElementById('view-' + view);
-  const navEl  = document.querySelector('[data-view="' + view + '"]');
   if (viewEl) viewEl.classList.add('active');
-  if (navEl)  navEl.classList.add('active');
+  document.querySelectorAll('[data-view="' + view + '"]')
+    .forEach(n => n.classList.add('active'));
+  closeMobileMore();   // navigating always dismisses the mobile sheet
 
   if (view === 'dashboard')     { loadDashboard(); loadWellnessStrip(); }
   if (view === 'food')          { loadFoodTracker(); loadHydration(localToday()); }

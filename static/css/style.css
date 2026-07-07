@@ -4413,3 +4413,89 @@ body { font-family:'DM Sans',sans-serif; background:var(--gray-25); color:var(--
   width: 1px; background: var(--gray-100); align-self: stretch;
   margin: 4px 0; flex-shrink: 0;
 }
+/* ══════════════════════════════════════════════════════════════
+   MOBILE — bottom tab bar + single-column layouts (≤768px)
+   ══════════════════════════════════════════════════════════════ */
+.mobile-tabbar { display:none; }
+.mobile-more-sheet { display:none; }
+
+@media (max-width: 768px) {
+  /* Sidebar is replaced by the bottom tab bar */
+  .sidebar { display:none; }
+  .main-content { margin-left:0; padding:16px 14px calc(84px + env(safe-area-inset-bottom)); }
+
+  /* Bottom tab bar */
+  .mobile-tabbar {
+    display:flex; position:fixed; bottom:0; left:0; right:0; z-index:400;
+    background:var(--gray-0); border-top:1px solid var(--gray-100);
+    padding-bottom:env(safe-area-inset-bottom);
+    box-shadow:0 -4px 16px rgba(0,0,0,.06);
+  }
+  .mtab {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; min-height:60px; padding:8px 0 6px; border:none; background:none;
+    font-family:'DM Sans',sans-serif; font-size:10.5px; font-weight:500;
+    color:var(--gray-400); text-decoration:none; cursor:pointer;
+  }
+  .mtab svg { width:21px; height:21px; }
+  .mtab.active { color:var(--teal-600); }
+
+  /* "More" sheet */
+  .mobile-more-sheet {
+    display:block; position:fixed; inset:0; z-index:450;
+    background:rgba(15,15,25,.45); backdrop-filter:blur(3px);
+  }
+  .mobile-more-panel {
+    position:absolute; bottom:0; left:0; right:0;
+    background:var(--gray-0); border-radius:18px 18px 0 0;
+    padding:18px 16px calc(20px + env(safe-area-inset-bottom));
+    display:grid; grid-template-columns:repeat(3,1fr); gap:10px;
+    box-shadow:0 -12px 40px rgba(0,0,0,.18);
+  }
+  .mmore {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px; min-height:72px; border:1px solid var(--gray-100); border-radius:var(--r-md);
+    background:var(--gray-25); color:var(--gray-600); text-decoration:none;
+    font-size:11.5px; font-weight:500; font-family:'DM Sans',sans-serif;
+  }
+  .mmore svg { width:20px; height:20px; }
+  .mmore.active { border-color:var(--teal-400); color:var(--teal-700); background:var(--teal-50); }
+
+  /* Header adapts */
+  .page-header { flex-wrap:wrap; gap:10px; }
+  .header-actions { flex-wrap:wrap; }
+  .page-title { font-size:22px; }
+  .header-date { display:none; }
+
+  /* Multi-column layouts collapse to one column */
+  .dash-hero-grid { grid-template-columns:repeat(2,1fr); gap:10px; }
+  .dash-body-grid,
+  .fitness-body-grid,
+  .food-body-grid,
+  .thoughts-layout,
+  .sleep-layout,
+  .body-layout,
+  .symptoms-layout,
+  .vitals-layout,
+  .emergency-layout,
+  .consistency-body,
+  .connect-grid,
+  .modal-body--split,
+  .mood-analytics-grid,
+  .sym-details-row,
+  .export-controls-body,
+  .wd-body { grid-template-columns:1fr; }
+  .wd-scores { border-right:none; border-bottom:1px solid var(--gray-100); }
+  .fitness-stats-row { grid-template-columns:repeat(2,1fr); gap:10px; }
+  .form-row { grid-template-columns:1fr; }
+  .hydration-quick-add { grid-template-columns:repeat(4,1fr); }
+
+  /* Global search + modals fit small screens */
+  .gs-modal { width:calc(100vw - 24px); margin:12px auto; }
+  .modal-overlay { padding:12px; align-items:flex-end; }
+  .modal { max-height:92vh; border-radius:18px 18px 0 0; }
+
+  /* Bigger touch targets */
+  .btn-icon { width:38px; height:38px; }
+  .dash-dose-check { width:26px; height:26px; }
+}
