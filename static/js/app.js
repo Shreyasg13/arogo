@@ -90,6 +90,52 @@ function setGymField(subId, i, field, val) {
     gymSets[subId][i][field] = val;
 }
 
+// ── Undo toast (replaces confirm() dialogs) ──────────────────────
+// Destructive actions run after a short grace window with a visible
+// Undo button, instead of interrupting with a browser confirm().
+let _pendingUndoable = null;
+
+function undoable(message, commit, delayMs = 4500) {
+  // Starting a new action commits any still-pending one immediately
+  if (_pendingUndoable) _pendingUndoable.flush();
+
+  const bar = document.createElement('div');
+  bar.style.cssText =
+    'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);' +
+    'background:var(--gray-900);color:#fff;padding:12px 18px;border-radius:12px;' +
+    'display:flex;align-items:center;gap:16px;font-size:13px;z-index:10000;' +
+    'box-shadow:0 8px 24px rgba(0,0,0,.28);font-family:inherit;max-width:90vw';
+  const txt = document.createElement('span');
+  txt.textContent = message;
+  const btn = document.createElement('button');
+  btn.textContent = 'Undo';
+  btn.style.cssText =
+    'background:none;border:none;color:#5EEAD4;font-weight:700;font-size:13px;' +
+    'cursor:pointer;padding:0;font-family:inherit';
+  bar.append(txt, btn);
+  document.body.appendChild(bar);
+
+  let settled = false;
+  const timer = setTimeout(run, delayMs);
+
+  async function run() {
+    if (settled) return;
+    settled = true;
+    bar.remove();
+    _pendingUndoable = null;
+    try { await commit(); }
+    catch (e) { showToast('Action failed', 'error'); console.error('[undoable]', e); }
+  }
+  btn.addEventListener('click', () => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    bar.remove();
+    _pendingUndoable = null;
+  });
+  _pendingUndoable = { flush: () => { clearTimeout(timer); run(); } };
+}
+
 // ── Date helpers — always use LOCAL date, never UTC ───────────
 // new Date().toISOString() returns UTC — wrong for users in UTC+N timezones.
 // Example: in India (UTC+5:30) at 11pm, toISOString() gives yesterday's date.
@@ -683,28 +729,31 @@ async function revokeFamilyInvite(id) {
   loadFamily();
 }
 
-async function removeFamilyMember(uid) {
-  if (!confirm('Remove this member from the group?')) return;
-  const r = await fetch('/api/family/member/' + uid, {method: 'DELETE', credentials: 'same-origin'});
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) { showToast(d.error || 'Could not remove member', 'error'); return; }
-  loadFamily();
+function removeFamilyMember(uid) {
+  undoable('Removing member…', async () => {
+    const r = await fetch('/api/family/member/' + uid, {method: 'DELETE', credentials: 'same-origin'});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { showToast(d.error || 'Could not remove member', 'error'); return; }
+    loadFamily();
+  });
 }
 
-async function leaveFamilyGroup() {
-  if (!confirm('Leave this family group?')) return;
-  const r = await fetch('/api/family/leave', {method: 'POST', credentials: 'same-origin'});
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) { showToast(d.error || 'Could not leave group', 'error'); return; }
-  loadFamily();
+function leaveFamilyGroup() {
+  undoable('Leaving family group…', async () => {
+    const r = await fetch('/api/family/leave', {method: 'POST', credentials: 'same-origin'});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { showToast(d.error || 'Could not leave group', 'error'); return; }
+    loadFamily();
+  });
 }
 
-async function deleteFamilyGroup() {
-  if (!confirm('Delete this family group? Members must be removed first.')) return;
-  const r = await fetch('/api/family', {method: 'DELETE', credentials: 'same-origin'});
-  const d = await r.json().catch(() => ({}));
-  if (!r.ok) { showToast(d.error || 'Could not delete group', 'error'); return; }
-  loadFamily();
+function deleteFamilyGroup() {
+  undoable('Deleting family group…', async () => {
+    const r = await fetch('/api/family', {method: 'DELETE', credentials: 'same-origin'});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { showToast(d.error || 'Could not delete group', 'error'); return; }
+    loadFamily();
+  });
 }
 
 async function toggleFamilySummary(uid) {
@@ -1101,12 +1150,12 @@ function openReportDetail(r) {
   document.getElementById('report-detail-overlay').style.display = 'flex';
 }
 
-async function deleteReport(id) {
-  if (!confirm('Delete this report?')) return;
-  await fetch(`/api/reports/${id}`, { method:'DELETE' });
-  showToast('Report deleted', 'success');
-  loadReports();
-  loadDashboard();
+function deleteReport(id) {
+  undoable('Deleting report…', async () => {
+    await fetch(`/api/reports/${id}`, { method:'DELETE' });
+    loadReports();
+    loadDashboard();
+  });
 }
 
 // ── Upload Form ──
@@ -1339,11 +1388,11 @@ async function toggleMed(id) {
   loadMedicines();
 }
 
-async function deleteMed(id) {
-  if (!confirm('Remove this medicine?')) return;
-  await fetch(`/api/medicines/${id}`, { method:'DELETE' });
-  showToast('Medicine removed', 'success');
-  loadMedicines();
+function deleteMed(id) {
+  undoable('Removing medicine…', async () => {
+    await fetch(`/api/medicines/${id}`, { method:'DELETE' });
+    loadMedicines();
+  });
 }
 
 function setupMedForm() {
@@ -2228,12 +2277,12 @@ async function connectService(service) {
   } else showToast('Connection failed', 'error');
 }
 
-async function deleteActivity(id) {
-  if (!confirm('Delete this activity?')) return;
-  await fetch(`/api/fitness/activities/${id}`, { method:'DELETE' });
-  showToast('Activity deleted');
-  loadFitness();
-  loadDashboard();
+function deleteActivity(id) {
+  undoable('Deleting activity…', async () => {
+    await fetch(`/api/fitness/activities/${id}`, { method:'DELETE' });
+    loadFitness();
+    loadDashboard();
+  });
 }
 
 // ── Filters ──
@@ -2378,14 +2427,14 @@ async function triggerSync(service) {
   }
 }
 
-async function disconnectService(service) {
-  if (!confirm(`Disconnect ${SERVICE_LABELS[service] || service}? Imported activities will remain.`)) return;
-  await fetch('/api/fitness/disconnect', {
-    method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ service })
+function disconnectService(service) {
+  undoable(`Disconnecting ${SERVICE_LABELS[service] || service} (imported activities stay)…`, async () => {
+    await fetch('/api/fitness/disconnect', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ service })
+    });
+    loadConnectedServices();
   });
-  showToast(`${SERVICE_LABELS[service]} disconnected`);
-  loadConnectedServices();
 }
 
 // Real OAuth connect — redirects to backend OAuth start route
@@ -2836,28 +2885,28 @@ function loadMoreHistory() {
   renderHistoryFeed();
 }
 
-async function deleteActivityHistory(id) {
-  if (!confirm('Delete this activity? This cannot be undone.')) return;
-  await fetch(`/api/fitness/activities/${id}`, { method:'DELETE' });
-  showToast('Activity deleted');
-  // Remove from local array so we don't need a full reload
-  allHistoryActivities = allHistoryActivities.filter(a => a.id !== id);
-  // Also remove from calData
-  Object.keys(calData).forEach(date => {
-    calData[date].activities = calData[date].activities.filter(a => a.id !== id);
-    calData[date].count = calData[date].activities.length;
-    if (calData[date].count === 0) delete calData[date];
+function deleteActivityHistory(id) {
+  undoable('Deleting activity…', async () => {
+    await fetch(`/api/fitness/activities/${id}`, { method:'DELETE' });
+    // Remove from local array so we don't need a full reload
+    allHistoryActivities = allHistoryActivities.filter(a => a.id !== id);
+    // Also remove from calData
+    Object.keys(calData).forEach(date => {
+      calData[date].activities = calData[date].activities.filter(a => a.id !== id);
+      calData[date].count = calData[date].activities.length;
+      if (calData[date].count === 0) delete calData[date];
+    });
+    renderHistoryFeed();
+    renderCalendar();
+    loadDashboard();
+    // Refresh consistency hero stats
+    fetch('/api/fitness/consistency').then(r => r.json()).then(con => {
+      setText('con-current-streak',  con.current_streak ?? 0);
+      setText('con-longest-streak',  con.longest_streak ?? 0);
+      setText('con-active-month',    con.active_days_month ?? 0);
+      setText('con-total-acts',      con.total_activities ?? 0);
+    }).catch(() => {});
   });
-  renderHistoryFeed();
-  renderCalendar();
-  loadDashboard();
-  // Refresh consistency hero stats
-  fetch('/api/fitness/consistency').then(r => r.json()).then(con => {
-    setText('con-current-streak',  con.current_streak ?? 0);
-    setText('con-longest-streak',  con.longest_streak ?? 0);
-    setText('con-active-month',    con.active_days_month ?? 0);
-    setText('con-total-acts',      con.total_activities ?? 0);
-  }).catch(() => {});
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -3778,12 +3827,12 @@ async function logSelectedFood() {
   }
 }
 
-async function removeFoodLog(id) {
-  if (!confirm('Remove this item?')) return;
-  await fetch(`/api/food/log/${id}`, { method: 'DELETE' });
-  showToast('Removed');
-  loadFoodTracker();
-  loadDashboard();
+function removeFoodLog(id) {
+  undoable('Removing item…', async () => {
+    await fetch(`/api/food/log/${id}`, { method: 'DELETE' });
+    loadFoodTracker();
+    loadDashboard();
+  });
 }
 
 async function editFoodQty(id, currentQty, foodName) {
@@ -4228,11 +4277,11 @@ async function saveEditThought(id, mood) {
   if (r?.success) { showToast('Thought updated', 'success'); loadThoughts(); }
 }
 
-async function deleteThought(id) {
-  if (!confirm('Delete this thought?')) return;
-  await fetch(`/api/thoughts/${id}`, { method: 'DELETE' });
-  showToast('Thought deleted');
-  loadThoughts();
+function deleteThought(id) {
+  undoable('Deleting thought…', async () => {
+    await fetch(`/api/thoughts/${id}`, { method: 'DELETE' });
+    loadThoughts();
+  });
 }
 
 function thoughtsDateShift(delta) {
@@ -4496,12 +4545,12 @@ async function toggleTodo(id) {
   }
 }
 
-async function deleteTodo(id) {
+function deleteTodo(id) {
   const todo = allTodos.find(t => t.id === id);
-  if (!confirm(`Delete "${todo?.title || 'this task'}"?`)) return;
-  await fetch(`/api/todos/${id}`, { method:'DELETE' });
-  showToast('Task deleted');
-  loadTodos();
+  undoable(`Deleting "${todo?.title || 'task'}"…`, async () => {
+    await fetch(`/api/todos/${id}`, { method:'DELETE' });
+    loadTodos();
+  });
 }
 
 // ── Reminder notifications ──────────────────────────────────────────────────
@@ -4989,12 +5038,12 @@ async function toggleHabit(id, date) {
   }
 }
 
-async function deleteHabit(id) {
-  if (!confirm('Remove this habit and all its history?')) return;
-  await fetch(`/api/habits/${id}`, {method: 'DELETE'});
-  showToast('Habit removed');
-  loadHabits();
-  loadWellnessStrip();
+function deleteHabit(id) {
+  undoable('Removing habit and its history…', async () => {
+    await fetch(`/api/habits/${id}`, {method: 'DELETE'});
+    loadHabits();
+    loadWellnessStrip();
+  });
 }
 
 // ════════════════════════════════════════════════════════════
