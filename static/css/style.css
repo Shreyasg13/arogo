@@ -4499,3 +4499,42 @@ body { font-family:'DM Sans',sans-serif; background:var(--gray-25); color:var(--
   .btn-icon { width:38px; height:38px; }
   .dash-dose-check { width:26px; height:26px; }
 }
+
+/* ── Quick-log FAB + sheet ── */
+#quick-fab {
+  position:fixed; right:22px; bottom:22px; z-index:380;
+  width:54px; height:54px; border-radius:50%; border:none; cursor:pointer;
+  background:var(--teal-600); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 20px rgba(14,107,94,.4); transition:transform .15s, background .15s;
+}
+#quick-fab:hover { background:var(--teal-700); transform:scale(1.06); }
+#quick-log-sheet {
+  position:fixed; inset:0; z-index:460;
+  background:rgba(15,15,25,.45); backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.qlg-panel {
+  background:var(--gray-0); border-radius:18px; padding:20px 22px;
+  width:100%; max-width:380px; box-shadow:0 16px 48px rgba(0,0,0,.22);
+  max-height:86vh; overflow-y:auto;
+}
+.qlg-title { font-size:16px; font-weight:700; color:var(--gray-900); margin-bottom:6px; }
+.qlg-label { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+             color:var(--gray-400); margin:14px 0 7px; }
+.qlg-row { display:flex; gap:8px; align-items:center; }
+.qlg-chip {
+  border:1px solid var(--gray-200); background:var(--gray-25); color:var(--gray-700);
+  border-radius:10px; padding:9px 14px; font-size:13px; font-weight:500;
+  font-family:'DM Sans',sans-serif; cursor:pointer; transition:all .15s; min-height:38px;
+}
+.qlg-chip:hover { border-color:var(--teal-400); background:var(--teal-50); color:var(--teal-700); }
+.qlg-chip.done { border-color:var(--teal-400); background:var(--teal-50); color:var(--teal-700); }
+.qlg-emoji { font-size:19px; padding:7px 11px; }
+
+@media (max-width: 768px) {
+  #quick-fab { bottom:calc(78px + env(safe-area-inset-bottom)); right:16px; }
+  #quick-log-sheet { align-items:flex-end; padding:0; }
+  .qlg-panel { max-width:none; border-radius:18px 18px 0 0;
+               padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
+}

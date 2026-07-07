@@ -203,6 +203,10 @@ function showAuthScreen() {
   if (screen)  screen.style.display = '';
   if (sidebar) sidebar.style.display = 'none';
   if (main)    main.style.display    = 'none';
+  const fab = document.getElementById('quick-fab');
+  if (fab) fab.style.display = 'none';
+  const tabbar = document.getElementById('mobile-tabbar');
+  if (tabbar) tabbar.style.visibility = 'hidden';
 }
 
 function showApp() {
@@ -212,6 +216,10 @@ function showApp() {
   if (screen)  screen.style.display  = 'none';
   if (sidebar) sidebar.style.display = '';
   if (main)    main.style.display    = '';
+  const fab = document.getElementById('quick-fab');
+  if (fab) fab.style.display = 'flex';
+  const tabbar = document.getElementById('mobile-tabbar');
+  if (tabbar) tabbar.style.visibility = '';
 
   // Populate user name in header
   const nameEl = document.getElementById('header-user-name');
@@ -471,6 +479,113 @@ async function signOut() {
   await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
   _currentUser = null;
   showAuthScreen();
+}
+
+// ── Quick-log FAB + sheet ─────────────────────────────────────────
+function toggleQuickLog() {
+  const sheet = document.getElementById('quick-log-sheet');
+  if (!sheet) return;
+  if (sheet.style.display === 'none') openQuickLog();
+  else closeQuickLog();
+}
+function closeQuickLog() {
+  const sheet = document.getElementById('quick-log-sheet');
+  if (sheet) sheet.style.display = 'none';
+}
+
+async function openQuickLog() {
+  const sheet = document.getElementById('quick-log-sheet');
+  if (!sheet) return;
+  sheet.style.display = 'flex';
+
+  // Habits: toggle chips for today
+  const habitsBox = document.getElementById('qlg-habits');
+  fetch('/api/habits', {credentials: 'same-origin'}).then(r => r.json()).then(d => {
+    const habits = (d.habits || []).filter(h => h.active !== 0);
+    habitsBox.innerHTML = habits.length
+      ? habits.map(h =>
+          `<button class="qlg-chip${h.done_today ? ' done' : ''}" id="qlg-habit-${h.id}"
+                   data-ev-click="quickToggleHabit('${h.id}')">${h.emoji || '⭐'} ${escapeHtml(h.name)}</button>`).join('')
+      : '<span style="font-size:12px;color:var(--gray-400)">No habits yet — add one in the Habits view</span>';
+  }).catch(() => { habitsBox.innerHTML = ''; });
+
+  // Yesterday's meals shortcut
+  const yBox = document.getElementById('qlg-yesterday');
+  fetch('/api/food/recent-meals', {credentials: 'same-origin'}).then(r => r.json()).then(d => {
+    const items = Object.values(d.yesterday || {}).flat();
+    if (!items.length) { yBox.innerHTML = ''; return; }
+    window._qlgYesterday = items;
+    yBox.innerHTML =
+      `<button class="qlg-chip" style="width:100%" data-ev-click="quickCopyYesterday()">
+         🍽️ Copy yesterday's meals — ${items.length} item(s), ${Math.round(d.yesterday_total_cal || 0)} kcal
+       </button>`;
+  }).catch(() => { yBox.innerHTML = ''; });
+}
+
+async function quickWater(ml) {
+  const r = await fetch('/api/hydration', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({amount_ml: ml, drink_type: 'water', date_key: localToday()}),
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success === false) { showToast('Could not log water', 'error'); return; }
+  closeQuickLog();
+  showToast(`💧 +${ml}ml logged`);
+  try { loadWellnessStrip(); } catch (e) {}
+}
+
+async function quickMood(mood) {
+  const r = await fetch('/api/thoughts', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({content: `Quick check-in — feeling ${mood}`, mood, date_key: localToday()}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || r.error) { showToast(r?.error || 'Could not log mood', 'error'); return; }
+  closeQuickLog();
+  showToast('Mood logged 😊');
+}
+
+async function quickWeight() {
+  const val = parseFloat(document.getElementById('qlg-weight')?.value);
+  if (!val || val < 20 || val > 400) { showToast('Enter a weight in kg', 'error'); return; }
+  const r = await fetch('/api/body-metrics', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({date_key: localToday(), weight_kg: val}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
+  document.getElementById('qlg-weight').value = '';
+  closeQuickLog();
+  showToast(`⚖️ ${val}kg saved`);
+}
+
+async function quickToggleHabit(id) {
+  const r = await fetch(`/api/habits/${id}/toggle`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({date_key: localToday()}),
+  }).then(r => r.json()).catch(() => null);
+  const chip = document.getElementById(`qlg-habit-${id}`);
+  if (chip && r) chip.classList.toggle('done', !!r.done);
+  try { loadWellnessStrip(); } catch (e) {}
+}
+
+async function quickCopyYesterday() {
+  const items = window._qlgYesterday || [];
+  if (!items.length) return;
+  await Promise.all(items.map(item => fetch('/api/food/log', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      food_id: item.food_id, food_name: item.food_name, meal_type: item.meal_type,
+      date_key: localToday(), quantity_g: item.quantity_g,
+      calories: item.calories, protein: item.protein, carbs: item.carbs,
+      fat: item.fat, fiber: item.fiber,
+    }),
+  }).catch(() => {})));
+  closeQuickLog();
+  showToast(`🍽️ ${items.length} item(s) copied from yesterday`);
+  try { if (document.getElementById('view-food').classList.contains('active')) loadFoodTracker(); } catch (e) {}
 }
 
 // ── Web Push subscription ─────────────────────────────────────────
@@ -5745,6 +5860,35 @@ function openGlobalSearch() {
   document.getElementById('global-search-results').innerHTML = '';
 }
 
+// Detect quick-log commands typed into global search
+function parseQuickCommand(q) {
+  let m = q.trim().toLowerCase().match(/^w(?:ater)?\s+(\d{2,4})\s*(?:ml)?$/);
+  if (m) {
+    const ml = parseInt(m[1], 10);
+    if (ml >= 50 && ml <= 3000)
+      return {icon: '💧', label: `Log ${ml}ml water`,
+              ev: `closeGlobalSearch();quickWater(${ml})`};
+  }
+  m = q.trim().toLowerCase().match(/^weight\s+(\d{2,3}(?:\.\d+)?)\s*(?:kg)?$/);
+  if (m) {
+    const kg = parseFloat(m[1]);
+    if (kg >= 20 && kg <= 400)
+      return {icon: '⚖️', label: `Log weight ${kg}kg`,
+              ev: `closeGlobalSearch();quickLogWeight(${kg})`};
+  }
+  return null;
+}
+
+async function quickLogWeight(kg) {
+  const r = await fetch('/api/body-metrics', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({date_key: localToday(), weight_kg: kg}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
+  showToast(`⚖️ ${kg}kg saved`);
+}
+
 function closeGlobalSearch() {
   const wrap = document.getElementById('global-search-wrap');
   if (wrap) wrap.style.display = 'none';
@@ -5809,6 +5953,24 @@ async function runGlobalSearch(q) {
     return;
   }
   if (hints) hints.style.display = 'none';
+
+  // ── Command actions: "water 500", "weight 71.5" log directly ──
+  const action = parseQuickCommand(q);
+  if (action) {
+    res.innerHTML = `<div class="gs-result-row gs-action-row" data-ev-click="${action.ev}">
+      <div class="gs-result-icon">${action.icon}</div>
+      <div class="gs-result-main">
+        <div class="gs-result-title">${action.label}</div>
+        <div class="gs-result-meta">Press Enter to log it</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--teal-600);
+                   background:var(--teal-50);border-radius:6px;padding:3px 8px">ACTION</span>
+    </div>`;
+    _gsSelectedIdx = 0;
+    highlightRow([...res.querySelectorAll('.gs-result-row')]);
+    return;
+  }
+
   res.innerHTML = '<div class="gs-empty" style="padding:20px;font-size:13px">Searching…</div>';
   _gsTimer = setTimeout(async () => {
     const params = new URLSearchParams({q});
