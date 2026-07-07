@@ -34,10 +34,48 @@ def _check_missed_doses():
     except Exception as e:
         print(f"[scheduler] Missed dose check error: {e}")
 
+def _send_weekly_digests():
+    """Email the weekly digest to every opted-in user (Sunday evenings).
+    Deduped per user per week via notification_log."""
+    import datetime as dt
+    try:
+        import mailer
+        from auth import make_digest_unsub_token
+        from db.insights import generate_weekly_digest
+        week_ago = (dt.datetime.now() - dt.timedelta(days=6)).isoformat()
+        users = execute("""
+            SELECT u.id, u.email, u.name FROM users u
+            LEFT JOIN reminder_settings rs ON rs.user_id = u.id
+            WHERE COALESCE(rs.weekly_digest_enabled, 1) = 1
+        """, fetchall=True)
+        sent = 0
+        for u in users:
+            already = execute(
+                "SELECT 1 FROM notification_log WHERE user_id=? AND type='digest_email' AND created_at >= ? LIMIT 1",
+                (u['id'], week_ago), fetchone=True)
+            if already:
+                continue
+            with user_context(u['id']):
+                digest = generate_weekly_digest()
+                unsub = f"{mailer.APP_BASE_URL}/api/digest/unsubscribe/{make_digest_unsub_token(u['id'])}"
+                if mailer.send_weekly_digest_email(u['email'], u['name'], digest, unsub):
+                    from db.core import new_id, now_iso
+                    execute("""INSERT INTO notification_log (id,type,title,body,read,created_at,user_id)
+                               VALUES (?,?,?,?,1,?,?)""",
+                            (new_id(), 'digest_email', 'Weekly digest emailed',
+                             digest['headline'], now_iso(), u['id']), commit=True)
+                    sent += 1
+        if sent:
+            print(f'[scheduler] Weekly digest sent to {sent} user(s)')
+    except Exception as e:
+        print(f'[scheduler] Weekly digest error: {e}')
+
+
 def _run_loop():
     import schedule
     schedule.every().day.at("05:00").do(_daily_sync)
     schedule.every().hour.do(_check_missed_doses)
+    schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     # Also do an initial sync 30 s after startup
     schedule.every(30).seconds.do(lambda: (schedule.cancel_job(schedule.jobs[-1]), _daily_sync()))
     while True:
@@ -47,6 +85,7 @@ def _run_loop():
 def _run_loop_stdlib():
     """Fallback scheduler using plain threading when 'schedule' isn't available."""
     last_daily = None
+    last_digest = None
     while True:
         now = datetime.datetime.now()
         if now.hour == 5 and now.minute == 0:
@@ -54,6 +93,11 @@ def _run_loop_stdlib():
             if last_daily != day_key:
                 _daily_sync()
                 last_daily = day_key
+        if now.weekday() == 6 and now.hour == 18 and now.minute == 0:
+            day_key = now.date().isoformat()
+            if last_digest != day_key:
+                _send_weekly_digests()
+                last_digest = day_key
         if now.minute == 0:
             _check_missed_doses()
         time.sleep(60)

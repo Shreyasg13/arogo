@@ -698,11 +698,18 @@ def api_save_reminder_settings():
     d = request.json or {}
     row = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     if row:
+        # weekly_digest_enabled: preserve the stored value when the client
+        # doesn't send it (the unsubscribe link must survive settings saves)
+        current = execute("SELECT weekly_digest_enabled FROM reminder_settings WHERE id=?",
+                          (row['id'],), fetchone=True) or {}
+        digest_flag = int(d.get('weekly_digest_enabled',
+                                current.get('weekly_digest_enabled', 1) or 0))
         execute("""UPDATE reminder_settings SET
             water_enabled=?, water_interval_h=?, water_start=?, water_end=?,
             water_goal_ml=?, habit_reminder_enabled=?, habit_reminder_time=?,
             sleep_reminder_enabled=?, sleep_reminder_time=?,
-            mood_reminder_enabled=?, mood_reminder_time=?, updated_at=?
+            mood_reminder_enabled=?, mood_reminder_time=?,
+            weekly_digest_enabled=?, updated_at=?
             WHERE id=?""",
             (int(d.get('water_enabled', 1)),
              float(d.get('water_interval_h', 2.0)),
@@ -715,6 +722,7 @@ def api_save_reminder_settings():
              d.get('sleep_reminder_time', '22:00'),
              int(d.get('mood_reminder_enabled', 1)),
              d.get('mood_reminder_time', '18:00'),
+             digest_flag,
              now_iso(), row['id']), commit=True)
     else:
         rid = new_id()
@@ -734,6 +742,29 @@ def api_save_reminder_settings():
              now_iso(), uid), commit=True)
     updated = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     return jsonify({'success': True, 'settings': dict(updated)})
+
+@bp.route('/api/digest/unsubscribe/<token>')
+def api_digest_unsubscribe(token):
+    """One-click unsubscribe from weekly digest emails (link in the email —
+    no login required, the signed token identifies the user)."""
+    from auth import read_digest_unsub_token
+    from db.core import execute, new_id, now_iso
+    uid = read_digest_unsub_token(token)
+    if not uid:
+        return '<h3>This unsubscribe link is invalid or has expired.</h3>', 400
+    row = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
+    if row:
+        execute("UPDATE reminder_settings SET weekly_digest_enabled=0, updated_at=? WHERE id=?",
+                (now_iso(), row['id']), commit=True)
+    else:
+        execute("""INSERT INTO reminder_settings (id, weekly_digest_enabled, updated_at, user_id)
+                   VALUES (?, 0, ?, ?)""", (new_id(), now_iso(), uid), commit=True)
+    return ('<div style="font-family:sans-serif;max-width:480px;margin:80px auto;text-align:center">'
+            '<h2>You\'re unsubscribed 👋</h2>'
+            '<p>You won\'t receive the weekly digest email anymore. '
+            'You can turn it back on any time in Notifications → Settings.</p>'
+            '<p><a href="/">Back to MedEasy</a></p></div>')
+
 
 @bp.route('/api/reminders/water-status')
 @require_auth

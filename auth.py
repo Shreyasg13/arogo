@@ -162,6 +162,31 @@ def read_verify_token(token: str) -> str | None:
         return None
 
 
+def _secret_key() -> str:
+    """SECRET_KEY from the app context, or Config directly outside one
+    (scheduler jobs mint unsubscribe tokens without a request)."""
+    try:
+        return current_app.config['SECRET_KEY']
+    except Exception:
+        from config import Config
+        return Config.SECRET_KEY
+
+
+def make_digest_unsub_token(user_id: str) -> str:
+    """Unsubscribe link token for weekly digest emails (90 days)."""
+    s = URLSafeTimedSerializer(_secret_key(), salt='ms-digest')
+    return s.dumps({'uid': user_id})
+
+
+def read_digest_unsub_token(token: str) -> str | None:
+    s = URLSafeTimedSerializer(_secret_key(), salt='ms-digest')
+    try:
+        data = s.loads(token, max_age=86400 * 90)
+        return data.get('uid')
+    except Exception:
+        return None
+
+
 def make_family_invite_token(invite_id: str) -> str:
     """Family invite token (72h) carrying the invite row id."""
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-family')

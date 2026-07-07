@@ -346,6 +346,7 @@ CREATE TABLE IF NOT EXISTS reminder_settings (
     sleep_reminder_time TEXT DEFAULT '22:00',
     mood_reminder_enabled INTEGER DEFAULT 1,
     mood_reminder_time TEXT DEFAULT '18:00',
+    weekly_digest_enabled INTEGER NOT NULL DEFAULT 1,
     updated_at TEXT NOT NULL
 );
 """
@@ -418,6 +419,14 @@ def migrate_add_token_version():
     except Exception:
         pass  # already exists
 
+
+def migrate_add_weekly_digest_flag():
+    """reminder_settings.weekly_digest_enabled — Sunday email opt-out."""
+    try:
+        execute("ALTER TABLE reminder_settings ADD COLUMN weekly_digest_enabled INTEGER NOT NULL DEFAULT 1")
+    except Exception:
+        pass  # already exists
+
 def migrate_add_user_id():
     """Add user_id column to all data tables. Safe to run multiple times."""
     tables = [
@@ -485,5 +494,6 @@ def init_db():
     migrate_fix_profile_defaults()
     migrate_add_timezone()
     migrate_add_token_version()
+    migrate_add_weekly_digest_flag()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

@@ -74,6 +74,34 @@ def send_verification_email(to: str, token: str) -> bool:
     )
 
 
+def send_weekly_digest_email(to: str, name: str, digest: dict, unsub_url: str) -> bool:
+    lines = [
+        f"Hi {name or 'there'},",
+        '',
+        digest['headline'],
+        f"Your week: {digest['period_label']}  ·  Overall score {digest['overall_score']}/100",
+        '',
+    ]
+    if digest.get('highlights'):
+        lines.append('At a glance:')
+        lines += [f"  {h['icon']} {h['label']}: {h['value']}" for h in digest['highlights']]
+        lines.append('')
+    if digest.get('wins'):
+        lines.append('Wins:')
+        lines += [f"  {w['icon']} {w['text']}" for w in digest['wins']]
+        lines.append('')
+    if digest.get('concerns'):
+        lines.append('Worth watching:')
+        lines += [f"  {c['icon']} {c['text']}" for c in digest['concerns']]
+        lines.append('')
+    lines += [
+        f'Open MedEasy: {APP_BASE_URL}/',
+        '',
+        f'No longer want these? Unsubscribe: {unsub_url}',
+    ]
+    return send_email(to, f"Your MedEasy week — {digest['period_label']}", '\n'.join(lines) + '\n')
+
+
 def send_family_invite_email(to: str, token: str, inviter: str, group: str) -> bool:
     link = f'{APP_BASE_URL}/?family_invite={token}'
     return send_email(

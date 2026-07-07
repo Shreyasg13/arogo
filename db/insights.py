@@ -117,6 +117,123 @@ def generate_weekly_report() -> dict:
         'profile': {'name': profile.get('name','User'), 'goal': profile.get('goal','maintain')},
     }
 
+# ── Weekly digest ─────────────────────────────────────────────────────────────
+
+def generate_weekly_digest() -> dict:
+    """Weekly insight digest — scores, highlights, wins, concerns, headline.
+    Built on generate_weekly_report(); used by /api/weekly-digest and the
+    Sunday digest email job."""
+    import datetime as dt
+
+    r = generate_weekly_report()
+
+    # ── Scores (0-100) ────────────────────────────────────────────
+    sleep_score = 0
+    if r['sleep']['avg_hours']:
+        h = r['sleep']['avg_hours']
+        sleep_score = min(100, int(min(h, 9) / 9 * 100))
+        if r['sleep']['avg_quality']:
+            sleep_score = int(sleep_score * 0.7 + (r['sleep']['avg_quality']/5*100) * 0.3)
+
+    workout_score = min(100, int(r['fitness']['workout_days'] / 5 * 100))
+    habit_score   = int(r['habits']['completion_pct'] or 0)
+
+    hydration_score = 0
+    if r['nutrition']['avg_hydration_ml']:
+        hydration_score = min(100, int(r['nutrition']['avg_hydration_ml'] / 2450 * 100))
+
+    cal_score = 0
+    if r['nutrition']['adherence_pct']:
+        pct = r['nutrition']['adherence_pct']
+        # Ideal is 90–110% of target
+        cal_score = 100 if 90 <= pct <= 110 else max(0, int(100 - abs(pct - 100) * 2))
+
+    overall_score = int((sleep_score + workout_score + habit_score + hydration_score + cal_score) / 5)
+
+    # ── Wins ──────────────────────────────────────────────────────
+    wins = []
+    sleep_h = r['sleep']['avg_hours']
+    if sleep_h and sleep_h >= 7:
+        wins.append({'icon': '🌙', 'text': f'Averaged {sleep_h}h sleep — at or above the 7h target'})
+    if r['fitness']['workout_days'] >= 4:
+        wins.append({'icon': '🏅', 'text': f'{r["fitness"]["workout_days"]} workout days this week — great consistency'})
+    if habit_score >= 80:
+        wins.append({'icon': '⭐', 'text': f'{int(habit_score)}% habit completion — nearly perfect week'})
+    if hydration_score >= 90:
+        wins.append({'icon': '💧', 'text': f'Well hydrated — averaged {r["nutrition"]["avg_hydration_ml"]}ml/day'})
+    if r['fitness']['calories_burned'] >= 2000:
+        wins.append({'icon': '🔥', 'text': f'{r["fitness"]["calories_burned"]:,} kcal burned through exercise'})
+
+    # ── Concerns ──────────────────────────────────────────────────
+    concerns = []
+    if sleep_h and sleep_h < 6:
+        concerns.append({'icon': '😴', 'text': f'Sleep averaged {sleep_h}h — below the 7h minimum. Early bedtime this week?'})
+    elif sleep_h and sleep_h < 7:
+        concerns.append({'icon': '🌙', 'text': f'Sleep was a bit short ({sleep_h}h avg). Aim for 7h+ tonight.'})
+
+    if r['fitness']['workout_days'] == 0:
+        concerns.append({'icon': '🏃', 'text': 'No workouts logged this week. Even a 20-min walk counts.'})
+    elif r['fitness']['workout_days'] <= 1:
+        concerns.append({'icon': '🏃', 'text': f'Only {r["fitness"]["workout_days"]} workout day this week. Try for 3+.'})
+
+    if habit_score is not None and habit_score < 50 and r['habits']['total'] > 0:
+        concerns.append({'icon': '📋', 'text': f'Habits only {int(habit_score)}% complete. Consider removing habits that no longer fit.'})
+
+    if r['symptoms']:
+        top = r['symptoms'][0]
+        concerns.append({'icon': '🩺', 'text': f'{top["name"]} appeared {top["count"]} time{"s" if top["count"]>1 else ""} this week. Worth noting if it continues.'})
+
+    if hydration_score < 60:
+        concerns.append({'icon': '💧', 'text': f'Hydration was low ({r["nutrition"]["avg_hydration_ml"]}ml avg, goal 2450ml). Try a water reminder.'})
+
+    # ── Highlights ────────────────────────────────────────────────
+    highlights = []
+    if r['sleep']['nights'] > 0:
+        highlights.append({'label': 'Avg sleep',    'value': f'{sleep_h}h' if sleep_h else '—', 'icon': '🌙'})
+    if r['fitness']['workout_days'] > 0:
+        highlights.append({'label': 'Workout days', 'value': str(r['fitness']['workout_days']),  'icon': '🏋️'})
+    if r['habits']['total'] > 0:
+        highlights.append({'label': 'Habits',       'value': f'{int(habit_score)}%',             'icon': '⭐'})
+    if r['nutrition']['avg_hydration_ml']:
+        highlights.append({'label': 'Avg water',    'value': f'{r["nutrition"]["avg_hydration_ml"]}ml','icon': '💧'})
+    if r['fitness']['calories_burned']:
+        highlights.append({'label': 'Cal burned',   'value': f'{r["fitness"]["calories_burned"]:,}',  'icon': '🔥'})
+
+    # ── Headline ──────────────────────────────────────────────────
+    if overall_score >= 80:
+        headline = "Strong week — you're building good habits 💪"
+    elif overall_score >= 60:
+        headline = "Solid week overall, with a few areas to improve"
+    elif overall_score >= 40:
+        headline = "Mixed week — some wins, some things to work on"
+    else:
+        headline = "Tough week — small steps still count. Keep going."
+
+    # ── Period label (portable: %-d is Linux-only) ────────────────
+    start = dt.date.fromisoformat(r['period']['start'])
+    end   = dt.date.fromisoformat(r['period']['end'])
+    period_label = (f"{start.strftime('%b')} {start.day} – "
+                    f"{end.strftime('%b')} {end.day}, {end.year}")
+
+    return {
+        'period':        r['period'],
+        'period_label':  period_label,
+        'headline':      headline,
+        'overall_score': overall_score,
+        'scores': {
+            'sleep':      sleep_score,
+            'workouts':   workout_score,
+            'habits':     habit_score,
+            'hydration':  hydration_score,
+            'nutrition':  cal_score,
+        },
+        'highlights':  highlights,
+        'wins':        wins[:3],
+        'concerns':    concerns[:3],
+        'raw':         r,
+    }
+
+
 # ── Global search ─────────────────────────────────────────────────────────────
 
 def _parse_date_query(query: str):
