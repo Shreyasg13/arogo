@@ -234,6 +234,114 @@ def generate_weekly_digest() -> dict:
     }
 
 
+# ── Insight cards ─────────────────────────────────────────────────────────────
+
+def get_insight_cards(limit: int = 3) -> list:
+    """Rules-based dashboard insights. Every rule emits ONLY when there's
+    enough real data behind it — a new user simply gets an empty list.
+    Tones: success (celebrate), warning (watch out), info (neutral fact)."""
+    import datetime as dt
+    uid = current_user_id()
+    today = dt.date.today()
+    d7  = (today - dt.timedelta(days=6)).isoformat()
+    d30 = (today - dt.timedelta(days=29)).isoformat()
+    cards = []
+
+    def add(icon, text, tone='info'):
+        cards.append({'icon': icon, 'text': text, 'tone': tone})
+
+    # 1. Habit streak worth protecting
+    try:
+        from .health import get_habit_stats
+        habits = get_habit_stats()['habits']
+        top = max(habits, key=lambda h: h.get('streak', 0)) if habits else None
+        if top and top.get('streak', 0) >= 5:
+            add('🔥', f"{top['streak']}-day streak on “{top['name']}” — keep it alive today",
+                'success')
+    except Exception:
+        pass
+
+    # 2. Medicine adherence this week (needs ≥5 logged doses)
+    r = execute("""SELECT COUNT(*) AS n, SUM(CASE WHEN taken=1 THEN 1 ELSE 0 END) AS t
+                   FROM dose_logs WHERE user_id=? AND date_key>=?""", (uid, d7), fetchone=True)
+    if r and (r['n'] or 0) >= 5:
+        pct = round((r['t'] or 0) / r['n'] * 100)
+        if pct >= 90:
+            add('💊', f"{pct}% dose adherence this week — excellent consistency", 'success')
+        elif pct < 60:
+            add('💊', f"Only {pct}% of doses taken this week — worth a look at your reminder times",
+                'warning')
+
+    # 3. Sleep on workout days vs rest days (last 30d, ≥4 nights each)
+    sleep = {s['date_key']: s['duration_h'] for s in execute(
+        "SELECT date_key, duration_h FROM sleep_logs WHERE user_id=? AND date_key>=?",
+        (uid, d30), fetchall=True)}
+    workout_days = {a['date'] for a in execute(
+        "SELECT DISTINCT date FROM fitness_activities WHERE user_id=? AND date>=?",
+        (uid, d30), fetchall=True)}
+    on  = [h for d, h in sleep.items() if d in workout_days]
+    off = [h for d, h in sleep.items() if d not in workout_days]
+    if len(on) >= 4 and len(off) >= 4:
+        diff = sum(on)/len(on) - sum(off)/len(off)
+        if diff >= 0.4:
+            add('🏃', f"You sleep {abs(round(diff*60))} min longer on workout days — exercise is earning its keep",
+                'info')
+
+    # 4. Water streak (consecutive days at goal, ending today or yesterday)
+    rs = execute("SELECT water_goal_ml FROM reminder_settings WHERE user_id=?",
+                 (uid,), fetchone=True)
+    goal = (rs or {}).get('water_goal_ml') or 2450
+    daily = {r['date_key']: r['total'] for r in execute(
+        """SELECT date_key, SUM(amount_ml) AS total FROM hydration_logs
+           WHERE user_id=? AND date_key>=? GROUP BY date_key""",
+        (uid, (today - dt.timedelta(days=13)).isoformat()), fetchall=True)}
+    streak, day = 0, today
+    if daily.get(today.isoformat(), 0) < goal:
+        day = today - dt.timedelta(days=1)   # today may still be in progress
+    while daily.get(day.isoformat(), 0) >= goal:
+        streak += 1
+        day -= dt.timedelta(days=1)
+    if streak >= 3:
+        add('💧', f"{streak} days in a row at your water goal", 'success')
+
+    # 5. Sleep trend: this week vs the three weeks before (≥4 nights each)
+    this_week = [h for d, h in sleep.items() if d >= d7]
+    earlier   = [h for d, h in sleep.items() if d < d7]
+    if len(this_week) >= 4 and len(earlier) >= 4:
+        cur, prev = sum(this_week)/len(this_week), sum(earlier)/len(earlier)
+        if prev and abs(cur - prev) / prev >= 0.05:
+            arrow, tone = ('up', 'success') if cur > prev else ('down', 'warning')
+            add('🌙', f"Sleep is {arrow} {abs(round((cur-prev)/prev*100))}% this week "
+                      f"({round(cur,1)}h vs {round(prev,1)}h average)", tone)
+
+    # 6. Protein target hits (needs a complete profile)
+    try:
+        from .food import get_profile, calc_tdee
+        target = (calc_tdee(get_profile()) or {}).get('protein_g')
+        if target:
+            rows = execute("""SELECT date_key, SUM(protein) AS p FROM food_logs
+                              WHERE user_id=? AND date_key>=? GROUP BY date_key""",
+                           (uid, d7), fetchall=True)
+            hits = sum(1 for r in rows if (r['p'] or 0) >= target * 0.9)
+            if len(rows) >= 4 and hits >= 4:
+                add('💪', f"Protein target hit {hits} of the last {len(rows)} logged days", 'success')
+    except Exception:
+        pass
+
+    # 7. Perfect logging week (something logged every one of the last 7 days)
+    logged_days = set()
+    for table, col in [('food_logs', 'date_key'), ('hydration_logs', 'date_key'),
+                       ('sleep_logs', 'date_key'), ('thoughts', 'date_key'),
+                       ('habit_logs', 'date_key')]:
+        for r in execute(f"SELECT DISTINCT {col} AS d FROM {table} WHERE user_id=? AND {col}>=?",
+                         (uid, d7), fetchall=True):
+            logged_days.add(r['d'])
+    if len(logged_days) >= 7:
+        add('📈', 'Logged something every day this week — the data is working for you', 'success')
+
+    return cards[:limit]
+
+
 # ── Global search ─────────────────────────────────────────────────────────────
 
 def _parse_date_query(query: str):

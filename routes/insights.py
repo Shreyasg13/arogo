@@ -473,6 +473,14 @@ def api_weekly_digest():
     return jsonify(generate_weekly_digest())
 
 
+@bp.route('/api/insights/cards')
+@require_auth
+def api_insight_cards():
+    """Rules-based dashboard insight cards (empty list until data exists)."""
+    from db.insights import get_insight_cards
+    return jsonify({'cards': get_insight_cards()})
+
+
 @bp.route('/api/health-score')
 @require_auth
 def api_health_score():

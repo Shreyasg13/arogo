@@ -1046,9 +1046,34 @@ function dismissFirstRun() {
   if (el) el.style.display = 'none';
 }
 
+// ── Insight cards ─────────────────────────────────────────────────
+async function loadInsightCards() {
+  const box = document.getElementById('insight-cards');
+  if (!box) return;
+  const d = await fetch('/api/insights/cards', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  const cards = d?.cards || [];
+  if (!cards.length) { box.style.display = 'none'; return; }
+  const tones = {
+    success: 'background:var(--green-50);border-color:#D1FAE5',
+    warning: 'background:var(--amber-50);border-color:var(--amber-100)',
+    info:    'background:var(--blue-50);border-color:#DBEAFE',
+  };
+  box.style.display = '';
+  box.innerHTML = `<div style="display:flex;gap:12px;flex-wrap:wrap">` +
+    cards.map(c => `
+      <div style="flex:1;min-width:220px;display:flex;gap:10px;align-items:flex-start;
+                  border:1px solid transparent;border-radius:12px;padding:12px 14px;
+                  ${tones[c.tone] || tones.info}">
+        <span style="font-size:20px">${c.icon}</span>
+        <span style="font-size:13px;color:var(--gray-700);line-height:1.5">${escapeHtml(c.text)}</span>
+      </div>`).join('') + '</div>';
+}
+
 // ── Dashboard ──
 async function loadDashboard() {
   try { checkFirstRun(); } catch (e) {}
+  try { loadInsightCards(); } catch (e) {}
   const today = localToday();
   const [doses, fitnessStats, reportStats, foodDay, profile] = await Promise.all([
     fetch('/api/medicines/today').then(r => r.json()).catch(() => []),
