@@ -1,6 +1,6 @@
 # MedEasy Health OS — Development Makefile
 
-.PHONY: run prod test info
+.PHONY: run prod test test-js hooks info
 
 ## Start the development server
 run:
@@ -10,9 +10,21 @@ run:
 prod:
 	FLASK_DEBUG=0 python app.py
 
-## Run the test suite
+## Run the full test suite (Python + JS)
 test:
 	pytest tests/ -q
+	node --check static/js/app.js
+	node --check static/sw.js
+	node tests/js/run_js_tests.mjs
+
+## Run only the JS unit tests
+test-js:
+	node tests/js/run_js_tests.mjs
+
+## Enable the pre-commit hook (runs `make test` before every commit)
+hooks:
+	git config core.hooksPath .githooks
+	@echo "pre-commit hook enabled"
 
 ## Show project stats
 info:

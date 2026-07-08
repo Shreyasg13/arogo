@@ -22,3 +22,11 @@ jobs:
 
       - name: Run test suite
         run: pytest tests/ -v --tb=short
+
+      - name: JS syntax
+        run: |
+          node --check static/js/app.js
+          node --check static/sw.js
+
+      - name: JS unit tests
+        run: node tests/js/run_js_tests.mjs

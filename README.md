@@ -42,8 +42,22 @@ vars are set. See `DEPLOY.md` for the production checklist
 ## Tests
 
 ```bash
-pytest tests/    # 145 tests: API, isolation, family, auth, digest, push
+make test        # Python suite + JS syntax + JS unit tests
+pytest tests/    # Python only: API, isolation, family, auth, digest,
+                 # push, conventions (security headers, CSP guards)
 ```
+
+Enable the pre-commit hook once per clone so the full check (~10s)
+runs before every commit:
+
+```bash
+make hooks       # = git config core.hooksPath .githooks
+```
+
+CI runs the same checks on every push (`.github/workflows/test.yml`).
+`tests/test_conventions.py` guards project decisions statically — no
+inline handlers (strict CSP), no `confirm()`, portable SQL only, no
+Linux-only strftime — so regressions fail loudly instead of silently.
 
 ## Project structure
 
