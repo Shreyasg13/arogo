@@ -4538,3 +4538,32 @@ body { font-family:'DM Sans',sans-serif; background:var(--gray-25); color:var(--
   .qlg-panel { max-width:none; border-radius:18px 18px 0 0;
                padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DARK MODE — variable overrides on <html data-theme="dark">
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --gray-0:#171C24; --gray-25:#10141A; --gray-50:#1D242E; --gray-100:#2A323E;
+  --gray-200:#3B4453; --gray-400:#8B94A3; --gray-500:#9AA4B3; --gray-600:#B6BFCC;
+  --gray-700:#CDD4DE; --gray-800:#E3E8EF; --gray-900:#F4F6F9;
+  --teal-50:#0E2B27; --teal-100:#134138;
+  --blue-50:#152540;
+  --purple-50:#241B3D;
+  --amber-50:#2F2512; --amber-100:#4A3A18;
+  --red-50:#341A18; --red-100:#4E2724;
+  --green-50:#132B1C;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.35);
+  --shadow-md:0 4px 16px rgba(0,0,0,.5);
+}
+[data-theme="dark"] .hero-card { border-color:rgba(255,255,255,.06); }
+[data-theme="dark"] .mobile-tabbar { box-shadow:0 -4px 16px rgba(0,0,0,.4); }
+
+/* Theme toggle button (sidebar bottom + mobile More sheet) */
+.theme-toggle-btn {
+  display:flex; align-items:center; gap:8px; width:100%;
+  margin-top:8px; padding:8px 10px; border:none; border-radius:var(--r-md);
+  background:rgba(255,255,255,.04); color:rgba(255,255,255,.55);
+  font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all .15s;
+}
+.theme-toggle-btn:hover { background:rgba(255,255,255,.09); color:#fff; }

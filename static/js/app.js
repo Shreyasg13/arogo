@@ -5,6 +5,38 @@
 
 let _currentUser = null;
 
+// ── Theme (light / dark) ──────────────────────────────────────────
+// Applied as early as possible; stored choice wins, otherwise the OS
+// preference decides. (Inline <script> is blocked by CSP, so a brief
+// first-paint flash on the very first load is expected.)
+(function initTheme() {
+  const stored = localStorage.getItem('me_theme');
+  const dark = stored ? stored === 'dark'
+    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  if (dark) document.documentElement.dataset.theme = 'dark';
+})();
+
+function _syncThemeToggleUI() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const icon = document.getElementById('theme-toggle-icon');
+  const label = document.getElementById('theme-toggle-label');
+  if (icon)  icon.textContent  = dark ? '☀️' : '🌙';
+  if (label) label.textContent = dark ? 'Light mode' : 'Dark mode';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = dark ? '#10141A' : '#0D1117';
+}
+
+function toggleTheme() {
+  const el = document.documentElement;
+  const dark = el.dataset.theme !== 'dark';
+  if (dark) el.dataset.theme = 'dark';
+  else delete el.dataset.theme;
+  localStorage.setItem('me_theme', dark ? 'dark' : 'light');
+  _syncThemeToggleUI();
+}
+
+document.addEventListener('DOMContentLoaded', _syncThemeToggleUI);
+
 // ── CSP-safe event dispatch ───────────────────────────────────────
 // Inline on*="…" attributes are blocked by our Content-Security-Policy
 // (script-src carries no 'unsafe-inline'). Markup uses data-ev-click /

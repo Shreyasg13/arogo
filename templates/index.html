@@ -52,14 +52,14 @@
         </div>
 
         <!-- Error banner -->
-        <div id="auth-error" style="display:none;background:#FEF2F2;border:1px solid #FECACA;
+        <div id="auth-error" style="display:none;background:var(--red-50);border:1px solid var(--red-100);
              border-radius:8px;padding:10px 14px;margin-bottom:16px;
-             font-size:13px;color:#DC2626;"></div>
+             font-size:13px;color:var(--red-500);"></div>
 
         <!-- Success banner -->
-        <div id="auth-success" style="display:none;background:#ECFDF5;border:1px solid #A7F3D0;
+        <div id="auth-success" style="display:none;background:var(--green-50);border:1px solid var(--green-500);
              border-radius:8px;padding:10px 14px;margin-bottom:16px;
-             font-size:13px;color:#047857;"></div>
+             font-size:13px;color:var(--green-500);"></div>
 
         <!-- Login form -->
         <div id="auth-form-login">
@@ -289,6 +289,9 @@
       </div>
       <div class="user-status"></div>
     </div>
+    <button class="theme-toggle-btn" data-ev-click="toggleTheme()" id="theme-toggle">
+      <span id="theme-toggle-icon">🌙</span> <span id="theme-toggle-label">Dark mode</span>
+    </button>
   </div>
 </aside>
 
@@ -296,9 +299,9 @@
 <main class="main-content" id="app-main">
 
 <!-- Unverified-email banner (shown by showApp when needed) -->
-<div id="verify-banner" style="display:none;background:#FFFBEB;border:1px solid #FDE68A;
+<div id="verify-banner" style="display:none;background:var(--amber-50);border:1px solid var(--amber-100);
      border-radius:10px;padding:10px 16px;margin-bottom:16px;
-     font-size:13px;color:#92400E;align-items:center;gap:10px">
+     font-size:13px;color:var(--amber-500);align-items:center;gap:10px">
   <span style="flex:1">📧 Please verify your email address — check your inbox for the link.</span>
   <button class="btn-outline" style="font-size:12px;white-space:nowrap" data-ev-click="resendVerification()">
     Resend email
@@ -2862,6 +2865,8 @@
     <a href="#" class="mmore" data-view="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Progress</a>
     <a href="#" class="mmore" data-view="family"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Family</a>
     <a href="#" class="mmore" data-view="notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>Alerts</a>
+    <button class="mmore" data-ev-click="toggleTheme()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>Theme</button>
   </div>
 </div>
 
