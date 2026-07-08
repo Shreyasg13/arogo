@@ -1,1 +1,1 @@
-"""MediScan Health OS — Test Suite"""
+"""MedEasy Health OS — Test Suite"""

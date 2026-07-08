@@ -234,6 +234,6 @@ def start_scheduler():
     except ImportError:
         runner = _run_loop_stdlib
 
-    _scheduler_thread = threading.Thread(target=runner, daemon=True, name='mediscan-scheduler')
+    _scheduler_thread = threading.Thread(target=runner, daemon=True, name='medeasy-scheduler')
     _scheduler_thread.start()
     print("[scheduler] Started")

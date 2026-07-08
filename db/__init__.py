@@ -1,5 +1,5 @@
 """
-db/ — Database layer for MediScan Health OS.
+db/ — Database layer for MedEasy Health OS.
 
 Each module owns one domain. Import from here for convenience:
     from db import execute, insert_medicine, log_food, ...

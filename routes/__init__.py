@@ -1,4 +1,4 @@
-"""routes/ — Flask Blueprints for MediScan Health OS.
+"""routes/ — Flask Blueprints for MedEasy Health OS.
 
 Each module is a Blueprint registered in app.py:
   reports   /api/reports, /api/upload, /api/stats

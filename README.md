@@ -1,146 +1,84 @@
-# MediScan Health OS
+# MedEasy Health OS
 
-A personal health portal built with Flask + vanilla JS + SQLite.
+Your personal health operating system — food, sleep, medicines, fitness,
+mood and family sharing in one installable web app.
 
----
-
-## Project Structure
-
-```
-mediscan/
-├── app.py                   # Flask application factory (50 lines)
-├── config.py                # All configuration in one place
-├── database.py              # Legacy monolith — kept for backward compatibility
-│
-├── db/                      # Database layer — split by domain
-│   ├── __init__.py          # Re-exports everything; the only import you need
-│   ├── core.py              # SQLite connection, schema, execute(), helpers
-│   ├── reports.py           # Medical reports CRUD
-│   ├── medicines.py         # Medicines, doses, stock/refill tracking
-│   ├── fitness.py           # Activities, OAuth tokens, sync log
-│   ├── food.py              # Food logs, nutrition, profile, TDEE
-│   ├── wellness.py          # Thoughts, todos, hydration, sleep, body metrics
-│   ├── health.py            # Habits, symptoms, vitals, emergency info
-│   └── insights.py          # Notifications, weekly report, search, progress
-│
-├── routes/                  # Flask Blueprints — split by domain
-│   ├── __init__.py          # Blueprint registry documentation
-│   ├── reports.py           # /api/reports, /api/upload, /api/stats
-│   ├── medicines.py         # /api/medicines, /api/medicines/*/stock
-│   ├── fitness.py           # /api/fitness/*, /api/fitness/calendar
-│   ├── oauth.py             # /oauth/strava, /oauth/garmin, /oauth/google
-│   ├── food.py              # /api/food/*
-│   ├── wellness.py          # /api/thoughts, /api/todos, /api/hydration,
-│   │                        # /api/sleep, /api/body-metrics, /api/habits,
-│   │                        # /api/symptoms, /api/vitals, /api/emergency
-│   └── insights.py          # /api/report, /api/progress, /api/search,
-│                            # /api/export, /api/notifications
-│
-├── static/
-│   ├── js/
-│   │   ├── app.js           # Deployed bundle (5 400 lines) — served to browser
-│   │   └── modules/         # Split source — edit these, then concat to app.js
-│   │       ├── 01-core.js          # State, init, navigation, modals
-│   │       ├── 02-dashboard.js     # Hero cards, wellness strip, calorie breakdown
-│   │       ├── 03-reports.js       # Medical reports UI
-│   │       ├── 04-medicines.js     # Medicine tracker, dose timeline, stock
-│   │       ├── 05-fitness.js       # Fitness page, activity form, gym fields
-│   │       ├── 06-consistency.js   # Calendar, streaks, habits
-│   │       ├── 07-food.js          # Food tracker, macro rings, dropdown
-│   │       ├── 08-wellness.js      # Thoughts, sleep, body, symptoms, vitals, hydration
-│   │       ├── 09-search.js        # Global search overlay, date parsing
-│   │       ├── 10-notifications.js # Notification centre, daily nudges
-│   │       ├── 11-progress-report.js # Progress charts, health report PDF
-│   │       └── 12-export.js        # Data export, restock modal, nudge scheduler
-│   │
-│   └── css/
-│       ├── style.css         # Deployed bundle (3 170 lines) — served to browser
-│       ├── main.css          # @import manifest — use this to rebuild bundle
-│       └── modules/
-│           ├── 01-base.css         # Variables, reset, typography, layout, buttons
-│           ├── 02-dashboard.css    # Dashboard cards, quick-log bar
-│           ├── 03-medical.css      # Reports grid, dropzone, medicine tracker
-│           ├── 04-fitness.css      # Fitness page, calendar, activity history
-│           ├── 05-food.css         # Food tracker, hydration bottle
-│           ├── 06-wellness.css     # Journal, sleep, body, mood, habits
-│           ├── 07-medical2.css     # Symptoms, vitals, emergency card
-│           └── 08-features.css     # Progress, report, notifications, search, export
-│
-├── templates/
-│   └── index.html            # Single-page app shell (2 500 lines)
-│
-├── food_data.py              # 400+ item food database with nutrition data
-├── fitness_sync.py           # Strava / Garmin / Google Fit sync helpers
-├── scheduler.py              # Background job scheduler (medicine reminders)
-├── mediscan.db               # SQLite database (created on first run)
-└── uploads/                  # Uploaded medical report files
-```
+Flask + vanilla JS + SQLite (PostgreSQL-ready), with zero third-party
+auth dependencies.
 
 ---
 
-## Quick Start
+## Features
+
+- **Multi-user accounts** — pure-Python auth (PBKDF2 + signed session
+  cookies), email verification, password reset, session revocation,
+  per-user data isolation across every table
+- **Trackers** — food & nutrition (400+ item Indian-leaning food DB,
+  TDEE targets), hydration, sleep, mood journal, habits with streaks,
+  medicines with dose/stock tracking, symptoms, vitals, body metrics,
+  workouts (Strava / Google Fit / Apple Health import)
+- **Family sharing** — invite by email; every member controls exactly
+  which categories they share (all off by default)
+- **Insights** — daily health score, weekly digest (in-app + Sunday
+  email), mood×sleep correlation, progress charts, global search
+- **PWA** — installable, offline shell, Web Push reminders that fire
+  with the tab closed (medicine doses, water pace, evening nudges)
+- **Mobile-first** — bottom tab bar layout under 768px, quick-log
+  floating button, "water 500" style commands in search
+
+## Quick start
 
 ```bash
-# Install dependencies
-pip install flask
-
-# Run (creates DB automatically)
-python app.py
-# → http://localhost:5000
+pip install -r requirements.txt
+cp .env.example .env        # optional in dev — defaults just work
+python app.py               # → http://localhost:5000
 ```
 
----
+The SQLite database (`medeasy.db`) and schema are created on first run.
+Emails (verification, reset, digest) print to stderr until SMTP_* env
+vars are set. See `DEPLOY.md` for the production checklist
+(PostgreSQL via DATABASE_URL, gunicorn, HTTPS cookies, CSP).
 
-## Development Workflow
+## Tests
 
-### Adding a new API endpoint
-1. Decide which **domain** it belongs to (food, fitness, wellness, etc.)
-2. Add the DB function to `db/<domain>.py`
-3. Re-export it from `db/__init__.py`
-4. Add the Flask route to `routes/<domain>.py` using `@bp.route`
-5. No changes needed to `app.py`
-
-### Adding new frontend JS
-1. Edit the relevant `static/js/modules/XX-<name>.js`
-2. Rebuild the bundle: `cat static/js/modules/*.js > static/js/app.js`
-3. The `<script src="/static/js/app.js">` in `index.html` picks it up
-
-### Adding new CSS
-1. Edit the relevant `static/css/modules/XX-<name>.css`
-2. Rebuild the bundle: `cat static/css/modules/*.css > static/css/style.css`
-
-### Rebuild scripts
 ```bash
-# Rebuild JS bundle
-cat static/js/modules/*.js > static/js/app.js
-
-# Rebuild CSS bundle
-cat static/css/modules/*.css > static/css/style.css
+pytest tests/    # 145 tests: API, isolation, family, auth, digest, push
 ```
 
----
+## Project structure
 
-## Database Schema
+```
+app.py            # Flask app factory + inline route fallback
+config.py         # Env-driven configuration
+auth.py           # Sessions, tokens, rate limiting, security headers
+mailer.py         # SMTP email (stderr fallback in dev)
+push.py           # Web Push via pywebpush (optional dependency)
+scheduler.py      # Background jobs: sync, reminders, weekly digest
+fitness_sync.py   # Strava / Garmin / Google Fit clients
+food_data.py      # Food & nutrition database
 
-| Table               | Domain        | Purpose |
-|---------------------|---------------|---------|
-| reports             | Medical       | Uploaded health reports |
-| medicines           | Medical       | Medicine list with stock tracking |
-| dose_logs           | Medical       | Per-dose taken/missed log |
-| fitness_activities  | Fitness       | Workouts, runs, gym sessions |
-| oauth_tokens        | Fitness       | Strava/Garmin/Google tokens |
-| sync_log            | Fitness       | Sync history per service |
-| user_profile        | Profile       | Name, weight, height, goal |
-| food_logs           | Nutrition     | Every logged meal |
-| custom_foods        | Nutrition     | User-created food items |
-| thoughts            | Wellness      | Daily journal entries |
-| todos               | Wellness      | Tasks with reminders |
-| hydration_logs      | Wellness      | Water intake per day |
-| sleep_logs          | Wellness      | Sleep duration & quality |
-| body_metrics        | Wellness      | Weight, BMI, body fat |
-| habits              | Habits        | Habit definitions |
-| habit_logs          | Habits        | Daily completion records |
-| symptoms            | Medical       | Logged symptoms with severity |
-| vitals              | Medical       | BP, blood sugar, heart rate |
-| emergency_info      | Medical       | Blood type, contacts, insurance |
-| notification_log    | System        | All app notifications |
+db/               # Database layer, one module per domain
+  core.py         #   connection (SQLite/PostgreSQL), schema, migrations
+  reports|medicines|fitness|food|wellness|health|insights|family.py
+
+routes/           # Flask blueprints mirroring the db/ domains
+static/
+  js/app.js       # Single-file frontend (no framework)
+  css/style.css   # Single-file styles
+  sw.js           # Service worker (app shell + push)
+  manifest.json   # PWA manifest
+templates/
+  index.html      # SPA shell
+tests/            # pytest suite
+```
+
+## Conventions
+
+- New API endpoint: DB function in `db/<domain>.py` → re-export in
+  `db/__init__.py` → route in `routes/<domain>.py`. `app.py` stays
+  untouched.
+- All DB queries are scoped by `current_user_id()`; background jobs
+  use `user_context(uid)`.
+- No inline `on*=` handlers (strict CSP) — use `data-ev-click` etc.,
+  interpreted by the dispatcher at the top of `app.js`.
+- SQL sticks to the portable subset SQLite and PostgreSQL both accept.
