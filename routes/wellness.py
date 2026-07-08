@@ -443,8 +443,8 @@ def api_del_habit(hid):
 @require_auth
 def api_toggle_habit(hid):
     d = request.json or {}
-    toggle_habit_log(hid, d.get('date_key', today_iso(get_user_timezone())))
-    return jsonify({'success': True, 'done': True})
+    result = toggle_habit_log(hid, d.get('date_key', today_iso(get_user_timezone())))
+    return jsonify({'success': True, **result})
 
 # ── Symptoms ──────────────────────────────────────────────────────────────────
 @bp.route('/api/symptoms')

@@ -884,12 +884,8 @@ def api_delete_habit(hid):
     delete_habit(hid)
     return jsonify({'success': True})
 
-@bp.route('/api/habits/<hid>/toggle', methods=['POST'])
-@require_auth
-def api_toggle_habit(hid):
-    date_key = (request.json or {}).get('date_key', today_iso(get_user_timezone()))
-    result = toggle_habit_log(hid, date_key)
-    return jsonify({'success': True, **result})
+# NOTE: /api/habits/<hid>/toggle lives in routes/wellness.py — a duplicate
+# definition here was dead code (wellness registers first) and was removed.
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Symptoms Routes

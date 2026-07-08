@@ -481,6 +481,77 @@ async function signOut() {
   showAuthScreen();
 }
 
+// ── Celebrations: confetti + milestone card ───────────────────────
+const STREAK_MILESTONES = [7, 30, 100, 365];
+
+function confettiBurst() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = ['#0E8F7E', '#2563EB', '#D97706', '#7C3AED', '#E53E3E', '#16A34A'];
+  const n = 42;
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement('div');
+    const size = 6 + Math.random() * 6;
+    p.style.cssText =
+      `position:fixed;top:-12px;left:${8 + Math.random() * 84}vw;z-index:10001;` +
+      `width:${size}px;height:${size * 0.6}px;pointer-events:none;` +
+      `background:${colors[i % colors.length]};border-radius:2px`;
+    document.body.appendChild(p);
+    const fall = p.animate([
+      { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+      { transform: `translateY(${70 + Math.random() * 25}vh) ` +
+                   `translateX(${(Math.random() - 0.5) * 30}vw) ` +
+                   `rotate(${360 + Math.random() * 540}deg)`, opacity: 0 },
+    ], { duration: 1600 + Math.random() * 1200, easing: 'cubic-bezier(.2,.6,.4,1)' });
+    fall.onfinish = () => p.remove();
+  }
+}
+
+function celebrate(title, sub = '') {
+  confettiBurst();
+  const card = document.createElement('div');
+  card.style.cssText =
+    'position:fixed;top:38%;left:50%;transform:translate(-50%,-50%) scale(.9);' +
+    'background:var(--gray-0);border:1px solid var(--gray-100);border-radius:18px;' +
+    'padding:26px 34px;text-align:center;z-index:10002;' +
+    'box-shadow:0 20px 60px rgba(0,0,0,.25);transition:transform .25s, opacity .3s';
+  card.innerHTML =
+    `<div style="font-size:34px;margin-bottom:8px">🎉</div>` +
+    `<div style="font-size:16px;font-weight:700;color:var(--gray-900)">${escapeHtml(title)}</div>` +
+    (sub ? `<div style="font-size:12.5px;color:var(--gray-400);margin-top:5px">${escapeHtml(sub)}</div>` : '');
+  document.body.appendChild(card);
+  requestAnimationFrame(() => { card.style.transform = 'translate(-50%,-50%) scale(1)'; });
+  setTimeout(() => { card.style.opacity = '0'; setTimeout(() => card.remove(), 350); }, 2600);
+}
+
+function _celebrateOnce(key, title, sub) {
+  const k = `me_celebrated_${_currentUser?.id || 'x'}_${key}`;
+  if (localStorage.getItem(k)) return;
+  localStorage.setItem(k, '1');
+  celebrate(title, sub);
+}
+
+// Called after any habit toggle — fires on streak milestones and
+// on completing every habit for the day (each at most once)
+async function checkHabitCelebrations() {
+  const d = await fetch('/api/habits', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  const habits = d?.habits || [];
+  if (!habits.length) return;
+  for (const h of habits) {
+    if (h.done_today && STREAK_MILESTONES.includes(h.streak || 0)) {
+      _celebrateOnce(`streak_${h.id}_${h.streak}`,
+                     `${h.streak}-day streak!`,
+                     `“${h.name}” — that's real consistency`);
+      return;
+    }
+  }
+  if (habits.every(h => h.done_today)) {
+    _celebrateOnce(`allhabits_${localToday()}`,
+                   'All habits done today ✅',
+                   `${habits.length} of ${habits.length} — clean sweep`);
+  }
+}
+
 // ── Quick-log FAB + sheet ─────────────────────────────────────────
 function toggleQuickLog() {
   const sheet = document.getElementById('quick-log-sheet');
@@ -568,6 +639,7 @@ async function quickToggleHabit(id) {
   const chip = document.getElementById(`qlg-habit-${id}`);
   if (chip && r) chip.classList.toggle('done', !!r.done);
   try { loadWellnessStrip(); } catch (e) {}
+  if (r?.done) { try { checkHabitCelebrations(); } catch (e) {} }
 }
 
 async function quickCopyYesterday() {
@@ -5308,6 +5380,7 @@ async function toggleHabit(id, date) {
   if (r?.success) {
     loadHabits();
     loadWellnessStrip();
+    if (r?.done) { try { checkHabitCelebrations(); } catch (e) {} }
   } else {
     if (card) card.style.opacity = '1';
     showToast('Could not update habit', 'error');
