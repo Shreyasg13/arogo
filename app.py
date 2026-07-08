@@ -84,6 +84,29 @@ def create_app(config=Config):
         print('[WARN] Falling back to inline routes (auth will not be available)', file=sys.stderr)
         _register_inline_routes(app)
 
+    # ── /api/v1/* aliases ────────────────────────────────────────────────────
+    # Mobile clients get a versioned surface without duplicating any code:
+    # every /api/ and /auth/ route is also reachable under /api/v1/.
+    for rule in list(app.url_map.iter_rules()):
+        if rule.rule.startswith('/api/v1/'):
+            continue
+        if rule.rule.startswith('/api/'):
+            alias = '/api/v1' + rule.rule[len('/api'):]
+        elif rule.rule.startswith('/auth/'):
+            alias = '/api/v1' + rule.rule
+        else:
+            continue
+        app.add_url_rule(alias, endpoint='v1_' + rule.endpoint,
+                         view_func=app.view_functions[rule.endpoint],
+                         methods=rule.methods - {'HEAD', 'OPTIONS'})
+
+    @app.errorhandler(500)
+    def server_error(e):
+        from flask import jsonify, request
+        if request.path.startswith(('/api/', '/auth/')):
+            return jsonify({'error': 'Internal server error'}), 500
+        return e
+
     @app.after_request
     def apply_security_headers(response):
         try:

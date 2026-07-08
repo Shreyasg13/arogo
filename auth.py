@@ -240,7 +240,15 @@ def clear_auth_cookie(response):
 
 
 def get_user_id_from_request() -> str | None:
-    """Read and verify the session cookie. Return user_id or None."""
+    """Return the authenticated user_id, or None.
+
+    Two transports, same signed token and revocation rules:
+      - Authorization: Bearer <token>  (mobile / API clients)
+      - me_session HttpOnly cookie     (the web app)
+    """
+    header = request.headers.get('Authorization', '')
+    if header.startswith('Bearer '):
+        return read_token(header[7:].strip())
     token = request.cookies.get(COOKIE_NAME)
     if not token:
         return None

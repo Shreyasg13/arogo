@@ -124,6 +124,40 @@ def login():
     return resp
 
 
+# ── Token issue (mobile / API clients) ─────────────────────────────────────────
+
+@bp.route('/auth/token', methods=['POST'])
+@rate_limit_auth
+def issue_token():
+    """Same credential check as login, but returns the token in the body
+    for clients that can't use cookies (native apps, scripts).
+    Send it back as `Authorization: Bearer <token>`. Tokens expire after
+    7 days and die immediately on password change/reset."""
+    from auth import make_token, TOKEN_MAX_AGE
+    d     = request.json or {}
+    email = (d.get('email') or '').strip().lower()
+    pw    = d.get('password') or ''
+    if not email or not pw:
+        return jsonify({'error': 'Email and password required'}), 400
+
+    row = execute('SELECT * FROM users WHERE email = ?', (email,), fetchone=True)
+    dummy_hash = 'a' * 65 + ':' + 'b' * 64
+    valid = check_password(pw, row['password_hash'] if row else dummy_hash)
+    if not row or not valid:
+        return jsonify({'error': 'Incorrect email or password'}), 401
+
+    execute('UPDATE users SET last_login = ? WHERE id = ?',
+            (now_iso(), row['id']), commit=True)
+    return jsonify({
+        'success': True,
+        'token': make_token(row['id']),
+        'token_type': 'Bearer',
+        'expires_in': TOKEN_MAX_AGE,
+        'user': {'id': row['id'], 'email': row['email'], 'name': row['name'],
+                 'verified': bool(row['verified'])},
+    })
+
+
 # ── Logout ─────────────────────────────────────────────────────────────────────
 
 @bp.route('/auth/logout', methods=['POST'])
