@@ -790,11 +790,13 @@ function renderFamilyGroup(g) {
 
   const memberCards = g.members.map(m => {
     const shared = FAMILY_CATEGORIES.filter(([f]) => m.shares[f]);
-    const badges = shared.length
+    let badges = shared.length
       ? shared.map(([, icon, label]) =>
           `<span style="font-size:11px;background:var(--gray-50);border-radius:6px;padding:2px 8px">${icon} ${label}</span>`).join(' ')
       : '<span style="font-size:11px;color:var(--gray-400)">Shares nothing yet</span>';
     const isMe = _currentUser && m.user_id === _currentUser.id;
+    if (m.alerts_on)
+      badges += ' <span style="font-size:11px;background:var(--amber-50);border-radius:6px;padding:2px 8px">🚨 dose alerts</span>';
     const actions = [];
     if (!isMe && shared.length)
       actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="toggleFamilySummary('${m.user_id}')">View shared data</button>`);
@@ -823,6 +825,16 @@ function renderFamilyGroup(g) {
              data-ev-change="saveFamilyConsent('${f}', this.checked)">
       ${icon} ${label}
     </label>`).join('');
+
+  // Caregiver alerts — only offered while medicines are shared
+  const alertToggle = g.my_consent.share_medicines ? `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;
+                  margin-top:12px;padding:10px 12px;border:1px solid var(--amber-100);
+                  border-radius:10px;background:var(--amber-50)">
+      <input type="checkbox" ${g.my_alerts ? 'checked' : ''}
+             data-ev-change="saveFamilyConsent('alert_missed_doses', this.checked)">
+      🚨 Alert my family if I miss a dose by 2+ hours
+    </label>` : '';
 
   const inviteSection = isOwner ? `
     <div class="panel" style="padding:18px 20px;margin-bottom:16px">
@@ -855,6 +867,7 @@ function renderFamilyGroup(g) {
       </div>
       <p style="font-size:12px;color:var(--gray-400)">You share only what you switch on below. Changes apply immediately.</p>
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">${consentToggles}</div>
+      ${alertToggle}
     </div>
     ${inviteSection}
     <div>${memberCards}</div>`;

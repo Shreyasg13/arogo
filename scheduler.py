@@ -148,6 +148,56 @@ def _push_reminders():
         print(f'[scheduler] Push reminder error: {e}')
 
 
+# ── Caregiver alerts: tell the family when a dose is 2h+ overdue ─────────────
+
+def _caregiver_alerts():
+    """For members who opted in (and share medicines), notify the rest of
+    their family group by push + email when a dose is 2+ hours overdue.
+    Deduped per dose per day via the watched member's notification_log."""
+    try:
+        import push
+        import mailer
+        watched = execute("""
+            SELECT m.user_id, m.group_id, u.name, u.email FROM family_members m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.alert_missed_doses=1 AND m.share_medicines=1""", fetchall=True)
+        for w in watched:
+            uid = w['user_id']
+            try:
+                with user_context(uid):
+                    from db import get_today_doses
+                    now = _user_local_now(uid)
+                    today, hhmm = now.strftime('%Y-%m-%d'), now.strftime('%H:%M')
+                    overdue = [d for d in get_today_doses()
+                               if not d.get('taken')
+                               and (_mins_since(d.get('time') or '', hhmm) or 0) >= 120]
+                for d in overdue:
+                    key = f"caregiver:{d['med_id']}:{d['time']}:{today}"
+                    if _pushed_today(uid, key, today):
+                        continue
+                    name = w['name'] or w['email']
+                    title = f"🚨 {name} missed a dose"
+                    body = (f"{d.get('med_name', 'A medicine')} was scheduled at "
+                            f"{d['time']} and hasn't been marked as taken.")
+                    others = execute("""
+                        SELECT u.id, u.email, u.name FROM family_members m
+                        JOIN users u ON u.id = m.user_id
+                        WHERE m.group_id=? AND m.user_id<>?""",
+                        (w['group_id'], uid), fetchall=True)
+                    for o in others:
+                        push.push_to_user(o['id'], title, body, '/')
+                        mailer.send_email(
+                            o['email'], title,
+                            f"Hi {o['name'] or 'there'},\n\n{body}\n\n"
+                            f"They opted in to these alerts so you can check on them.\n"
+                            f"Open MedEasy: {mailer.APP_BASE_URL}/\n")
+                    _mark_pushed(uid, key, title, body)
+            except Exception as e:
+                print(f"[scheduler] caregiver alert for {uid[:8]}: {e}")
+    except Exception as e:
+        print(f'[scheduler] Caregiver alert error: {e}')
+
+
 def _send_weekly_digests():
     """Email the weekly digest to every opted-in user (Sunday evenings).
     Deduped per user per week via notification_log."""
@@ -190,6 +240,7 @@ def _run_loop():
     schedule.every().day.at("05:00").do(_daily_sync)
     schedule.every().hour.do(_check_missed_doses)
     schedule.every(5).minutes.do(_push_reminders)
+    schedule.every(15).minutes.do(_caregiver_alerts)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     # Also do an initial sync 30 s after startup
     schedule.every(30).seconds.do(lambda: (schedule.cancel_job(schedule.jobs[-1]), _daily_sync()))
@@ -217,6 +268,8 @@ def _run_loop_stdlib():
             _check_missed_doses()
         if now.minute % 5 == 0:
             _push_reminders()
+        if now.minute % 15 == 0:
+            _caregiver_alerts()
         time.sleep(60)
 
 def start_scheduler():

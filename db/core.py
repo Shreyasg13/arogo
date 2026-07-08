@@ -334,6 +334,7 @@ CREATE TABLE IF NOT EXISTS family_members (
     share_medicines INTEGER DEFAULT 0,
     share_food INTEGER DEFAULT 0,
     share_symptoms INTEGER DEFAULT 0,
+    alert_missed_doses INTEGER NOT NULL DEFAULT 0,
     joined_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS family_invites (
@@ -438,6 +439,14 @@ def migrate_add_weekly_digest_flag():
     except Exception:
         pass  # already exists
 
+
+def migrate_add_caregiver_alerts():
+    """family_members.alert_missed_doses — caregiver alert opt-in."""
+    try:
+        execute("ALTER TABLE family_members ADD COLUMN alert_missed_doses INTEGER NOT NULL DEFAULT 0")
+    except Exception:
+        pass  # already exists
+
 def migrate_add_user_id():
     """Add user_id column to all data tables. Safe to run multiple times."""
     tables = [
@@ -506,5 +515,6 @@ def init_db():
     migrate_add_timezone()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
+    migrate_add_caregiver_alerts()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

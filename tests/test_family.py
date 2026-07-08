@@ -187,6 +187,78 @@ class TestConsent:
         assert anon.get("/api/family").status_code == 401
 
 
+class TestCaregiverAlerts:
+    def test_alerts_require_medicine_sharing(self, dave, group):
+        r = dave.post("/api/family/consent", json={"alert_missed_doses": True})
+        assert r.status_code == 400
+        assert "medicine sharing" in r.get_json()["error"]
+
+    def test_overdue_dose_alerts_family_once(self, app, carol, dave, group, monkeypatch):
+        import datetime as dt
+        import push as push_module
+        import mailer
+        import scheduler
+
+        # Dave shares medicines and opts in to alerts
+        r = dave.post("/api/family/consent",
+                      json={"share_medicines": True, "alert_missed_doses": True})
+        assert r.get_json()["consent"]["alert_missed_doses"] is True
+
+        # A dose scheduled at 09:00, "now" mocked to noon → 3h overdue
+        r = dave.post("/api/medicines", json={
+            "name": "AlertPill", "dosage": "10", "times": ["09:00"]})
+        assert r.status_code == 200
+        noon = dt.datetime.combine(dt.date.today(), dt.time(12, 0))
+        monkeypatch.setattr(scheduler, "_user_local_now", lambda uid: noon)
+
+        pushes, mails = [], []
+        monkeypatch.setattr(push_module, "push_to_user",
+                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+        monkeypatch.setattr(mailer, "send_email",
+                            lambda to, s, txt: mails.append({"to": to, "subject": s}) or True)
+
+        scheduler._caregiver_alerts()
+
+        carol_id = next(m["user_id"] for m in group["members"]
+                        if m["email"] == "carol@medeasy.test")
+        dave_id = next(m["user_id"] for m in group["members"]
+                       if m["email"] == "dave@medeasy.test")
+        alert_pushes = [p for p in pushes if "missed a dose" in p["title"]]
+        assert any(p["uid"] == carol_id for p in alert_pushes), "Carol wasn't alerted"
+        assert not any(p["uid"] == dave_id for p in alert_pushes), \
+            "the watched member shouldn't be alerted about themselves"
+        assert any(m["to"] == "carol@medeasy.test" for m in mails)
+
+        # Second run within the same day: deduped
+        pushes.clear(); mails.clear()
+        scheduler._caregiver_alerts()
+        assert not pushes and not mails
+
+    def test_taken_dose_never_alerts(self, app, dave, group, monkeypatch):
+        import datetime as dt
+        import push as push_module
+        import scheduler
+
+        r = dave.post("/api/medicines", json={
+            "name": "TakenAlertPill", "dosage": "10", "times": ["08:00"]})
+        mid = r.get_json()["medicine"]["id"]
+        dave.post(f"/api/medicines/{mid}/log", json={"time": "08:00", "taken": True})
+
+        noon = dt.datetime.combine(dt.date.today(), dt.time(12, 0))
+        monkeypatch.setattr(scheduler, "_user_local_now", lambda uid: noon)
+        pushes = []
+        monkeypatch.setattr(push_module, "push_to_user",
+                            lambda uid, t, b, url='/': pushes.append(t) or 1)
+        scheduler._caregiver_alerts()
+        assert not [t for t in pushes if "TakenAlertPill" in t]
+
+    def test_withdrawing_medicine_sharing_silences_alerts(self, dave, group):
+        r = dave.post("/api/family/consent", json={"share_medicines": False})
+        c = r.get_json()["consent"]
+        assert c["share_medicines"] is False
+        assert c["alert_missed_doses"] is False
+
+
 class TestMemberManagement:
     def test_member_cannot_remove_others(self, dave, group):
         carol_id = next(m["user_id"] for m in group["members"]

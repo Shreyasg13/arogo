@@ -55,7 +55,7 @@ def get_my_group() -> dict | None:
     members = execute("""
         SELECT m.user_id, m.role, m.joined_at,
                m.share_sleep, m.share_vitals, m.share_medicines,
-               m.share_food, m.share_symptoms,
+               m.share_food, m.share_symptoms, m.alert_missed_doses,
                u.name, u.email
         FROM family_members m JOIN users u ON u.id = m.user_id
         WHERE m.group_id=? ORDER BY m.joined_at""",
@@ -64,10 +64,12 @@ def get_my_group() -> dict | None:
         'id': group['id'], 'name': group['name'], 'owner_id': group['owner_id'],
         'my_role': me['role'],
         'my_consent': {f: bool(me[f]) for f in CONSENT_FIELDS},
+        'my_alerts': bool(me['alert_missed_doses']),
         'members': [{
             'user_id': m['user_id'], 'name': m['name'], 'email': m['email'],
             'role': m['role'], 'joined_at': m['joined_at'],
             'shares': {f: bool(m[f]) for f in CONSENT_FIELDS},
+            'alerts_on': bool(m['alert_missed_doses']),
         } for m in members],
     }
     if me['role'] == 'owner':
@@ -167,17 +169,30 @@ def update_consent(flags: dict) -> dict:
     me = my_membership()
     if not me:
         raise ValueError('You are not in a family group')
+
+    # Caregiver alerts only make sense while medicines are shared
+    if flags.get('alert_missed_doses'):
+        sharing_meds = flags.get('share_medicines', bool(me['share_medicines']))
+        if not sharing_meds:
+            raise ValueError('Turn on medicine sharing first — alerts tell your '
+                             'family about missed doses')
+
     sets, params = [], []
-    for f in CONSENT_FIELDS:
+    for f in CONSENT_FIELDS + ['alert_missed_doses']:
         if f in flags:
             sets.append(f"{f}=?")
             params.append(1 if flags[f] else 0)
+    # Withdrawing medicine sharing also silences the alerts
+    if flags.get('share_medicines') is False and 'alert_missed_doses' not in flags:
+        sets.append("alert_missed_doses=0")
     if sets:
         params.append(me['id'])
         execute(f"UPDATE family_members SET {', '.join(sets)} WHERE id=?",
                 tuple(params), commit=True)
     me = my_membership()
-    return {f: bool(me[f]) for f in CONSENT_FIELDS}
+    out = {f: bool(me[f]) for f in CONSENT_FIELDS}
+    out['alert_missed_doses'] = bool(me['alert_missed_doses'])
+    return out
 
 
 # ── Shared data (consent-gated) ───────────────────────────────────────────────
