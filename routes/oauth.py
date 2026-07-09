@@ -1,6 +1,8 @@
 """routes/oauth.py — OAuth flows: Strava, Garmin, Google Fit."""
-from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from flask import (Blueprint, request, jsonify, send_from_directory,
+                   current_app, redirect, render_template)
 import os, json as json_mod
+from auth import require_auth
 from db import *
 from config import Config
 
@@ -8,6 +10,7 @@ import requests
 bp = Blueprint("oauth", __name__)
 
 @bp.route('/oauth/strava/start')
+@require_auth
 def strava_start():
     from fitness_sync import strava
     if not os.environ.get('STRAVA_CLIENT_ID'):
@@ -15,6 +18,7 @@ def strava_start():
     return redirect(strava.get_auth_url())
 
 @bp.route('/oauth/strava/callback')
+@require_auth
 def strava_callback():
     from fitness_sync import strava
     code = request.args.get('code')
@@ -37,6 +41,7 @@ def strava_callback():
 # ── Garmin ────────────────────────────────────────────────────────────────────
 
 @bp.route('/oauth/garmin/start')
+@require_auth
 def garmin_start():
     from fitness_sync import garmin
     if not os.environ.get('GARMIN_CONSUMER_KEY'):
@@ -49,6 +54,7 @@ def garmin_start():
         return jsonify({'error': str(e)}), 500
 
 @bp.route('/oauth/garmin/callback')
+@require_auth
 def garmin_callback():
     from fitness_sync import garmin
     oauth_token    = request.args.get('oauth_token', '')
@@ -68,6 +74,7 @@ def garmin_callback():
 # ── Google Fit ────────────────────────────────────────────────────────────────
 
 @bp.route('/oauth/google/start')
+@require_auth
 def google_start():
     from fitness_sync import google_fit
     if not os.environ.get('GOOGLE_CLIENT_ID'):
@@ -75,6 +82,7 @@ def google_start():
     return redirect(google_fit.get_auth_url())
 
 @bp.route('/oauth/google/callback')
+@require_auth
 def google_callback():
     from fitness_sync import google_fit
     code = request.args.get('code')

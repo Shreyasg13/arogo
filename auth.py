@@ -203,16 +203,21 @@ def read_family_invite_token(token: str) -> str | None:
 
 
 def make_reset_token(user_id: str) -> str:
-    """One-time password reset token (1h)."""
+    """Single-use password reset token (1h). Embeds the current
+    token_version: the reset itself bumps the version, so the token
+    can never be replayed to reset the password a second time."""
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-reset')
-    return s.dumps({'uid': user_id})
+    return s.dumps({'uid': user_id, 'ver': _token_version(user_id)})
 
 
 def read_reset_token(token: str) -> str | None:
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-reset')
     try:
         data = s.loads(token, max_age=3600)
-        return data.get('uid')
+        uid = data.get('uid')
+        if uid is None or data.get('ver') != _token_version(uid):
+            return None   # already used (version bumped) or malformed
+        return uid
     except Exception:
         return None
 
@@ -299,6 +304,7 @@ def add_security_headers(response):
     response.headers['X-Frame-Options']        = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy']     = 'camera=(), microphone=(), geolocation=()'
     if CSP_ENABLED:
         response.headers['Content-Security-Policy'] = CSP_POLICY
     if COOKIE_SECURE:
