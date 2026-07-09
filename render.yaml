@@ -1,0 +1,42 @@
+# Render blueprint — deploy MedEasy with one click from the dashboard
+# (New + → Blueprint → point at this repo). Fill in the sync:false
+# env vars in the dashboard after the first deploy.
+services:
+  - type: web
+    name: medeasy
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT "app:create_app()"
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: SCHEDULER_ENABLED
+        # gunicorn workers don't run the scheduler anyway (no __main__);
+        # run reminders/digests via a separate worker or cron if needed
+        value: "0"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medeasy-db
+          property: connectionString
+      - key: APP_BASE_URL
+        sync: false   # set to the public URL after first deploy
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+databases:
+  - name: medeasy-db
+    plan: free

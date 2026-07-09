@@ -11,21 +11,24 @@
 | `SMTP_HOST/PORT/USER/PASS/FROM` | your SMTP provider (Gmail app password, Brevo, Mailgun…) |
 | `APP_BASE_URL` | public URL — used in verification / reset / invite email links |
 
-## PostgreSQL smoke test (do this once before going live)
+## PostgreSQL status: VALIDATED ✅
 
-The PG backend is code-complete but has not been run against a live server
-(no Postgres on the dev machine). Verify with a free Neon/Supabase instance:
+The full test suite (175 tests — every API, isolation, family, auth,
+digest, push and token flow) passes against a real PostgreSQL 16 server
+(verified 2026-07-08 with portable binaries). Setting `DATABASE_URL`
+is all it takes to switch backends.
 
-```bash
-export DATABASE_URL=postgresql://...     # from the provider
-pip install psycopg2-binary
-python app.py                            # expect: [DB] Ready — PostgreSQL
-```
+## Deploying on Render (recommended — one blueprint)
 
-Then click through: register → onboarding → log food/sleep/water →
-dashboard + progress views → invite a second account to a family group.
-All SQL is written in the portable subset both engines accept, but this
-click-through is the real confirmation.
+1. Push the repo, then on render.com: **New + → Blueprint** → select the
+   repo. `render.yaml` provisions the web service and a free PostgreSQL
+   database, generates `SECRET_KEY`, and sets the hardening env vars.
+2. After the first deploy, set in the dashboard: `APP_BASE_URL` (the
+   public URL Render assigned) and `SMTP_HOST/USER/PASS/FROM`.
+3. Redeploy. Done — HTTPS, CSP, secure cookies all active.
+
+For Railway/Fly, the `Procfile` covers the start command; supply the
+same env vars from the table above.
 
 ## Security posture (current state)
 
@@ -41,16 +44,23 @@ click-through is the real confirmation.
   than one worker/process, set `SCHEDULER_ENABLED=0` on all but one so
   jobs don't run twice.
 
-## Serving
+## Scheduler under gunicorn
 
-Use a real WSGI server, not `python app.py`:
+`gunicorn "app:create_app()"` does not run the `__main__` block, so the
+background jobs (push reminders, caregiver alerts, weekly digest, OAuth
+sync) don't start with the web service. Run them as ONE separate small
+process (a Render background worker, or locally):
 
 ```bash
-pip install gunicorn
-gunicorn -w 2 -b 0.0.0.0:8000 "app:create_app()"
+python -c "from db.core import init_db; from scheduler import start_scheduler; import time; init_db(); start_scheduler(); time.sleep(1e9)"
 ```
 
-Note: `gunicorn "app:create_app()"` does not run the `__main__` block, so
-the background scheduler doesn't start there. Either run the app once as
-`python app.py`, or start the scheduler from a separate small process
-(`python -c "from db.core import init_db; from scheduler import start_scheduler; import time; init_db(); start_scheduler(); time.sleep(1e9)"`).
+## Post-deploy checklist
+
+- [ ] Register with a real email → verification email arrives → link works
+- [ ] Forgot password → reset email → old session logged out
+- [ ] Install the PWA on a phone; grant notifications → water/dose push
+      arrives with the tab closed (needs the scheduler worker running)
+- [ ] Invite a second account to a family group via email
+- [ ] Sunday digest arrives (or trigger `_send_weekly_digests()` manually)
+- [ ] Lighthouse run on the live URL

@@ -1,6 +1,7 @@
 flask
 itsdangerous
 requests
+gunicorn
 
 # Optional — background job runner (scheduler.py falls back to stdlib without it)
 schedule
