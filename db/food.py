@@ -3,6 +3,8 @@ db/food.py — Food logging, nutrition summary, custom foods, user profile, TDEE
 
 All queries are scoped to the authenticated user via current_user_id().
 """
+from __future__ import annotations
+
 from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
 
 
@@ -171,17 +173,48 @@ def get_weekly_nutrition(days: int = 7) -> list:
     return result
 
 def save_custom_food(data: dict) -> dict:
+    uid = current_user_id()
+    barcode = (data.get('barcode') or '').strip() or None
+    vals = dict(
+        name=data['name'], category=data.get('category', 'Custom'),
+        emoji=data.get('emoji', '🍽️'), serving_g=float(data.get('serving_g', 100)),
+        calories=float(data.get('calories', 0)), protein=float(data.get('protein', 0)),
+        carbs=float(data.get('carbs', 0)), fat=float(data.get('fat', 0)),
+        fiber=float(data.get('fiber', 0)), sugar=float(data.get('sugar', 0)),
+        sodium=float(data.get('sodium', 0)), barcode=barcode)
+
+    # Re-scanning a barcode updates the saved entry instead of duplicating it
+    existing = get_custom_food_by_barcode(barcode) if barcode else None
+    if existing:
+        execute("""UPDATE custom_foods SET
+                     name=?,category=?,emoji=?,serving_g=?,calories=?,protein=?,
+                     carbs=?,fat=?,fiber=?,sugar=?,sodium=?
+                   WHERE id=? AND user_id=?""",
+                (vals['name'], vals['category'], vals['emoji'], vals['serving_g'],
+                 vals['calories'], vals['protein'], vals['carbs'], vals['fat'],
+                 vals['fiber'], vals['sugar'], vals['sodium'],
+                 existing['id'], uid), commit=True)
+        return get_custom_food_by_barcode(barcode)
+
     fid = new_id()
     execute("""INSERT INTO custom_foods
-        (id,name,category,emoji,serving_g,calories,protein,carbs,fat,fiber,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (fid, data['name'], data.get('category','Custom'), data.get('emoji','🍽️'),
-         float(data.get('serving_g',100)), float(data['calories']),
-         float(data.get('protein',0)), float(data.get('carbs',0)),
-         float(data.get('fat',0)), float(data.get('fiber',0)), now_iso(),
-         current_user_id()), commit=True)
+        (id,name,category,emoji,serving_g,calories,protein,carbs,fat,fiber,
+         sugar,sodium,barcode,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (fid, vals['name'], vals['category'], vals['emoji'], vals['serving_g'],
+         vals['calories'], vals['protein'], vals['carbs'], vals['fat'],
+         vals['fiber'], vals['sugar'], vals['sodium'], vals['barcode'],
+         now_iso(), uid), commit=True)
     r = execute("SELECT * FROM custom_foods WHERE id=?", (fid,), fetchone=True)
     return dict(r)
+
+def get_custom_food_by_barcode(barcode: str) -> dict | None:
+    """A previously scanned+saved food, for instant re-scan lookup."""
+    if not barcode:
+        return None
+    r = execute("SELECT * FROM custom_foods WHERE barcode=? AND user_id=? LIMIT 1",
+                (str(barcode), current_user_id()), fetchone=True)
+    return dict(r) if r else None
 
 def list_custom_foods() -> list:
     rows = execute("SELECT * FROM custom_foods WHERE user_id=? ORDER BY name",

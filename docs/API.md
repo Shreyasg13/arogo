@@ -66,6 +66,7 @@ Every route below is also available under the versioned prefix
 
 | Method | Path |
 |---|---|
+| GET | `/api/food/barcode/<code>` |
 | POST | `/api/food/custom` |
 | GET | `/api/food/db` |
 | POST | `/api/food/log` |

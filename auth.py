@@ -304,7 +304,8 @@ def add_security_headers(response):
     response.headers['X-Frame-Options']        = 'SAMEORIGIN'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy']        = 'strict-origin-when-cross-origin'
-    response.headers['Permissions-Policy']     = 'camera=(), microphone=(), geolocation=()'
+    # camera=(self): needed for in-app barcode scanning; mic/geo stay denied
+    response.headers['Permissions-Policy']     = 'camera=(self), microphone=(), geolocation=()'
     if CSP_ENABLED:
         response.headers['Content-Security-Policy'] = CSP_POLICY
     if COOKIE_SECURE:

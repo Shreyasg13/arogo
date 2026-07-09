@@ -308,6 +308,30 @@ def add_custom_food():
     f = save_custom_food(data)
     return jsonify({'success': True, 'food': f})
 
+
+@bp.route('/api/food/barcode/<code>')
+@require_auth
+def api_food_barcode(code):
+    """Scan a food barcode. Returns the user's previously-saved entry
+    instantly if they've scanned it before ('saved'); otherwise looks it
+    up on Open Food Facts ('openfoodfacts'). 404 if nothing is found."""
+    import food_barcode
+    if not food_barcode.valid_barcode(code):
+        return jsonify({'error': 'Invalid barcode'}), 400
+
+    saved = get_custom_food_by_barcode(code)
+    if saved:
+        saved['source'] = 'saved'
+        return jsonify({'found': True, 'food': saved})
+
+    product = food_barcode.lookup_barcode(code)
+    if not product:
+        return jsonify({'found': False,
+                        'error': 'No product found for that barcode. '
+                                 'You can still add it manually.',
+                        'barcode': code}), 404
+    return jsonify({'found': True, 'food': product})
+
 def generate_nutrition_suggestions(totals, targets, profile):
     suggestions = []
     cal   = totals.get('calories', 0)

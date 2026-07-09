@@ -584,6 +584,144 @@ async function checkHabitCelebrations() {
   }
 }
 
+// ── Barcode food scanner ──────────────────────────────────────────
+let _bcStream = null;      // active MediaStream (must be stopped on close)
+let _bcScanning = false;
+
+async function openBarcodeScanner() {
+  const modal = document.getElementById('barcode-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.getElementById('bc-result').style.display = 'none';
+  document.getElementById('bc-manual').value = '';
+
+  const stage = document.getElementById('bc-scan-stage');
+  const hint = document.getElementById('bc-scan-hint');
+
+  // BarcodeDetector is Chrome/Android only; elsewhere use manual entry
+  if (!('BarcodeDetector' in window)) {
+    stage.style.display = 'none';
+    return;
+  }
+  stage.style.display = '';
+  try {
+    _bcStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' } });
+    const video = document.getElementById('bc-video');
+    video.srcObject = _bcStream;
+    await video.play();
+    const detector = new BarcodeDetector({
+      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39'] });
+    _bcScanning = true;
+    _scanLoop(video, detector, hint);
+  } catch (e) {
+    // Permission denied or no camera — fall back to manual entry
+    stage.style.display = 'none';
+    console.warn('[barcode] camera unavailable:', e);
+  }
+}
+
+async function _scanLoop(video, detector, hint) {
+  if (!_bcScanning) return;
+  try {
+    const codes = await detector.detect(video);
+    if (codes && codes.length) {
+      const code = codes[0].rawValue;
+      hint.textContent = 'Found: ' + code;
+      _stopBarcodeCamera();
+      lookupBarcode(code);
+      return;
+    }
+  } catch (e) { /* transient detect errors are fine */ }
+  requestAnimationFrame(() => _scanLoop(video, detector, hint));
+}
+
+function _stopBarcodeCamera() {
+  _bcScanning = false;
+  if (_bcStream) {
+    _bcStream.getTracks().forEach(t => t.stop());
+    _bcStream = null;
+  }
+}
+
+function closeBarcodeScanner() {
+  _stopBarcodeCamera();
+  const modal = document.getElementById('barcode-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function lookupBarcodeManual() {
+  const code = (document.getElementById('bc-manual')?.value || '').trim();
+  if (!/^\d{8,14}$/.test(code)) { showToast('Enter a valid 8–14 digit barcode', 'error'); return; }
+  _stopBarcodeCamera();
+  lookupBarcode(code);
+}
+
+async function lookupBarcode(code) {
+  const box = document.getElementById('bc-result');
+  box.style.display = '';
+  box.innerHTML = '<div style="font-size:13px;color:var(--gray-400)">Looking up…</div>';
+  const r = await fetch(`/api/food/barcode/${encodeURIComponent(code)}`,
+                        {credentials: 'same-origin'});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.found) {
+    box.innerHTML = `
+      <div style="font-size:13px;color:var(--gray-600);margin-bottom:8px">
+        ${escapeHtml(d.error || 'Not found.')}</div>
+      <button class="qlg-chip" data-ev-click="renderScanForm({&quot;barcode&quot;:&quot;${escapeHtml(code)}&quot;,&quot;name&quot;:&quot;&quot;,&quot;serving_g&quot;:100})">Add manually</button>`;
+    return;
+  }
+  renderScanForm(d.food, d.food.source);
+}
+
+function renderScanForm(food, source) {
+  const box = document.getElementById('bc-result');
+  const f = k => Number(food[k] || 0);
+  const src = source === 'saved'
+    ? '<span style="color:var(--teal-600)">✓ Saved earlier</span>'
+    : source === 'openfoodfacts'
+      ? '<span style="color:var(--gray-400)">from Open Food Facts</span>' : '';
+  window._scanBarcode = food.barcode || '';
+  box.innerHTML = `
+    <div style="border-top:1px solid var(--gray-100);padding-top:12px">
+      <div class="qlg-label">Name ${src}</div>
+      <input type="text" class="form-input" id="bc-name" value="${escapeHtml(food.name || '')}"
+             placeholder="Food name" style="width:100%;margin-bottom:6px">
+      <div style="font-size:11px;color:var(--gray-400);margin-bottom:6px">Per ${f('serving_g') || 100}g</div>
+      <div class="bc-nutri-grid">
+        <div><label>Calories</label><input type="number" class="form-input" id="bc-cal" value="${f('calories')}"></div>
+        <div><label>Protein (g)</label><input type="number" class="form-input" id="bc-protein" value="${f('protein')}"></div>
+        <div><label>Carbs (g)</label><input type="number" class="form-input" id="bc-carbs" value="${f('carbs')}"></div>
+        <div><label>Fat (g)</label><input type="number" class="form-input" id="bc-fat" value="${f('fat')}"></div>
+        <div><label>Fiber (g)</label><input type="number" class="form-input" id="bc-fiber" value="${f('fiber')}"></div>
+        <div><label>Sugar (g)</label><input type="number" class="form-input" id="bc-sugar" value="${f('sugar')}"></div>
+        <div><label>Sodium (mg)</label><input type="number" class="form-input" id="bc-sodium" value="${f('sodium')}"></div>
+      </div>
+      <button class="btn-primary" style="width:100%" data-ev-click="saveScannedFood()">Save to my foods</button>
+    </div>`;
+}
+
+async function saveScannedFood() {
+  const val = id => parseFloat(document.getElementById(id)?.value) || 0;
+  const name = (document.getElementById('bc-name')?.value || '').trim();
+  if (!name) { showToast('Give the food a name', 'error'); return; }
+  const payload = {
+    name, barcode: window._scanBarcode || '', serving_g: 100,
+    calories: val('bc-cal'), protein: val('bc-protein'), carbs: val('bc-carbs'),
+    fat: val('bc-fat'), fiber: val('bc-fiber'), sugar: val('bc-sugar'),
+    sodium: val('bc-sodium'), category: 'Scanned',
+  };
+  const r = await fetch('/api/food/custom', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify(payload),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.success) { showToast(d.error || 'Could not save', 'error'); return; }
+  closeBarcodeScanner();
+  showToast(`📷 ${name} saved to your foods`);
+  try { if (document.getElementById('view-food')?.classList.contains('active')) loadFoodTracker(); } catch (e) {}
+}
+
 // ── Quick-log FAB + sheet ─────────────────────────────────────────
 function toggleQuickLog() {
   const sheet = document.getElementById('quick-log-sheet');

@@ -242,7 +242,9 @@ CREATE TABLE IF NOT EXISTS custom_foods (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT DEFAULT 'Custom',
     emoji TEXT DEFAULT '🍽️', serving_g REAL DEFAULT 100,
     calories REAL DEFAULT 0, protein REAL DEFAULT 0, carbs REAL DEFAULT 0,
-    fat REAL DEFAULT 0, fiber REAL DEFAULT 0, created_at TEXT NOT NULL
+    fat REAL DEFAULT 0, fiber REAL DEFAULT 0,
+    sugar REAL DEFAULT 0, sodium REAL DEFAULT 0, barcode TEXT DEFAULT NULL,
+    created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS thoughts (
     id TEXT PRIMARY KEY, content TEXT NOT NULL, mood TEXT DEFAULT 'neutral',
@@ -447,6 +449,16 @@ def migrate_add_caregiver_alerts():
     except Exception:
         pass  # already exists
 
+
+def migrate_add_custom_food_barcode():
+    """custom_foods: barcode (scanned foods) + sugar/sodium from labels."""
+    for col, ddl in [('sugar', 'REAL DEFAULT 0'), ('sodium', 'REAL DEFAULT 0'),
+                     ('barcode', 'TEXT DEFAULT NULL')]:
+        try:
+            execute(f"ALTER TABLE custom_foods ADD COLUMN {col} {ddl}")
+        except Exception:
+            pass  # already exists
+
 def migrate_add_user_id():
     """Add user_id column to all data tables. Safe to run multiple times."""
     tables = [
@@ -516,5 +528,6 @@ def init_db():
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_alerts()
+    migrate_add_custom_food_barcode()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

@@ -2378,7 +2378,10 @@
       <!-- Count + results -->
       <div class="food-results-header">
         <span class="food-results-count" id="food-results-count">Loading…</span>
-        <button class="food-add-custom-btn" data-ev-click="openCustomFoodForm()" id="custom-food-toggle-btn">+ Custom food</button>
+        <div style="display:flex;gap:8px">
+          <button class="food-add-custom-btn" data-ev-click="openBarcodeScanner()" id="scan-food-btn">📷 Scan</button>
+          <button class="food-add-custom-btn" data-ev-click="openCustomFoodForm()" id="custom-food-toggle-btn">+ Custom food</button>
+        </div>
       </div>
 
       <!-- Custom food inline form — hidden by default -->
@@ -2825,6 +2828,38 @@
     </div>
 
     <div id="qlg-yesterday" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ── Barcode scanner ── -->
+<div id="barcode-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeBarcodeScanner')">
+  <div class="qlg-panel" style="max-width:420px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div class="qlg-title" style="flex:1">Scan food barcode</div>
+      <button class="btn-icon" data-ev-click="closeBarcodeScanner()">✕</button>
+    </div>
+
+    <!-- Live camera scan (where BarcodeDetector is supported) -->
+    <div id="bc-scan-stage">
+      <video id="bc-video" playsinline muted
+             style="width:100%;border-radius:12px;background:#000;aspect-ratio:4/3;object-fit:cover"></video>
+      <p id="bc-scan-hint" style="font-size:12px;color:var(--gray-400);text-align:center;margin-top:8px">
+        Point your camera at the barcode
+      </p>
+    </div>
+
+    <!-- Manual entry fallback -->
+    <div style="margin-top:12px">
+      <div class="qlg-label">Or enter the barcode number</div>
+      <div class="qlg-row">
+        <input type="text" inputmode="numeric" class="form-input" id="bc-manual"
+               placeholder="e.g. 8901058000108" style="flex:1">
+        <button class="qlg-chip" data-ev-click="lookupBarcodeManual()">Look up</button>
+      </div>
+    </div>
+
+    <!-- Result / editable nutrients -->
+    <div id="bc-result" style="display:none;margin-top:14px"></div>
   </div>
 </div>
 

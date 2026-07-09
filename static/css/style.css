@@ -4567,3 +4567,18 @@ body { font-family:'DM Sans',sans-serif; background:var(--gray-25); color:var(--
   font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; transition:all .15s;
 }
 .theme-toggle-btn:hover { background:rgba(255,255,255,.09); color:#fff; }
+
+/* ── Barcode scanner modal (reuses .qlg-panel) ── */
+#barcode-modal {
+  position:fixed; inset:0; z-index:470;
+  background:rgba(15,15,25,.55); backdrop-filter:blur(3px);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+}
+.bc-nutri-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+.bc-nutri-grid label { font-size:11px; color:var(--gray-400); display:block; margin-bottom:2px; }
+.bc-nutri-grid input { width:100%; }
+@media (max-width: 768px) {
+  #barcode-modal { align-items:flex-end; padding:0; }
+  #barcode-modal .qlg-panel { max-width:none; border-radius:18px 18px 0 0;
+                              padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
+}
