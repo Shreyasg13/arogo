@@ -6374,7 +6374,7 @@ async function checkLowStock() {
     });
     // Show banner on medicine page
     if (banner) {
-      const names = r.map(m=>`<strong>${m.name}</strong> (${m.days_left}d left)`).join(', ');
+      const names = r.map(m=>`<strong>${escHtml(m.name)}</strong> (${m.days_left}d left)`).join(', ');
       banner.innerHTML = `<div class="low-stock-banner-icon">⚠️</div><div class="low-stock-banner-text">Low stock: ${names}</div>`;
       banner.style.display = 'flex';
     }

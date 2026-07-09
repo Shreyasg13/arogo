@@ -28,7 +28,14 @@ All secrets go in .env (never committed). python-dotenv loads them automatically
 from __future__ import annotations
 
 
-import os, json, time, hashlib, hmac, base64, urllib.parse, datetime, requests, xml.etree.ElementTree as ET
+import os, json, time, hashlib, hmac, base64, urllib.parse, datetime, requests
+# Apple Health exports are user-uploaded XML — parse with defusedxml to
+# block entity-expansion / XML-bomb attacks. Fall back to stdlib only if
+# defusedxml isn't installed (then the /apple/import route stays disabled).
+try:
+    import defusedxml.ElementTree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 from db import (insert_activity, get_token, save_token, update_last_sync,
                 log_sync, list_activities, new_id, now_iso, today_iso)
 
