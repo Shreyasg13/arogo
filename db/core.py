@@ -218,8 +218,9 @@ CREATE TABLE IF NOT EXISTS oauth_tokens (
     connected_at TEXT NOT NULL, last_sync TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS sync_log (
-    id TEXT PRIMARY KEY, service TEXT NOT NULL, status TEXT NOT NULL,
-    activities_synced INTEGER DEFAULT 0, error TEXT DEFAULT '', synced_at TEXT NOT NULL
+    id TEXT PRIMARY KEY, service TEXT NOT NULL, synced_at TEXT NOT NULL,
+    status TEXT NOT NULL, count INTEGER DEFAULT 0, message TEXT DEFAULT '',
+    user_id TEXT NOT NULL DEFAULT 'default'
 );
 CREATE TABLE IF NOT EXISTS user_profile (
     id TEXT PRIMARY KEY, name TEXT DEFAULT '',
@@ -467,7 +468,7 @@ def migrate_add_user_id():
         'habits', 'habit_logs', 'symptoms', 'vitals',
         'emergency_info', 'notification_log', 'reminder_settings',
         'fitness_activities', 'medicines', 'dose_logs', 'reports',
-        'user_profile', 'oauth_tokens',
+        'user_profile', 'oauth_tokens', 'sync_log',
     ]
     for table in tables:
         try:
@@ -491,7 +492,7 @@ DATA_TABLES = [
     'habits', 'habit_logs', 'symptoms', 'vitals',
     'emergency_info', 'notification_log', 'reminder_settings',
     'fitness_activities', 'medicines', 'dose_logs', 'reports',
-    'user_profile', 'oauth_tokens',
+    'user_profile', 'oauth_tokens', 'sync_log',
 ]
 
 

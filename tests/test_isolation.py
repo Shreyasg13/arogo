@@ -274,3 +274,20 @@ class TestUserContext:
         with user_context(alice_id):
             names = {l["food_name"] for l in get_food_logs(today)}
         assert "Alice Secret Salad" in names
+
+    def test_sync_history_is_per_user(self, alice, bob, app):
+        """Fitness sync history must not leak between users."""
+        from db.core import user_context
+        from db import log_sync, get_sync_history
+
+        alice_id = alice.get("/auth/me").get_json()["id"]
+        bob_id = bob.get("/auth/me").get_json()["id"]
+        with user_context(alice_id):
+            log_sync("strava", "success", 7, "alice-sync-marker")
+        with user_context(bob_id):
+            bob_hist = get_sync_history()
+        assert all(h.get("message") != "alice-sync-marker" for h in bob_hist), \
+            "Bob can see Alice's fitness sync history"
+        with user_context(alice_id):
+            alice_hist = get_sync_history()
+        assert any(h.get("message") == "alice-sync-marker" for h in alice_hist)

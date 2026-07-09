@@ -165,17 +165,19 @@ def delete_token(service):
 
 def log_sync(service, status='success', count=0, message=''):
     execute("""
-        INSERT INTO sync_log (id,service,synced_at,status,count,message)
-        VALUES (?,?,?,?,?,?)
-    """, (new_id(), service, now_iso(), status, count, message), commit=True)
+        INSERT INTO sync_log (id,service,synced_at,status,count,message,user_id)
+        VALUES (?,?,?,?,?,?,?)
+    """, (new_id(), service, now_iso(), status, count, message, current_user_id()),
+        commit=True)
 
 
 def get_sync_history(service=None, limit=20):
+    uid = current_user_id()
     if service:
         rows = execute(
-            "SELECT * FROM sync_log WHERE service=? ORDER BY synced_at DESC LIMIT ?",
-            (service, limit), fetchall=True)
+            "SELECT * FROM sync_log WHERE service=? AND user_id=? ORDER BY synced_at DESC LIMIT ?",
+            (service, uid, limit), fetchall=True)
     else:
-        rows = execute("SELECT * FROM sync_log ORDER BY synced_at DESC LIMIT ?",
-                       (limit,), fetchall=True)
+        rows = execute("SELECT * FROM sync_log WHERE user_id=? ORDER BY synced_at DESC LIMIT ?",
+                       (uid, limit), fetchall=True)
     return [dict(r) for r in rows]

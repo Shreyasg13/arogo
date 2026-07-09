@@ -169,7 +169,8 @@ class TestConventions:
         # Regression guard for Phase 2 — checks the highest-risk tables.
         # Source is normalized (quotes/newlines stripped) so multi-line
         # f-string SQL is seen as one statement.
-        for table in ["food_logs", "sleep_logs", "medicines", "thoughts", "vitals"]:
+        for table in ["food_logs", "sleep_logs", "medicines", "thoughts", "vitals",
+                      "sync_log", "notification_log", "hydration_logs"]:
             for f in _py_files("db"):
                 norm = re.sub(r"['\"\n]", " ", _read(f))
                 for m in re.finditer(r"FROM\s+%s\b" % table, norm):
