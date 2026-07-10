@@ -1,5 +1,5 @@
 """
-mailer.py — Outbound email for Arogo Health OS.
+mailer.py — Outbound email for Arogo.
 
 Pure stdlib (smtplib + email.message), configured entirely via environment:
 
@@ -70,7 +70,7 @@ def send_verification_email(to: str, token: str) -> bool:
         'Welcome to Arogo!\n\n'
         'Confirm your email address by opening this link (valid for 24 hours):\n\n'
         f'    {link}\n\n'
-        "If you didn't create a Arogo account, you can ignore this email.\n",
+        "If you didn't create an Arogo account, you can ignore this email.\n",
     )
 
 

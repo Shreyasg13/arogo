@@ -1,4 +1,4 @@
-"""routes/ — Flask Blueprints for Arogo Health OS.
+"""routes/ — Flask Blueprints for Arogo.
 
 Each module is a Blueprint registered in app.py:
   reports   /api/reports, /api/upload, /api/stats

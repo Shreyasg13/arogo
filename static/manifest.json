@@ -1,7 +1,7 @@
 {
-  "name": "Arogo Health OS",
+  "name": "Arogo",
   "short_name": "Arogo",
-  "description": "Your personal health operating system — food, sleep, medicines, fitness and family sharing.",
+  "description": "Health, together — food, sleep, medicines, fitness and family sharing.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

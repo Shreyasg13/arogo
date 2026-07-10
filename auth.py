@@ -1,5 +1,5 @@
 """
-auth.py — Authentication layer for Arogo Health OS
+auth.py — Authentication layer for Arogo
 
 Pure-Python implementation using:
   - PBKDF2-HMAC-SHA256 (260k iterations) for password hashing

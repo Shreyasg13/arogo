@@ -1,5 +1,5 @@
 """
-config.py — Central configuration for Arogo Health OS
+config.py — Central configuration for Arogo
 """
 import os
 

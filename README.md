@@ -1,7 +1,7 @@
-# Arogo Health OS
+# Arogo
 
-Your personal health operating system — food, sleep, medicines, fitness,
-mood and family sharing in one installable web app.
+**Health, together** — food, sleep, medicines, fitness, mood and
+family sharing in one installable web app.
 
 Flask + vanilla JS + SQLite (PostgreSQL-ready), with zero third-party
 auth dependencies.
