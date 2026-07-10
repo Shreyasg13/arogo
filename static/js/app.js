@@ -23,7 +23,7 @@ function _syncThemeToggleUI() {
   if (icon)  icon.textContent  = dark ? '☀️' : '🌙';
   if (label) label.textContent = dark ? 'Light mode' : 'Dark mode';
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = dark ? '#10141A' : '#0D1117';
+  if (meta) meta.content = dark ? '#191612' : '#20362D';
 }
 
 function toggleTheme() {
@@ -518,7 +518,7 @@ const STREAK_MILESTONES = [7, 30, 100, 365];
 
 function confettiBurst() {
   if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const colors = ['#0E8F7E', '#2563EB', '#D97706', '#7C3AED', '#E53E3E', '#16A34A'];
+  const colors = ['#4F8D74', '#5E8299', '#E0A34E', '#D07D4E', '#C15646', '#5A9E70'];
   const n = 42;
   for (let i = 0; i < n; i++) {
     const p = document.createElement('div');
@@ -1050,7 +1050,7 @@ function renderFamilyGroup(g) {
           <div style="flex:1;min-width:180px">
             <div style="font-size:14px;font-weight:600">${escapeHtml(m.name || m.email)}
               ${m.role === 'owner' ? '<span style="font-size:10px;color:var(--gray-400);margin-left:6px">OWNER</span>' : ''}
-              ${isMe ? '<span style="font-size:10px;color:#0E6B5E;margin-left:6px">YOU</span>' : ''}
+              ${isMe ? '<span style="font-size:10px;color:#3E7862;margin-left:6px">YOU</span>' : ''}
             </div>
             <div style="font-size:12px;color:var(--gray-400)">${escapeHtml(m.email)}</div>
           </div>
@@ -1252,7 +1252,7 @@ async function checkFirstRun() {
 
   el.style.display = '';
   el.innerHTML = `
-    <div class="panel" style="padding:18px 20px;border-color:var(--teal-200);background:linear-gradient(135deg,#F0FDFA,#FFFFFF)">
+    <div class="panel" style="padding:18px 20px;border-color:var(--teal-200);background:var(--teal-50)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
         <div style="font-size:15px;font-weight:700;color:var(--gray-900);flex:1">
           👋 Welcome to MedEasy — ${FIRSTRUN_STEPS.length - remaining}/${FIRSTRUN_STEPS.length} done
@@ -2213,11 +2213,11 @@ function renderFitnessNutritionStrip(foodDay, targets) {
   if (!targets) return;
   const t    = foodDay?.summary?.totals || {};
   const defs = [
-    { id:'cal',  val: Math.round(t.calories||0), target: targets.target_calories||2000, unit:'kcal', label:'Calories', color:'#0E8F7E' },
-    { id:'prot', val: Math.round(t.protein||0),  target: targets.protein_g||56,         unit:'g',    label:'Protein',  color:'#2563EB' },
-    { id:'carb', val: Math.round(t.carbs||0),    target: targets.carbs_g||250,          unit:'g',    label:'Carbs',    color:'#D97706' },
-    { id:'fat',  val: Math.round(t.fat||0),      target: targets.fat_g||65,             unit:'g',    label:'Fat',      color:'#7C3AED' },
-    { id:'fiber',val: Math.round(t.fiber||0),    target: targets.fiber_g||30,           unit:'g',    label:'Fiber',    color:'#16A34A' },
+    { id:'cal',  val: Math.round(t.calories||0), target: targets.target_calories||2000, unit:'kcal', label:'Calories', color:'#4F8D74' },
+    { id:'prot', val: Math.round(t.protein||0),  target: targets.protein_g||56,         unit:'g',    label:'Protein',  color:'#5E8299' },
+    { id:'carb', val: Math.round(t.carbs||0),    target: targets.carbs_g||250,          unit:'g',    label:'Carbs',    color:'#E0A34E' },
+    { id:'fat',  val: Math.round(t.fat||0),      target: targets.fat_g||65,             unit:'g',    label:'Fat',      color:'#D07D4E' },
+    { id:'fiber',val: Math.round(t.fiber||0),    target: targets.fiber_g||30,           unit:'g',    label:'Fiber',    color:'#5A9E70' },
   ];
   const R = 18, C = 2 * Math.PI * R; // circumference ~113
 
@@ -2254,7 +2254,7 @@ function renderTypeChart(types) {
   const entries = Object.entries(types).sort((a,b) => b[1]-a[1]);
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--gray-400);font-size:13px">No activities logged yet</div>'; return; }
   const max = entries[0][1];
-  const colors = { running:'#0E8F7E', cycling:'#2563EB', walking:'#D97706', swimming:'#7C3AED', yoga:'#16A34A', gym:'#DC2626', hiking:'#B45309', stretching:'#059669', tennis:'#E53E3E', pickleball:'#E53E3E', basketball:'#EA580C', football:'#16A34A', badminton:'#E53E3E', volleyball:'#EA580C', baseball:'#2563EB', cricket:'#16A34A', golf:'#16A34A', boxing:'#DC2626', martial_arts:'#DC2626', dancing:'#7C3AED', rowing:'#2563EB', climbing:'#B45309', skiing:'#2563EB', snowboarding:'#2563EB', skating:'#2563EB', cycling_indoor:'#2563EB', pilates:'#7C3AED', crossfit:'#DC2626', other:'#9CA3AF' };
+  const colors = { running:'#4F8D74', cycling:'#5E8299', walking:'#E0A34E', swimming:'#D07D4E', yoga:'#5A9E70', gym:'#DC2626', hiking:'#B9803A', stretching:'#059669', tennis:'#C15646', pickleball:'#C15646', basketball:'#EA580C', football:'#5A9E70', badminton:'#C15646', volleyball:'#EA580C', baseball:'#5E8299', cricket:'#5A9E70', golf:'#5A9E70', boxing:'#DC2626', martial_arts:'#DC2626', dancing:'#D07D4E', rowing:'#5E8299', climbing:'#B9803A', skiing:'#5E8299', snowboarding:'#5E8299', skating:'#5E8299', cycling_indoor:'#5E8299', pilates:'#D07D4E', crossfit:'#DC2626', other:'#9CA3AF' };
   const actIcons = { running:'🏃', cycling:'🚴', walking:'🚶', swimming:'🏊', yoga:'🧘', gym:'🏋️', hiking:'⛰️', stretching:'🤸', tennis:'🎾', pickleball:'🏓', basketball:'🏀', football:'⚽', badminton:'🏸', volleyball:'🏐', baseball:'⚾', cricket:'🏏', golf:'⛳', boxing:'🥊', martial_arts:'🥋', dancing:'💃', rowing:'🚣', climbing:'🧗', skiing:'⛷️', snowboarding:'🏂', skating:'⛸️', cycling_indoor:'🚲', pilates:'🤸', crossfit:'💪', other:'🏅' };
   el.innerHTML = entries.map(([type, count]) => `
     <div class="type-row">
@@ -2272,7 +2272,7 @@ function renderActivityFeed(activities) {
     el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-text">No activities yet</div><div class="empty-sub">Log a workout or connect a fitness app</div><button class="btn-primary" data-ev-click="openActivityModal()">Log Activity</button></div>`;
     return;
   }
-  const actColors = { running:'#E4F5F2', cycling:'#EFF6FF', walking:'#FFFBEB', swimming:'#F5F3FF', yoga:'#F0FDF4', gym:'#FFF0EF', hiking:'#FEF3C7', stretching:'#ECFDF5', tennis:'#FFF0F0', pickleball:'#FFF0F0', basketball:'#FFF3E0', football:'#F0FDF4', badminton:'#FFF0F0', volleyball:'#FFF3E0', baseball:'#F0F4FF', cricket:'#F0FDF4', golf:'#F0FDF4', boxing:'#FFF0EF', martial_arts:'#FFF0EF', dancing:'#FDF0FF', rowing:'#EFF6FF', climbing:'#FEF3C7', skiing:'#EFF6FF', snowboarding:'#EFF6FF', skating:'#EFF6FF', cycling_indoor:'#EFF6FF', pilates:'#F5F3FF', crossfit:'#FFF0EF', other:'#F3F4F6' };
+  const actColors = { running:'#ECF3EF', cycling:'#EDF2F5', walking:'#FFFBEB', swimming:'#F9EBE0', yoga:'#F0FDF4', gym:'#FFF0EF', hiking:'#FEF3C7', stretching:'#ECFDF5', tennis:'#FFF0F0', pickleball:'#FFF0F0', basketball:'#FFF3E0', football:'#F0FDF4', badminton:'#FFF0F0', volleyball:'#FFF3E0', baseball:'#F0F4FF', cricket:'#F0FDF4', golf:'#F0FDF4', boxing:'#FFF0EF', martial_arts:'#FFF0EF', dancing:'#FDF0FF', rowing:'#EDF2F5', climbing:'#FEF3C7', skiing:'#EDF2F5', snowboarding:'#EDF2F5', skating:'#EDF2F5', cycling_indoor:'#EDF2F5', pilates:'#F9EBE0', crossfit:'#FFF0EF', other:'#F3F4F6' };
   const actIcons = { running:'🏃', cycling:'🚴', walking:'🚶', swimming:'🏊', yoga:'🧘', gym:'🏋️', hiking:'⛰️', stretching:'🤸', tennis:'🎾', pickleball:'🏓', basketball:'🏀', football:'⚽', badminton:'🏸', volleyball:'🏐', baseball:'⚾', cricket:'🏏', golf:'⛳', boxing:'🥊', martial_arts:'🥋', dancing:'💃', rowing:'🚣', climbing:'🧗', skiing:'⛷️', snowboarding:'🏂', skating:'⛸️', cycling_indoor:'🚲', pilates:'🤸', crossfit:'💪', other:'🏅' };
   el.innerHTML = activities.slice(0,20).map(a => `
     <div class="activity-item">
@@ -2476,13 +2476,13 @@ function renderActivityFields(type) {
 
 // GYM SUB-TYPE CONFIG
 const GYM_SUBS = [
-  { id:'cardio',      label:'🫀 Cardio',      color:'#0E8F7E' },
+  { id:'cardio',      label:'🫀 Cardio',      color:'#4F8D74' },
   { id:'hiit',        label:'⚡ HIIT',         color:'#EA580C' },
-  { id:'upper_body',  label:'💪 Upper Body',   color:'#2563EB' },
-  { id:'lower_body',  label:'🦵 Lower Body',   color:'#7C3AED' },
+  { id:'upper_body',  label:'💪 Upper Body',   color:'#5E8299' },
+  { id:'lower_body',  label:'🦵 Lower Body',   color:'#D07D4E' },
   { id:'full_body',   label:'🏋️ Full Body',   color:'#DC2626' },
-  { id:'core',        label:'🔥 Core',         color:'#D97706' },
-  { id:'flexibility', label:'🧘 Flexibility',  color:'#16A34A' },
+  { id:'core',        label:'🔥 Core',         color:'#E0A34E' },
+  { id:'flexibility', label:'🧘 Flexibility',  color:'#5A9E70' },
 ];
 
 // Which sub-types need a strength sets/reps table
@@ -3083,7 +3083,7 @@ let historyPage = 0;
 const HISTORY_PAGE_SIZE = 20;
 
 const ACT_ICONS  = { running:'🏃', cycling:'🚴', walking:'🚶', swimming:'🏊', yoga:'🧘', gym:'🏋️', hiking:'⛰️', stretching:'🤸', tennis:'🎾', pickleball:'🏓', basketball:'🏀', football:'⚽', badminton:'🏸', volleyball:'🏐', baseball:'⚾', cricket:'🏏', golf:'⛳', boxing:'🥊', martial_arts:'🥋', dancing:'💃', rowing:'🚣', climbing:'🧗', skiing:'⛷️', snowboarding:'🏂', skating:'⛸️', cycling_indoor:'🚲', pilates:'🤸', crossfit:'💪', other:'🏅' };
-const ACT_COLORS = { running:'#E4F5F2', cycling:'#EFF6FF', walking:'#FFFBEB', swimming:'#F5F3FF', yoga:'#F0FDF4', gym:'#FFF0EF', hiking:'#FEF3C7', stretching:'#ECFDF5', tennis:'#FFF0F0', pickleball:'#FFF0F0', basketball:'#FFF3E0', football:'#F0FDF4', badminton:'#FFF0F0', volleyball:'#FFF3E0', baseball:'#F0F4FF', cricket:'#F0FDF4', golf:'#F0FDF4', boxing:'#FFF0EF', martial_arts:'#FFF0EF', dancing:'#FDF0FF', rowing:'#EFF6FF', climbing:'#FEF3C7', skiing:'#EFF6FF', snowboarding:'#EFF6FF', skating:'#EFF6FF', cycling_indoor:'#EFF6FF', pilates:'#F5F3FF', crossfit:'#FFF0EF', other:'#F3F4F6' };
+const ACT_COLORS = { running:'#ECF3EF', cycling:'#EDF2F5', walking:'#FFFBEB', swimming:'#F9EBE0', yoga:'#F0FDF4', gym:'#FFF0EF', hiking:'#FEF3C7', stretching:'#ECFDF5', tennis:'#FFF0F0', pickleball:'#FFF0F0', basketball:'#FFF3E0', football:'#F0FDF4', badminton:'#FFF0F0', volleyball:'#FFF3E0', baseball:'#F0F4FF', cricket:'#F0FDF4', golf:'#F0FDF4', boxing:'#FFF0EF', martial_arts:'#FFF0EF', dancing:'#FDF0FF', rowing:'#EDF2F5', climbing:'#FEF3C7', skiing:'#EDF2F5', snowboarding:'#EDF2F5', skating:'#EDF2F5', cycling_indoor:'#EDF2F5', pilates:'#F9EBE0', crossfit:'#FFF0EF', other:'#F3F4F6' };
 
 async function loadConsistency() {
   // ALWAYS reset to current month — do this synchronously before any async work
@@ -3430,7 +3430,7 @@ function deleteActivityHistory(id) {
 // ── Helpers ───────────────────────────────────────────────────────────────
 
 function actTypeColor(type) {
-  const c = { running:'#0E8F7E', cycling:'#2563EB', walking:'#D97706', swimming:'#7C3AED', yoga:'#16A34A', gym:'#DC2626', hiking:'#B45309', stretching:'#059669', tennis:'#E53E3E', pickleball:'#E53E3E', basketball:'#EA580C', football:'#16A34A', badminton:'#E53E3E', volleyball:'#EA580C', baseball:'#2563EB', cricket:'#16A34A', golf:'#16A34A', boxing:'#DC2626', martial_arts:'#DC2626', dancing:'#7C3AED', rowing:'#2563EB', climbing:'#B45309', skiing:'#2563EB', snowboarding:'#2563EB', skating:'#2563EB', cycling_indoor:'#2563EB', pilates:'#7C3AED', crossfit:'#DC2626', other:'#9CA3AF' };
+  const c = { running:'#4F8D74', cycling:'#5E8299', walking:'#E0A34E', swimming:'#D07D4E', yoga:'#5A9E70', gym:'#DC2626', hiking:'#B9803A', stretching:'#059669', tennis:'#C15646', pickleball:'#C15646', basketball:'#EA580C', football:'#5A9E70', badminton:'#C15646', volleyball:'#EA580C', baseball:'#5E8299', cricket:'#5A9E70', golf:'#5A9E70', boxing:'#DC2626', martial_arts:'#DC2626', dancing:'#D07D4E', rowing:'#5E8299', climbing:'#B9803A', skiing:'#5E8299', snowboarding:'#5E8299', skating:'#5E8299', cycling_indoor:'#5E8299', pilates:'#D07D4E', crossfit:'#DC2626', other:'#9CA3AF' };
   return c[type] || '#9CA3AF';
 }
 
@@ -3528,11 +3528,11 @@ async function loadFoodTracker() {
 // ── Macro rings ──────────────────────────────────────────────────────────────
 function updateRings(totals, targets) {
   const macros = [
-    { key:'calories', id:'cal',   target: targets?.target_calories || 2000, unit:'kcal', color:'#0E8F7E' },
-    { key:'protein',  id:'prot',  target: targets?.protein_g  || 56,        unit:'g',    color:'#2563EB' },
-    { key:'carbs',    id:'carbs', target: targets?.carbs_g    || 250,        unit:'g',    color:'#D97706' },
-    { key:'fat',      id:'fat',   target: targets?.fat_g      || 65,         unit:'g',    color:'#7C3AED' },
-    { key:'fiber',    id:'fiber', target: targets?.fiber_g    || 30,         unit:'g',    color:'#16A34A' },
+    { key:'calories', id:'cal',   target: targets?.target_calories || 2000, unit:'kcal', color:'#4F8D74' },
+    { key:'protein',  id:'prot',  target: targets?.protein_g  || 56,        unit:'g',    color:'#5E8299' },
+    { key:'carbs',    id:'carbs', target: targets?.carbs_g    || 250,        unit:'g',    color:'#E0A34E' },
+    { key:'fat',      id:'fat',   target: targets?.fat_g      || 65,         unit:'g',    color:'#D07D4E' },
+    { key:'fiber',    id:'fiber', target: targets?.fiber_g    || 30,         unit:'g',    color:'#5A9E70' },
   ];
 
   macros.forEach(m => {
@@ -4109,10 +4109,10 @@ function selectFoodItem(food) {
   const fiber = Math.round((food.fiber||0) * scale * 10)/10;
 
   const macros = [
-    { label:'Protein', val:prot,  max:40, color:'#2563EB' },
-    { label:'Carbs',   val:carbs, max:80, color:'#D97706' },
-    { label:'Fat',     val:fat,   max:40, color:'#7C3AED' },
-    { label:'Fiber',   val:fiber, max:15, color:'#16A34A' },
+    { label:'Protein', val:prot,  max:40, color:'#5E8299' },
+    { label:'Carbs',   val:carbs, max:80, color:'#E0A34E' },
+    { label:'Fat',     val:fat,   max:40, color:'#D07D4E' },
+    { label:'Fiber',   val:fiber, max:15, color:'#5A9E70' },
   ];
 
   // Smart quantity mode
@@ -4297,7 +4297,7 @@ function updateFoodPreview(qty) {
   const fat   = Math.round(selectedFoodItem.fat     * scale * 10)/10;
   const fiber = Math.round((selectedFoodItem.fiber||0) * scale * 10)/10;
   setText('fp-cal-preview', `${cal} kcal`);
-  [['protein',prot,40,'#2563EB'],['carbs',carbs,80,'#D97706'],['fat',fat,40,'#7C3AED'],['fiber',fiber,15,'#16A34A']].forEach(([name,val,max]) => {
+  [['protein',prot,40,'#5E8299'],['carbs',carbs,80,'#E0A34E'],['fat',fat,40,'#D07D4E'],['fiber',fiber,15,'#5A9E70']].forEach(([name,val,max]) => {
     const bar = document.getElementById(`fp-bar-${name}`);
     const valEl = document.getElementById(`fp-val-${name}`);
     if (bar) bar.style.width = Math.min(val/max*100,100).toFixed(0)+'%';
@@ -4619,7 +4619,7 @@ const MOOD_EMOJI = {
   anxious:'😰', tired:'😴', sad:'😞', angry:'😤'
 };
 const MOOD_COLOR = {
-  neutral:'#0E8F7E', happy:'#22C55E', excited:'#F59E0B', calm:'#06B6D4',
+  neutral:'#4F8D74', happy:'#22C55E', excited:'#F59E0B', calm:'#06B6D4',
   anxious:'#8B5CF6', tired:'#9CA3AF', sad:'#3B82F6', angry:'#EF4444'
 };
 
@@ -5144,7 +5144,7 @@ async function loadWellnessStrip() {
   if (hbBadge && hb.total > 0) {
     hbBadge.textContent = hb.done === hb.total ? '🎉 All done!' : `${hb.total - hb.done} left`;
     hbBadge.style.background = hb.done === hb.total ? '#DCFCE7' : 'var(--teal-50)';
-    hbBadge.style.color = hb.done === hb.total ? '#15803D' : 'var(--teal-700)';
+    hbBadge.style.color = hb.done === hb.total ? '#468A5B' : 'var(--teal-700)';
   }
 
   // Symptoms
@@ -5158,7 +5158,7 @@ async function loadWellnessStrip() {
 
 let sleepQuality = 3;
 let selectedVitalType = 'blood_pressure';
-let selectedHabitColor = '#0E8F7E';
+let selectedHabitColor = '#4F8D74';
 
 function switchWellnessTab(tab) {
   document.querySelectorAll('.wellness-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
@@ -5336,7 +5336,7 @@ async function loadMoodAnalytics() {
     const pct = Math.round(count/maxCount*100);
     return `<div class="mood-dist-row">
       <div class="mood-dist-emoji">${MOOD_EMOJI[mood]||'😐'}</div>
-      <div class="mood-dist-bar-track"><div class="mood-dist-bar" style="width:${pct}%;background:${MOOD_COLOR[mood]||'#0E8F7E'}"></div></div>
+      <div class="mood-dist-bar-track"><div class="mood-dist-bar" style="width:${pct}%;background:${MOOD_COLOR[mood]||'#4F8D74'}"></div></div>
       <div class="mood-dist-count">${count}</div>
     </div>`;
   }).join('');
@@ -5374,7 +5374,7 @@ function toggleRefillSection() {
 function openHabitModal() {
   document.getElementById('habit-name-input').value = '';
   document.getElementById('habit-emoji-input').value = '⭐';
-  selectedHabitColor = '#0E8F7E';
+  selectedHabitColor = '#4F8D74';
   document.querySelectorAll('.habit-color-btn').forEach(b => b.classList.toggle('selected', b.dataset.color === selectedHabitColor));
   document.getElementById('habit-modal-overlay').style.display = 'flex';
   setTimeout(() => document.getElementById('habit-name-input')?.focus(), 50);
@@ -6432,11 +6432,11 @@ function renderNotifications() {
   const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
 
   const NOTIF_STYLES = {
-    medicine: {bg:'#EFF6FF', border:'#BFDBFE', icon:'💊'},
+    medicine: {bg:'#EDF2F5', border:'#BFDBFE', icon:'💊'},
     refill:   {bg:'#FFFBEB', border:'#FDE68A', icon:'⚠️'},
     todo:     {bg:'#ECFDF5', border:'#A7F3D0', icon:'✅'},
     symptom:  {bg:'#FEF2F2', border:'#FECACA', icon:'🩺'},
-    fitness:  {bg:'#F5F3FF', border:'#DDD6FE', icon:'🏃'},
+    fitness:  {bg:'#F9EBE0', border:'#DDD6FE', icon:'🏃'},
     food:     {bg:'#FFF7ED', border:'#FED7AA', icon:'🍽️'},
     sleep:    {bg:'#EEF2FF', border:'#C7D2FE', icon:'🌙'},
     hydration:{bg:'#E0F2FE', border:'#BAE6FD', icon:'💧'},
@@ -6648,7 +6648,7 @@ function renderProgress(r) {
 
   // Sleep dots
   const sleepDays = daysSlice(r.sleep?.daily) || [];
-  const SLEEP_COLORS = {1:'#EF4444',2:'#F59E0B',3:'#D1D5DB',4:'#34D399',5:'#0E8F7E'};
+  const SLEEP_COLORS = {1:'#EF4444',2:'#F59E0B',3:'#D1D5DB',4:'#34D399',5:'#4F8D74'};
   const sleepDots = sleepDays.map(s => {
     const h = Math.min(s.h/9, 1) * 100;
     return `<div class="prog-sleep-dot" style="height:${Math.max(h,8)}%;background:${SLEEP_COLORS[s.q]||'#D1D5DB'}" title="${s.date}: ${s.h}h · Quality ${s.q}/5"></div>`;
@@ -6753,7 +6753,7 @@ function renderProgress(r) {
             <span style="display:flex;gap:8px">
               <span style="width:10px;height:10px;border-radius:2px;background:#EF4444;display:inline-block"></span>Poor
               <span style="width:10px;height:10px;border-radius:2px;background:#34D399;display:inline-block"></span>Good
-              <span style="width:10px;height:10px;border-radius:2px;background:#0E8F7E;display:inline-block"></span>Great
+              <span style="width:10px;height:10px;border-radius:2px;background:#4F8D74;display:inline-block"></span>Great
             </span>
           </div>` : ''}
         </div>
@@ -7033,7 +7033,7 @@ function printReport() {
 
   /* Header */
   .rpt-header{display:flex;align-items:flex-start;justify-content:space-between;
-    background:linear-gradient(135deg,#0D1117,#0A2E28);border-radius:12px;
+    background:linear-gradient(135deg,#20362D,#25443A);border-radius:12px;
     padding:28px 32px;margin-bottom:24px;color:#fff}
   .rpt-patient-name{font-size:24px;font-weight:700;margin-bottom:6px}
   .rpt-period{font-size:14px;color:rgba(255,255,255,.6);margin-bottom:3px}
@@ -7060,8 +7060,8 @@ function printReport() {
   .rpt-detail-rows{display:flex;flex-direction:column;gap:5px;margin-top:8px}
   .rpt-detail-row{display:flex;justify-content:space-between;font-size:12px;color:#374151}
   .rpt-detail-row span:first-child{color:#6b7280}
-  .rpt-row--good span:last-child{color:#16a34a;font-weight:600}
-  .rpt-row--warn span:last-child{color:#d97706;font-weight:600}
+  .rpt-row--good span:last-child{color:#5A9E70;font-weight:600}
+  .rpt-row--warn span:last-child{color:#E0A34E;font-weight:600}
   .rpt-symptom-list{display:flex;flex-direction:column;gap:4px;margin-top:8px}
   .rpt-symptom-row{display:flex;justify-content:space-between;font-size:12.5px}
   .rpt-symptom-name{color:#374151}
@@ -7337,7 +7337,7 @@ async function loadReminderSettingsUI() {
       badge.style.background = '#FEE2E2'; badge.style.color = '#DC2626';
     } else if (Notification.permission === 'granted') {
       badge.textContent = '🔔 Notifications on';
-      badge.style.background = '#DCFCE7'; badge.style.color = '#15803D';
+      badge.style.background = '#DCFCE7'; badge.style.color = '#468A5B';
     } else {
       badge.innerHTML = '<a href="#" data-ev-click="requestNotifPermission();return false" style="color:inherit">Enable notifications →</a>';
       badge.style.background = '#FEF3C7'; badge.style.color = '#92400E';
@@ -7591,7 +7591,7 @@ function stpUpdate() {
     const btn = document.getElementById('stp-' + side + '-ampm');
     if (!btn) return;
     const isPM = window._stpState[side].ampm === 'PM';
-    btn.style.background = isPM ? '#0E8F7E' : 'var(--gray-100)';
+    btn.style.background = isPM ? '#4F8D74' : 'var(--gray-100)';
     btn.style.color      = isPM ? '#fff'    : 'var(--gray-600)';
   });
 
@@ -7649,7 +7649,7 @@ function svPreview() {
   text.textContent = `${quality} ${h}h ${m > 0 ? m + 'm' : ''} of sleep`;
   if (chip) {
     chip.style.background = h >= 7 ? '#F0FDF4' : h >= 5 ? '#FFFBEB' : '#FEF2F2';
-    chip.style.color       = h >= 7 ? '#15803D' : h >= 5 ? '#92400E' : '#DC2626';
+    chip.style.color       = h >= 7 ? '#468A5B' : h >= 5 ? '#92400E' : '#DC2626';
   }
 
   // Update date labels
@@ -8358,9 +8358,9 @@ const VITAL_META = {
   blood_pressure: {
     label: 'Blood pressure',
     unit:  'mmHg',
-    color: { sys: '#0E8F7E', dia: '#5DCAA5' },
+    color: { sys: '#4F8D74', dia: '#5DCAA5' },
     refLines: [
-      { value: 120, label: 'Sys goal', color: '#0E8F7E', dash: [4,3] },
+      { value: 120, label: 'Sys goal', color: '#4F8D74', dash: [4,3] },
       { value: 80,  label: 'Dia goal', color: '#5DCAA5', dash: [4,3] },
       { value: 140, label: 'Sys high', color: '#EF4444', dash: [6,3] },
     ],
@@ -8393,7 +8393,7 @@ const VITAL_META = {
   spo2: {
     label: 'SpO\u2082',
     unit:  '%',
-    color: { main: '#2563EB' },
+    color: { main: '#5E8299' },
     refLines: [
       { value: 95, label: 'Min normal', color: '#EF4444', dash: [4,3] },
     ],
@@ -8919,7 +8919,7 @@ async function loadSleepTrend(days) {
     v === null ? 'rgba(0,0,0,0.04)' : v >= 7 ? '#22C55E55' : v >= 6 ? '#F59E0B55' : '#EF444455'
   );
   const barBorders = durations.map(v =>
-    v === null ? 'rgba(0,0,0,0.08)' : v >= 7 ? '#16A34A' : v >= 6 ? '#D97706' : '#DC2626'
+    v === null ? 'rgba(0,0,0,0.08)' : v >= 7 ? '#5A9E70' : v >= 6 ? '#E0A34E' : '#DC2626'
   );
 
   const isDark  = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -9098,7 +9098,7 @@ async function renderCalorieTrendChart(daily) {
   );
   const barBorders = daily.map(d =>
     !d.logged ? 'transparent' :
-    d.net >= 0 ? '#16A34A' : '#DC2626'
+    d.net >= 0 ? '#5A9E70' : '#DC2626'
   );
 
   _calChart = new window.Chart(canvas, {
@@ -9119,7 +9119,7 @@ async function renderCalorieTrendChart(daily) {
           type:            'line',
           label:           'Budget',
           data:            daily.map(d => d.budget),
-          borderColor:     '#0E8F7E',
+          borderColor:     '#4F8D74',
           backgroundColor: 'transparent',
           borderWidth:     1.5,
           borderDash:      [4, 3],
@@ -9238,7 +9238,7 @@ async function loadFitnessPRs() {
       <div class="panel-header" style="margin-bottom:14px">
         <h2 class="panel-title">Personal Records</h2>
         <div style="display:flex;align-items:center;gap:8px">
-          ${recent_prs > 0 ? `<span class="panel-badge" style="background:#DCFCE7;color:#15803D">🏆 ${recent_prs} new this month</span>` : ''}
+          ${recent_prs > 0 ? `<span class="panel-badge" style="background:#DCFCE7;color:#468A5B">🏆 ${recent_prs} new this month</span>` : ''}
           <span class="panel-badge">${total_activities} workouts all-time</span>
         </div>
       </div>
@@ -9311,7 +9311,7 @@ async function loadMoodSleepCorrelation(days) {
         <div class="msc-mood-row">
           <div class="msc-mood-emoji">${MOOD_EMOJI[m] || '😐'}</div>
           <div class="msc-mood-bar-wrap">
-            <div class="msc-mood-bar" style="width:${pct}%;background:${MOOD_COLOR[m]||'#0E8F7E'}"></div>
+            <div class="msc-mood-bar" style="width:${pct}%;background:${MOOD_COLOR[m]||'#4F8D74'}"></div>
           </div>
           <div class="msc-mood-val">${pm.avg_duration}h</div>
           <div class="msc-mood-count">${pm.count}d</div>
@@ -9437,7 +9437,7 @@ async function renderMoodSleepScatter(paired) {
 
   // Colour each point by mood
   const pointColors = points.map(pt =>
-    (MOOD_COLOR[pt.mood] || '#0E8F7E') + 'CC'
+    (MOOD_COLOR[pt.mood] || '#4F8D74') + 'CC'
   );
 
   _moodSleepChart = new window.Chart(canvas, {
@@ -9511,7 +9511,7 @@ async function loadWeeklyDigest() {
 
   // Score ring color
   const scoreColor = overall_score >= 80 ? '#22C55E'
-                   : overall_score >= 60 ? '#0E8F7E'
+                   : overall_score >= 60 ? '#4F8D74'
                    : overall_score >= 40 ? '#F59E0B' : '#EF4444';
 
   // Mini score bars
@@ -9524,7 +9524,7 @@ async function loadWeeklyDigest() {
       <span class="wd-score-label">${SCORE_LABELS[key] || key}</span>
       <div class="wd-score-bar-wrap">
         <div class="wd-score-bar" style="width:${val}%;background:${
-          val >= 80 ? '#22C55E' : val >= 60 ? '#0E8F7E' : val >= 40 ? '#F59E0B' : '#EF4444'
+          val >= 80 ? '#22C55E' : val >= 60 ? '#4F8D74' : val >= 40 ? '#F59E0B' : '#EF4444'
         }"></div>
       </div>
       <span class="wd-score-pct">${val}%</span>
@@ -9694,7 +9694,7 @@ async function loadWeightProgressChart(days) {
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px">
         <div>
           <h2 class="panel-title">Weight progress</h2>
-          ${etaText ? `<div style="font-size:12px;color:#15803D;margin-top:3px">${escHtml(etaText)}</div>` : ''}
+          ${etaText ? `<div style="font-size:12px;color:#468A5B;margin-top:3px">${escHtml(etaText)}</div>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="panel-badge">${GOAL_LABELS[goal] || goal}</span>
@@ -9729,7 +9729,7 @@ async function loadWeightProgressChart(days) {
       <!-- Legend -->
       <div style="display:flex;gap:16px;margin-top:8px;font-size:11.5px;color:var(--gray-500);flex-wrap:wrap">
         <span style="display:flex;align-items:center;gap:5px">
-          <span style="width:18px;height:3px;background:#0E8F7E;display:inline-block;border-radius:1px"></span>
+          <span style="width:18px;height:3px;background:#4F8D74;display:inline-block;border-radius:1px"></span>
           Actual weight
         </span>
         ${hasGoal && projection.length ? `
@@ -9818,8 +9818,8 @@ async function renderWeightChart(logs, projection, stats) {
     {
       label:           'Weight',
       data:            actualPadded,
-      borderColor:     '#0E8F7E',
-      backgroundColor: '#0E8F7E18',
+      borderColor:     '#4F8D74',
+      backgroundColor: '#4F8D7418',
       borderWidth:     2.5,
       pointRadius:     logs.length > 30 ? 2 : 4,
       pointHoverRadius:6,
@@ -10091,7 +10091,7 @@ function openHealthScoreModal() {
   const { score, grade, label, message, components } = data;
   const scoreColor =
     score >= 80 ? '#22C55E' :
-    score >= 60 ? '#0E8F7E' :
+    score >= 60 ? '#4F8D74' :
     score >= 40 ? '#F59E0B' : '#EF4444';
 
   // Ring (circumference 2π×32 ≈ 201)
@@ -10120,7 +10120,7 @@ function openHealthScoreModal() {
       const pct        = Math.round(c.score / c.max * 100);
       const barColor   =
         pct >= 80 ? '#22C55E' :
-        pct >= 60 ? '#0E8F7E' :
+        pct >= 60 ? '#4F8D74' :
         pct >= 40 ? '#F59E0B' : '#EF4444';
       return `
         <div class="hs-comp-row">
@@ -10208,7 +10208,7 @@ function obNext() {
   // Advance to step 2
   document.getElementById('ob-step-1').style.display = 'none';
   document.getElementById('ob-step-2').style.display = '';
-  document.getElementById('ob-progress').style.background = '#0E8F7E';
+  document.getElementById('ob-progress').style.background = '#4F8D74';
 
   // Populate timezone dropdown with detected value
   const detected = browserTimezone();

@@ -4,8 +4,8 @@
     {
       "name": "medeasy",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["app.py"],
-      "port": 5000
+      "runtimeArgs": ["app.py", "--port", "5050"],
+      "port": 5050
     }
   ]
 }

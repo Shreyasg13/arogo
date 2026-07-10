@@ -117,6 +117,11 @@ def create_app(config=Config):
 
 
 if __name__ == '__main__':
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--port', type=int, default=int(os.environ.get('PORT', 5000)))
+    args = ap.parse_args()
+
     init_db()
     app = create_app()
     try:
@@ -124,4 +129,4 @@ if __name__ == '__main__':
         start_scheduler()   # honours SCHEDULER_ENABLED=0
     except Exception as e:
         print(f'[scheduler] Not started: {e}')
-    app.run(debug=Config.DEBUG, use_reloader=False, host='0.0.0.0', port=5000)
+    app.run(debug=Config.DEBUG, use_reloader=False, host='0.0.0.0', port=args.port)
