@@ -1,5 +1,5 @@
 """
-tests/test_api.py — MedEasy Health OS Complete API Test Suite
+tests/test_api.py — Arogo Health OS Complete API Test Suite
 ==============================================================
 Covers all 13 features across 55+ assertions verified against the
 real database schema.
@@ -785,7 +785,7 @@ if __name__ == "__main__":
             clean()
 
     print("\n" + "="*60)
-    print("  MedEasy Health OS — API Test Suite (standalone)")
+    print("  Arogo Health OS — API Test Suite (standalone)")
     print("="*60 + "\n")
 
     suites = [

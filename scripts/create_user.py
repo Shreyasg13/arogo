@@ -1,5 +1,5 @@
 """
-scripts/create_user.py — create or reset a MedEasy account from the CLI.
+scripts/create_user.py — create or reset a Arogo account from the CLI.
 
 A dev/admin utility for local testing. Passwords are hashed with the
 same PBKDF2 the app uses, and the account is created already-verified so
@@ -28,7 +28,7 @@ from db.core import init_db, execute, new_id, now_iso                 # noqa: E4
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Create or reset a MedEasy account.")
+    ap = argparse.ArgumentParser(description="Create or reset a Arogo account.")
     ap.add_argument("email")
     ap.add_argument("password", nargs="?", help="omit to auto-generate")
     ap.add_argument("--name", default="")
@@ -68,7 +68,7 @@ def main():
     print(f"    password: {password}")
     print(f"    user id:  {uid}")
     print("\n  Log in at http://localhost:5000  (login is by email).")
-    print("  This is a normal account — MedEasy has no elevated admin role.\n")
+    print("  This is a normal account — Arogo has no elevated admin role.\n")
 
 
 if __name__ == "__main__":

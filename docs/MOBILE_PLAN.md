@@ -1,4 +1,4 @@
-# MedEasy Mobile App — Decision Document (Phase D)
+# Arogo Mobile App — Decision Document (Phase D)
 
 _Status: pre-work complete; app build starts after the website is live
 and the PWA has real usage data._

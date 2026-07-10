@@ -1,5 +1,5 @@
 """
-config.py — Central configuration for MedEasy Health OS
+config.py — Central configuration for Arogo Health OS
 """
 import os
 

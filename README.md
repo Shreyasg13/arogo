@@ -1,4 +1,4 @@
-# MedEasy Health OS
+# Arogo Health OS
 
 Your personal health operating system — food, sleep, medicines, fitness,
 mood and family sharing in one installable web app.

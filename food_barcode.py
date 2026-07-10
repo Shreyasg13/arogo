@@ -3,7 +3,7 @@ food_barcode.py — Barcode → nutrition lookup via Open Food Facts.
 
 Server-side so the browser never talks to a third party (keeps the
 strict CSP intact) and no API key is needed. Returns a dict normalized
-to MedEasy's food schema (per-100g, sodium in mg), or None if the
+to Arogo's food schema (per-100g, sodium in mg), or None if the
 product isn't found.
 """
 from __future__ import annotations
@@ -16,7 +16,7 @@ OFF_URL = "https://world.openfoodfacts.org/api/v2/product/{}.json"
 OFF_FIELDS = "product_name,brands,nutriments,serving_size"
 TIMEOUT_S = 8
 # Open Food Facts asks callers to identify themselves
-HEADERS = {"User-Agent": "MedEasy/1.0 (health tracker; contact via app)"}
+HEADERS = {"User-Agent": "Arogo/1.0 (health tracker; contact via app)"}
 
 
 def _num(nutriments: dict, *keys) -> float:

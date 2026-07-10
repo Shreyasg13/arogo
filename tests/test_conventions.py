@@ -4,7 +4,7 @@ regression guards.
 
 The guards encode decisions that are easy to accidentally undo months
 later: the strict CSP (no inline handlers), undo-toasts-not-confirm(),
-portable SQL, and the MedEasy rename. A failure here means a convention
+portable SQL, and the Arogo rename. A failure here means a convention
 was broken, not that a feature is buggy.
 
 Run:  pytest tests/test_conventions.py -v
@@ -80,7 +80,7 @@ class TestPwaRoutes:
     def test_manifest(self, client):
         r = client.get("/static/manifest.json")
         assert r.status_code == 200
-        assert r.get_json()["short_name"] == "MedEasy"
+        assert r.get_json()["short_name"] == "Arogo"
 
     def test_icons_exist(self, client):
         for icon in ["icon-192.png", "icon-512.png", "icon-512-maskable.png"]:

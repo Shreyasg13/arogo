@@ -736,7 +736,7 @@ def api_export():
         'to_date': to_date,
         'sections': list(data.keys()),
         'total_records': sum(len(v) for v in data.values()),
-        'app': 'MedEasy Health OS'
+        'app': 'Arogo Health OS'
     }
 
     fname_base = f"medeasy_{from_date}_to_{to_date}"
@@ -744,7 +744,7 @@ def api_export():
     if fmt == 'csv':
         output = io.StringIO()
         # Write metadata as comments
-        output.write("# MedEasy Health OS Export\n")
+        output.write("# Arogo Health OS Export\n")
         output.write('# Exported: ' + meta['exported_at'] + '\n')
         output.write('# Period: ' + from_date + ' to ' + to_date + '\n\n')
         for section, rows in data.items():

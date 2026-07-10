@@ -1,4 +1,4 @@
-/* MedEasy service worker — app-shell caching.
+/* Arogo service worker — app-shell caching.
  *
  * Strategy:
  *   - /api/ and /auth/ requests: network only (health data is never cached)
@@ -7,7 +7,7 @@
  *
  * Bump CACHE_VERSION when the shell must be refreshed immediately.
  */
-const CACHE_VERSION = 'medeasy-v1';
+const CACHE_VERSION = 'arogo-v1';
 const SHELL = [
   '/',
   '/static/css/style.css',
@@ -35,7 +35,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) {}
-  e.waitUntil(self.registration.showNotification(data.title || 'MedEasy', {
+  e.waitUntil(self.registration.showNotification(data.title || 'Arogo', {
     body: data.body || '',
     icon: '/static/icons/icon-192.png',
     badge: '/static/icons/icon-192.png',

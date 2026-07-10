@@ -71,7 +71,7 @@ class TestDigestEmailJob:
         _send_weekly_digests()
         mine = [m for m in sent if m["to"] == EMAIL]
         assert len(mine) == 1, "digest email not sent"
-        assert "MedEasy week" in mine[0]["subject"]
+        assert "Arogo week" in mine[0]["subject"]
         assert "/api/digest/unsubscribe/" in mine[0]["text"]
 
         # Second run within the same week: deduped, no second email

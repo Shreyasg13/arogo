@@ -1,5 +1,5 @@
 """
-app.py — MedEasy Health OS.
+app.py — Arogo Health OS.
 
 Usage:
     python app.py

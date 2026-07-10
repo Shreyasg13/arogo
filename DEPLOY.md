@@ -1,4 +1,4 @@
-# MedEasy — Deploy Checklist
+# Arogo — Deploy Checklist
 
 ## Required environment (see `.env.example`)
 

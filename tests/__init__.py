@@ -1,1 +1,1 @@
-"""MedEasy Health OS — Test Suite"""
+"""Arogo Health OS — Test Suite"""

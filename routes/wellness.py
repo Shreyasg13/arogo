@@ -763,7 +763,7 @@ def api_digest_unsubscribe(token):
             '<h2>You\'re unsubscribed 👋</h2>'
             '<p>You won\'t receive the weekly digest email anymore. '
             'You can turn it back on any time in Notifications → Settings.</p>'
-            '<p><a href="/">Back to MedEasy</a></p></div>')
+            '<p><a href="/">Back to Arogo</a></p></div>')
 
 
 @bp.route('/api/reminders/water-status')

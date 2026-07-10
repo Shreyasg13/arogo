@@ -1,5 +1,5 @@
 """
-auth.py — Authentication layer for MedEasy Health OS
+auth.py — Authentication layer for Arogo Health OS
 
 Pure-Python implementation using:
   - PBKDF2-HMAC-SHA256 (260k iterations) for password hashing

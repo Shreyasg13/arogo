@@ -1,5 +1,5 @@
 """
-mailer.py — Outbound email for MedEasy Health OS.
+mailer.py — Outbound email for Arogo Health OS.
 
 Pure stdlib (smtplib + email.message), configured entirely via environment:
 
@@ -25,7 +25,7 @@ SMTP_HOST = os.environ.get('SMTP_HOST', '')
 SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
 SMTP_USER = os.environ.get('SMTP_USER', '')
 SMTP_PASS = os.environ.get('SMTP_PASS', '')
-SMTP_FROM = os.environ.get('SMTP_FROM', SMTP_USER or 'medeasy@localhost')
+SMTP_FROM = os.environ.get('SMTP_FROM', SMTP_USER or 'arogo@localhost')
 SMTP_TLS  = os.environ.get('SMTP_TLS', '1') == '1'
 APP_BASE_URL = os.environ.get('APP_BASE_URL', 'http://localhost:5000').rstrip('/')
 
@@ -66,11 +66,11 @@ def send_verification_email(to: str, token: str) -> bool:
     link = f'{APP_BASE_URL}/auth/verify/{token}'
     return send_email(
         to,
-        'Verify your MedEasy email',
-        'Welcome to MedEasy!\n\n'
+        'Verify your Arogo email',
+        'Welcome to Arogo!\n\n'
         'Confirm your email address by opening this link (valid for 24 hours):\n\n'
         f'    {link}\n\n'
-        "If you didn't create a MedEasy account, you can ignore this email.\n",
+        "If you didn't create a Arogo account, you can ignore this email.\n",
     )
 
 
@@ -95,19 +95,19 @@ def send_weekly_digest_email(to: str, name: str, digest: dict, unsub_url: str) -
         lines += [f"  {c['icon']} {c['text']}" for c in digest['concerns']]
         lines.append('')
     lines += [
-        f'Open MedEasy: {APP_BASE_URL}/',
+        f'Open Arogo: {APP_BASE_URL}/',
         '',
         f'No longer want these? Unsubscribe: {unsub_url}',
     ]
-    return send_email(to, f"Your MedEasy week — {digest['period_label']}", '\n'.join(lines) + '\n')
+    return send_email(to, f"Your Arogo week — {digest['period_label']}", '\n'.join(lines) + '\n')
 
 
 def send_family_invite_email(to: str, token: str, inviter: str, group: str) -> bool:
     link = f'{APP_BASE_URL}/?family_invite={token}'
     return send_email(
         to,
-        f'{inviter} invited you to their MedEasy family group',
-        f'{inviter} invited you to join the family group "{group}" on MedEasy.\n\n'
+        f'{inviter} invited you to their Arogo family group',
+        f'{inviter} invited you to join the family group "{group}" on Arogo.\n\n'
         'Family members choose exactly which health categories they share —\n'
         'nothing is visible unless you turn it on.\n\n'
         'Open this link to join (valid for 72 hours):\n\n'
@@ -120,8 +120,8 @@ def send_password_reset_email(to: str, token: str) -> bool:
     link = f'{APP_BASE_URL}/?reset={token}'
     return send_email(
         to,
-        'Reset your MedEasy password',
-        'Someone requested a password reset for your MedEasy account.\n\n'
+        'Reset your Arogo password',
+        'Someone requested a password reset for your Arogo account.\n\n'
         'Open this link to choose a new password (valid for 1 hour):\n\n'
         f'    {link}\n\n'
         "If this wasn't you, ignore this email — your password is unchanged.\n",

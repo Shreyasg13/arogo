@@ -190,7 +190,7 @@ def _caregiver_alerts():
                             o['email'], title,
                             f"Hi {o['name'] or 'there'},\n\n{body}\n\n"
                             f"They opted in to these alerts so you can check on them.\n"
-                            f"Open MedEasy: {mailer.APP_BASE_URL}/\n")
+                            f"Open Arogo: {mailer.APP_BASE_URL}/\n")
                     _mark_pushed(uid, key, title, body)
             except Exception as e:
                 print(f"[scheduler] caregiver alert for {uid[:8]}: {e}")
