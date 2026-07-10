@@ -10164,6 +10164,9 @@ let _obGoal     = null;
 
 function showOnboarding() {
   document.getElementById('onboarding-overlay').style.display = '';
+  // Carry over the name from the create-account form so it isn't asked twice
+  const obName = document.getElementById('ob-name');
+  if (obName && !obName.value && _currentUser?.name) obName.value = _currentUser.name;
 }
 
 function hideOnboarding() {
