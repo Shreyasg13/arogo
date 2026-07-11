@@ -1314,106 +1314,73 @@ async function loadInsightCards() {
 
 // ── Dashboard ──
 async function loadDashboard() {
-  try { checkFirstRun(); } catch (e) {}
-  try { loadInsightCards(); } catch (e) {}
-  const today = localToday();
-  const [doses, fitnessStats, reportStats, foodDay, profile] = await Promise.all([
+  try { checkFirstRun(); }      catch (e) {}
+  try { loadInsightCards(); }   catch (e) {}
+  try { loadWellnessStrip(); }  catch (e) {}
+  loadHealthScore();
+  initDailyCheckin();
+
+  const [doses, fitnessStats] = await Promise.all([
     fetch('/api/medicines/today').then(r => r.json()).catch(() => []),
     fetch('/api/fitness/stats').then(r => r.json()).catch(() => ({})),
-    fetch('/api/stats').then(r => r.json()).catch(() => ({})),
-    fetch(`/api/food/log/${today}`).then(r => r.json()).catch(() => null),
-    fetch('/api/food/profile').then(r => r.json()).catch(() => null)
   ]);
 
-  // Hero cards — show medicines card only if user has medicines
-  const remaining = doses.filter(d => !d.taken).length;
-  const dosesCard   = document.getElementById('dash-doses-card');
-  const reportsCard = document.getElementById('dash-reports-card');
-  if (doses.length > 0 && dosesCard) {
-    dosesCard.style.display = '';
-    setText('dash-doses-today', doses.length);
-    setText('dash-doses-sub', `${remaining} remaining today`);
-  }
+  // Active minutes (this week)
   setText('dash-active-min', fitnessStats.week?.duration || 0);
-  // Show reports card only if user has at least one report
-  const totalReports = reportStats.total || 0;
-  if (totalReports > 0 && reportsCard) {
-    reportsCard.style.display = '';
-    setText('dash-reports', totalReports);
-  }
 
-  // Calorie balance hero card
-  // Calorie balance — fetched separately with correct formula (includes exercise)
+  // Calorie balance — calm inline stat (no coloured card)
   fetch('/api/calorie-balance').then(r => r.json()).then(cb => {
-    const t   = cb.today || {};
+    const t = cb.today || {};
     const net = t.net ?? 0;
-    const deficitCard  = document.getElementById('dash-caldeficit-card');
-    const deficitEl    = document.getElementById('dash-cal-deficit');
-    const deficitSubEl = document.getElementById('dash-cal-deficit-sub');
-    if (deficitEl) deficitEl.textContent = Math.abs(net);
-    if (deficitSubEl) deficitSubEl.textContent =
-      net > 100  ? 'kcal remaining' :
-      net < -100 ? 'kcal over budget' : 'on track';
-    if (deficitCard) {
-      deficitCard.classList.remove('hero-card--amber','hero-card--green','hero-card--red');
-      deficitCard.classList.add(
-        net > 100  ? 'hero-card--green' :
-        net < -100 ? 'hero-card--red'   : 'hero-card--amber'
-      );
-    }
-    // Sub-label shows burned if workouts logged
-    if (t.burned > 0 && deficitSubEl) {
-      deficitSubEl.textContent = `${t.burned} kcal burned`;
-    }
+    setText('dash-cal-deficit', Math.abs(net));
+    setText('dash-cal-deficit-sub',
+      t.burned > 0 ? `${t.burned} kcal burned` :
+      net > 100 ? 'kcal remaining' : net < -100 ? 'kcal over budget' : 'calories today');
   }).catch(() => {});
 
-  // Dashboard nutrition bar
-  if (foodDay && foodDay.summary?.log_count > 0) {
-    const t = foodDay.summary.totals;
-    const nb = document.getElementById('dash-nutrition-bar');
-    if (nb) nb.style.display = 'flex';
-    setText('dnb-cal',   Math.round(t.calories));
-    setText('dnb-prot',  Math.round(t.protein) + 'g');
-    setText('dnb-carb',  Math.round(t.carbs) + 'g');
-    setText('dnb-fat',   Math.round(t.fat) + 'g');
-    setText('dnb-fiber', Math.round(t.fiber) + 'g');
-  }
-
-  // Medicine list
-  const medList = document.getElementById('dash-medicine-list');
-  if (medList) {
-    if (doses.length === 0) {
-      medList.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;text-align:center">No medicines scheduled today.<br><a href="#" data-ev-click="switchView(\'medicines\');return false" style="color:var(--teal-600)">Add medicine →</a></div>';
-    } else {
-      medList.innerHTML = doses.slice(0,5).map(d => `
-        <div class="dash-dose-item ${d.taken ? 'taken' : ''}" data-ev-click="markDoseTaken('${d.med_id}','${d.time}',this)">
-          <div class="dash-dose-icon">${d.icon}</div>
-          <div class="dash-dose-info">
-            <div class="dash-dose-name">${escHtml(d.med_name)}</div>
-            <div class="dash-dose-detail">${d.dosage} ${d.unit}${d.with_food ? ' · with food' : ''}</div>
-          </div>
-          <div class="dash-dose-time">${d.time}</div>
-          <div class="dash-dose-check ${d.taken ? 'done' : ''}">${d.taken ? '✓' : ''}</div>
+  // ── Today's medicines — panel only appears if there are doses ──
+  const remaining = doses.filter(d => !d.taken).length;
+  const hasMeds   = doses.length > 0;
+  const medPanel  = document.getElementById('dash-medicines-panel');
+  const medList   = document.getElementById('dash-medicine-list');
+  if (medPanel) medPanel.style.display = hasMeds ? '' : 'none';
+  if (hasMeds && medList) {
+    medList.innerHTML = doses.slice(0, 5).map(d => `
+      <div class="dash-dose-item ${d.taken ? 'taken' : ''}" data-ev-click="markDoseTaken('${d.med_id}','${d.time}',this)">
+        <div class="dash-dose-icon">${d.icon}</div>
+        <div class="dash-dose-info">
+          <div class="dash-dose-name">${escHtml(d.med_name)}</div>
+          <div class="dash-dose-detail">${d.dosage} ${d.unit}${d.with_food ? ' · with food' : ''}</div>
         </div>
-      `).join('');
-    }
+        <div class="dash-dose-time">${d.time}</div>
+        <div class="dash-dose-check ${d.taken ? 'done' : ''}">${d.taken ? '✓' : ''}</div>
+      </div>`).join('');
   }
 
-  // Suggestions
-  const sugs = document.getElementById('dash-suggestions');
-  if (sugs) renderSuggestions(sugs, fitnessStats.suggestions || []);
+  // ── Pending tasks — panel only appears if there are any ──
+  const pendingCount = await loadDashboardTodos();
+  const taskPanel = document.getElementById('dash-tasks-panel');
+  if (taskPanel) taskPanel.style.display = pendingCount > 0 ? '' : 'none';
 
-  // Weekly chart
-  renderWeeklyChart(fitnessStats.weekly_days || {});
+  // Show the agenda grid only if at least one panel is visible
+  const agenda = document.getElementById('dash-agenda-grid');
+  if (agenda) agenda.style.display = (hasMeds || pendingCount > 0) ? '' : 'none';
 
-  // Nav badge
+  // ── Weekly activity — only when there is activity this week ──
+  const weeklyDays = fitnessStats.weekly_days || {};
+  const hasActivity = Object.values(weeklyDays).some(d => (d.duration || 0) > 0 || (d.calories || 0) > 0);
+  const weeklyPanel = document.getElementById('dash-weekly-panel');
+  if (weeklyPanel) weeklyPanel.style.display = hasActivity ? '' : 'none';
+  if (hasActivity) renderWeeklyChart(weeklyDays);
+
+  // Nav dose badge
   const badge = document.getElementById('nav-dose-badge');
   if (badge) {
     if (remaining > 0) { badge.textContent = remaining; badge.style.display = 'inline-block'; }
     else badge.style.display = 'none';
   }
 
-  // Consistency streak badge in dashboard header
+  // Consistency streak badge
   fetch('/api/fitness/consistency').then(r => r.json()).then(con => {
     const sb = document.getElementById('dash-streak-badge');
     if (sb) {
@@ -1422,12 +1389,6 @@ async function loadDashboard() {
       else sb.style.display = 'none';
     }
   }).catch(() => {});
-
-  // Daily check-in — shows once per day on first dashboard open
-  initDailyCheckin();
-
-  // Health score hero card
-  loadHealthScore();
 }
 
 async function openCalorieBreakdown() {
@@ -6004,13 +5965,9 @@ async function loadDashboardTodos() {
   const r = await fetch('/api/todos?status=pending').then(r => r.json()).catch(() => null);
   const el = document.getElementById('dash-todos-list');
   if (!el) return;
-  const todos = (r?.todos || []).slice(0, 5);
-  if (todos.length === 0) {
-    el.innerHTML = `<div style="color:var(--gray-400);font-size:13px;padding:12px 14px;text-align:center">
-      🎉 No pending tasks! <a href="#" data-ev-click="switchView('todos');return false" style="color:var(--teal-600)">Add one →</a>
-    </div>`;
-    return;
-  }
+  const allPending = r?.todos || [];
+  const todos = allPending.slice(0, 5);
+  if (todos.length === 0) { el.innerHTML = ''; return 0; }
   const today = localToday();
   const PRI = { high:'🔴', medium:'🟡', low:'🟢' };
   el.innerHTML = todos.map(t => {
@@ -6023,11 +5980,12 @@ async function loadDashboardTodos() {
       ${dueStr ? `<span class="dash-todo-due ${isOverdue?'overdue':''}">${dueStr}</span>` : ''}
     </div>`;
   }).join('');
-  if (r.todos.length > 5) {
+  if (allPending.length > 5) {
     el.innerHTML += `<div style="text-align:center;padding:6px 0">
-      <a href="#" data-ev-click="switchView('todos');return false" style="font-size:12px;color:var(--teal-600)">+${r.todos.length-5} more tasks →</a>
+      <a href="#" data-ev-click="switchView('todos');return false" style="font-size:12px;color:var(--teal-600)">+${allPending.length-5} more tasks →</a>
     </div>`;
   }
+  return allPending.length;
 }
 
 async function dashToggleTodo(id) {
@@ -10066,15 +10024,8 @@ async function loadHealthScore() {
   if (valEl) valEl.textContent = score;
   if (lblEl) lblEl.textContent = label;
 
-  // Colour the card based on score
-  if (card) {
-    card.classList.remove('hero-card--score-green','hero-card--score-amber','hero-card--score-red','hero-card--score-teal');
-    card.classList.add(
-      score >= 80 ? 'hero-card--score-green' :
-      score >= 60 ? 'hero-card--score-teal'  :
-      score >= 40 ? 'hero-card--score-amber'  : 'hero-card--score-red'
-    );
-  }
+  // Friendly empty state for brand-new accounts (score with no data)
+  if (lblEl && (!data.components || score <= 1)) lblEl.textContent = 'Start logging to build your score';
 
   // Animate the ring (circumference = 2π×22 ≈ 138.2)
   if (ring) {

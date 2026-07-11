@@ -324,225 +324,111 @@
 <div id="view-dashboard" class="view active">
   <!-- First-run "get started" checklist (filled by checkFirstRun) -->
   <div id="firstrun-card" style="display:none;margin-bottom:20px"></div>
-  <!-- Insight cards (filled by loadInsightCards) -->
-  <div id="insight-cards" style="display:none;margin-bottom:20px"></div>
+
   <div class="page-header">
     <div>
       <div class="page-greeting" id="greeting">Good morning</div>
-      <h1 class="page-title">Your Health Dashboard</h1>
+      <h1 class="page-title" id="dash-title">Today</h1>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <!-- Consistency shortcut -->
-      <button class="dash-icon-btn" data-ev-click="switchView('consistency')" title="Consistency Tracker" id="dash-consistency-btn">
+      <button class="dash-icon-btn" data-ev-click="switchView('consistency')" title="Consistency" id="dash-consistency-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span class="dash-icon-btn-badge" id="dash-streak-badge" style="display:none">0</span>
       </button>
-      <!-- Profile icon only -->
       <button class="dash-icon-btn" data-ev-click="openProfileModal()" title="Health Profile">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
       </button>
-      <button class="dash-icon-btn" data-ev-click="openGlobalSearch()" title="Search everything (Ctrl+K)">
+      <button class="dash-icon-btn" data-ev-click="openGlobalSearch()" title="Search (Ctrl+K)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
       <div class="header-date" id="header-date"></div>
     </div>
   </div>
 
-  <div class="dash-hero-grid" id="dash-hero-grid">
-    <!-- Health Score — always first, always visible -->
-    <div class="hero-card hero-card--score dash-clickable" id="dash-score-card"
-         data-ev-click="openHealthScoreModal()" style="cursor:pointer;position:relative;overflow:hidden">
-      <div class="hero-card-label">Health Score</div>
-      <div class="hero-score-wrap">
-        <svg class="hero-score-ring" viewBox="0 0 56 56">
-          <circle cx="28" cy="28" r="22" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="5"/>
-          <circle cx="28" cy="28" r="22" fill="none" stroke="white" stroke-width="5"
-            stroke-dasharray="0 138.2" stroke-linecap="round"
-            transform="rotate(-90 28 28)" id="dash-score-ring"/>
-        </svg>
-        <div class="hero-score-num" id="dash-score-val">—</div>
+  <!-- Focal "Today" panel: calm health score + inline stats -->
+  <div class="today-panel">
+    <div class="today-score dash-clickable" id="dash-score-card" data-ev-click="openHealthScoreModal()" title="Health score breakdown">
+      <svg class="today-score-ring" viewBox="0 0 76 76">
+        <circle cx="38" cy="38" r="31" fill="none" stroke="var(--teal-100)" stroke-width="6"/>
+        <circle cx="38" cy="38" r="31" fill="none" stroke="var(--teal-600)" stroke-width="6"
+          stroke-dasharray="0 194.8" stroke-linecap="round" transform="rotate(-90 38 38)" id="dash-score-ring"/>
+      </svg>
+      <div class="today-score-center">
+        <div class="today-score-num" id="dash-score-val">—</div>
+        <div class="today-score-of">/ 100</div>
       </div>
-      <div class="hero-card-sub" id="dash-score-label">calculating…</div>
-      <div class="hero-card-icon">🎯</div>
-      <div class="hero-card-arrow">→</div>
+      <div class="today-score-label" id="dash-score-label">calculating…</div>
     </div>
-    <div class="hero-card hero-card--teal" id="dash-doses-card" style="display:none">
-      <div class="hero-card-label">Today's Doses</div>
-      <div class="hero-card-value" id="dash-doses-today">—</div>
-      <div class="hero-card-sub" id="dash-doses-sub">remaining</div>
-      <div class="hero-card-icon">💊</div>
-    </div>
-    <!-- Active minutes — always shown, clickable to Fitness -->
-    <div class="hero-card hero-card--blue dash-clickable" id="dash-active-card"
-         data-ev-click="switchView('fitness')" title="Go to Fitness Journey" style="cursor:pointer">
-      <div class="hero-card-label">Active Minutes</div>
-      <div class="hero-card-value" id="dash-active-min">—</div>
-      <div class="hero-card-sub">this week</div>
-      <div class="hero-card-icon">🏃</div>
-      <div class="hero-card-arrow">→</div>
-    </div>
-    <!-- Calorie balance — always shown, clickable for breakdown -->
-    <div class="hero-card hero-card--amber dash-clickable" id="dash-caldeficit-card"
-         data-ev-click="openCalorieBreakdown()" title="View calorie breakdown" style="cursor:pointer">
-      <div class="hero-card-label">Calorie Balance</div>
-      <div class="hero-card-value" id="dash-cal-deficit">—</div>
-      <div class="hero-card-sub" id="dash-cal-deficit-sub">today</div>
-      <div class="hero-card-icon">⚡</div>
-      <div class="hero-card-arrow">→</div>
-    </div>
-    <!-- Medical reports card — hidden until user has reports -->
-    <div class="hero-card hero-card--purple" id="dash-reports-card" style="display:none">
-      <div class="hero-card-label">Medical Reports</div>
-      <div class="hero-card-value" id="dash-reports">—</div>
-      <div class="hero-card-sub">uploaded</div>
-      <div class="hero-card-icon">📋</div>
-    </div>
-  </div>
 
-  <!-- Nutrition quick bar -->
-  <div class="dash-nutrition-bar" id="dash-nutrition-bar" style="display:none">
-    <div class="dnb-label">Today's Nutrition</div>
-    <div class="dnb-macros">
-      <div class="dnb-macro dnb-macro--cal">
-        <div class="dnb-macro-val" id="dnb-cal">0</div>
-        <div class="dnb-macro-key">kcal eaten</div>
+    <div class="today-stats">
+      <div class="tstat dash-clickable" data-ev-click="openCalorieBreakdown()">
+        <span class="tstat-icon">⚡</span>
+        <div class="tstat-body"><div class="tstat-val" id="dash-cal-deficit">—</div><div class="tstat-key" id="dash-cal-deficit-sub">calories today</div></div>
       </div>
-      <div class="dnb-sep"></div>
-      <div class="dnb-macro dnb-macro--prot">
-        <div class="dnb-macro-val" id="dnb-prot">0g</div>
-        <div class="dnb-macro-key">protein</div>
+      <div class="tstat dash-clickable" data-ev-click="switchView('food')">
+        <span class="tstat-icon">💧</span>
+        <div class="tstat-body"><div class="tstat-val" id="dws-hydration">— ml</div><div class="tstat-key">hydration</div>
+          <div class="tstat-bar"><div class="tstat-bar-fill" id="dws-hydration-bar"></div></div></div>
       </div>
-      <div class="dnb-sep"></div>
-      <div class="dnb-macro dnb-macro--carb">
-        <div class="dnb-macro-val" id="dnb-carb">0g</div>
-        <div class="dnb-macro-key">carbs</div>
+      <div class="tstat dash-clickable" data-ev-click="switchView('sleep')">
+        <span class="tstat-icon">🌙</span>
+        <div class="tstat-body"><div class="tstat-val" id="dws-sleep">— h</div><div class="tstat-key">sleep <span id="dws-sleep-quality"></span></div></div>
       </div>
-      <div class="dnb-sep"></div>
-      <div class="dnb-macro dnb-macro--fat">
-        <div class="dnb-macro-val" id="dnb-fat">0g</div>
-        <div class="dnb-macro-key">fat</div>
+      <div class="tstat dash-clickable" data-ev-click="switchView('fitness')">
+        <span class="tstat-icon">🏃</span>
+        <div class="tstat-body"><div class="tstat-val" id="dash-active-min">—</div><div class="tstat-key">active min · this week</div></div>
       </div>
-      <div class="dnb-sep"></div>
-      <div class="dnb-macro dnb-macro--fiber">
-        <div class="dnb-macro-val" id="dnb-fiber">0g</div>
-        <div class="dnb-macro-key">fiber</div>
+      <div class="tstat dash-clickable" data-ev-click="switchView('habits')">
+        <span class="tstat-icon">⭐</span>
+        <div class="tstat-body"><div class="tstat-val" id="dws-habits">— / —</div><div class="tstat-key">habits <span id="dws-habits-badge"></span></div></div>
       </div>
-    </div>
-    <a href="#" class="dnb-link" data-ev-click="switchView('food');return false">Log food →</a>
-  </div>
-
-  <!-- Wellness quick-strip (hydration, sleep, habits) -->
-  <div class="dash-wellness-strip" id="dash-wellness-strip">
-    <!-- Hydration -->
-    <div class="dws-item" data-ev-click="switchView('food')" title="Log food & water">
-      <div class="dws-icon">💧</div>
-      <div class="dws-content">
-        <div class="dws-label">Hydration</div>
-        <div class="dws-val" id="dws-hydration">— ml</div>
-      </div>
-      <div class="dws-bar-wrap">
-        <div class="dws-bar-track"><div class="dws-bar-fill dws-bar--blue" id="dws-hydration-bar"></div></div>
-      </div>
-    </div>
-    <div class="dws-sep"></div>
-    <!-- Sleep -->
-    <div class="dws-item" data-ev-click="switchView('sleep')" title="View sleep tracker">
-      <div class="dws-icon">🌙</div>
-      <div class="dws-content">
-        <div class="dws-label">Sleep</div>
-        <div class="dws-val" id="dws-sleep">— h</div>
-      </div>
-      <div class="dws-quality" id="dws-sleep-quality"></div>
-    </div>
-    <div class="dws-sep"></div>
-    <!-- Habits -->
-    <div class="dws-item" data-ev-click="switchView('habits')" title="View habits">
-      <div class="dws-icon">⭐</div>
-      <div class="dws-content">
-        <div class="dws-label">Habits</div>
-        <div class="dws-val" id="dws-habits">— / —</div>
-      </div>
-      <div class="dws-badge" id="dws-habits-badge"></div>
-    </div>
-    <div class="dws-sep"></div>
-    <!-- Symptoms -->
-    <div class="dws-item" data-ev-click="switchView('reports')" title="Log symptoms">
-      <div class="dws-icon">🩺</div>
-      <div class="dws-content">
-        <div class="dws-label">Symptoms</div>
-        <div class="dws-val" id="dws-symptoms">None today</div>
+      <div class="tstat dash-clickable" data-ev-click="switchView('reports')">
+        <span class="tstat-icon">🩺</span>
+        <div class="tstat-body"><div class="tstat-val" id="dws-symptoms">None</div><div class="tstat-key">symptoms today</div></div>
       </div>
     </div>
   </div>
 
-  <!-- Quick-log action bar -->
+  <!-- Quick-log actions -->
   <div class="quick-log-bar">
-    <button class="ql-btn" data-ev-click="quickAddWater(250)">
-      <span class="ql-icon">💧</span>
-      <span class="ql-label">Log Water</span>
-      <span class="ql-hint">250ml</span>
-    </button>
-    <button class="ql-btn" data-ev-click="quickAdd('food')">
-      <span class="ql-icon">🍽️</span>
-      <span class="ql-label">Log Meal</span>
-      <span class="ql-hint">food tracker</span>
-    </button>
-    <button class="ql-btn" data-ev-click="quickAdd('fitness')">
-      <span class="ql-icon">🏃</span>
-      <span class="ql-label">Log Workout</span>
-      <span class="ql-hint">fitness</span>
-    </button>
-    <button class="ql-btn" data-ev-click="switchView('thoughts')">
-      <span class="ql-icon">💭</span>
-      <span class="ql-label">Add Thought</span>
-      <span class="ql-hint">journal</span>
-    </button>
-    <button class="ql-btn" data-ev-click="quickAdd('todos')">
-      <span class="ql-icon">✅</span>
-      <span class="ql-label">Add Task</span>
-      <span class="ql-hint">to-do list</span>
-    </button>
+    <button class="ql-btn" data-ev-click="quickAddWater(250)"><span class="ql-icon">💧</span><span class="ql-label">Log Water</span><span class="ql-hint">250ml</span></button>
+    <button class="ql-btn" data-ev-click="quickAdd('food')"><span class="ql-icon">🍽️</span><span class="ql-label">Log Meal</span><span class="ql-hint">food tracker</span></button>
+    <button class="ql-btn" data-ev-click="quickAdd('fitness')"><span class="ql-icon">🏃</span><span class="ql-label">Log Workout</span><span class="ql-hint">fitness</span></button>
+    <button class="ql-btn" data-ev-click="switchView('thoughts')"><span class="ql-icon">💭</span><span class="ql-label">Add Thought</span><span class="ql-hint">journal</span></button>
+    <button class="ql-btn" data-ev-click="quickAdd('todos')"><span class="ql-icon">✅</span><span class="ql-label">Add Task</span><span class="ql-hint">to-do list</span></button>
   </div>
 
-  <div class="dash-body-grid">
-    <!-- Today's medicines -->
-    <div class="panel">
+  <!-- Insight cards (filled by loadInsightCards) -->
+  <div id="insight-cards" style="display:none;margin-bottom:20px"></div>
+
+  <!-- Today's agenda: medicines + tasks (each hidden when empty) -->
+  <div class="dash-body-grid" id="dash-agenda-grid" style="display:none">
+    <div class="panel" id="dash-medicines-panel" style="display:none">
       <div class="panel-header">
         <h2 class="panel-title">Today's Medicines</h2>
         <a href="#" class="panel-link" data-ev-click="switchView('medicines');return false">Manage →</a>
       </div>
       <div id="dash-medicine-list" class="dash-dose-list"></div>
     </div>
-
-    <!-- Today's todos -->
-    <div class="panel">
+    <div class="panel" id="dash-tasks-panel" style="display:none">
       <div class="panel-header">
         <h2 class="panel-title">Pending Tasks</h2>
         <a href="#" class="panel-link" data-ev-click="switchView('todos');return false">All tasks →</a>
       </div>
       <div id="dash-todos-list" class="dash-todos-list"></div>
     </div>
+  </div>
 
-    <!-- Fitness suggestions -->
-    <div class="panel">
-      <div class="panel-header">
-        <h2 class="panel-title">AI Suggestions</h2>
-        <span class="panel-badge">Personalized</span>
+  <!-- Weekly activity — hidden until there is activity -->
+  <div class="panel panel--wide" id="dash-weekly-panel" style="display:none;margin-top:18px">
+    <div class="panel-header">
+      <h2 class="panel-title">Weekly Activity</h2>
+      <div class="chart-legend">
+        <span class="legend-dot" style="background:var(--teal-500)"></span>Calories
+        <span class="legend-dot" style="background:var(--blue-500);margin-left:12px"></span>Minutes
       </div>
-      <div id="dash-suggestions" class="suggestions-list"></div>
     </div>
-
-    <!-- Weekly activity chart -->
-    <div class="panel panel--wide">
-      <div class="panel-header">
-        <h2 class="panel-title">Weekly Activity</h2>
-        <div class="chart-legend">
-          <span class="legend-dot" style="background:#4F8D74"></span>Calories
-          <span class="legend-dot" style="background:#5E8299;margin-left:12px"></span>Minutes
-        </div>
-      </div>
-      <div class="weekly-chart" id="weekly-chart"></div>
-    </div>
+    <div class="weekly-chart" id="weekly-chart"></div>
   </div>
 </div>
 
