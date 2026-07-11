@@ -692,8 +692,9 @@
   </div>
   <div class="page-header">
     <div>
-      <h1 class="page-title">Medicine Tracker</h1>
-      <p class="page-subtitle">Daily doses and reminders</p>
+      <div class="page-eyebrow">Track</div>
+      <h1 class="page-title">Medicines</h1>
+      <p class="page-subtitle">Daily doses &amp; reminders</p>
     </div>
     <button class="btn-primary" data-ev-click="openMedModal()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -701,18 +702,33 @@
     </button>
   </div>
 
-  <!-- Today's schedule -->
-  <div class="med-today-panel">
-    <div class="med-today-header">
-      <div class="med-today-title">
-        <span class="med-today-icon">☀️</span>
-        Today's Schedule
-        <span class="today-date-badge" id="med-today-date"></span>
+  <!-- Focal: today's adherence ring + next dose (hidden until there are doses) -->
+  <div class="today-panel" id="med-focal" style="display:none">
+    <div class="today-score" style="cursor:default">
+      <svg class="today-score-ring" viewBox="0 0 76 76">
+        <circle cx="38" cy="38" r="31" fill="none" stroke="var(--teal-100)" stroke-width="6"/>
+        <circle cx="38" cy="38" r="31" fill="none" stroke="var(--teal-600)" stroke-width="6"
+          stroke-dasharray="0 194.8" stroke-linecap="round" transform="rotate(-90 38 38)" id="med-ring"/>
+      </svg>
+      <div class="today-score-center"><div class="today-score-num" id="med-ring-val" style="font-size:24px">0/0</div></div>
+      <div class="today-score-label" id="med-ring-label">doses taken today</div>
+    </div>
+    <div class="today-stats" style="grid-template-columns:1fr;align-content:center">
+      <div class="tstat" style="cursor:default;align-items:center">
+        <span class="tstat-icon" id="med-next-icon">⏰</span>
+        <div class="tstat-body">
+          <div class="tstat-val" id="med-next-val">—</div>
+          <div class="tstat-key" id="med-next-key">next dose</div>
+        </div>
       </div>
-      <div class="med-progress-wrap">
-        <div class="med-progress-label" id="med-progress-label">0 of 0 taken</div>
-        <div class="med-progress-track"><div class="med-progress-fill" id="med-progress-fill" style="width:0%"></div></div>
-      </div>
+    </div>
+  </div>
+
+  <!-- Today's schedule timeline -->
+  <div class="panel" id="med-timeline-panel" style="margin-bottom:18px">
+    <div class="panel-header">
+      <h2 class="panel-title">☀️ Today's schedule</h2>
+      <span class="today-date-badge" id="med-today-date"></span>
     </div>
     <div id="today-dose-timeline" class="dose-timeline"></div>
   </div>
@@ -1708,6 +1724,7 @@
 <div id="view-sleep" class="view">
   <div class="page-header">
     <div>
+      <div class="page-eyebrow">Daily</div>
       <h1 class="page-title">Sleep</h1>
       <p class="page-subtitle">Track your sleep quality and duration</p>
     </div>

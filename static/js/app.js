@@ -1742,14 +1742,37 @@ async function loadMedicines() {
   loadMedAdherence();
 }
 
+function fmt12(t) {
+  if (!t || !t.includes(':')) return t || '';
+  let [h, m] = t.split(':').map(Number);
+  const ap = h >= 12 ? 'pm' : 'am';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${ap}`;
+}
+
 function renderTodayTimeline(doses) {
   const el = document.getElementById('today-dose-timeline');
   if (!el) return;
   const total = doses.length, taken = doses.filter(d => d.taken).length;
-  const fill = document.getElementById('med-progress-fill');
-  const label = document.getElementById('med-progress-label');
-  if (fill) fill.style.width = total ? `${(taken/total*100).toFixed(0)}%` : '0%';
-  if (label) label.textContent = `${taken} of ${total} taken`;
+  // ── Focal panel: adherence ring + next dose ──
+  const focal = document.getElementById('med-focal');
+  if (focal) focal.style.display = total > 0 ? 'flex' : 'none';
+  const ring = document.getElementById('med-ring');
+  if (ring) ring.setAttribute('stroke-dasharray', `${total ? (taken / total * 194.8).toFixed(1) : 0} 194.8`);
+  setText('med-ring-val', `${taken}/${total}`);
+  setText('med-ring-label', (total && taken === total) ? 'all doses taken 🎉' : 'doses taken today');
+  const nextIcon = document.getElementById('med-next-icon');
+  const upcoming = [...doses].filter(d => !d.taken)
+    .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0];
+  if (upcoming) {
+    setText('med-next-val', `${fmt12(upcoming.time)} · ${escHtml(upcoming.med_name)}`);
+    setText('med-next-key', `${upcoming.dosage} ${upcoming.unit}${upcoming.with_food ? ' · with food' : ''}`);
+    if (nextIcon) nextIcon.textContent = upcoming.icon || '💊';
+  } else if (total) {
+    setText('med-next-val', 'All done for today');
+    setText('med-next-key', 'nothing left to take');
+    if (nextIcon) nextIcon.textContent = '✅';
+  }
   if (doses.length === 0) {
     el.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:16px 0;text-align:center">No doses scheduled. <a href="#" data-ev-click="openMedModal();return false" style="color:var(--teal-600)">Add a medicine →</a></div>';
     return;
@@ -7385,6 +7408,7 @@ async function loadSleepView() {
   if (!el) return;
 
   el.innerHTML = `
+    <div class="today-panel" id="sleep-focal" style="display:none"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px">
 
       <!-- Log form -->
@@ -7512,6 +7536,43 @@ async function loadSleepView() {
   window._stpState  = { bed: {h:11, m:0, ampm:'PM'}, wake: {h:7, m:0, ampm:'AM'} };
   stpUpdate();
   loadSleepTrend();
+  renderSleepFocal();
+}
+
+async function renderSleepFocal() {
+  const el = document.getElementById('sleep-focal');
+  if (!el) return;
+  const logs = await fetch('/api/sleep?days=7', {cache: 'no-store'}).then(r => r.json()).catch(() => []);
+  if (!Array.isArray(logs) || logs.length === 0) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const sorted = [...logs].sort((a, b) => (b.date_key || '').localeCompare(a.date_key || ''));
+  const last = sorted[0];
+  const avg = logs.reduce((s, l) => s + (l.duration_h || 0), 0) / logs.length;
+  const fmtDur = h => `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`;
+  const qEmoji = { 1: '😩', 2: '😕', 3: '😐', 4: '😊', 5: '😴' }[last.quality] || '';
+  const byDate = {}; logs.forEach(l => { byDate[l.date_key] = l.duration_h; });
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    days.push({ h: byDate[k] || 0, lbl: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()] });
+  }
+  const maxH = Math.max(9, ...days.map(d => d.h));
+  const bars = days.map(d => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div style="width:100%;background:${d.h ? 'var(--teal-200)' : 'var(--gray-100)'};height:${Math.max(6, d.h / maxH * 44)}px;border-radius:3px 3px 0 0"></div>
+      <span style="font-size:8px;color:var(--gray-400)">${d.lbl}</span></div>`).join('');
+  el.innerHTML = `
+    <div style="min-width:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px 8px">
+      <div class="today-score-num" style="font-size:32px">${fmtDur(last.duration_h || 0)}</div>
+      <div style="font-size:12.5px;color:var(--gray-500);margin-top:4px">last night ${qEmoji}</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
+        <span style="font-size:12px;color:var(--gray-500)">7-day average</span>
+        <span style="font-size:16px;font-weight:700;color:var(--gray-800)">${fmtDur(avg)}</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:5px;height:52px;padding:0 4px">${bars}</div>
+    </div>`;
 }
 
 // ── Stepper logic ──────────────────────────────────────────────
