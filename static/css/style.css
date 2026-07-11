@@ -4653,3 +4653,10 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 /* Typography refinement — tighter tracking on serif titles */
 .page-title { letter-spacing:-.5px; }
 .today-score-num, .hs-big-num, .hero-score-num { letter-spacing:-1px; }
+
+/* ── Unified screen header eyebrow (section label above each title) ── */
+.page-eyebrow {
+  font-family:'Manrope',sans-serif; font-size:11px; font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--teal-600);
+  margin-bottom:3px;
+}
