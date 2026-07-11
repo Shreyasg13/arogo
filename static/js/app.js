@@ -4146,7 +4146,7 @@ function selectFoodItem(food) {
       </div>
     </div>
     <div class="nutrient-preview">
-      <div style="font-size:20px;font-weight:700;font-family:'DM Serif Display',serif;color:var(--gray-900);margin-bottom:10px" id="fp-cal-preview">${cal} kcal</div>
+      <div style="font-size:20px;font-weight:700;font-family:'EB Garamond',serif;color:var(--gray-900);margin-bottom:10px" id="fp-cal-preview">${cal} kcal</div>
       ${macros.map(m => `
         <div class="nutprev-row">
           <div class="nutprev-label">${m.label}</div>
@@ -6680,7 +6680,7 @@ function renderProgress(r) {
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
-            <span style="font-size:32px;font-weight:800;font-family:'DM Serif Display',serif;color:var(--gray-900)">${p==='month'?r.workouts?.this_month:workoutDays.filter(d=>d.cal>0).length}</span>
+            <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${p==='month'?r.workouts?.this_month:workoutDays.filter(d=>d.cal>0).length}</span>
             <span style="font-size:14px;color:var(--gray-400)">active days · target 4/week</span>
           </div>
           <div style="display:flex;align-items:flex-end;gap:2px;height:50px">${workoutBars}</div>
@@ -6701,7 +6701,7 @@ function renderProgress(r) {
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
-            <span style="font-size:32px;font-weight:800;font-family:'DM Serif Display',serif;color:var(--gray-900)">${sleepAvg||'—'}</span>
+            <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${sleepAvg||'—'}</span>
             <span style="font-size:14px;color:var(--gray-400)">h avg · target 7.5h</span>
           </div>
           ${noSleepMsg}
@@ -6724,7 +6724,7 @@ function renderProgress(r) {
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
-            <span style="font-size:32px;font-weight:800;font-family:'DM Serif Display',serif;color:var(--gray-900)">${calPct}%</span>
+            <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${calPct}%</span>
             <span style="font-size:14px;color:var(--gray-400)">of daily goal (${targetCal} kcal)</span>
           </div>
           ${noCalMsg}
@@ -6749,7 +6749,7 @@ function renderProgress(r) {
       <div class="prog-section-body">
         ${noHabitMsg}
         ${habits.length ? `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:16px">
-          <span style="font-size:32px;font-weight:800;font-family:'DM Serif Display',serif;color:var(--gray-900)">${habitPct}%</span>
+          <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${habitPct}%</span>
           <span style="font-size:14px;color:var(--gray-400)">overall · ${r.habits?.total||0} habits · ${r.habits?.done_count||0} total check-ins</span>
         </div>
         <div class="prog-habit-rows">${habitRows}</div>` : ''}
@@ -6984,9 +6984,9 @@ function printReport() {
 <title>Weekly Health Report</title>
 <meta charset="UTF-8">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Manrope:wght@400;500;600;700&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'DM Sans',sans-serif;background:#fff;color:#1a1a1a;padding:28px}
+  body{font-family:'Manrope',sans-serif;background:#fff;color:#1a1a1a;padding:28px}
   .rpt-doc{max-width:820px;margin:0 auto}
 
   /* Header */
