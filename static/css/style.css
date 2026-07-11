@@ -175,7 +175,7 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dose-cards-col { flex:1; padding:8px 0 8px 12px; display:flex; flex-wrap:wrap; gap:8px; }
 .dose-card { display:flex; align-items:center; gap:10px; background:var(--gray-25); border:1px solid var(--gray-100); border-radius:var(--r-md); padding:10px 14px; cursor:pointer; transition:all .15s; min-width:200px; }
 .dose-card:hover { border-color:var(--teal-200); background:var(--teal-50); }
-.dose-card.taken { background:#F0FDF4; border-color:#D1FAE5; }
+.dose-card.taken { background:var(--teal-50); border-color:var(--teal-100); }
 .dose-card.taken .dose-card-name { color:var(--gray-400); }
 .dose-card-emoji { font-size:20px; }
 .dose-card-info { flex:1; }
@@ -974,12 +974,12 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 
 /* TDEE preview */
 .profile-tdee-preview {
-  background:linear-gradient(135deg,var(--teal-50),#F0FDF9);
+  background:var(--teal-50);
   border:1px solid var(--teal-100); border-radius:var(--r-lg);
   padding:14px 16px; margin-top:16px;
 }
-.tdee-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; color:var(--gray-600); }
-.tdee-row--target { border-top:1px solid var(--teal-100); margin-top:4px; padding-top:8px; font-weight:600; color:var(--teal-700); font-size:14px; }
+.tdee-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; color:var(--gray-700); }
+.tdee-row--target { border-top:1px solid var(--teal-200); margin-top:4px; padding-top:8px; font-weight:700; color:var(--gray-900); font-size:14px; }
 
 /* ════════════════════════════════════
    CALORIE DEFICIT & NUTRITION INTEGRATION
@@ -3255,7 +3255,7 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 .habit-check-row:last-child { border-bottom: none; }
 .habit-check-row:hover { background: var(--gray-25); }
-.habit-check-row.is-done { background: #F0FDF9; }
+.habit-check-row.is-done { background: var(--teal-50); }
 
 /* Left accent line */
 .hcr-accent {
@@ -3314,7 +3314,7 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   position: relative;
 }
 .habit-card2:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-.habit-card2.is-done { border-color: #A7F3D0; background: #F0FDF9; }
+.habit-card2.is-done { border-color: var(--teal-200); background: var(--teal-50); }
 
 .hc2-top {
   display: flex; align-items: center; gap: 8px;
