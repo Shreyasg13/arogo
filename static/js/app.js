@@ -4382,12 +4382,14 @@ async function openProfileModal() {
 
 function updateTDEEPreview(t) {
   const prev = document.getElementById('tdee-preview');
-  if (prev && t) {
-    prev.style.display = 'block';
-    setText('prev-bmr',    `${t.bmr} kcal/day`);
-    setText('prev-tdee',   `${t.tdee} kcal/day`);
-    setText('prev-target', `${t.target_calories} kcal/day`);
-  }
+  if (!prev || !t) return;
+  prev.style.display = 'block';
+  // Profile may be incomplete (missing weight/height/age/gender) → values
+  // come back null; show a clean placeholder instead of the literal "null".
+  const fmt = v => (v == null || Number.isNaN(Number(v))) ? '—' : `${v} kcal/day`;
+  setText('prev-bmr',    fmt(t.bmr));
+  setText('prev-tdee',   fmt(t.tdee));
+  setText('prev-target', fmt(t.target_calories));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
