@@ -1336,11 +1336,15 @@ async function loadDashboard() {
     setText('dash-cal-deficit-sub',
       t.burned > 0 ? `${t.burned} kcal burned` :
       net > 100 ? 'kcal remaining' : net < -100 ? 'kcal over budget' : 'calories today');
+    renderNextAction(doses, cb);   // refine the hero once calorie state is known
   }).catch(() => {});
 
   // ── Today's medicines — panel only appears if there are doses ──
   const remaining = doses.filter(d => !d.taken).length;
   const hasMeds   = doses.length > 0;
+
+  // Single "what do I do right now" hero — meds first, then a gentle fallback
+  renderNextAction(doses, null);
   const medPanel  = document.getElementById('dash-medicines-panel');
   const medList   = document.getElementById('dash-medicine-list');
   if (medPanel) medPanel.style.display = hasMeds ? '' : 'none';
@@ -1389,6 +1393,70 @@ async function loadDashboard() {
       else sb.style.display = 'none';
     }
   }).catch(() => {});
+}
+
+// The dashboard hero: surface the single most important next action.
+// Priority — an untaken dose (the app's core adherence loop) > "all caught up"
+// affirmation > a gentle "log your first meal" nudge on an otherwise-empty day.
+function renderNextAction(doses, calorieState) {
+  const el = document.getElementById('dash-next-action');
+  if (!el) return;
+  const untaken = (doses || []).filter(d => !d.taken);
+
+  // Current local time as HH:MM, to tell "due/overdue" from "coming up"
+  const now  = new Date();
+  const hhmm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+  if (untaken.length) {
+    const sorted  = untaken.slice().sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const due     = sorted.filter(d => (d.time || '') <= hhmm);
+    const next    = due.length ? due[due.length - 1] : sorted[0];  // most-overdue, else soonest
+    const overdue = (next.time || '') <= hhmm;
+    const more    = untaken.length - 1;
+    el.className = 'next-action';
+    el.innerHTML = `
+      <div class="next-action-icon">${next.icon || '💊'}</div>
+      <div class="next-action-body">
+        <div class="next-action-eyebrow">${overdue ? 'Time for your dose' : 'Next dose'}</div>
+        <div class="next-action-title">Take ${escHtml(next.med_name)}</div>
+        <div class="next-action-sub">${escHtml(next.dosage || '')} ${escHtml(next.unit || '')} · ${next.time}${next.with_food ? ' · with food' : ''}${more > 0 ? ` · +${more} more today` : ''}</div>
+      </div>
+      <button class="next-action-btn" data-ev-click="markDoseTaken('${next.med_id}','${next.time}')">Mark taken</button>`;
+    el.style.display = '';
+    return;
+  }
+
+  if ((doses || []).length) {
+    // Meds exist and every dose is done — a quiet affirmation, no action needed
+    el.className = 'next-action is-calm';
+    el.innerHTML = `
+      <div class="next-action-icon">✓</div>
+      <div class="next-action-body">
+        <div class="next-action-eyebrow">All caught up</div>
+        <div class="next-action-title">Every dose taken today</div>
+        <div class="next-action-sub">Nice work staying on track.</div>
+      </div>`;
+    el.style.display = '';
+    return;
+  }
+
+  // No medicines scheduled — nudge the next most useful log only if the day is empty
+  const eaten = calorieState && calorieState.today ? (calorieState.today.eaten || 0) : 0;
+  if (calorieState && eaten === 0) {
+    el.className = 'next-action is-calm';
+    el.innerHTML = `
+      <div class="next-action-icon">🍽️</div>
+      <div class="next-action-body">
+        <div class="next-action-eyebrow">Start your day</div>
+        <div class="next-action-title">Log your first meal</div>
+        <div class="next-action-sub">A quick log keeps your nutrition picture accurate.</div>
+      </div>
+      <button class="next-action-btn" data-ev-click="quickAdd('food')">Log a meal</button>`;
+    el.style.display = '';
+    return;
+  }
+
+  el.style.display = 'none';
 }
 
 async function openCalorieBreakdown() {

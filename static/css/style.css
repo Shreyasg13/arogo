@@ -4591,6 +4591,45 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 /* ══════════════════════════════════════════════════════════════
    DASHBOARD — calm "Today" focal panel (redesign)
    ══════════════════════════════════════════════════════════════ */
+/* Single "what do I do right now" hero */
+.next-action {
+  display:flex; align-items:center; gap:16px;
+  background:linear-gradient(135deg,var(--teal-600),var(--teal-500));
+  color:#fff; border-radius:var(--r-xl); padding:18px 22px; margin-bottom:18px;
+  box-shadow:var(--shadow-sm);
+}
+.next-action.is-calm {
+  background:var(--gray-0); color:var(--gray-800); border:1px solid var(--gray-100);
+}
+.next-action-icon {
+  font-size:28px; line-height:1; flex-shrink:0;
+  width:52px; height:52px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(255,255,255,.18);
+}
+.next-action.is-calm .next-action-icon { background:var(--teal-50); }
+.next-action-body { flex:1; min-width:0; }
+.next-action-eyebrow {
+  font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+  opacity:.85; margin-bottom:2px;
+}
+.next-action-title {
+  font-family:'EB Garamond',serif; font-size:22px; line-height:1.2;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.next-action-sub { font-size:13px; opacity:.85; margin-top:2px; }
+.next-action-btn {
+  flex-shrink:0; background:#fff; color:var(--teal-700);
+  border:none; border-radius:999px; padding:11px 22px;
+  font-size:14px; font-weight:600; cursor:pointer; transition:transform .1s, box-shadow .15s;
+}
+.next-action-btn:hover { box-shadow:0 4px 12px rgba(0,0,0,.15); transform:translateY(-1px); }
+.next-action.is-calm .next-action-btn { background:var(--teal-600); color:#fff; }
+@media (max-width:640px){
+  .next-action { flex-wrap:wrap; }
+  .next-action-btn { width:100%; margin-top:6px; }
+}
+
 .today-panel {
   display:flex; gap:24px; align-items:center;
   background:var(--gray-0); border:1px solid var(--gray-100);
