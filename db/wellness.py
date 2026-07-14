@@ -3,7 +3,7 @@ db/wellness.py — Thoughts/journal, todos with reminders, hydration, sleep, bod
 
 All queries are scoped to the authenticated user via current_user_id().
 """
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int, valid_date
 
 
 MAX_THOUGHTS_PER_DAY = 10
@@ -20,18 +20,23 @@ def count_thoughts_today(date_key: str) -> int:
     return r['n'] if r else 0
 
 def save_thought(content: str, mood: str, date_key: str) -> dict:
+    content = str(content or '').strip()
+    if not content:
+        raise ValueError("Thought content is required")
+    if not valid_date(date_key):
+        date_key = today_iso()
     if count_thoughts_today(date_key) >= MAX_THOUGHTS_PER_DAY:
         raise ValueError(f"Max {MAX_THOUGHTS_PER_DAY} thoughts per day reached")
     tid = new_id()
     now = now_iso()
     execute("""INSERT INTO thoughts (id,content,mood,date_key,created_at,updated_at,user_id)
                VALUES (?,?,?,?,?,?,?)""",
-            (tid, content.strip(), mood, date_key, now, now, current_user_id()), commit=True)
+            (tid, content, str(mood or 'neutral'), date_key, now, now, current_user_id()), commit=True)
     return dict(execute("SELECT * FROM thoughts WHERE id=?", (tid,), fetchone=True))
 
 def update_thought(tid: str, content: str, mood: str) -> dict:
     execute("UPDATE thoughts SET content=?,mood=?,updated_at=? WHERE id=? AND user_id=?",
-            (content.strip(), mood, now_iso(), tid, current_user_id()), commit=True)
+            (str(content or '').strip(), str(mood or 'neutral'), now_iso(), tid, current_user_id()), commit=True)
     r = execute("SELECT * FROM thoughts WHERE id=? AND user_id=?",
                 (tid, current_user_id()), fetchone=True)
     return dict(r) if r else {}
@@ -66,28 +71,39 @@ def list_todos(status: str = None) -> list:
         result.append(d)
     return result
 
+def _todo_tags(v):
+    """Tags must be a JSON list. A stray string/number would be stored and
+    then re-read as a non-list, breaking the UI's tag iteration."""
+    return jdump(v if isinstance(v, list) else [])
+
 def create_todo(data: dict) -> dict:
+    title = str(data.get('title', '') or '').strip()
+    if not title:
+        raise ValueError("Todo title is required")
     tid = new_id()
     now = now_iso()
     execute("""INSERT INTO todos
                (id,title,notes,priority,status,due_date,reminder_at,tags,created_at,user_id)
                VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (tid, data.get('title','').strip(), data.get('notes',''),
-             data.get('priority','medium'), 'pending',
+            (tid, title, str(data.get('notes','') or ''),
+             str(data.get('priority','medium') or 'medium'), 'pending',
              data.get('due_date') or None, data.get('reminder_at') or None,
-             jdump(data.get('tags',[])), now, current_user_id()), commit=True)
+             _todo_tags(data.get('tags',[])), now, current_user_id()), commit=True)
     r = execute("SELECT * FROM todos WHERE id=?", (tid,), fetchone=True)
     d = dict(r)
     d['tags'] = jload(d.get('tags','[]'), [])
     return d
 
 def update_todo(tid: str, data: dict) -> dict:
+    title = str(data.get('title', '') or '').strip()
+    if not title:
+        raise ValueError("Todo title is required")
     execute("""UPDATE todos SET title=?,notes=?,priority=?,due_date=?,
                reminder_at=?,tags=? WHERE id=? AND user_id=?""",
-            (data.get('title','').strip(), data.get('notes',''),
-             data.get('priority','medium'), data.get('due_date') or None,
+            (title, str(data.get('notes','') or ''),
+             str(data.get('priority','medium') or 'medium'), data.get('due_date') or None,
              data.get('reminder_at') or None,
-             jdump(data.get('tags',[])), tid, current_user_id()), commit=True)
+             _todo_tags(data.get('tags',[])), tid, current_user_id()), commit=True)
     r = execute("SELECT * FROM todos WHERE id=? AND user_id=?",
                 (tid, current_user_id()), fetchone=True)
     if not r: return {}
@@ -141,14 +157,20 @@ def _sleep_duration(bedtime: str, wake_time: str) -> float:
 
 def log_sleep(data: dict) -> dict:
     sid      = new_id()
-    bed      = data.get('bedtime', '')
-    wake     = data.get('wake_time', '')
+    bed      = data.get('bedtime', '') if isinstance(data.get('bedtime'), str) else ''
+    wake     = data.get('wake_time', '') if isinstance(data.get('wake_time'), str) else ''
     dur      = _sleep_duration(bed, wake)
+    # A garbage date_key would orphan the log on a non-navigable day; fall back
+    # to the bedtime's date, then today. Quality is coerced/clamped (1..5) so a
+    # non-numeric or out-of-range value can't 500 or poison the trend view.
     date_key = data.get('date_key') or (bed[:10] if bed else today_iso())
+    if not valid_date(date_key):
+        date_key = bed[:10] if valid_date(bed[:10]) else today_iso()
     execute("""INSERT INTO sleep_logs (id,date_key,bedtime,wake_time,duration_h,quality,notes,created_at,user_id)
                VALUES (?,?,?,?,?,?,?,?,?)""",
             (sid, date_key, bed, wake, dur,
-             int(data.get('quality', 3)), data.get('notes', ''), now_iso(),
+             to_int(data.get('quality', 3), 3, lo=1, hi=5),
+             str(data.get('notes', '') or ''), now_iso(),
              current_user_id()), commit=True)
     return dict(execute("SELECT * FROM sleep_logs WHERE id=?", (sid,), fetchone=True))
 
@@ -208,15 +230,30 @@ def delete_sleep_log(lid: str):
 
 # ── Body Metrics ──────────────────────────────────────────────────────────────
 
+def _opt_num(v, lo=None, hi=None):
+    """Coerce an optional numeric field: blank/None stays NULL; anything
+    non-numeric also becomes NULL rather than 500ing or poisoning a chart."""
+    if v in (None, ''):
+        return None
+    return to_num(v, 0.0, lo=lo, hi=hi)
+
 def log_body_metric(data: dict) -> dict:
     bid = new_id()
-    w = data.get('weight_kg')
-    h_cm = data.get('height_cm')
+    # Coerce all numerics: a string weight used to TypeError on the BMI math,
+    # and negatives/NaN would flow straight into the weight-trend chart.
+    w    = _opt_num(data.get('weight_kg'),    lo=0, hi=1000)
+    h_cm = _opt_num(data.get('height_cm'),    lo=0, hi=300)
+    bf   = _opt_num(data.get('body_fat_pct'), lo=0, hi=100)
+    waist= _opt_num(data.get('waist_cm'),     lo=0, hi=500)
     bmi = round(w / ((h_cm/100)**2), 1) if w and h_cm else None
+    # A garbage/missing date_key would orphan the row; default to today.
+    date_key = data.get('date_key')
+    if not valid_date(date_key):
+        date_key = today_iso()
     execute("""INSERT INTO body_metrics (id,date_key,weight_kg,body_fat_pct,waist_cm,bmi,notes,created_at,user_id)
                VALUES (?,?,?,?,?,?,?,?,?)""",
-            (bid, data['date_key'], w, data.get('body_fat_pct'),
-             data.get('waist_cm'), bmi, data.get('notes',''), now_iso(),
+            (bid, date_key, w, bf,
+             waist, bmi, str(data.get('notes','') or ''), now_iso(),
              current_user_id()), commit=True)
     return dict(execute("SELECT * FROM body_metrics WHERE id=?", (bid,), fetchone=True))
 

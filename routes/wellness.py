@@ -290,7 +290,7 @@ def api_body_metrics_trend():
     latest_weight = logs[-1]['weight_kg'] if logs else None
     target_weight = profile.get('target_weight_kg')
     goal          = profile.get('goal', 'maintain')
-    current_weight = float(profile.get('weight_kg', 70))
+    current_weight = to_num(profile.get('weight_kg'), 70)
 
     # ── Goal projection ───────────────────────────────────────────
     # Rate of change from calorie deficit/surplus
@@ -366,7 +366,10 @@ def api_get_thoughts(date_key):
 @require_auth
 def api_save_thought():
     d = request.json or {}
-    t = save_thought(d.get('content',''), d.get('mood','neutral'), d.get('date_key', today_iso(get_user_timezone())))
+    try:
+        t = save_thought(d.get('content',''), d.get('mood','neutral'), d.get('date_key', today_iso(get_user_timezone())))
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'thought': t})
 
 @bp.route('/api/thoughts/<tid>', methods=['PUT'])
@@ -396,13 +399,19 @@ def api_todos():
 @bp.route('/api/todos', methods=['POST'])
 @require_auth
 def api_create_todo():
-    t = create_todo(request.json or {})
+    try:
+        t = create_todo(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'todo': t})
 
 @bp.route('/api/todos/<tid>', methods=['PUT'])
 @require_auth
 def api_update_todo(tid):
-    t = update_todo(tid, request.json or {})
+    try:
+        t = update_todo(tid, request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'todo': t})
 
 @bp.route('/api/todos/<tid>', methods=['DELETE'])
@@ -431,7 +440,10 @@ def api_habits():
 @bp.route('/api/habits', methods=['POST'])
 @require_auth
 def api_create_habit():
-    h = create_habit(request.json or {})
+    try:
+        h = create_habit(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'habit': h})
 
 @bp.route('/api/habits/<hid>', methods=['DELETE'])

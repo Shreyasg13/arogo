@@ -19,11 +19,19 @@ def list_habits() -> list:
     return result
 
 def create_habit(data: dict) -> dict:
+    name = str(data.get('name', '') or '').strip()
+    if not name:
+        raise ValueError('Habit name is required')
+    # target_days must be a JSON list of weekday indices; a stray string/number
+    # would round-trip as a non-list and break the schedule read.
+    tgt = data.get('target_days', [])
+    if not isinstance(tgt, list):
+        tgt = []
     hid = new_id()
     execute("""INSERT INTO habits (id,name,emoji,category,target_days,color,created_at,user_id)
                VALUES (?,?,?,?,?,?,?,?)""",
-            (hid, data['name'], data.get('emoji','⭐'), data.get('category','general'),
-             jdump(data.get('target_days',[])), data.get('color','#0E8F7E'), now_iso(),
+            (hid, name[:120], data.get('emoji','⭐'), data.get('category','general'),
+             jdump(tgt), data.get('color','#0E8F7E'), now_iso(),
              current_user_id()), commit=True)
     r = execute("SELECT * FROM habits WHERE id=?", (hid,), fetchone=True)
     d = dict(r); d['target_days'] = jload(d.get('target_days','[]'), []); return d
