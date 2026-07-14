@@ -3,7 +3,7 @@ db/wellness.py — Thoughts/journal, todos with reminders, hydration, sleep, bod
 
 All queries are scoped to the authenticated user via current_user_id().
 """
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int
 
 
 MAX_THOUGHTS_PER_DAY = 10
@@ -155,6 +155,9 @@ def log_sleep(data: dict) -> dict:
 # ── Hydration ─────────────────────────────────────────────────────────────────
 
 def log_hydration(amount_ml: int, drink_type: str, date_key: str) -> dict:
+    # Coerce & clamp: a non-numeric amount would otherwise brick the whole
+    # day view (sum() over a mix of ints and strings raises forever).
+    amount_ml = to_int(amount_ml, default=250, lo=0, hi=10000)
     hid = new_id()
     execute("""INSERT INTO hydration_logs (id,amount_ml,drink_type,date_key,logged_at,user_id)
                VALUES (?,?,?,?,?,?)""",
@@ -166,7 +169,7 @@ def get_hydration_day(date_key: str) -> dict:
     rows = execute("SELECT * FROM hydration_logs WHERE date_key=? AND user_id=? ORDER BY logged_at",
                    (date_key, uid), fetchall=True)
     logs = [dict(r) for r in rows]
-    total = sum(r['amount_ml'] for r in logs)
+    total = sum(to_num(r.get('amount_ml'), 0) for r in logs)
     # Calculate goal from profile (35ml per kg body weight, default 2450ml)
     profile = execute("SELECT weight_kg FROM user_profile WHERE user_id=? LIMIT 1",
                       (uid,), fetchone=True)

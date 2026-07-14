@@ -34,16 +34,18 @@ def api_calorie_balance():
     raw_prof = get_profile()
     targets  = calc_tdee(raw_prof)
     profile  = {'profile': raw_prof, 'targets': targets}
-    target   = int(targets.get('target_calories', 2000))
+    # target_calories is present-but-None until the profile has weight/height/
+    # age/gender — the `.get` default never fires, so guard with `or 2000`.
+    target   = int(targets.get('target_calories') or 2000)
 
     # Today's food
     food_sum = get_nutrition_summary(today)
     eaten    = round(food_sum['totals'].get('calories', 0))
 
-    # Today's workouts
+    # Today's workouts (calories floored at 0 — a workout never shrinks the budget)
     all_acts      = list_activities()
     today_acts    = [a for a in all_acts if a.get('date') == today]
-    burned_today  = sum(a.get('calories', 0) for a in today_acts)
+    burned_today  = sum(max(0, a.get('calories', 0) or 0) for a in today_acts)
 
     # Net balance: positive = deficit (under budget), negative = surplus (over budget)
     # budget = target + burned (exercise earns more calories)
@@ -57,7 +59,7 @@ def api_calorie_balance():
         fs    = get_nutrition_summary(d)
         d_eat = round(fs['totals'].get('calories', 0))
         d_acts = [a for a in all_acts if a.get('date') == d]
-        d_burn = sum(a.get('calories', 0) for a in d_acts)
+        d_burn = sum(max(0, a.get('calories', 0) or 0) for a in d_acts)
         d_bud  = target + d_burn
         daily.append({
             'date':    d,
@@ -542,9 +544,9 @@ def api_health_score():
     act_score   = 0
     act_detail  = 'No workouts this week'
     fstats      = fitness_stats()
-    week_mins   = fstats.get('week', {}).get('duration', 0) or 0
+    week_mins   = max(0, fstats.get('week', {}).get('duration', 0) or 0)
     # WHO recommends 150 min/week moderate activity
-    act_score   = round(min(week_mins / 150.0, 1.0) * 20)
+    act_score   = round(max(0.0, min(week_mins / 150.0, 1.0)) * 20)
     if week_mins > 0:
         act_detail = f'{week_mins} min this week'
     components.append({
@@ -562,7 +564,7 @@ def api_health_score():
     nut_detail  = 'No food logged'
     profile     = get_profile()
     targets     = calc_tdee(profile)
-    target_cal  = targets.get('target_calories', 2000)
+    target_cal  = targets.get('target_calories') or 2000
     food_sum    = get_nutrition_summary(today)
     eaten       = food_sum['totals'].get('calories', 0)
     if food_sum['log_count'] > 0:
@@ -609,7 +611,7 @@ def api_health_score():
     })
 
     # ── Overall score ─────────────────────────────────────────────
-    total     = sum(c['score'] for c in components)
+    total     = max(0, sum(c['score'] for c in components))
     logged    = sum(1 for c in components if c['score'] > 0)
 
     if total >= 80:   grade, label = 'A', 'Excellent'
@@ -894,16 +896,19 @@ def api_delete_habit(hid):
 @bp.route('/api/symptoms')
 @require_auth
 def api_get_symptoms():
-    days = int(request.args.get('days', 14))
+    days = to_int(request.args.get('days', 14), 14, lo=1, hi=3650)
     return jsonify(get_symptoms(days))
 
 @bp.route('/api/symptoms', methods=['POST'])
 @require_auth
 def api_log_symptom():
     data = request.json or {}
-    if not data.get('name','').strip():
+    if not str(data.get('name', '')).strip():
         return jsonify({'success': False, 'error': 'Symptom name required'}), 400
-    s = log_symptom(data)
+    try:
+        s = log_symptom(data)
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'symptom': s})
 
 @bp.route('/api/symptoms/<sid>', methods=['DELETE'])
@@ -920,7 +925,7 @@ def api_del_symptom(sid):
 @require_auth
 def api_get_vitals():
     vtype = request.args.get('type')
-    days  = int(request.args.get('days', 30))
+    days  = to_int(request.args.get('days', 30), 30, lo=1, hi=3650)
     return jsonify(get_vitals(vtype, days))
 
 @bp.route('/api/vitals', methods=['POST'])
@@ -929,7 +934,10 @@ def api_log_vital():
     data = request.json or {}
     if not data.get('type') or data.get('value1') is None:
         return jsonify({'success': False, 'error': 'type and value1 required'}), 400
-    v = log_vital(data)
+    try:
+        v = log_vital(data)
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'vital': v})
 
 @bp.route('/api/vitals/<vid>', methods=['DELETE'])

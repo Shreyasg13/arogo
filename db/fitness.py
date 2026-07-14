@@ -5,7 +5,7 @@ All queries are scoped to the authenticated user via current_user_id().
 """
 from __future__ import annotations
 
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int
 
 
 def insert_activity(data: dict, check_duplicate=True) -> dict | None:
@@ -23,10 +23,10 @@ def insert_activity(data: dict, check_duplicate=True) -> dict | None:
            heart_rate_max,steps,elevation,notes,source,external_id,created_at,user_id)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, (aid, data.get('type','running'), data.get('name',''),
-          data.get('date', today_iso()), int(data.get('duration',0)),
-          float(data.get('distance',0)), int(data.get('calories',0)),
-          int(data.get('heart_rate_avg',0)), int(data.get('heart_rate_max',0)),
-          int(data.get('steps',0)), float(data.get('elevation',0)),
+          data.get('date', today_iso()), to_int(data.get('duration'), 0, lo=0, hi=1440),
+          to_num(data.get('distance'), 0, lo=0), to_int(data.get('calories'), 0, lo=0, hi=100000),
+          to_int(data.get('heart_rate_avg'), 0, lo=0, hi=300), to_int(data.get('heart_rate_max'), 0, lo=0, hi=300),
+          to_int(data.get('steps'), 0, lo=0), to_num(data.get('elevation'), 0),
           data.get('notes',''), data.get('source','manual'),
           data.get('external_id',''), now_iso(), uid), commit=True)
     return get_activity(aid)

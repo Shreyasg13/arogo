@@ -12,9 +12,9 @@ bp = Blueprint("wellness", __name__)
 @require_auth
 def api_update_stock(mid):
     d = request.json or {}
-    m = update_medicine_stock(mid, int(d.get('pill_count',0)),
-                              int(d.get('pills_per_dose',1)),
-                              int(d.get('refill_threshold',7)))
+    m = update_medicine_stock(mid, to_int(d.get('pill_count', 0), 0, lo=0, hi=100000),
+                              to_int(d.get('pills_per_dose', 1), 1, lo=1, hi=100),
+                              to_int(d.get('refill_threshold', 7), 7, lo=0, hi=365))
     return jsonify({'success': True, 'medicine': m})
 
 @bp.route('/api/medicines/low-stock')
@@ -37,13 +37,14 @@ def api_medicine_streaks():
     from db.medicines import list_medicines
     from db.core import execute
 
-    days     = int(request.args.get('days', 30))
+    days     = to_int(request.args.get('days', 30), 30, lo=0, hi=3650)
     today    = dt.date.today()
     meds     = [m for m in list_medicines() if m['active']]
 
-    # Date range: oldest first
+    # Date range: oldest first (empty when days=0)
     date_range = [(today - dt.timedelta(days=i)).isoformat()
                   for i in range(days - 1, -1, -1)]
+    range_start = date_range[0] if date_range else today.isoformat()
 
     overall_total = 0
     overall_taken = 0
@@ -59,7 +60,7 @@ def api_medicine_streaks():
         logs = execute(
             """SELECT date_key, time_key, taken FROM dose_logs
                WHERE medicine_id=? AND date_key >= ? AND user_id=? ORDER BY date_key""",
-            (mid, date_range[0], current_user_id()), fetchall=True)
+            (mid, range_start, current_user_id()), fetchall=True)
         log_lookup = {}
         for lg in logs:
             log_lookup[(lg['date_key'], lg['time_key'])] = bool(lg['taken'])
@@ -450,13 +451,16 @@ def api_toggle_habit(hid):
 @bp.route('/api/symptoms')
 @require_auth
 def api_symptoms():
-    days = int(request.args.get('days', 14))
+    days = to_int(request.args.get('days', 14), 14, lo=1, hi=3650)
     return jsonify(get_symptoms(days))
 
 @bp.route('/api/symptoms', methods=['POST'])
 @require_auth
 def api_log_symptom():
-    s = log_symptom(request.json or {})
+    try:
+        s = log_symptom(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'symptom': s})
 
 @bp.route('/api/symptoms/<sid>', methods=['DELETE'])
@@ -589,7 +593,10 @@ def api_vitals():
 @bp.route('/api/vitals', methods=['POST'])
 @require_auth
 def api_log_vital():
-    v = log_vital(request.json or {})
+    try:
+        v = log_vital(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'vital': v})
 
 @bp.route('/api/vitals/<vid>', methods=['DELETE'])
@@ -693,17 +700,39 @@ def api_get_reminder_settings():
 @bp.route('/api/reminders/settings', methods=['POST'])
 @require_auth
 def api_save_reminder_settings():
+    import re as _re
     from db.core import execute, new_id, now_iso, current_user_id
     uid = current_user_id()
     d = request.json or {}
+
+    _time_re = _re.compile(r'^([01]?\d|2[0-3]):[0-5]\d$')
+    def _time(key, default):
+        v = str(d.get(key, default)).strip()
+        return v if _time_re.match(v) else default
+    def _bool(key, default=1):
+        return 1 if to_int(d.get(key, default), default, lo=0, hi=1) else 0
+
+    # Coerce/validate everything once so a bad payload can't brick the day view
+    water_enabled   = _bool('water_enabled')
+    water_interval  = to_num(d.get('water_interval_h', 2.0), 2.0, lo=0.25, hi=24)
+    water_start     = _time('water_start', '08:00')
+    water_end       = _time('water_end', '21:00')
+    water_goal_ml   = to_int(d.get('water_goal_ml', 2450), 2450, lo=0, hi=20000)
+    habit_enabled   = _bool('habit_reminder_enabled')
+    habit_time      = _time('habit_reminder_time', '20:00')
+    sleep_enabled   = _bool('sleep_reminder_enabled')
+    sleep_time      = _time('sleep_reminder_time', '22:00')
+    mood_enabled    = _bool('mood_reminder_enabled')
+    mood_time       = _time('mood_reminder_time', '18:00')
+
     row = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     if row:
         # weekly_digest_enabled: preserve the stored value when the client
         # doesn't send it (the unsubscribe link must survive settings saves)
         current = execute("SELECT weekly_digest_enabled FROM reminder_settings WHERE id=?",
                           (row['id'],), fetchone=True) or {}
-        digest_flag = int(d.get('weekly_digest_enabled',
-                                current.get('weekly_digest_enabled', 1) or 0))
+        digest_flag = _bool('weekly_digest_enabled',
+                            current.get('weekly_digest_enabled', 1) or 0)
         execute("""UPDATE reminder_settings SET
             water_enabled=?, water_interval_h=?, water_start=?, water_end=?,
             water_goal_ml=?, habit_reminder_enabled=?, habit_reminder_time=?,
@@ -711,17 +740,10 @@ def api_save_reminder_settings():
             mood_reminder_enabled=?, mood_reminder_time=?,
             weekly_digest_enabled=?, updated_at=?
             WHERE id=?""",
-            (int(d.get('water_enabled', 1)),
-             float(d.get('water_interval_h', 2.0)),
-             d.get('water_start', '08:00'),
-             d.get('water_end', '21:00'),
-             int(d.get('water_goal_ml', 2450)),
-             int(d.get('habit_reminder_enabled', 1)),
-             d.get('habit_reminder_time', '20:00'),
-             int(d.get('sleep_reminder_enabled', 1)),
-             d.get('sleep_reminder_time', '22:00'),
-             int(d.get('mood_reminder_enabled', 1)),
-             d.get('mood_reminder_time', '18:00'),
+            (water_enabled, water_interval, water_start, water_end,
+             water_goal_ml, habit_enabled, habit_time,
+             sleep_enabled, sleep_time,
+             mood_enabled, mood_time,
              digest_flag,
              now_iso(), row['id']), commit=True)
     else:
@@ -732,13 +754,11 @@ def api_save_reminder_settings():
              sleep_reminder_enabled,sleep_reminder_time,
              mood_reminder_enabled,mood_reminder_time,updated_at,user_id)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (rid, int(d.get('water_enabled',1)),
-             float(d.get('water_interval_h',2.0)),
-             d.get('water_start','08:00'), d.get('water_end','21:00'),
-             int(d.get('water_goal_ml',2450)),
-             int(d.get('habit_reminder_enabled',1)), d.get('habit_reminder_time','20:00'),
-             int(d.get('sleep_reminder_enabled',1)), d.get('sleep_reminder_time','22:00'),
-             int(d.get('mood_reminder_enabled',1)), d.get('mood_reminder_time','18:00'),
+            (rid, water_enabled, water_interval,
+             water_start, water_end, water_goal_ml,
+             habit_enabled, habit_time,
+             sleep_enabled, sleep_time,
+             mood_enabled, mood_time,
              now_iso(), uid), commit=True)
     updated = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     return jsonify({'success': True, 'settings': dict(updated)})

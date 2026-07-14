@@ -36,7 +36,7 @@ bp = Blueprint("food", __name__)
 def food_database():
     query  = request.args.get('q', '')
     cat    = request.args.get('category', '')
-    limit  = int(request.args.get('limit', 80))
+    limit  = to_int(request.args.get('limit', 80), 80, lo=1, hi=500)
     custom = list_custom_foods()
 
     # Use the fixed search_food with both query and category
@@ -62,7 +62,9 @@ def food_database():
 @require_auth
 def add_food_log():
     data = request.json or {}
-    qty  = float(data.get('quantity_g', 100))
+    if 'date_key' in data and not valid_date(data.get('date_key')):
+        return jsonify({'success': False, 'error': 'Invalid date'}), 400
+    qty  = to_num(data.get('quantity_g', 100), 100, lo=0, hi=100000)
 
     # JS always sends pre-calculated macros. Fall back to DB lookup if missing.
     if data.get('calories') is not None:
@@ -85,13 +87,13 @@ def add_food_log():
             'meal_type': data.get('meal_type', 'lunch'),
             'date_key':  data.get('date_key', today_iso(get_user_timezone())),
             'quantity_g': qty,
-            'calories':  float(data.get('calories', 0)),
-            'protein':   float(data.get('protein',  0)),
-            'carbs':     float(data.get('carbs',    0)),
-            'fat':       float(data.get('fat',      0)),
-            'fiber':     float(data.get('fiber',    0)),
-            'sugar':     float(data.get('sugar',    0)),
-            'sodium':    float(data.get('sodium',   0)),
+            'calories':  to_num(data.get('calories', 0), 0, lo=0, hi=100000),
+            'protein':   to_num(data.get('protein',  0), 0, lo=0),
+            'carbs':     to_num(data.get('carbs',    0), 0, lo=0),
+            'fat':       to_num(data.get('fat',      0), 0, lo=0),
+            'fiber':     to_num(data.get('fiber',    0), 0, lo=0),
+            'sugar':     to_num(data.get('sugar',    0), 0, lo=0),
+            'sodium':    to_num(data.get('sodium',   0), 0, lo=0),
             'nutrients': json_mod.dumps(nutrients),
         }
     else:
@@ -152,7 +154,7 @@ def get_food_log(date_key):
 def api_update_food_log(lid):
     from db.core import execute
     d       = request.json or {}
-    new_qty = float(d.get('quantity_g', 0))
+    new_qty = to_num(d.get('quantity_g', 0), 0, lo=0, hi=100000)
     if not new_qty or new_qty <= 0:
         return jsonify({'error': 'Invalid quantity'}), 400
     from db.core import current_user_id

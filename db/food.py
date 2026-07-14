@@ -5,7 +5,7 @@ All queries are scoped to the authenticated user via current_user_id().
 """
 from __future__ import annotations
 
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int
 
 
 def get_profile() -> dict:
@@ -117,11 +117,11 @@ def log_food(data: dict) -> dict:
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (fid, data.get('food_id','custom'), data.get('food_name',''),
          data.get('meal_type','lunch'), data.get('date_key', today_iso()),
-         float(data.get('quantity_g',100)),
-         float(data.get('calories',0)), float(data.get('protein',0)),
-         float(data.get('carbs',0)), float(data.get('fat',0)),
-         float(data.get('fiber',0)), float(data.get('sugar',0)),
-         float(data.get('sodium',0)), jdump(data.get('nutrients',{})),
+         to_num(data.get('quantity_g'), 100, lo=0, hi=100000),
+         to_num(data.get('calories'), 0, lo=0, hi=100000), to_num(data.get('protein'), 0, lo=0),
+         to_num(data.get('carbs'), 0, lo=0), to_num(data.get('fat'), 0, lo=0),
+         to_num(data.get('fiber'), 0, lo=0), to_num(data.get('sugar'), 0, lo=0),
+         to_num(data.get('sodium'), 0, lo=0), jdump(data.get('nutrients',{})),
          now_iso(), current_user_id()), commit=True)
     r = execute("SELECT * FROM food_logs WHERE id=?", (fid,), fetchone=True)
     return _fmt_food_log(r)
@@ -174,14 +174,17 @@ def get_weekly_nutrition(days: int = 7) -> list:
 
 def save_custom_food(data: dict) -> dict:
     uid = current_user_id()
+    name = str(data.get('name', '')).strip()
+    if not name:
+        raise ValueError('Food name is required')
     barcode = (data.get('barcode') or '').strip() or None
     vals = dict(
-        name=data['name'], category=data.get('category', 'Custom'),
-        emoji=data.get('emoji', '🍽️'), serving_g=float(data.get('serving_g', 100)),
-        calories=float(data.get('calories', 0)), protein=float(data.get('protein', 0)),
-        carbs=float(data.get('carbs', 0)), fat=float(data.get('fat', 0)),
-        fiber=float(data.get('fiber', 0)), sugar=float(data.get('sugar', 0)),
-        sodium=float(data.get('sodium', 0)), barcode=barcode)
+        name=name[:120], category=data.get('category', 'Custom'),
+        emoji=data.get('emoji', '🍽️'), serving_g=to_num(data.get('serving_g'), 100, lo=0, hi=100000),
+        calories=to_num(data.get('calories'), 0, lo=0, hi=100000), protein=to_num(data.get('protein'), 0, lo=0),
+        carbs=to_num(data.get('carbs'), 0, lo=0), fat=to_num(data.get('fat'), 0, lo=0),
+        fiber=to_num(data.get('fiber'), 0, lo=0), sugar=to_num(data.get('sugar'), 0, lo=0),
+        sodium=to_num(data.get('sodium'), 0, lo=0), barcode=barcode)
 
     # Re-scanning a barcode updates the saved entry instead of duplicating it
     existing = get_custom_food_by_barcode(barcode) if barcode else None

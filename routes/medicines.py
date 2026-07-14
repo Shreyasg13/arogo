@@ -19,7 +19,10 @@ def get_medicines():
 @require_auth
 def add_medicine():
     data = request.json or {}
-    med = insert_medicine(data)
+    try:
+        med = insert_medicine(data)
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'medicine': med})
 
 @bp.route('/api/medicines/<mid>', methods=['DELETE'])
@@ -52,7 +55,7 @@ def today_doses():
 @bp.route('/api/medicines/adherence')
 @require_auth
 def adherence():
-    days = int(request.args.get('days', 30))
+    days = to_int(request.args.get('days', 30), 30, lo=0, hi=3650)
     return jsonify(get_adherence_stats(days))
 
 # ── Fitness ───────────────────────────────────────────────────────────────────

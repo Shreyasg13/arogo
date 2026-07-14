@@ -31,7 +31,14 @@ def upload():
     f = request.files['file']
     if not f.filename or not allowed_file(f.filename):
         return jsonify({'error': 'File type not allowed'}), 400
+    # Derive the extension from the (already-validated) original name, BEFORE
+    # secure_filename() strips non-ASCII characters — a name like "报告.pdf"
+    # otherwise collapses to "pdf" with no dot and crashes the .rsplit below.
+    file_ext = f.filename.rsplit('.', 1)[1].lower()
     filename = secure_filename(f.filename)
+    if not filename or '.' not in filename:
+        # Non-ASCII / dotless name: fall back to a safe, extension-only name
+        filename = f"upload.{file_ext}"
     unique_name = f"{uuid.uuid4().hex}_{filename}"
     f.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique_name))
     report = insert_report({
@@ -43,7 +50,7 @@ def upload():
         'analysis_notes': request.form.get('analysis_notes', ''),
         'severity':     request.form.get('severity', 'normal'),
         'doctor':       request.form.get('doctor', ''),
-        'file_ext':     filename.rsplit('.', 1)[1].lower()
+        'file_ext':     file_ext
     })
     return jsonify({'success': True, 'report': report})
 

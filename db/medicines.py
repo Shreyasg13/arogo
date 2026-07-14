@@ -3,17 +3,52 @@ db/medicines.py — Medicine tracker, dose logging, refill/stock management.
 
 All queries are scoped to the authenticated user via current_user_id().
 """
+import re
+
 from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
+
+_TIME_RE = re.compile(r'^([01]?\d|2[0-3]):[0-5]\d$')
+
+
+def _clean_times(raw):
+    """Coerce a submitted `times` value into a list of valid HH:MM strings.
+
+    Guards against the class of bugs where a scalar string (e.g. '08:00') is
+    stored as JSON and later iterated character-by-character in the today view.
+    """
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, (list, tuple)):
+        return ['08:00']
+    out = []
+    for t in raw:
+        if not isinstance(t, str):
+            continue
+        t = t.strip()
+        # Normalise single-digit hour ("8:00" -> "08:00")
+        if _TIME_RE.match(t):
+            h, m = t.split(':')
+            out.append(f'{int(h):02d}:{m}')
+    # De-dupe while preserving order; cap to a sane maximum
+    seen, uniq = set(), []
+    for t in out:
+        if t not in seen:
+            seen.add(t)
+            uniq.append(t)
+    return uniq[:24] or ['08:00']
 
 
 def insert_medicine(data: dict) -> dict:
+    name = str(data.get('name', '')).strip()
+    if not name:
+        raise ValueError('Medicine name is required')
     mid = new_id()
     execute("""
         INSERT INTO medicines
           (id,name,dosage,unit,frequency,times,with_food,notes,color,icon,start_date,end_date,active,created_at,user_id)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
-    """, (mid, data['name'], data['dosage'], data.get('unit','mg'),
-          data.get('frequency','once_daily'), jdump(data.get('times',['08:00'])),
+    """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
+          data.get('frequency','once_daily'), jdump(_clean_times(data.get('times', ['08:00']))),
           1 if data.get('with_food') else 0, data.get('notes',''),
           data.get('color','teal'), data.get('icon','💊'),
           data.get('start_date', today_iso()), data.get('end_date',''), now_iso(),
@@ -77,10 +112,26 @@ def log_dose(medicine_id, date_key, time_key, taken=True):
             commit=True)
 
 
+def _in_course(m, day):
+    """True if `day` (ISO date) falls within a medicine's active course.
+
+    start_date defaults to the creation day; an empty end_date means ongoing.
+    Used so the today view and adherence math ignore days before the medicine
+    existed and days after a finished course.
+    """
+    start = m.get('start_date') or ''
+    end = m.get('end_date') or ''
+    if start and day < start:
+        return False
+    if end and day > end:
+        return False
+    return True
+
+
 def get_today_doses():
     uid = current_user_id()
     today = today_iso()
-    meds = [m for m in list_medicines() if m['active']]
+    meds = [m for m in list_medicines() if m['active'] and _in_course(m, today)]
     doses = []
     for m in meds:
         for t in m.get('times', []):
@@ -104,10 +155,11 @@ def get_adherence_stats(days=30):
     uid = current_user_id()
     total, taken = 0, 0
     meds = list_medicines()
-    for i in range(days):
+    for i in range(max(0, days)):
         d = (date.today() - timedelta(days=i)).isoformat()
         for m in meds:
             if not m['active']: continue
+            if not _in_course(m, d): continue   # don't penalise days outside the course
             for t in m.get('times', []):
                 total += 1
                 log = execute(

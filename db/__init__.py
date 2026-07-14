@@ -5,7 +5,8 @@ Each module owns one domain. Import from here for convenience:
     from db import execute, insert_medicine, log_food, ...
 """
 from .core        import (execute, executemany, commit, init_db, jdump, jload,
-                          now_iso, today_iso, new_id, current_user_id, user_context)
+                          now_iso, today_iso, new_id, current_user_id, user_context,
+                          to_num, to_int, valid_date)
 from .reports     import insert_report, list_reports, get_report, delete_report, report_stats
 from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_medicine, delete_medicine,
                           log_dose, get_today_doses, get_adherence_stats,
@@ -33,7 +34,7 @@ from .insights    import (add_notification, get_notifications, mark_notification
 
 __all__ = [
     "execute", "executemany", "commit", "init_db", "jdump", "jload", "now_iso", "today_iso", "new_id",
-    "current_user_id", "user_context",
+    "current_user_id", "user_context", "to_num", "to_int", "valid_date",
     "insert_report", "list_reports", "get_report", "delete_report", "report_stats",
     "insert_medicine", "list_medicines", "get_medicine", "toggle_medicine", "delete_medicine",
     "log_dose", "get_today_doses", "get_adherence_stats",

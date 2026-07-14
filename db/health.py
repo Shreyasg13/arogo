@@ -3,7 +3,9 @@ db/health.py — Habit tracker, symptoms diary, vitals log, emergency health car
 
 All queries are scoped to the authenticated user via current_user_id().
 """
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
+import math
+
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int
 
 
 def list_habits() -> list:
@@ -94,10 +96,14 @@ def get_habit_stats(days: int = 30) -> dict:
 # ── Symptoms ──────────────────────────────────────────────────────────────────
 
 def log_symptom(data: dict) -> dict:
+    name = str(data.get('name', '')).strip()
+    if not name:
+        raise ValueError('Symptom name is required')
     sid = new_id()
     execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,notes,logged_at,user_id)
                VALUES (?,?,?,?,?,?,?,?)""",
-            (sid, data['name'], int(data.get('severity',5)), data.get('date_key', today_iso()),
+            (sid, name[:120], to_int(data.get('severity', 5), 5, lo=1, hi=10),
+             data.get('date_key', today_iso()),
              data.get('time_of_day','morning'), data.get('notes',''), now_iso(),
              current_user_id()), commit=True)
     return dict(execute("SELECT * FROM symptoms WHERE id=?", (sid,), fetchone=True))
@@ -116,12 +122,30 @@ def delete_symptom(sid: str):
 # ── Vitals (BP, Blood Sugar) ──────────────────────────────────────────────────
 
 def log_vital(data: dict) -> dict:
+    vtype = str(data.get('type', '')).strip()
+    if not vtype:
+        raise ValueError('Vital type is required')
+    if data.get('value1') in (None, ''):
+        raise ValueError('A reading value is required')
+    try:
+        value1 = float(data['value1'])
+    except (TypeError, ValueError):
+        raise ValueError('Reading must be a number')
+    if not math.isfinite(value1):
+        raise ValueError('Reading must be a number')
+    value2 = None
+    if data.get('value2') not in (None, ''):
+        try:
+            value2 = float(data['value2'])
+        except (TypeError, ValueError):
+            raise ValueError('Reading must be a number')
+        if not math.isfinite(value2):
+            raise ValueError('Reading must be a number')
     vid = new_id()
     execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,notes,logged_at,user_id)
                VALUES (?,?,?,?,?,?,?,?,?)""",
-            (vid, data.get('date_key', today_iso()), data['type'],
-             float(data['value1']),
-             float(data['value2']) if data.get('value2') not in (None,'') else None,
+            (vid, data.get('date_key', today_iso()), vtype,
+             value1, value2,
              data.get('unit',''), data.get('notes',''), now_iso(),
              current_user_id()), commit=True)
     return dict(execute("SELECT * FROM vitals WHERE id=?", (vid,), fetchone=True))

@@ -11,7 +11,7 @@ Model:
 """
 from __future__ import annotations
 
-from .core import execute, now_iso, today_iso, new_id, current_user_id
+from .core import execute, now_iso, today_iso, new_id, current_user_id, to_num, to_int
 
 CONSENT_FIELDS = ['share_sleep', 'share_vitals', 'share_medicines',
                   'share_food', 'share_symptoms']
@@ -210,6 +210,9 @@ def member_summary(target_uid: str) -> dict:
         raise PermissionError('Not in your family group')
 
     user = execute("SELECT id, name, email FROM users WHERE id=?", (target_uid,), fetchone=True)
+    if not user:
+        # Membership row outlived the user account (deleted user)
+        raise PermissionError('Member not found')
     prof = execute("SELECT timezone FROM user_profile WHERE user_id=?", (target_uid,), fetchone=True)
     today = today_iso(prof['timezone'] if prof else None)
     week_ago = (dt.date.fromisoformat(today) - dt.timedelta(days=6)).isoformat()
@@ -225,7 +228,7 @@ def member_summary(target_uid: str) -> dict:
                        (target_uid, week_ago), fetchall=True)
         out['sleep'] = {
             'nights': len(rows),
-            'avg_hours': round(sum(r['duration_h'] for r in rows)/len(rows), 1) if rows else None,
+            'avg_hours': round(sum(to_num(r['duration_h'], 0) for r in rows)/len(rows), 1) if rows else None,
             'daily': rows,
         }
 

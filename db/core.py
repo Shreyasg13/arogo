@@ -8,7 +8,45 @@ Backends:
     subset both engines accept; execute() rewrites '?' placeholders to '%s'
     for Postgres.
 """
-import os, json, datetime, uuid, threading
+import os, json, math, datetime, uuid, threading
+
+
+# ── Safe numeric coercion ─────────────────────────────────────────────────────
+# Routes historically fed request JSON straight into int()/float(), so a
+# non-numeric, NaN, Infinity, or wrong-type value 500'd the endpoint or stored
+# poison that corrupted every downstream view. Use these at every boundary.
+
+def to_num(v, default=0.0, lo=None, hi=None):
+    """Coerce to a finite float. Non-numeric / NaN / Infinity → default.
+    Optionally clamp to [lo, hi]."""
+    try:
+        n = float(v)
+    except (TypeError, ValueError):
+        return float(default)
+    if not math.isfinite(n):
+        return float(default)
+    if lo is not None and n < lo:
+        n = lo
+    if hi is not None and n > hi:
+        n = hi
+    return n
+
+
+def to_int(v, default=0, lo=None, hi=None):
+    """Safe int via to_num (handles '3', 3.0, None, 'abc', NaN, inf)."""
+    return int(to_num(v, default, lo, hi))
+
+
+def valid_date(v):
+    """True if `v` is a real ISO (YYYY-MM-DD) calendar date. Used to reject
+    garbage date_keys before they orphan a log on a non-navigable day."""
+    if not isinstance(v, str):
+        return False
+    try:
+        datetime.date.fromisoformat(v)
+        return True
+    except ValueError:
+        return False
 
 # ── Backend selection ─────────────────────────────────────────────────────────
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
