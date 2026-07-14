@@ -480,16 +480,26 @@ class TestMedicalRecords:
         v = r.get_json()["vital"]
         assert v["value1"] == 118 and v["value2"] == 76
 
-    def test_vitals_have_no_range_validation(self, alice):
-        """PRODUCT GAP (documented): heart_rate of 9,000,000 bpm is stored
-        without complaint. The RANGES dict in /api/vitals/trend exists only
-        for chart reference lines — writes are never sanity-checked, so one
-        typo poisons every trend/insight computed from vitals."""
+    def test_implausible_vital_is_rejected(self, alice):
+        """FIXED: a gross typo (9,000,000 bpm) is rejected with a 400 so it
+        can't poison every trend/insight computed from vitals."""
         r = alice.post("/api/vitals", json={"type": "heart_rate",
                                             "value1": 9000000, "date_key": TODAY})
+        assert 400 <= r.status_code < 500
+        assert alice.get("/api/vitals").get_json() == []
+
+    def test_abnormal_but_plausible_vital_is_accepted(self, alice):
+        """The plausibility bounds are WIDE, not clinical: a genuinely high
+        blood pressure (160/100) or fever must still log fine — we only catch
+        physically-impossible typos, never abnormal-but-real readings."""
+        r = alice.post("/api/vitals", json={"type": "blood_pressure",
+                                            "value1": 160, "value2": 100,
+                                            "date_key": TODAY})
         assert r.status_code == 200
-        vals = [v["value1"] for v in alice.get("/api/vitals").get_json()]
-        assert 9000000 in vals
+        r2 = alice.post("/api/vitals", json={"type": "temperature",
+                                             "value1": 101.5, "unit": "°F",
+                                             "date_key": TODAY})
+        assert r2.status_code == 200   # 101.5 °F fever accepted despite °C ranges
 
     def test_cross_user_vital_delete_is_noop(self, alice, bob):
         vid = alice.post("/api/vitals", json={

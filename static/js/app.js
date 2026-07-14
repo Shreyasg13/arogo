@@ -5814,6 +5814,8 @@ async function logVital() {
     document.getElementById('vf1').value = '';
     if (document.getElementById('vf2')) document.getElementById('vf2').value = '';
     loadVitals();
+  } else {
+    showToast(r.error || 'Could not save reading', 'error');
   }
 }
 
@@ -7854,7 +7856,7 @@ async function saveVitalFromView() {
                            unit: window._bvVitalUnit, date_key: localToday() })
   }).then(r => r.json()).catch(() => null);
   if (r?.success) { showToast('Logged ✓', 'success'); loadVitalsView(); }
-  else showToast('Failed to save', 'error');
+  else showToast(r?.error || 'Failed to save', 'error');
 }
 
 async function loadBodyMetricsView() {

@@ -129,6 +129,36 @@ def delete_symptom(sid: str):
 
 # ── Vitals (BP, Blood Sugar) ──────────────────────────────────────────────────
 
+# Physical-plausibility bounds — deliberately WIDE (not clinical-normal ranges,
+# which live in the trend endpoint as chart reference lines). These only catch
+# gross typos like a 9,000,000 bpm heart rate, and are permissive enough to
+# accept temperatures in either °C or °F so a valid reading is never rejected.
+# (value1, value2) — value2 applies to the diastolic of blood_pressure.
+_VITAL_BOUNDS = {
+    'blood_pressure': ((30, 400), (10, 300)),
+    'heart_rate':     ((10, 350), None),
+    'blood_sugar':    ((5, 2000), None),
+    'spo2':           ((10, 100), None),
+    'temperature':    ((25, 120), None),   # spans both °C and °F
+}
+
+
+def _fmt_reading(n):
+    """Human-friendly number for error copy — no scientific notation."""
+    return f'{n:,.0f}' if n == int(n) else f'{n:g}'
+
+
+def _check_vital_range(vtype, value1, value2):
+    bounds = _VITAL_BOUNDS.get(vtype)
+    if not bounds:
+        return   # unknown type: accept any finite value
+    (lo1, hi1), b2 = bounds
+    if not (lo1 <= value1 <= hi1):
+        raise ValueError(f'That reading ({_fmt_reading(value1)}) looks off — please double-check it.')
+    if b2 and value2 is not None and not (b2[0] <= value2 <= b2[1]):
+        raise ValueError(f'That reading ({_fmt_reading(value2)}) looks off — please double-check it.')
+
+
 def log_vital(data: dict) -> dict:
     vtype = str(data.get('type', '')).strip()
     if not vtype:
@@ -149,6 +179,7 @@ def log_vital(data: dict) -> dict:
             raise ValueError('Reading must be a number')
         if not math.isfinite(value2):
             raise ValueError('Reading must be a number')
+    _check_vital_range(vtype, value1, value2)
     vid = new_id()
     execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,notes,logged_at,user_id)
                VALUES (?,?,?,?,?,?,?,?,?)""",
