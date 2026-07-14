@@ -218,8 +218,9 @@ class TestDoseLogging:
         mid = mk_med(alice)["id"]
         r = bob.post("/api/medicines/%s/log" % mid,
                      json={"date": TODAY, "time": "08:00", "taken": True})
-        # NOTE: responds {'success': True} either way — but must be a no-op.
-        assert r.status_code == 200
+        # FIXED: logging against a medicine you don't own is now an honest 404,
+        # and still a no-op (no row written).
+        assert r.status_code == 404
         assert dose_log_count() == 0
 
     def test_unscheduled_time_is_silently_accepted(self, alice):
@@ -234,19 +235,40 @@ class TestDoseLogging:
         doses = alice.get("/api/medicines/today").get_json()
         assert all(not d["taken"] for d in doses)   # nothing visibly taken
 
-    def test_taking_dose_never_touches_pill_stock(self, alice):
-        """PRODUCT BUG (documented): db.medicines.decrement_pill_count()
-        exists and is exported but NO route or frontend path ever calls it.
-        Pill counts only move on manual restock, so 'days left' drifts up
-        from reality every single day."""
+    def test_taking_dose_decrements_pill_stock(self, alice):
+        """FIXED: taking a dose now consumes stock (pills_per_dose), un-taking
+        restores it, and a double-log doesn't double-count — so 'days left'
+        tracks reality instead of drifting up."""
         mid = mk_med(alice)["id"]
         alice.post("/api/medicines/%s/stock" % mid,
-                   json={"pill_count": 30, "pills_per_dose": 1, "refill_threshold": 7})
+                   json={"pill_count": 30, "pills_per_dose": 2, "refill_threshold": 7})
+
+        def stock():
+            return next(m for m in alice.get("/api/medicines").get_json()
+                        if m["id"] == mid)["pill_count"]
+
+        # Take -> consume 2 (pills_per_dose)
+        alice.post("/api/medicines/%s/log" % mid,
+                   json={"date": TODAY, "time": "08:00", "taken": True})
+        assert stock() == 28
+        # Re-take the same slot -> no double count (idempotent on the transition)
+        alice.post("/api/medicines/%s/log" % mid,
+                   json={"date": TODAY, "time": "08:00", "taken": True})
+        assert stock() == 28
+        # Un-take -> restore 2
+        alice.post("/api/medicines/%s/log" % mid,
+                   json={"date": TODAY, "time": "08:00", "taken": False})
+        assert stock() == 30
+
+    def test_taking_dose_without_stock_tracking_is_noop(self, alice):
+        """A medicine that tracks no stock (pill_count NULL) must not error or
+        materialise a phantom count when a dose is taken."""
+        mid = mk_med(alice)["id"]
         alice.post("/api/medicines/%s/log" % mid,
                    json={"date": TODAY, "time": "08:00", "taken": True})
         med = next(m for m in alice.get("/api/medicines").get_json()
                    if m["id"] == mid)
-        assert med["pill_count"] == 30   # unchanged — stock tracking is manual-only
+        assert med["pill_count"] is None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -520,14 +542,13 @@ class TestApiSurface:
         assert v1.status_code == 200
         assert any(m["name"] == "AliasMed" for m in v1.get_json())
 
-    def test_mutations_on_nonexistent_ids_claim_success(self, alice):
-        """API HONESTY SMELL (documented): toggle/delete/log against an id
-        that doesn't exist (or was already deleted) still answers
-        {'success': true}. Clients can never distinguish 'done' from
-        'silently ignored' — a 404 would let the UI resync."""
-        assert alice.post("/api/medicines/no-such-id/toggle").get_json()["success"]
-        assert alice.delete("/api/medicines/no-such-id").get_json()["success"]
+    def test_mutations_on_nonexistent_ids_return_404(self, alice):
+        """FIXED: toggle/delete/log against an id that doesn't exist (or was
+        already deleted) now answers an honest 404, so the client can tell
+        'done' from 'silently ignored' and resync."""
+        assert alice.post("/api/medicines/no-such-id/toggle").status_code == 404
+        assert alice.delete("/api/medicines/no-such-id").status_code == 404
         r = alice.post("/api/medicines/no-such-id/log",
                        json={"date": TODAY, "time": "08:00"})
-        assert r.get_json()["success"]
+        assert r.status_code == 404
         assert dose_log_count() == 0

@@ -249,10 +249,8 @@ class TestIsolation:
         bob.delete(f"/api/food/log/{lid}")
         assert alice.get(f"/api/food/log/{DAY}").get_json()["summary"]["log_count"] == 1
 
-    # BUG #10 (LOW) routes/food.py:172-176 — DELETE /api/food/log/<id> calls
-    # delete_food_log (user-scoped, so no cross-user data loss) but ALWAYS
-    # returns {success:true} even when nothing matched. Misleading; ideally 404.
-    @pytest.mark.xfail(strict=False, reason="BUG: cross-user DELETE returns success:true (no-op)")
+    # FIXED: DELETE /api/food/log/<id> now returns an honest 404 when nothing
+    # matched (missing / another user's), instead of a misleading success:true.
     def test_delete_foreign_log_should_signal_not_found(self, app):
         alice = _user(app, "iso-del-a@medeasy.test")
         bob = _user(app, "iso-del-b@medeasy.test")

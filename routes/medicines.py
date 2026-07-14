@@ -28,12 +28,16 @@ def add_medicine():
 @bp.route('/api/medicines/<mid>', methods=['DELETE'])
 @require_auth
 def del_medicine(mid):
+    if not get_medicine(mid):          # user-scoped: None for missing/foreign
+        return jsonify({'success': False, 'error': 'Medicine not found'}), 404
     delete_medicine(mid)
     return jsonify({'success': True})
 
 @bp.route('/api/medicines/<mid>/toggle', methods=['POST'])
 @require_auth
 def toggle_med(mid):
+    if not get_medicine(mid):
+        return jsonify({'success': False, 'error': 'Medicine not found'}), 404
     toggle_medicine(mid)
     return jsonify({'success': True})
 
@@ -41,10 +45,12 @@ def toggle_med(mid):
 @require_auth
 def log_dose_route(mid):
     data = request.json or {}
-    log_dose(mid,
-             data.get('date', today_iso()),
-             data.get('time', ''),
-             taken=data.get('taken', True))
+    ok = log_dose(mid,
+                  data.get('date', today_iso()),
+                  data.get('time', ''),
+                  taken=data.get('taken', True))
+    if not ok:
+        return jsonify({'success': False, 'error': 'Medicine not found'}), 404
     return jsonify({'success': True})
 
 @bp.route('/api/medicines/today')

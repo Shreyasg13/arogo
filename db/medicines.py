@@ -95,21 +95,30 @@ def log_dose(medicine_id, date_key, time_key, taken=True):
     owner = execute("SELECT id FROM medicines WHERE id=? AND user_id=?",
                     (medicine_id, uid), fetchone=True)
     if not owner:
-        return
+        return False
     lid = new_id()
     # Upsert
     existing = execute(
-        "SELECT id FROM dose_logs WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?",
+        "SELECT id, taken FROM dose_logs WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?",
         (medicine_id, date_key, time_key, uid), fetchone=True)
+    prev_taken = bool(existing and existing['taken'])
+    new_taken  = bool(taken)
     if existing:
         execute("UPDATE dose_logs SET taken=?, taken_at=? WHERE id=?",
-                (1 if taken else 0, now_iso(), existing['id']), commit=True)
+                (1 if new_taken else 0, now_iso(), existing['id']), commit=True)
     else:
         execute("""
             INSERT INTO dose_logs (id,medicine_id,date_key,time_key,taken,taken_at,user_id)
             VALUES (?,?,?,?,?,?,?)
-        """, (lid, medicine_id, date_key, time_key, 1 if taken else 0, now_iso(), uid),
+        """, (lid, medicine_id, date_key, time_key, 1 if new_taken else 0, now_iso(), uid),
             commit=True)
+    # Keep pill stock honest: consume on a fresh "taken", restore on un-take.
+    # Guarded on the state *transition* so a double-log never double-counts.
+    if new_taken and not prev_taken:
+        _apply_stock_delta(medicine_id, -1)
+    elif prev_taken and not new_taken:
+        _apply_stock_delta(medicine_id, +1)
+    return True
 
 
 def _in_course(m, day):
@@ -178,15 +187,24 @@ def update_medicine_stock(mid: str, pill_count: int, pills_per_dose: int = 1, re
                 (mid, current_user_id()), fetchone=True)
     return dict(r) if r else {}
 
-def decrement_pill_count(mid: str):
-    """Call after a dose is taken to reduce stock."""
+def _apply_stock_delta(mid: str, doses: int):
+    """Adjust pill stock by `doses` worth of pills (each = pills_per_dose).
+    Negative consumes (dose taken), positive restores (dose un-taken).
+    No-op when the medicine tracks no stock (pill_count IS NULL). Floors at 0."""
     uid = current_user_id()
     r = execute("SELECT pill_count,pills_per_dose FROM medicines WHERE id=? AND user_id=?",
                 (mid, uid), fetchone=True)
-    if r and r['pill_count'] is not None:
-        new_count = max(0, r['pill_count'] - (r['pills_per_dose'] or 1))
-        execute("UPDATE medicines SET pill_count=? WHERE id=? AND user_id=?",
-                (new_count, mid, uid), commit=True)
+    if not r or r['pill_count'] is None:
+        return
+    per = r['pills_per_dose'] or 1
+    new_count = max(0, r['pill_count'] + doses * per)
+    execute("UPDATE medicines SET pill_count=? WHERE id=? AND user_id=?",
+            (new_count, mid, uid), commit=True)
+
+
+def decrement_pill_count(mid: str):
+    """Call after a dose is taken to reduce stock (one dose's worth)."""
+    _apply_stock_delta(mid, -1)
 
 def get_low_stock_medicines():
     """Return medicines where days remaining < refill_threshold."""

@@ -169,11 +169,12 @@ class TestFoodLogDelete:
         # Row really gone
         row = execute("SELECT * FROM food_logs WHERE id=?", (lid,), fetchone=True)
         assert row is None
-        # Second delete of same id does not error
-        assert client.delete(f"/api/food/log/{lid}").status_code == 200
+        # Second delete of the same id is now an honest 404 (already gone)
+        assert client.delete(f"/api/food/log/{lid}").status_code == 404
 
     def test_delete_nonexistent_is_safe(self, client):
-        assert client.delete("/api/food/log/never-existed").status_code == 200
+        # Safe (no crash / no cross-user effect) and honest about the miss.
+        assert client.delete("/api/food/log/never-existed").status_code == 404
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -132,9 +132,17 @@ def get_food_logs(date_key: str) -> list:
         (date_key, current_user_id()), fetchall=True)
     return [_fmt_food_log(r) for r in rows]
 
-def delete_food_log(lid: str):
-    execute("DELETE FROM food_logs WHERE id=? AND user_id=?",
-            (lid, current_user_id()), commit=True)
+def delete_food_log(lid: str) -> bool:
+    """Delete a user-owned food log. Returns True if a row was actually
+    removed, False if nothing matched (missing / another user's) so the
+    route can answer an honest 404."""
+    uid = current_user_id()
+    exists = execute("SELECT id FROM food_logs WHERE id=? AND user_id=?",
+                     (lid, uid), fetchone=True)
+    if not exists:
+        return False
+    execute("DELETE FROM food_logs WHERE id=? AND user_id=?", (lid, uid), commit=True)
+    return True
 
 def _fmt_food_log(r) -> dict:
     d = dict(r)

@@ -397,11 +397,10 @@ class TestAdherenceMath:
         # medicines.py adherence route returns get_adherence_stats(0)
         assert code == 200
 
-    def test_log_dose_bad_medicine_id_noop(self, client):
-        # Logging against a non-existent / other-user's medicine is a silent
-        # no-op (owner check) and returns success — arguably should 404, but at
-        # least it does not corrupt data or crash.
+    def test_log_dose_bad_medicine_id_404(self, client):
+        # FIXED: logging against a non-existent / other-user's medicine now
+        # returns an honest 404 (still a no-op, no data corruption).
         code, d = jpost(client, "/api/medicines/does-not-exist/log",
                         {"time": "08:00", "taken": True})
-        assert code == 200
-        assert d["success"] is True
+        assert code == 404
+        assert d["success"] is False

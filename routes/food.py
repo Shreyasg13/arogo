@@ -174,7 +174,8 @@ def api_update_food_log(lid):
 @bp.route('/api/food/log/<lid>', methods=['DELETE'])
 @require_auth
 def del_food_log(lid):
-    delete_food_log(lid)
+    if not delete_food_log(lid):
+        return jsonify({'success': False, 'error': 'Not found'}), 404
     return jsonify({'success': True})
 
 @bp.route('/api/food/weekly')
