@@ -1321,6 +1321,7 @@ async function loadDashboard() {
   try { loadInsightCards(); }   catch (e) {}
   try { loadWellnessStrip(); }  catch (e) {}
   try { loadCarePanel(); }      catch (e) {}
+  try { loadLowStock(); }       catch (e) {}
   loadHealthScore();
   initDailyCheckin();
 
@@ -1504,6 +1505,32 @@ async function loadCarePanel() {
       </div>`;
     }).join('')}</div>`;
   el.style.display = '';
+}
+
+// Low-stock refill nudge — the other half of the pill-stock loop. Now that
+// taking a dose decrements stock, surface medicines that are running low so
+// the refill actually happens.
+async function loadLowStock() {
+  const el = document.getElementById('dash-lowstock');
+  if (!el) return;
+  const low = await fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []);
+  if (!Array.isArray(low) || !low.length) { el.style.display = 'none'; return; }
+  const title = low.length === 1
+    ? `${escHtml(low[0].name)} is running low`
+    : `${low.length} medicines are running low`;
+  const detail = low.slice(0, 3).map(m => {
+    const d = m.days_left;
+    const left = (d != null && isFinite(d)) ? `~${Math.max(0, Math.round(d))}d left` : 'low';
+    return `${escHtml(m.name)} · ${left}`;
+  }).join('  ·  ');
+  el.innerHTML = `
+    <div class="lowstock-icon">🔔</div>
+    <div class="lowstock-body">
+      <div class="lowstock-title">${title} — time to refill</div>
+      <div class="lowstock-sub">${detail}</div>
+    </div>
+    <button class="lowstock-btn" data-ev-click="switchView('medicines')">Review</button>`;
+  el.style.display = 'flex';
 }
 
 async function openCalorieBreakdown() {
