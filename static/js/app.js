@@ -8167,15 +8167,43 @@ async function initDailyCheckin() {
     return;
   }
 
+  // Respect a "not now" snooze for today
+  if (localStorage.getItem(`medeasy_checkin_snooze_${today}`)) return;
+
   // Show only the relevant steps
   window._ciStepsToShow = stepsToShow;
 
-  setTimeout(() => {
-    ciStep = 0;
-    ciSel.mood = null; ciSel.sleep = null; ciSel.symptoms = []; ciSel.water = null;
-    renderCheckin();
-    document.getElementById('checkin-overlay').style.display = 'flex';
-  }, 600);
+  // Surface an inline, dismissible nudge instead of interrupting with a modal
+  // over the dashboard's next-action hero — the user chooses when to start.
+  const prompt = document.getElementById('dash-checkin-prompt');
+  if (!prompt) return;
+  const labels = { mood:'mood', sleep:'sleep', symptoms:'symptoms', water:'water' };
+  const parts  = stepsToShow.map(s => labels[s]).filter(Boolean);
+  prompt.innerHTML = `
+    <div class="checkin-prompt-icon">☀️</div>
+    <div class="checkin-prompt-body">
+      <div class="checkin-prompt-title">Daily check-in</div>
+      <div class="checkin-prompt-sub">A quick 30 seconds — ${parts.join(', ')}.</div>
+    </div>
+    <button class="checkin-prompt-start" data-ev-click="startDailyCheckin()">Start</button>
+    <button class="checkin-prompt-dismiss" data-ev-click="dismissCheckinPrompt()" title="Not now" aria-label="Dismiss">✕</button>`;
+  prompt.style.display = 'flex';
+}
+
+function startDailyCheckin() {
+  const prompt = document.getElementById('dash-checkin-prompt');
+  if (prompt) prompt.style.display = 'none';
+  ciStep = 0;
+  ciSel.mood = null; ciSel.sleep = null; ciSel.symptoms = []; ciSel.water = null;
+  renderCheckin();
+  document.getElementById('checkin-overlay').style.display = 'flex';
+}
+
+function dismissCheckinPrompt() {
+  const prompt = document.getElementById('dash-checkin-prompt');
+  if (prompt) prompt.style.display = 'none';
+  // Snooze for the rest of today only — it returns tomorrow
+  localStorage.setItem(`medeasy_checkin_snooze_${localToday()}`, '1');
 }
 
 function closeCheckin() {

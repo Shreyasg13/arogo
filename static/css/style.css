@@ -4634,6 +4634,28 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   .next-action-btn { width:100%; margin-top:6px; }
 }
 
+/* Dismissible daily check-in nudge (replaces the auto-popup modal) */
+.checkin-prompt {
+  display:flex; align-items:center; gap:14px;
+  background:var(--teal-50); border:1px solid var(--teal-100);
+  border-radius:var(--r-lg); padding:12px 16px; margin-bottom:18px;
+}
+.checkin-prompt-icon { font-size:22px; flex-shrink:0; }
+.checkin-prompt-body { flex:1; min-width:0; }
+.checkin-prompt-title { font-size:14px; font-weight:600; color:var(--gray-800); }
+.checkin-prompt-sub { font-size:12.5px; color:var(--gray-500); margin-top:1px; }
+.checkin-prompt-start {
+  flex-shrink:0; background:var(--teal-600); color:#fff; border:none;
+  border-radius:999px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer;
+  transition:background .15s;
+}
+.checkin-prompt-start:hover { background:var(--teal-700); }
+.checkin-prompt-dismiss {
+  flex-shrink:0; background:none; border:none; color:var(--gray-400);
+  font-size:15px; cursor:pointer; padding:4px 6px; line-height:1; border-radius:6px;
+}
+.checkin-prompt-dismiss:hover { color:var(--gray-700); background:var(--gray-100); }
+
 .today-panel {
   display:flex; gap:24px; align-items:center;
   background:var(--gray-0); border:1px solid var(--gray-100);
