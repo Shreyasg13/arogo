@@ -1224,11 +1224,12 @@ function renderFamilySummary(s) {
 }
 
 // ── First-run "get started" checklist ─────────────────────────────
+// Medication leads — it's Arogo's core loop, so onboarding starts there.
 const FIRSTRUN_STEPS = [
+  {key: 'medicines',      icon: '💊', label: 'Add your first medication', ev: 'openMedModal()', primary: true},
   {key: 'food_logs',      icon: '🍽️', label: 'Log your first meal',  ev: "quickAdd('food')"},
   {key: 'hydration_logs', icon: '💧', label: 'Log a glass of water', ev: 'quickWater(250)'},
   {key: 'habits',         icon: '⭐', label: 'Create a habit',       ev: "switchView('habits')"},
-  {key: 'medicines',      icon: '💊', label: 'Add a medicine',       ev: "switchView('medicines')"},
 ];
 
 async function checkFirstRun() {
@@ -1269,13 +1270,15 @@ async function checkFirstRun() {
                               display:inline-flex;align-items:center;justify-content:center;font-size:11px">✓</span>
                  <span style="text-decoration:line-through">${s.icon} ${s.label}</span>
                </div>`
-            : `<button style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gray-700);
-                              background:var(--gray-0);border:1px solid var(--gray-100);border-radius:10px;
+            : `<button style="display:flex;align-items:center;gap:10px;font-size:13px;
+                              color:${s.primary ? '#fff' : 'var(--gray-700)'};font-weight:${s.primary ? '600' : '400'};
+                              background:${s.primary ? 'var(--teal-600)' : 'var(--gray-0)'};
+                              border:1px solid ${s.primary ? 'var(--teal-600)' : 'var(--gray-100)'};border-radius:10px;
                               padding:10px 12px;cursor:pointer;text-align:left;font-family:inherit;min-height:42px"
                        data-ev-click="${s.ev}">
-                 <span style="width:20px;height:20px;border-radius:50%;border:2px solid var(--gray-200);flex-shrink:0"></span>
+                 <span style="width:20px;height:20px;border-radius:50%;border:2px solid ${s.primary ? 'rgba(255,255,255,.6)' : 'var(--gray-200)'};flex-shrink:0"></span>
                  ${s.icon} ${s.label}
-                 <span style="margin-left:auto;color:var(--teal-600);font-weight:600">→</span>
+                 <span style="margin-left:auto;color:${s.primary ? '#fff' : 'var(--teal-600)'};font-weight:600">→</span>
                </button>`;
         }).join('')}
       </div>
