@@ -6,6 +6,12 @@ family sharing in one installable web app.
 Flask + vanilla JS + SQLite (PostgreSQL-ready), with zero third-party
 auth dependencies.
 
+> 📖 **[Read the engineering case study →](CASE_STUDY.md)** — how a full QA
+> audit surfaced a systemic input-validation bug class (fixed as one shared
+> layer, ~40 bugs, 90+ tests) and drove a product refocus around the
+> medication-adherence core loop. 460 automated tests; every user-visible
+> change verified in a real browser.
+
 ---
 
 ## Features
