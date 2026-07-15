@@ -64,6 +64,18 @@ class TestDigestApi:
         for k in ["sleep", "workouts", "habits", "hydration", "nutrition"]:
             assert k in d["scores"]
 
+    def test_no_data_week_is_not_scored_as_failure(self, app):
+        # A brand-new user with nothing logged must get a welcoming headline,
+        # never the demoralising "Tough week …" that 0/5 would otherwise pick.
+        auth_module.reset_rate_limiter()
+        c = app.test_client()
+        c.post("/auth/register",
+               json={"email": "empty-digest@medeasy.test", "password": PW})
+        d = c.get("/api/weekly-digest").get_json()
+        assert d["overall_score"] == 0
+        assert "Tough week" not in d["headline"]
+        assert "Nothing logged yet" in d["headline"]
+
 
 class TestDigestEmailJob:
     def test_sends_once_per_week(self, app, user, sent):

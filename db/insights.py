@@ -200,7 +200,18 @@ def generate_weekly_digest() -> dict:
         highlights.append({'label': 'Cal burned',   'value': f'{r["fitness"]["calories_burned"]:,}',  'icon': '🔥'})
 
     # ── Headline ──────────────────────────────────────────────────
-    if overall_score >= 80:
+    # Don't score an empty week as a failure — a brand-new user with nothing
+    # logged gets a welcoming prompt, not "Tough week".
+    has_data = (
+        r['sleep']['nights'] > 0
+        or r['fitness']['workout_days'] > 0
+        or (r['nutrition']['avg_hydration_ml'] or 0) > 0
+        or r['habits'].get('done_count', 0) > 0
+        or bool(r['symptoms'])
+    )
+    if not has_data:
+        headline = "Nothing logged yet — start tracking and your progress will show up here."
+    elif overall_score >= 80:
         headline = "Strong week — you're building good habits 💪"
     elif overall_score >= 60:
         headline = "Solid week overall, with a few areas to improve"

@@ -6621,9 +6621,11 @@ function renderProgress(r) {
   const habitPct   = r.habits?.completion_pct || 0;
   const calPct     = Math.min(r.nutrition?.adherence_pct||0, 100);
   const scores     = [workoutPct, sleepPct, habitPct, calPct].filter(s => s > 0);
-  const overall    = scores.length ? Math.round(scores.reduce((a,b)=>a+b)/scores.length) : 0;
-  const overallColor = overall >= 75 ? '#22C55E' : overall >= 50 ? '#F59E0B' : '#EF4444';
-  const overallLabel = overall >= 75 ? 'On track! 🎯' : overall >= 50 ? 'Getting there 💪' : 'Needs focus 📋';
+  const hasData    = scores.length > 0;
+  const overall    = hasData ? Math.round(scores.reduce((a,b)=>a+b)/scores.length) : 0;
+  // No data yet → neutral, welcoming — never a red "Needs focus" on an empty week
+  const overallColor = !hasData ? 'var(--gray-300)' : overall >= 75 ? '#22C55E' : overall >= 50 ? '#F59E0B' : '#EF4444';
+  const overallLabel = !hasData ? 'Start logging to see your progress' : overall >= 75 ? 'On track! 🎯' : overall >= 50 ? 'Getting there 💪' : 'Needs focus 📋';
 
   // Update score strip
   const strip = document.getElementById('prog-score-strip');
