@@ -1343,6 +1343,15 @@ async function loadDashboard() {
   const remaining = doses.filter(d => !d.taken).length;
   const hasMeds   = doses.length > 0;
 
+  // Medication adherence tile — the core loop, front and centre in the focal panel
+  const takenToday = doses.filter(d => d.taken).length;
+  const totalToday = doses.length;
+  setText('dws-meds', totalToday ? `${takenToday} / ${totalToday}` : '—');
+  const medsBar = document.getElementById('dws-meds-bar');
+  if (medsBar) medsBar.style.width = totalToday ? Math.round(takenToday / totalToday * 100) + '%' : '0%';
+  setText('dws-meds-sub', !totalToday ? 'no meds today'
+    : takenToday === totalToday ? 'all doses taken ✓' : 'doses today');
+
   // Single "what do I do right now" hero — meds first, then a gentle fallback
   renderNextAction(doses, null);
   const medPanel  = document.getElementById('dash-medicines-panel');
