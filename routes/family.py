@@ -136,3 +136,10 @@ def member_summary(uid):
         return jsonify(family.member_summary(uid))
     except PermissionError as e:
         return jsonify({'error': str(e)}), 403
+
+
+@bp.route('/api/family/care-status')
+@require_auth
+def care_status():
+    """Today's dose status for family members who share their meds with me."""
+    return jsonify(family.care_status())

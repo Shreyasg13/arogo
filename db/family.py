@@ -11,7 +11,7 @@ Model:
 """
 from __future__ import annotations
 
-from .core import execute, now_iso, today_iso, new_id, current_user_id, to_num, to_int
+from .core import execute, now_iso, today_iso, new_id, current_user_id, user_context, to_num, to_int
 
 CONSENT_FIELDS = ['share_sleep', 'share_vitals', 'share_medicines',
                   'share_food', 'share_symptoms']
@@ -268,4 +268,66 @@ def member_summary(target_uid: str) -> dict:
                        (target_uid, week_ago), fetchall=True)
         out['symptoms'] = rows
 
+    return out
+
+
+def _local_now_hhmm(tz):
+    """Current HH:MM in `tz` (server-local fallback)."""
+    import datetime as _dt
+    if tz:
+        try:
+            import zoneinfo
+            return _dt.datetime.now(zoneinfo.ZoneInfo(tz)).strftime('%H:%M')
+        except Exception:
+            pass
+    return _dt.datetime.now().strftime('%H:%M')
+
+
+def _mins_between(hhmm, now_hhmm):
+    try:
+        h1, m1 = map(int, hhmm.split(':'))
+        h2, m2 = map(int, now_hhmm.split(':'))
+        return (h2 * 60 + m2) - (h1 * 60 + m1)
+    except Exception:
+        return None
+
+
+def care_status() -> list:
+    """Today's medication status for family-group members who share their
+    medicines with the caregiver (the current user). Consent-gated: only
+    members with share_medicines=1 appear. A dose is 'overdue' once it is 2+
+    hours past its scheduled time (matching the caregiver push alerts)."""
+    me = my_membership()
+    if not me:
+        return []
+    members = execute("""
+        SELECT m.user_id, u.name, u.email FROM family_members m
+        JOIN users u ON u.id = m.user_id
+        WHERE m.group_id=? AND m.user_id<>? AND m.share_medicines=1
+        ORDER BY u.name""",
+        (me['group_id'], current_user_id()), fetchall=True)
+    out = []
+    for mem in members:
+        muid = mem['user_id']
+        doses = []
+        try:
+            with user_context(muid):
+                from db import get_today_doses
+                from db.food import get_user_timezone
+                doses = get_today_doses()
+                hhmm = _local_now_hhmm(get_user_timezone())
+        except Exception:
+            hhmm = _local_now_hhmm(None)
+        total = len(doses)
+        taken = len([d for d in doses if d.get('taken')])
+        overdue = [{'med_name': d.get('med_name'), 'time': d.get('time')}
+                   for d in doses if not d.get('taken')
+                   and (_mins_between(d.get('time') or '', hhmm) or 0) >= 120]
+        out.append({
+            'user_id': muid,
+            'name': mem['name'] or mem['email'],
+            'total': total,
+            'taken': taken,
+            'overdue': overdue,
+        })
     return out

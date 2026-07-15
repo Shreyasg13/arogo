@@ -259,6 +259,42 @@ class TestCaregiverAlerts:
         assert c["alert_missed_doses"] is False
 
 
+class TestCareStatus:
+    """Dashboard caregiver panel: /api/family/care-status shows today's dose
+    status of members who share their medicines — and only them."""
+
+    def _dave_id(self, group):
+        return next(m["user_id"] for m in group["members"]
+                    if m["email"] == "dave@medeasy.test")
+
+    def test_lists_member_sharing_medicines(self, carol, dave, group):
+        dave.post("/api/family/consent", json={"share_medicines": True})
+        r = dave.post("/api/medicines", json={
+            "name": "CarePill", "dosage": "5", "times": ["08:00", "20:00"]})
+        mid = r.get_json()["medicine"]["id"]
+        dave.post(f"/api/medicines/{mid}/log", json={"time": "08:00", "taken": True})
+
+        status = carol.get("/api/family/care-status").get_json()
+        row = next((m for m in status if m["user_id"] == self._dave_id(group)), None)
+        assert row is not None, "sharing member missing from care-status"
+        assert row["total"] >= 2 and row["taken"] >= 1
+        assert isinstance(row["overdue"], list)
+
+    def test_excludes_member_not_sharing_medicines(self, carol, dave, group):
+        dave.post("/api/family/consent", json={"share_medicines": False})
+        status = carol.get("/api/family/care-status").get_json()
+        assert all(m["user_id"] != self._dave_id(group) for m in status)
+
+    def test_excludes_self(self, carol, group):
+        carol_id = next(m["user_id"] for m in group["members"]
+                        if m["email"] == "carol@medeasy.test")
+        status = carol.get("/api/family/care-status").get_json()
+        assert all(m["user_id"] != carol_id for m in status)
+
+    def test_outsider_sees_empty(self, eve):
+        assert eve.get("/api/family/care-status").get_json() == []
+
+
 class TestMemberManagement:
     def test_member_cannot_remove_others(self, dave, group):
         carol_id = next(m["user_id"] for m in group["members"]

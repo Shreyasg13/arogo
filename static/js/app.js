@@ -1317,6 +1317,7 @@ async function loadDashboard() {
   try { checkFirstRun(); }      catch (e) {}
   try { loadInsightCards(); }   catch (e) {}
   try { loadWellnessStrip(); }  catch (e) {}
+  try { loadCarePanel(); }      catch (e) {}
   loadHealthScore();
   initDailyCheckin();
 
@@ -1466,6 +1467,40 @@ function renderNextAction(doses, calorieState) {
   }
 
   el.style.display = 'none';
+}
+
+// Caregiver panel: today's medication status for family members who share
+// their meds with you. Consent-gated server-side; only appears if ≥1 member.
+async function loadCarePanel() {
+  const el = document.getElementById('dash-care-panel');
+  if (!el) return;
+  const members = await fetch('/api/family/care-status').then(r => r.json()).catch(() => []);
+  if (!Array.isArray(members) || !members.length) { el.style.display = 'none'; return; }
+  el.innerHTML = `
+    <div class="care-panel-head">
+      <span class="care-panel-title">People you're caring for</span>
+      <a href="#" class="panel-link" data-ev-click="switchView('family');return false">Family →</a>
+    </div>
+    <div class="care-list">${members.map(m => {
+      const overdue = m.overdue.length;
+      const done    = m.total > 0 && m.taken >= m.total;
+      const status  = overdue ? `${overdue} dose${overdue > 1 ? 's' : ''} overdue`
+                    : m.total === 0 ? 'No medicines scheduled today'
+                    : done ? 'All doses taken ✓'
+                    : `${m.taken} of ${m.total} doses taken`;
+      const detail  = overdue ? m.overdue.map(o => `${escHtml(o.med_name || 'dose')} · ${o.time}`).join(', ') : '';
+      const cls     = overdue ? 'is-alert' : done ? 'is-ok' : 'is-pending';
+      const icon    = overdue ? '🚨' : done ? '✓' : '💊';
+      return `<div class="care-item ${cls}">
+        <div class="care-item-avatar">${escHtml((m.name || '?').slice(0, 1).toUpperCase())}</div>
+        <div class="care-item-body">
+          <div class="care-item-name">${escHtml(m.name)}</div>
+          <div class="care-item-status">${status}${detail ? ' · ' + detail : ''}</div>
+        </div>
+        <div class="care-item-icon">${icon}</div>
+      </div>`;
+    }).join('')}</div>`;
+  el.style.display = '';
 }
 
 async function openCalorieBreakdown() {

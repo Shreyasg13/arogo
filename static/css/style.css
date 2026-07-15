@@ -4656,6 +4656,32 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 .checkin-prompt-dismiss:hover { color:var(--gray-700); background:var(--gray-100); }
 
+/* Caregiver panel — family members' medication status at a glance */
+.care-panel {
+  background:var(--gray-0); border:1px solid var(--gray-100);
+  border-radius:var(--r-xl); padding:14px 16px; margin-bottom:18px; box-shadow:var(--shadow-sm);
+}
+.care-panel-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.care-panel-title { font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--gray-500); }
+.care-list { display:flex; flex-direction:column; gap:6px; }
+.care-item {
+  display:flex; align-items:center; gap:12px; padding:9px 11px;
+  border-radius:var(--r-md); background:var(--gray-50); border-left:3px solid var(--gray-200);
+}
+.care-item.is-ok     { border-left-color:var(--teal-500); }
+.care-item.is-pending{ border-left-color:#F59E0B; }
+.care-item.is-alert  { border-left-color:var(--red-500); background:var(--red-50, #FBEBE9); }
+.care-item-avatar {
+  flex-shrink:0; width:32px; height:32px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--teal-100); color:var(--teal-700); font-size:13px; font-weight:700;
+}
+.care-item-body { flex:1; min-width:0; }
+.care-item-name { font-size:13.5px; font-weight:600; color:var(--gray-800); }
+.care-item-status { font-size:12px; color:var(--gray-500); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.care-item.is-alert .care-item-status { color:var(--red-500); }
+.care-item-icon { flex-shrink:0; font-size:16px; }
+
 .today-panel {
   display:flex; gap:24px; align-items:center;
   background:var(--gray-0); border:1px solid var(--gray-100);
