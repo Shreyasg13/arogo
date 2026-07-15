@@ -3566,6 +3566,16 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   margin-bottom: 20px;
 }
 
+/* Optional journal note in the check-in (unifies journaling into the flow) */
+.ci-note {
+  width: 100%; margin-top: 14px; box-sizing: border-box; resize: vertical;
+  border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px;
+  font-family: inherit; font-size: 13.5px; color: var(--gray-800);
+  background: var(--gray-0); line-height: 1.4;
+}
+.ci-note:focus { outline: none; border-color: var(--teal-400); }
+.ci-note::placeholder { color: var(--gray-400); }
+
 /* Mood grid */
 .ci-mood-grid {
   display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;

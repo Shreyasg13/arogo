@@ -8243,7 +8243,7 @@ function startDailyCheckin() {
   const prompt = document.getElementById('dash-checkin-prompt');
   if (prompt) prompt.style.display = 'none';
   ciStep = 0;
-  ciSel.mood = null; ciSel.sleep = null; ciSel.symptoms = []; ciSel.water = null;
+  ciSel.mood = null; ciSel.sleep = null; ciSel.symptoms = []; ciSel.water = null; ciSel.note = '';
   renderCheckin();
   document.getElementById('checkin-overlay').style.display = 'flex';
 }
@@ -8299,7 +8299,11 @@ function renderCheckin() {
             <span class="ci-mood-emoji">${m.emoji}</span>
             <span class="ci-mood-label">${m.label}</span>
           </button>`).join('')}
-      </div>`;
+      </div>
+      ${ciSel.mood !== null ? `
+        <textarea class="ci-note" rows="2" maxlength="500"
+                  placeholder="Anything on your mind? Adds a note to your journal (optional)…"
+                  data-ev-input="ciSetNote(this.value)">${escHtml(ciSel.note || '')}</textarea>` : ''}`;
     footer.innerHTML = `
       <button class="ci-btn-primary" data-ev-click="ciNext()"
               ${ciSel.mood === null ? 'disabled' : ''}>Continue</button>`;
@@ -8365,6 +8369,10 @@ function ciPickMood(i) {
   ciSel.mood = i;
   renderCheckin();
 }
+function ciSetNote(v) {
+  // Store only — no re-render, so the textarea keeps focus while typing
+  ciSel.note = v;
+}
 function ciPickSleep(i) {
   ciSel.sleep = i;
   renderCheckin();
@@ -8403,16 +8411,17 @@ async function ciSubmit() {
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const saves     = [];
 
-  // 1. Mood → save as a thought with the mood tag
+  // 1. Mood → save as a journal thought. If the user wrote a reflection note,
+  //    that becomes the journal entry (the check-in doubles as the journal).
   if (ciSel.mood !== null) {
-    const m = CI_MOODS[ciSel.mood];
+    const m    = CI_MOODS[ciSel.mood];
+    const note = (ciSel.note || '').trim();
+    const content = note
+      ? `${note}\n\n(Check-in: feeling ${m.label.toLowerCase()})`
+      : `Daily check-in: feeling ${m.label.toLowerCase()}.`;
     saves.push(fetch('/api/thoughts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content:  `Morning check-in: feeling ${m.label.toLowerCase()}.`,
-        mood:     m.mood,
-        date_key: today,
-      })
+      body: JSON.stringify({ content, mood: m.mood, date_key: today })
     }).catch(() => {}));
   }
 
