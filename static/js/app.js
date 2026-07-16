@@ -1495,16 +1495,32 @@ async function loadCarePanel() {
       const detail  = overdue ? m.overdue.map(o => `${escHtml(o.med_name || 'dose')} · ${o.time}`).join(', ') : '';
       const cls     = overdue ? 'is-alert' : done ? 'is-ok' : 'is-pending';
       const icon    = overdue ? '🚨' : done ? '✓' : '💊';
+      // Coordination: on an overdue member, let one caregiver claim it so the
+      // others don't all call at once.
+      let right;
+      if (overdue && m.checking_is_me)      right = `<span class="care-ack-chip is-me">You're on it ✓</span>`;
+      else if (overdue && m.checking_by)    right = `<span class="care-ack-chip">${escHtml(m.checking_by)} is on it</span>`;
+      else if (overdue)                     right = `<button class="care-ack-btn" data-ev-click="careAck('${m.user_id}')">I'll check</button>`;
+      else                                  right = `<div class="care-item-icon">${icon}</div>`;
       return `<div class="care-item ${cls}">
         <div class="care-item-avatar">${escHtml((m.name || '?').slice(0, 1).toUpperCase())}</div>
         <div class="care-item-body">
           <div class="care-item-name">${escHtml(m.name)}</div>
           <div class="care-item-status">${status}${detail ? ' · ' + detail : ''}</div>
         </div>
-        <div class="care-item-icon">${icon}</div>
+        ${right}
       </div>`;
     }).join('')}</div>`;
   el.style.display = '';
+}
+
+async function careAck(uid) {
+  await fetch('/api/family/care-ack', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target_user_id: uid })
+  }).catch(() => {});
+  showToast("Thanks — your family will see you're on it", 'success');
+  loadCarePanel();
 }
 
 // Low-stock refill nudge — the other half of the pill-stock loop. Now that

@@ -386,6 +386,26 @@ CREATE TABLE IF NOT EXISTS family_invites (
     status TEXT DEFAULT 'pending',
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS care_acks (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    target_user_id TEXT NOT NULL,
+    caregiver_user_id TEXT NOT NULL,
+    caregiver_name TEXT,
+    date_key TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS encouragements (
+    id TEXT PRIMARY KEY,
+    group_id TEXT NOT NULL,
+    to_user_id TEXT NOT NULL,
+    from_user_id TEXT NOT NULL,
+    from_name TEXT,
+    emoji TEXT,
+    message TEXT,
+    read INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS reminder_settings (
     id TEXT PRIMARY KEY,
     water_enabled INTEGER DEFAULT 1,

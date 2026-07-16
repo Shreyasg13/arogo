@@ -143,3 +143,16 @@ def member_summary(uid):
 def care_status():
     """Today's dose status for family members who share their meds with me."""
     return jsonify(family.care_status())
+
+
+@bp.route('/api/family/care-ack', methods=['POST'])
+@require_auth
+def care_ack():
+    """Claim 'I'll check on this' for a family member so co-caregivers see it."""
+    target = (request.json or {}).get('target_user_id')
+    if not target:
+        return jsonify({'error': 'target_user_id required'}), 400
+    try:
+        return jsonify(family.ack_care(target))
+    except PermissionError as e:
+        return jsonify({'error': str(e)}), 403

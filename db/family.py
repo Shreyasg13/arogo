@@ -300,12 +300,14 @@ def care_status() -> list:
     me = my_membership()
     if not me:
         return []
+    uid_self = current_user_id()
+    today = today_iso()
     members = execute("""
         SELECT m.user_id, u.name, u.email FROM family_members m
         JOIN users u ON u.id = m.user_id
         WHERE m.group_id=? AND m.user_id<>? AND m.share_medicines=1
         ORDER BY u.name""",
-        (me['group_id'], current_user_id()), fetchall=True)
+        (me['group_id'], uid_self), fetchall=True)
     out = []
     for mem in members:
         muid = mem['user_id']
@@ -323,11 +325,42 @@ def care_status() -> list:
         overdue = [{'med_name': d.get('med_name'), 'time': d.get('time')}
                    for d in doses if not d.get('taken')
                    and (_mins_between(d.get('time') or '', hhmm) or 0) >= 120]
+        # Coordination: has a caregiver claimed "I'll check on this" today?
+        ack = execute("""SELECT caregiver_user_id, caregiver_name FROM care_acks
+                         WHERE group_id=? AND target_user_id=? AND date_key=?
+                         ORDER BY created_at DESC LIMIT 1""",
+                      (me['group_id'], muid, today), fetchone=True)
         out.append({
             'user_id': muid,
             'name': mem['name'] or mem['email'],
             'total': total,
             'taken': taken,
             'overdue': overdue,
+            'checking_by': (ack['caregiver_name'] if ack else None),
+            'checking_is_me': bool(ack and ack['caregiver_user_id'] == uid_self),
         })
     return out
+
+
+def ack_care(target_uid: str) -> dict:
+    """Record that the current caregiver is checking on `target_uid` today, so
+    co-caregivers don't all pile on. One ack per caregiver per member per day."""
+    me = my_membership()
+    if not me:
+        raise PermissionError('Not in a family group')
+    tgt = _membership_of(target_uid)
+    if not tgt or tgt['group_id'] != me['group_id']:
+        raise PermissionError('Not in your family group')
+    uid = current_user_id()
+    existing = execute("""SELECT id FROM care_acks WHERE group_id=? AND target_user_id=?
+                          AND caregiver_user_id=? AND date_key=?""",
+                       (me['group_id'], target_uid, uid, today_iso()), fetchone=True)
+    if not existing:
+        u = execute("SELECT name, email FROM users WHERE id=?", (uid,), fetchone=True)
+        name = (u['name'] if u else '') or (u['email'] if u else '')
+        execute("""INSERT INTO care_acks
+                     (id,group_id,target_user_id,caregiver_user_id,caregiver_name,date_key,created_at)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (new_id(), me['group_id'], target_uid, uid, name, today_iso(), now_iso()),
+                commit=True)
+    return {'ok': True, 'checking_by': None}

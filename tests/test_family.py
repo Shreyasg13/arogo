@@ -354,6 +354,20 @@ class TestCareStatus:
     def test_outsider_sees_empty(self, eve):
         assert eve.get("/api/family/care-status").get_json() == []
 
+    def test_care_ack_marks_checking(self, carol, dave, group):
+        dave.post("/api/family/consent", json={"share_medicines": True})
+        dave_id = self._dave_id(group)
+        r = carol.post("/api/family/care-ack", json={"target_user_id": dave_id})
+        assert r.status_code == 200
+        row = next(m for m in carol.get("/api/family/care-status").get_json()
+                   if m["user_id"] == dave_id)
+        assert row["checking_is_me"] is True
+        assert row["checking_by"]   # Carol's name/email recorded
+
+    def test_care_ack_rejects_non_group_member(self, carol, group):
+        r = carol.post("/api/family/care-ack", json={"target_user_id": "nobody"})
+        assert r.status_code == 403
+
 
 class TestMemberManagement:
     def test_member_cannot_remove_others(self, dave, group):

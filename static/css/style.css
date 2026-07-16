@@ -4711,6 +4711,17 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .care-item-status { font-size:12px; color:var(--gray-500); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .care-item.is-alert .care-item-status { color:var(--red-500); }
 .care-item-icon { flex-shrink:0; font-size:16px; }
+.care-ack-btn {
+  flex-shrink:0; background:var(--red-500); color:#fff; border:none; border-radius:999px;
+  padding:6px 14px; font-size:12.5px; font-weight:600; cursor:pointer; transition:opacity .15s;
+}
+.care-ack-btn:hover { opacity:.9; }
+.care-ack-chip {
+  flex-shrink:0; font-size:11.5px; font-weight:600; color:var(--gray-500);
+  background:var(--gray-100); border-radius:999px; padding:5px 10px; white-space:nowrap;
+}
+.care-ack-chip.is-me { color:var(--teal-700); background:var(--teal-50); }
+[data-theme="dark"] .care-ack-chip { background:rgba(255,255,255,.08); }
 
 .today-panel {
   display:flex; gap:24px; align-items:center;
