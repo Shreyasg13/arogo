@@ -14,7 +14,7 @@ from __future__ import annotations
 from .core import execute, now_iso, today_iso, new_id, current_user_id, user_context, to_num, to_int
 
 CONSENT_FIELDS = ['share_sleep', 'share_vitals', 'share_medicines',
-                  'share_food', 'share_symptoms']
+                  'share_food', 'share_symptoms', 'share_emergency']
 
 
 # ── Membership lookups ────────────────────────────────────────────────────────
@@ -55,7 +55,8 @@ def get_my_group() -> dict | None:
     members = execute("""
         SELECT m.user_id, m.role, m.joined_at,
                m.share_sleep, m.share_vitals, m.share_medicines,
-               m.share_food, m.share_symptoms, m.alert_missed_doses,
+               m.share_food, m.share_symptoms, m.share_emergency,
+               m.alert_missed_doses, m.receive_care_alerts,
                u.name, u.email
         FROM family_members m JOIN users u ON u.id = m.user_id
         WHERE m.group_id=? ORDER BY m.joined_at""",
@@ -267,6 +268,15 @@ def member_summary(target_uid: str) -> dict:
                           WHERE user_id=? AND date_key>=? ORDER BY date_key DESC LIMIT 20""",
                        (target_uid, week_ago), fetchall=True)
         out['symptoms'] = rows
+
+    if target['share_emergency']:
+        e = execute("SELECT * FROM emergency_info WHERE user_id=? LIMIT 1",
+                    (target_uid,), fetchone=True)
+        if e:
+            e = dict(e)
+            out['emergency'] = {k: e.get(k) for k in (
+                'blood_type', 'allergies', 'conditions', 'medications',
+                'contact1_name', 'contact1_phone', 'contact2_name', 'contact2_phone')}
 
     return out
 

@@ -177,6 +177,22 @@ class TestConsent:
         s = carol.get(f"/api/family/member/{dave_id}/summary").get_json()
         assert "sleep" not in s
 
+    def test_emergency_card_shared_only_on_consent(self, carol, dave, group):
+        dave.post("/api/emergency", json={"blood_type": "O+", "allergies": "penicillin"})
+        dave_id = next(m["user_id"] for m in group["members"]
+                       if m["email"] == "dave@medeasy.test")
+        # Off by default
+        s = carol.get(f"/api/family/member/{dave_id}/summary").get_json()
+        assert "emergency" not in s
+        # Appears after opt-in
+        dave.post("/api/family/consent", json={"share_emergency": True})
+        s = carol.get(f"/api/family/member/{dave_id}/summary").get_json()
+        assert s["emergency"]["blood_type"] == "O+"
+        assert s["emergency"]["allergies"] == "penicillin"
+        # Gone after withdrawal
+        dave.post("/api/family/consent", json={"share_emergency": False})
+        assert "emergency" not in carol.get(f"/api/family/member/{dave_id}/summary").get_json()
+
     def test_outsider_gets_403(self, eve, group):
         carol_id = next(m["user_id"] for m in group["members"]
                         if m["email"] == "carol@medeasy.test")

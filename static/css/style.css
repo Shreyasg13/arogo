@@ -4670,6 +4670,15 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 .checkin-prompt-dismiss:hover { color:var(--gray-700); background:var(--gray-100); }
 
+/* Shared emergency card (in a family member's summary) */
+.emergency-card-share {
+  background:#FDECEA; border:1px solid #F6C7C0; border-radius:var(--r-md);
+  padding:11px 13px; display:flex; flex-direction:column; gap:4px; font-size:13px; color:var(--gray-800);
+}
+.emergency-card-share-title { font-weight:700; color:#C0392B; margin-bottom:3px; }
+[data-theme="dark"] .emergency-card-share { background:rgba(239,68,68,.12); border-color:rgba(239,68,68,.3); color:var(--gray-800); }
+[data-theme="dark"] .emergency-card-share-title { color:#F08A7E; }
+
 /* Low-stock refill nudge */
 .lowstock-nudge {
   display:flex; align-items:center; gap:12px;

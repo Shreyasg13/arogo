@@ -1000,6 +1000,7 @@ const FAMILY_CATEGORIES = [
   ['share_medicines', '💊', 'Medicines'],
   ['share_food',      '🍽️', 'Food'],
   ['share_symptoms',  '🤒', 'Symptoms'],
+  ['share_emergency', '🆘', 'Emergency card'],
 ];
 
 async function loadFamily() {
@@ -1215,11 +1216,30 @@ function renderFamilySummary(s) {
     rows.push(`🤒 <b>Symptoms (7d):</b> ` + (s.symptoms.length
       ? s.symptoms.slice(0, 5).map(x => `${escapeHtml(x.name)} (${x.severity}/10)`).join(', ')
       : 'none reported'));
-  if (!rows.length)
+  if (!rows.length && !s.emergency)
     rows.push('This member is not sharing any categories with the group.');
+
+  // Emergency card — surfaced prominently for crisis fast-access
+  let emergencyBlock = '';
+  if (s.emergency) {
+    const e = s.emergency;
+    const line = (label, val) => val ? `<div><span style="color:var(--gray-400)">${label}:</span> ${escapeHtml(val)}</div>` : '';
+    const contact = (n, p) => (n || p) ? `<div><span style="color:var(--gray-400)">Contact:</span> ${escapeHtml(n || '')}${p ? ` · <a href="tel:${escapeHtml(p)}" style="color:var(--red-500);font-weight:600">${escapeHtml(p)}</a>` : ''}</div>` : '';
+    const inner = [
+      line('Blood type', e.blood_type), line('Allergies', e.allergies),
+      line('Conditions', e.conditions), line('Medications', e.medications),
+      contact(e.contact1_name, e.contact1_phone), contact(e.contact2_name, e.contact2_phone),
+    ].filter(Boolean).join('');
+    emergencyBlock = `<div class="emergency-card-share">
+        <div class="emergency-card-share-title">🆘 Emergency card</div>
+        ${inner || '<div style="color:var(--gray-400)">No details filled in yet.</div>'}
+      </div>`;
+  }
+
   return `<div style="border-top:1px solid var(--gray-100);padding-top:12px;
                display:flex;flex-direction:column;gap:8px;font-size:13px">
             ${rows.map(x => `<div>${x}</div>`).join('')}
+            ${emergencyBlock}
           </div>`;
 }
 

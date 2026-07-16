@@ -375,7 +375,9 @@ CREATE TABLE IF NOT EXISTS family_members (
     share_medicines INTEGER DEFAULT 0,
     share_food INTEGER DEFAULT 0,
     share_symptoms INTEGER DEFAULT 0,
+    share_emergency INTEGER DEFAULT 0,
     alert_missed_doses INTEGER NOT NULL DEFAULT 0,
+    receive_care_alerts INTEGER NOT NULL DEFAULT 1,
     joined_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS family_invites (
@@ -403,6 +405,7 @@ CREATE TABLE IF NOT EXISTS encouragements (
     from_name TEXT,
     emoji TEXT,
     message TEXT,
+    kind TEXT DEFAULT 'kudos',
     read INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
@@ -510,6 +513,20 @@ def migrate_add_caregiver_digest_flag():
         pass  # already exists
 
 
+def migrate_add_caregiver_extras():
+    """Later caregiving columns: emergency sharing, viewer/primary alert role,
+    and an encouragement 'kind' (kudos vs thinking-of-you ping)."""
+    for ddl in (
+        "ALTER TABLE family_members ADD COLUMN share_emergency INTEGER DEFAULT 0",
+        "ALTER TABLE family_members ADD COLUMN receive_care_alerts INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE encouragements ADD COLUMN kind TEXT DEFAULT 'kudos'",
+    ):
+        try:
+            execute(ddl)
+        except Exception:
+            pass  # already exists
+
+
 def migrate_add_caregiver_alerts():
     """family_members.alert_missed_doses — caregiver alert opt-in."""
     try:
@@ -597,6 +614,7 @@ def init_db():
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_digest_flag()
     migrate_add_caregiver_alerts()
+    migrate_add_caregiver_extras()
     migrate_add_custom_food_barcode()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")
