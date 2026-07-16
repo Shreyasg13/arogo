@@ -150,10 +150,21 @@ def _push_reminders():
 
 # ── Caregiver alerts: tell the family when a dose is 2h+ overdue ─────────────
 
+SELF_CORRECT_MIN = 60     # give the member a chance before family is told
+ESCALATE_MIN     = 120    # then alert the family
+
+
 def _caregiver_alerts():
-    """For members who opted in (and share medicines), notify the rest of
-    their family group by push + email when a dose is 2+ hours overdue.
-    Deduped per dose per day via the watched member's notification_log."""
+    """Escalation ladder for opted-in members who share medicines — designed so
+    the member keeps agency and is never monitored covertly:
+
+      • dose time      → the member's own reminder (see _push_reminders_for_user)
+      • ~60m overdue   → a stronger nudge to the MEMBER ONLY, warning that family
+                         will be told soon (a chance to self-correct first)
+      • ~120m overdue  → alert the rest of the family, AND tell the member we did
+                         (transparency)
+
+    Deduped per dose per day via the member's notification_log."""
     try:
         import push
         import mailer
@@ -168,17 +179,35 @@ def _caregiver_alerts():
                     from db import get_today_doses
                     now = _user_local_now(uid)
                     today, hhmm = now.strftime('%Y-%m-%d'), now.strftime('%H:%M')
-                    overdue = [d for d in get_today_doses()
-                               if not d.get('taken')
-                               and (_mins_since(d.get('time') or '', hhmm) or 0) >= 120]
-                for d in overdue:
+                    doses = get_today_doses()
+                untaken = [(d, _mins_since(d.get('time') or '', hhmm) or 0)
+                           for d in doses if not d.get('taken')]
+
+                # ── Rung 1: self-correct nudge (the member only) ──
+                for d, mins in untaken:
+                    if not (SELF_CORRECT_MIN <= mins < ESCALATE_MIN):
+                        continue
+                    key = f"selfnudge:{d['med_id']}:{d['time']}:{today}"
+                    if _pushed_today(uid, key, today):
+                        continue
+                    title = f"⏰ Don't forget {d.get('med_name', 'your medicine')}"
+                    body = (f"It was due at {d['time']}. Take it now — if it stays "
+                            f"unlogged, your family will get a heads-up soon.")
+                    if push.push_to_user(uid, title, body, '/'):
+                        _mark_pushed(uid, key, title, body)
+
+                # ── Rung 2: escalate to family, and tell the member ──
+                for d, mins in untaken:
+                    if mins < ESCALATE_MIN:
+                        continue
                     key = f"caregiver:{d['med_id']}:{d['time']}:{today}"
                     if _pushed_today(uid, key, today):
                         continue
                     name = w['name'] or w['email']
+                    med  = d.get('med_name', 'A medicine')
                     title = f"🚨 {name} missed a dose"
-                    body = (f"{d.get('med_name', 'A medicine')} was scheduled at "
-                            f"{d['time']} and hasn't been marked as taken.")
+                    body = (f"{med} was scheduled at {d['time']} and hasn't been "
+                            f"marked as taken.")
                     others = execute("""
                         SELECT u.id, u.email, u.name FROM family_members m
                         JOIN users u ON u.id = m.user_id
@@ -191,7 +220,14 @@ def _caregiver_alerts():
                             f"Hi {o['name'] or 'there'},\n\n{body}\n\n"
                             f"They opted in to these alerts so you can check on them.\n"
                             f"Open Arogo: {mailer.APP_BASE_URL}/\n")
-                    _mark_pushed(uid, key, title, body)
+                    # Transparency: the member always learns when family is told.
+                    # Log THIS honest message to the member's own feed (also the
+                    # dedup record), not the third-person "X missed a dose".
+                    tp_title = "We let your family know"
+                    tp_body  = (f"{med} ({d['time']}) is still unlogged, so your family "
+                                f"was notified. Take it and this clears.")
+                    push.push_to_user(uid, tp_title, tp_body, '/')
+                    _mark_pushed(uid, key, tp_title, tp_body)
             except Exception as e:
                 print(f"[scheduler] caregiver alert for {uid[:8]}: {e}")
     except Exception as e:

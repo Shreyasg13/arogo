@@ -234,6 +234,66 @@ class TestCaregiverAlerts:
         scheduler._caregiver_alerts()
         assert not pushes and not mails
 
+    def test_self_correct_nudge_before_family_is_told(self, app, dave, group, monkeypatch):
+        # 90 min overdue → only the MEMBER is nudged; family is NOT alerted yet.
+        import datetime as dt
+        import push as push_module
+        import mailer
+        import scheduler
+
+        dave.post("/api/family/consent",
+                  json={"share_medicines": True, "alert_missed_doses": True})
+        r = dave.post("/api/medicines", json={
+            "name": "SelfNudgePill", "dosage": "1", "times": ["09:00"]})
+        assert r.status_code == 200
+
+        # "now" = 10:30 → 90 min overdue (between self-correct 60 and escalate 120)
+        t1030 = dt.datetime.combine(dt.date.today(), dt.time(10, 30))
+        monkeypatch.setattr(scheduler, "_user_local_now", lambda uid: t1030)
+
+        pushes, mails = [], []
+        monkeypatch.setattr(push_module, "push_to_user",
+                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+        monkeypatch.setattr(mailer, "send_email",
+                            lambda to, s, txt: mails.append(to) or True)
+
+        scheduler._caregiver_alerts()
+
+        dave_id = next(m["user_id"] for m in group["members"]
+                       if m["email"] == "dave@medeasy.test")
+        # The member got a self-correct nudge…
+        assert any(p["uid"] == dave_id and "Don't forget" in p["title"] for p in pushes)
+        # …and NOBODY was told they "missed a dose" yet, no emails sent.
+        assert not any("missed a dose" in p["title"] for p in pushes)
+        assert not mails
+
+    def test_member_told_when_family_is_alerted(self, app, dave, group, monkeypatch):
+        # 3h overdue → family alerted AND the member is told (transparency).
+        import datetime as dt
+        import push as push_module
+        import mailer
+        import scheduler
+
+        dave.post("/api/family/consent",
+                  json={"share_medicines": True, "alert_missed_doses": True})
+        r = dave.post("/api/medicines", json={
+            "name": "TransparencyPill", "dosage": "1", "times": ["09:00"]})
+        assert r.status_code == 200
+        noon = dt.datetime.combine(dt.date.today(), dt.time(12, 0))
+        monkeypatch.setattr(scheduler, "_user_local_now", lambda uid: noon)
+
+        pushes = []
+        monkeypatch.setattr(push_module, "push_to_user",
+                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+        monkeypatch.setattr(mailer, "send_email", lambda to, s, txt: True)
+
+        scheduler._caregiver_alerts()
+
+        dave_id = next(m["user_id"] for m in group["members"]
+                       if m["email"] == "dave@medeasy.test")
+        # Member is told family was notified (never covert)
+        assert any(p["uid"] == dave_id and "family" in p["title"].lower() for p in pushes)
+
     def test_taken_dose_never_alerts(self, app, dave, group, monkeypatch):
         import datetime as dt
         import push as push_module
