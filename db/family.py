@@ -342,6 +342,48 @@ def care_status() -> list:
     return out
 
 
+def send_encouragement(to_uid: str, emoji: str = '👏', message: str = '') -> dict:
+    """A caregiver sends a member a bit of warmth — turns monitoring into
+    connection. Group-scoped; you can't encourage yourself."""
+    me = my_membership()
+    if not me:
+        raise PermissionError('Not in a family group')
+    tgt = _membership_of(to_uid)
+    if not tgt or tgt['group_id'] != me['group_id']:
+        raise PermissionError('Not in your family group')
+    uid = current_user_id()
+    if to_uid == uid:
+        raise ValueError("You can't encourage yourself")
+    u = execute("SELECT name, email FROM users WHERE id=?", (uid,), fetchone=True)
+    from_name = (u['name'] if u else '') or (u['email'] if u else '')
+    execute("""INSERT INTO encouragements
+                 (id,group_id,to_user_id,from_user_id,from_name,emoji,message,read,created_at)
+               VALUES (?,?,?,?,?,?,?,0,?)""",
+            (new_id(), me['group_id'], to_uid, uid, from_name,
+             str(emoji or '👏')[:8], str(message or '')[:280], now_iso()), commit=True)
+    try:
+        import push
+        push.push_to_user(to_uid, f"{emoji} {from_name} cheered you on",
+                          message or 'Keep up the great work!', '/')
+    except Exception:
+        pass
+    return {'ok': True}
+
+
+def get_my_encouragements(unread_only: bool = True) -> list:
+    uid = current_user_id()
+    q = "SELECT id, from_name, emoji, message, read, created_at FROM encouragements WHERE to_user_id=?"
+    if unread_only:
+        q += " AND read=0"
+    q += " ORDER BY created_at DESC LIMIT 20"
+    return [dict(r) for r in execute(q, (uid,), fetchall=True)]
+
+
+def mark_encouragements_read():
+    execute("UPDATE encouragements SET read=1 WHERE to_user_id=? AND read=0",
+            (current_user_id(),), commit=True)
+
+
 def ack_care(target_uid: str) -> dict:
     """Record that the current caregiver is checking on `target_uid` today, so
     co-caregivers don't all pile on. One ack per caregiver per member per day."""

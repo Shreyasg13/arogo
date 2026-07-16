@@ -156,3 +156,33 @@ def care_ack():
         return jsonify(family.ack_care(target))
     except PermissionError as e:
         return jsonify({'error': str(e)}), 403
+
+
+@bp.route('/api/family/encourage', methods=['POST'])
+@require_auth
+def encourage():
+    """Send a family member a bit of encouragement."""
+    d = request.json or {}
+    if not d.get('to_user_id'):
+        return jsonify({'error': 'to_user_id required'}), 400
+    try:
+        return jsonify(family.send_encouragement(
+            d['to_user_id'], d.get('emoji', '👏'), d.get('message', '')))
+    except PermissionError as e:
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@bp.route('/api/family/encouragements')
+@require_auth
+def encouragements():
+    """Unread encouragements addressed to me."""
+    return jsonify(family.get_my_encouragements())
+
+
+@bp.route('/api/family/encouragements/read', methods=['POST'])
+@require_auth
+def encouragements_read():
+    family.mark_encouragements_read()
+    return jsonify({'success': True})

@@ -1321,6 +1321,7 @@ async function loadDashboard() {
   try { loadInsightCards(); }   catch (e) {}
   try { loadWellnessStrip(); }  catch (e) {}
   try { loadCarePanel(); }      catch (e) {}
+  try { loadEncouragements(); } catch (e) {}
   try { loadLowStock(); }       catch (e) {}
   loadHealthScore();
   initDailyCheckin();
@@ -1501,7 +1502,7 @@ async function loadCarePanel() {
       if (overdue && m.checking_is_me)      right = `<span class="care-ack-chip is-me">You're on it ✓</span>`;
       else if (overdue && m.checking_by)    right = `<span class="care-ack-chip">${escHtml(m.checking_by)} is on it</span>`;
       else if (overdue)                     right = `<button class="care-ack-btn" data-ev-click="careAck('${m.user_id}')">I'll check</button>`;
-      else                                  right = `<div class="care-item-icon">${icon}</div>`;
+      else                                  right = `<button class="care-cheer-btn" data-ev-click="cheer('${m.user_id}','${escHtml(m.name)}')" title="Send encouragement">👏</button>`;
       return `<div class="care-item ${cls}">
         <div class="care-item-avatar">${escHtml((m.name || '?').slice(0, 1).toUpperCase())}</div>
         <div class="care-item-body">
@@ -1521,6 +1522,39 @@ async function careAck(uid) {
   }).catch(() => {});
   showToast("Thanks — your family will see you're on it", 'success');
   loadCarePanel();
+}
+
+// Caregiver → member encouragement (one tap; turns monitoring into connection)
+async function cheer(uid, name) {
+  await fetch('/api/family/encourage', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to_user_id: uid, emoji: '👏', message: '' })
+  }).catch(() => {});
+  showToast(`👏 Sent encouragement to ${name || 'them'}`, 'success');
+}
+
+// Recipient side: warm cards for encouragements sent to me
+async function loadEncouragements() {
+  const el = document.getElementById('dash-encouragements');
+  if (!el) return;
+  const items = await fetch('/api/family/encouragements').then(r => r.json()).catch(() => []);
+  if (!Array.isArray(items) || !items.length) { el.style.display = 'none'; return; }
+  el.innerHTML = items.map(e => `
+    <div class="cheer-card">
+      <div class="cheer-emoji">${escHtml(e.emoji || '👏')}</div>
+      <div class="cheer-body">
+        <div class="cheer-from">${escHtml(e.from_name || 'Family')} cheered you on</div>
+        ${e.message ? `<div class="cheer-msg">${escHtml(e.message)}</div>` : ''}
+      </div>
+    </div>`).join('') +
+    `<button class="cheer-dismiss" data-ev-click="dismissEncouragements()">Thanks 💛</button>`;
+  el.style.display = '';
+}
+
+async function dismissEncouragements() {
+  await fetch('/api/family/encouragements/read', { method: 'POST' }).catch(() => {});
+  const el = document.getElementById('dash-encouragements');
+  if (el) el.style.display = 'none';
 }
 
 // Low-stock refill nudge — the other half of the pill-stock loop. Now that

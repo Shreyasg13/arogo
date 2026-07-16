@@ -369,6 +369,33 @@ class TestCareStatus:
         assert r.status_code == 403
 
 
+class TestEncouragement:
+    """Caregiver → member kudos: sent, received unread, then marked read."""
+
+    def _dave_id(self, group):
+        return next(m["user_id"] for m in group["members"]
+                    if m["email"] == "dave@medeasy.test")
+
+    def test_send_and_receive(self, carol, dave, group):
+        r = carol.post("/api/family/encourage",
+                       json={"to_user_id": self._dave_id(group), "message": "Proud of you!"})
+        assert r.status_code == 200
+        got = dave.get("/api/family/encouragements").get_json()
+        assert any("Proud of you" in (e.get("message") or "") for e in got)
+        assert dave.post("/api/family/encouragements/read").status_code == 200
+        assert dave.get("/api/family/encouragements").get_json() == []
+
+    def test_cannot_encourage_self(self, carol, group):
+        carol_id = next(m["user_id"] for m in group["members"]
+                        if m["email"] == "carol@medeasy.test")
+        assert carol.post("/api/family/encourage",
+                          json={"to_user_id": carol_id}).status_code == 400
+
+    def test_cannot_encourage_non_member(self, carol, group):
+        assert carol.post("/api/family/encourage",
+                          json={"to_user_id": "nobody"}).status_code == 403
+
+
 class TestMemberManagement:
     def test_member_cannot_remove_others(self, dave, group):
         carol_id = next(m["user_id"] for m in group["members"]
