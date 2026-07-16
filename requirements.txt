@@ -27,3 +27,4 @@ psycopg2-binary
 
 # Dev / tests
 pytest>=8.4.2
+pytest-xdist>=3.5.0   # parallel test runs (-n auto --dist loadfile)

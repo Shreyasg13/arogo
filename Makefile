@@ -12,7 +12,7 @@ prod:
 
 ## Run the full test suite (Python + JS)
 test:
-	pytest tests/ -q
+	pytest tests/ -q -n auto --dist loadfile
 	node --check static/js/app.js
 	node --check static/sw.js
 	node tests/js/run_js_tests.mjs

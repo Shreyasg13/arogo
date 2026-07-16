@@ -6,7 +6,9 @@
 set -e
 
 echo "[pre-commit] Python test suite..."
-python -m pytest tests/ -q -x
+# Parallel across CPU cores; loadfile keeps each test file (and its module-scoped
+# fixtures / ordering) on a single worker. Falls back to serial if xdist is absent.
+python -m pytest tests/ -q -n auto --dist loadfile 2>/dev/null || python -m pytest tests/ -q
 
 echo "[pre-commit] JS syntax..."
 node --check static/js/app.js
