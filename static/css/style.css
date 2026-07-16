@@ -4737,6 +4737,12 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 .care-cheer-btn:hover { transform:scale(1.12); }
 [data-theme="dark"] .care-cheer-btn { background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.12); }
+.care-item-actions { display:flex; gap:6px; flex-shrink:0; }
+.cheer-reply-btn {
+  margin-left:auto; flex-shrink:0; background:var(--purple-500); color:#fff; border:none;
+  border-radius:999px; padding:6px 14px; font-size:12.5px; font-weight:600; cursor:pointer;
+}
+.cheer-reply-btn:hover { background:var(--purple-600); }
 
 /* Encouragements received from family */
 .cheer-panel {

@@ -1536,7 +1536,10 @@ async function loadCarePanel() {
       if (overdue && m.checking_is_me)      right = `<span class="care-ack-chip is-me">You're on it ✓</span>`;
       else if (overdue && m.checking_by)    right = `<span class="care-ack-chip">${escHtml(m.checking_by)} is on it</span>`;
       else if (overdue)                     right = `<button class="care-ack-btn" data-ev-click="careAck('${m.user_id}')">I'll check</button>`;
-      else                                  right = `<button class="care-cheer-btn" data-ev-click="cheer('${m.user_id}','${escHtml(m.name)}')" title="Send encouragement">👏</button>`;
+      else                                  right = `<div class="care-item-actions">
+        <button class="care-cheer-btn" data-ev-click="cheer('${m.user_id}','${escHtml(m.name)}')" title="Send encouragement">👏</button>
+        <button class="care-cheer-btn" data-ev-click="pingMember('${m.user_id}','${escHtml(m.name)}')" title="Thinking of you">💛</button>
+      </div>`;
       return `<div class="care-item ${cls}">
         <div class="care-item-avatar">${escHtml((m.name || '?').slice(0, 1).toUpperCase())}</div>
         <div class="care-item-body">
@@ -1567,22 +1570,38 @@ async function cheer(uid, name) {
   showToast(`👏 Sent encouragement to ${name || 'them'}`, 'success');
 }
 
+async function pingMember(uid, name) {
+  await fetch('/api/family/ping', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to_user_id: uid })
+  }).catch(() => {});
+  showToast(`💛 Let ${name || 'them'} know you're thinking of them`, 'success');
+}
+
 // Recipient side: warm cards for encouragements sent to me
 async function loadEncouragements() {
   const el = document.getElementById('dash-encouragements');
   if (!el) return;
   const items = await fetch('/api/family/encouragements').then(r => r.json()).catch(() => []);
   if (!Array.isArray(items) || !items.length) { el.style.display = 'none'; return; }
+  const verb = { ping: 'is thinking of you', reply: 'is okay 💛' };
   el.innerHTML = items.map(e => `
     <div class="cheer-card">
       <div class="cheer-emoji">${escHtml(e.emoji || '👏')}</div>
       <div class="cheer-body">
-        <div class="cheer-from">${escHtml(e.from_name || 'Family')} cheered you on</div>
+        <div class="cheer-from">${escHtml(e.from_name || 'Family')} ${verb[e.kind] || 'cheered you on'}</div>
         ${e.message ? `<div class="cheer-msg">${escHtml(e.message)}</div>` : ''}
       </div>
+      ${e.kind === 'ping' ? `<button class="cheer-reply-btn" data-ev-click="replyOkay('${e.id}')">I'm okay 💛</button>` : ''}
     </div>`).join('') +
     `<button class="cheer-dismiss" data-ev-click="dismissEncouragements()">Thanks 💛</button>`;
   el.style.display = '';
+}
+
+async function replyOkay(eid) {
+  await fetch(`/api/family/encouragements/${eid}/ok`, { method: 'POST' }).catch(() => {});
+  showToast("Sent — they'll know you're okay 💛", 'success');
+  loadEncouragements();
 }
 
 async function dismissEncouragements() {

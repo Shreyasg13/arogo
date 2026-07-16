@@ -442,6 +442,26 @@ class TestEncouragement:
         assert carol.post("/api/family/encourage",
                           json={"to_user_id": "nobody"}).status_code == 403
 
+    def test_ping_and_im_okay_reply(self, carol, dave, group):
+        dave_id = self._dave_id(group)
+        # Carol pings Dave
+        assert carol.post("/api/family/ping", json={"to_user_id": dave_id}).status_code == 200
+        got = dave.get("/api/family/encouragements").get_json()
+        ping = next((e for e in got if e["kind"] == "ping"), None)
+        assert ping is not None and ping["from_name"]
+        # Dave answers "I'm okay" → Carol gets a reply, the ping is cleared
+        assert dave.post(f"/api/family/encouragements/{ping['id']}/ok").status_code == 200
+        assert any(e["kind"] == "reply" for e in carol.get("/api/family/encouragements").get_json())
+        assert not any(e["kind"] == "ping"
+                       for e in dave.get("/api/family/encouragements").get_json())
+
+    def test_cannot_reply_to_others_message(self, carol, dave, group):
+        # Carol pings Dave; Carol (not the recipient) can't answer it
+        carol.post("/api/family/ping", json={"to_user_id": self._dave_id(group)})
+        eid = next(e["id"] for e in dave.get("/api/family/encouragements").get_json()
+                   if e["kind"] == "ping")
+        assert carol.post(f"/api/family/encouragements/{eid}/ok").status_code == 403
+
 
 class TestCaregiverDigest:
     """Weekly caregiver digest: summarises members who share their meds, only

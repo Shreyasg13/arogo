@@ -174,11 +174,37 @@ def encourage():
         return jsonify({'error': str(e)}), 400
 
 
+@bp.route('/api/family/ping', methods=['POST'])
+@require_auth
+def ping():
+    """Send a family member a 'thinking of you' ping (invites an I'm-okay reply)."""
+    d = request.json or {}
+    if not d.get('to_user_id'):
+        return jsonify({'error': 'to_user_id required'}), 400
+    try:
+        return jsonify(family.send_encouragement(
+            d['to_user_id'], '💛', 'Sending you a little care today.', kind='ping'))
+    except PermissionError as e:
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+
 @bp.route('/api/family/encouragements')
 @require_auth
 def encouragements():
     """Unread encouragements addressed to me."""
     return jsonify(family.get_my_encouragements())
+
+
+@bp.route('/api/family/encouragements/<eid>/ok', methods=['POST'])
+@require_auth
+def encouragement_reply_ok(eid):
+    """Answer a 'thinking of you' ping with "I'm okay" (pings the sender back)."""
+    try:
+        return jsonify(family.reply_okay(eid))
+    except PermissionError as e:
+        return jsonify({'error': str(e)}), 403
 
 
 @bp.route('/api/family/encouragements/read', methods=['POST'])

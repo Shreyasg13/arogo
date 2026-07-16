@@ -405,9 +405,12 @@ def generate_caregiver_digest() -> dict:
     return {'has_members': bool(out), 'members': out, 'period_label': period_label}
 
 
-def send_encouragement(to_uid: str, emoji: str = '👏', message: str = '') -> dict:
+def send_encouragement(to_uid: str, emoji: str = '👏', message: str = '',
+                       kind: str = 'kudos') -> dict:
     """A caregiver sends a member a bit of warmth — turns monitoring into
-    connection. Group-scoped; you can't encourage yourself."""
+    connection. Group-scoped; you can't encourage yourself. `kind` is 'kudos'
+    (one-tap cheer), 'ping' (thinking-of-you, invites a reply), or 'reply'
+    (the member's "I'm okay" answer)."""
     me = my_membership()
     if not me:
         raise PermissionError('Not in a family group')
@@ -416,26 +419,44 @@ def send_encouragement(to_uid: str, emoji: str = '👏', message: str = '') -> d
         raise PermissionError('Not in your family group')
     uid = current_user_id()
     if to_uid == uid:
-        raise ValueError("You can't encourage yourself")
+        raise ValueError("You can't send this to yourself")
     u = execute("SELECT name, email FROM users WHERE id=?", (uid,), fetchone=True)
     from_name = (u['name'] if u else '') or (u['email'] if u else '')
     execute("""INSERT INTO encouragements
-                 (id,group_id,to_user_id,from_user_id,from_name,emoji,message,read,created_at)
-               VALUES (?,?,?,?,?,?,?,0,?)""",
+                 (id,group_id,to_user_id,from_user_id,from_name,emoji,message,kind,read,created_at)
+               VALUES (?,?,?,?,?,?,?,?,0,?)""",
             (new_id(), me['group_id'], to_uid, uid, from_name,
-             str(emoji or '👏')[:8], str(message or '')[:280], now_iso()), commit=True)
+             str(emoji or '👏')[:8], str(message or '')[:280], kind, now_iso()), commit=True)
+    titles = {'kudos': f"{emoji} {from_name} cheered you on",
+              'ping':  f"{emoji} {from_name} is thinking of you",
+              'reply': f"{emoji} {from_name} is okay"}
     try:
         import push
-        push.push_to_user(to_uid, f"{emoji} {from_name} cheered you on",
+        push.push_to_user(to_uid, titles.get(kind, titles['kudos']),
                           message or 'Keep up the great work!', '/')
     except Exception:
         pass
     return {'ok': True}
 
 
+def reply_okay(enc_id: str) -> dict:
+    """The member answers a 'thinking of you' ping with "I'm okay", which pings
+    the original sender back. Only the ping's recipient may answer."""
+    uid = current_user_id()
+    enc = execute("SELECT * FROM encouragements WHERE id=? AND to_user_id=?",
+                  (enc_id, uid), fetchone=True)
+    if not enc:
+        raise PermissionError('Not your message')
+    execute("UPDATE encouragements SET read=1 WHERE id=?", (enc_id,), commit=True)
+    # Ping the original sender back with an "I'm okay"
+    return send_encouragement(enc['from_user_id'], '💛', "I'm okay, thanks for thinking of me",
+                              kind='reply')
+
+
 def get_my_encouragements(unread_only: bool = True) -> list:
     uid = current_user_id()
-    q = "SELECT id, from_name, emoji, message, read, created_at FROM encouragements WHERE to_user_id=?"
+    q = ("SELECT id, from_name, from_user_id, emoji, message, kind, read, created_at "
+         "FROM encouragements WHERE to_user_id=?")
     if unread_only:
         q += " AND read=0"
     q += " ORDER BY created_at DESC LIMIT 20"
