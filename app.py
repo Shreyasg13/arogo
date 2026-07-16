@@ -27,6 +27,7 @@ def create_app(config=Config):
     app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 
+
     # ── Register blueprints ───────────────────────────────────────────────────
     # No fallback: a broken import must kill the app, not degrade it.
     # (The old inline-route fallback contained queries that were not scoped
@@ -83,6 +84,43 @@ def create_app(config=Config):
             return add_security_headers(response)
         except Exception:
             return response
+
+    # ── Response compression (gzip) ───────────────────────────────────────────
+    # The biggest first-load latency lever: app.js is ~480KB raw but ~116KB
+    # gzipped (4x). Done manually (no dependency) so it also covers Flask's
+    # static files, which are sent with direct_passthrough=True and are skipped
+    # by flask-compress. In production a reverse proxy (nginx) may gzip instead —
+    # this is idempotent (skips already-encoded responses). SVG/JSON/CSS too.
+    import gzip as _gzip
+    from flask import request as _request
+    _COMPRESSIBLE = {
+        'text/html', 'text/css', 'text/xml', 'application/xml', 'application/json',
+        'application/javascript', 'text/javascript', 'image/svg+xml', 'text/plain',
+    }
+
+    @app.after_request
+    def compress_response(response):
+        try:
+            if (response.status_code < 200 or response.status_code >= 300
+                    or 'Content-Encoding' in response.headers
+                    or 'gzip' not in _request.headers.get('Accept-Encoding', '').lower()):
+                return response
+            ctype = (response.content_type or '').split(';')[0].strip().lower()
+            if ctype not in _COMPRESSIBLE:
+                return response
+            response.direct_passthrough = False          # materialize static files
+            data = response.get_data()
+            if len(data) < 1024:                         # not worth it for tiny bodies
+                return response
+            response.set_data(_gzip.compress(data, 6))
+            response.headers['Content-Encoding'] = 'gzip'
+            response.headers['Content-Length'] = str(len(response.get_data()))
+            vary = response.headers.get('Vary', '')
+            if 'accept-encoding' not in vary.lower():
+                response.headers['Vary'] = (vary + ', Accept-Encoding').lstrip(', ')
+        except Exception:
+            pass
+        return response
 
     # Return JSON for 404s instead of HTML (prevents JSON.parse errors)
     @app.errorhandler(404)
