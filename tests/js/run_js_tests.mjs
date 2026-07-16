@@ -118,11 +118,23 @@ test('parseQuickCommand: weight', () => {
   eq(S.parseQuickCommand('weight 72.5').label, 'Log weight 72.5kg');
   eq(S.parseQuickCommand('weight 90kg').label, 'Log weight 90kg');
 });
+test('parseQuickCommand: vitals — bp / sugar / hr', () => {
+  eq(S.parseQuickCommand('bp 120/80').label, 'Log BP 120/80');
+  eq(S.parseQuickCommand('BP 128 / 82').label, 'Log BP 128/82');
+  eq(S.parseQuickCommand('sugar 110').label, 'Log blood sugar 110 mg/dL');
+  eq(S.parseQuickCommand('glucose 95').label, 'Log blood sugar 95 mg/dL');
+  eq(S.parseQuickCommand('hr 72').label, 'Log heart rate 72 bpm');
+  eq(S.parseQuickCommand('pulse 58').label, 'Log heart rate 58 bpm');
+});
 test('parseQuickCommand: rejects out-of-range and normal queries', () => {
   eq(S.parseQuickCommand('water 9999'), null);
   eq(S.parseQuickCommand('weight 5'), null);
   eq(S.parseQuickCommand('headache'), null);
   eq(S.parseQuickCommand('waterfall hike'), null);
+  // Must not hijack ordinary searches that merely start with a keyword
+  eq(S.parseQuickCommand('bp monitor'), null);
+  eq(S.parseQuickCommand('sugar free biscuits'), null);
+  eq(S.parseQuickCommand('sugarcane juice'), null);
 });
 
 // ── Helpers ──

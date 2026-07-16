@@ -6617,6 +6617,27 @@ function parseQuickCommand(q) {
       return {icon: '⚖️', label: `Log weight ${kg}kg`,
               ev: `closeGlobalSearch();quickLogWeight(${kg})`};
   }
+  // bp 120/80
+  m = q.trim().toLowerCase().match(/^bp\s+(\d{2,3})\s*\/\s*(\d{2,3})$/);
+  if (m) {
+    const sys = parseInt(m[1], 10), dia = parseInt(m[2], 10);
+    return {icon: '❤️', label: `Log BP ${sys}/${dia}`,
+            ev: `closeGlobalSearch();quickLogVital('blood_pressure',${sys},${dia},'mmHg')`};
+  }
+  // sugar 110 / glucose 110
+  m = q.trim().toLowerCase().match(/^(?:sugar|glucose)\s+(\d{2,3})$/);
+  if (m) {
+    const v = parseInt(m[1], 10);
+    return {icon: '🩸', label: `Log blood sugar ${v} mg/dL`,
+            ev: `closeGlobalSearch();quickLogVital('blood_sugar',${v},0,'mg/dL')`};
+  }
+  // hr 72 / pulse 72
+  m = q.trim().toLowerCase().match(/^(?:hr|pulse)\s+(\d{2,3})$/);
+  if (m) {
+    const v = parseInt(m[1], 10);
+    return {icon: '💓', label: `Log heart rate ${v} bpm`,
+            ev: `closeGlobalSearch();quickLogVital('heart_rate',${v},0,'bpm')`};
+  }
   return null;
 }
 
@@ -6628,6 +6649,24 @@ async function quickLogWeight(kg) {
   }).then(r => r.json()).catch(() => null);
   if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
   showToast(`⚖️ ${kg}kg saved`);
+}
+
+// One text box logs a vital: "bp 120/80", "sugar 110", "hr 72".
+// value2 = 0 means "single value" (only BP is a pair).
+async function quickLogVital(type, value1, value2, unit) {
+  const r = await fetch('/api/vitals', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin',
+    body: JSON.stringify({
+      type, value1, value2: value2 || null, unit: unit || '', date_key: localToday(),
+    }),
+  }).then(r => r.json()).catch(() => null);
+  // Surfaces the server's plausibility message ("that reading looks off")
+  if (!r?.success) { showToast(r?.error || 'Could not log that reading', 'error'); return; }
+  const shown = value2 ? `${value1}/${value2}` : value1;
+  showToast(`✓ Logged ${shown} ${unit || ''}`.trim(), 'success');
+  try { loadVitals(); } catch (e) {}
+  try { loadVitalsView(); } catch (e) {}
 }
 
 function closeGlobalSearch() {
