@@ -420,6 +420,7 @@ CREATE TABLE IF NOT EXISTS reminder_settings (
     mood_reminder_enabled INTEGER DEFAULT 1,
     mood_reminder_time TEXT DEFAULT '18:00',
     weekly_digest_enabled INTEGER NOT NULL DEFAULT 1,
+    caregiver_digest_enabled INTEGER NOT NULL DEFAULT 1,
     updated_at TEXT NOT NULL
 );
 """
@@ -497,6 +498,14 @@ def migrate_add_weekly_digest_flag():
     """reminder_settings.weekly_digest_enabled — Sunday email opt-out."""
     try:
         execute("ALTER TABLE reminder_settings ADD COLUMN weekly_digest_enabled INTEGER NOT NULL DEFAULT 1")
+    except Exception:
+        pass  # already exists
+
+
+def migrate_add_caregiver_digest_flag():
+    """reminder_settings.caregiver_digest_enabled — caregiver digest opt-out."""
+    try:
+        execute("ALTER TABLE reminder_settings ADD COLUMN caregiver_digest_enabled INTEGER NOT NULL DEFAULT 1")
     except Exception:
         pass  # already exists
 
@@ -586,6 +595,7 @@ def init_db():
     migrate_add_timezone()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
+    migrate_add_caregiver_digest_flag()
     migrate_add_caregiver_alerts()
     migrate_add_custom_food_barcode()
     migrate_claim_default_data()

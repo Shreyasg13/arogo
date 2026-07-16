@@ -187,6 +187,21 @@ def read_digest_unsub_token(token: str) -> str | None:
         return None
 
 
+def make_caregiver_digest_unsub_token(user_id: str) -> str:
+    """Unsubscribe link token for the caregiver weekly digest (90 days)."""
+    s = URLSafeTimedSerializer(_secret_key(), salt='ms-cgdigest')
+    return s.dumps({'uid': user_id})
+
+
+def read_caregiver_digest_unsub_token(token: str) -> str | None:
+    s = URLSafeTimedSerializer(_secret_key(), salt='ms-cgdigest')
+    try:
+        data = s.loads(token, max_age=86400 * 90)
+        return data.get('uid')
+    except Exception:
+        return None
+
+
 def make_family_invite_token(invite_id: str) -> str:
     """Family invite token (72h) carrying the invite row id."""
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-family')

@@ -102,6 +102,38 @@ def send_weekly_digest_email(to: str, name: str, digest: dict, unsub_url: str) -
     return send_email(to, f"Your Arogo week — {digest['period_label']}", '\n'.join(lines) + '\n')
 
 
+def send_caregiver_digest_email(to: str, name: str, digest: dict, unsub_url: str) -> bool:
+    lines = [
+        f"Hi {name or 'there'},",
+        '',
+        f"Here's how your family did this week ({digest['period_label']}):",
+        '',
+    ]
+    for m in digest.get('members', []):
+        if m['total']:
+            adh = f"{round(m['adherence_pct'] or 0)}% of doses taken ({m['taken']}/{m['total']})"
+        else:
+            adh = "no scheduled doses this week"
+        extras = []
+        if m.get('sleep_avg'):
+            extras.append(f"{m['sleep_avg']}h avg sleep")
+        if m.get('symptoms'):
+            extras.append(f"{m['symptoms']} symptom log{'s' if m['symptoms'] != 1 else ''}")
+        line = f"  • {m['name']}: {adh}"
+        if extras:
+            line += "  ·  " + ", ".join(extras)
+        lines.append(line)
+    lines += [
+        '',
+        'These are the family members who share their medicines with you.',
+        f'Open Arogo: {APP_BASE_URL}/',
+        '',
+        f'No longer want these? Unsubscribe: {unsub_url}',
+    ]
+    return send_email(to, f"Your family's week on Arogo — {digest['period_label']}",
+                      '\n'.join(lines) + '\n')
+
+
 def send_family_invite_email(to: str, token: str, inviter: str, group: str) -> bool:
     link = f'{APP_BASE_URL}/?family_invite={token}'
     return send_email(

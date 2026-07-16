@@ -349,6 +349,50 @@ def care_status() -> list:
     return out
 
 
+def generate_caregiver_digest() -> dict:
+    """Weekly summary of the family members the current caregiver watches
+    (those who share their medicines). Adherence is the core; sleep/symptoms
+    appear only if that member also shares them. For the caregiver digest email."""
+    import datetime as dt
+    me = my_membership()
+    if not me:
+        return {'has_members': False, 'members': []}
+    members = execute("""
+        SELECT m.user_id, u.name, u.email, m.share_sleep, m.share_symptoms
+        FROM family_members m JOIN users u ON u.id = m.user_id
+        WHERE m.group_id=? AND m.user_id<>? AND m.share_medicines=1
+        ORDER BY u.name""",
+        (me['group_id'], current_user_id()), fetchall=True)
+    today = dt.date.today()
+    start = (today - dt.timedelta(days=6)).isoformat()
+    period_label = f"{(today - dt.timedelta(days=6)).strftime('%b')} " \
+                   f"{(today - dt.timedelta(days=6)).day} – {today.strftime('%b')} {today.day}"
+    out = []
+    for mem in members:
+        muid = mem['user_id']
+        row = {'name': mem['name'] or mem['email'], 'adherence_pct': None,
+               'taken': 0, 'total': 0, 'sleep_avg': None, 'symptoms': 0}
+        try:
+            with user_context(muid):
+                from db import get_adherence_stats
+                adh = get_adherence_stats(7)
+                row['taken'] = adh.get('taken', 0)
+                row['total'] = adh.get('total', 0)
+                row['adherence_pct'] = adh.get('pct', 0) if adh.get('total') else None
+                if mem['share_sleep']:
+                    r = execute("SELECT AVG(duration_h) AS a FROM sleep_logs WHERE user_id=? AND date_key>=?",
+                                (muid, start), fetchone=True)
+                    row['sleep_avg'] = round(r['a'], 1) if r and r['a'] else None
+                if mem['share_symptoms']:
+                    r = execute("SELECT COUNT(*) AS n FROM symptoms WHERE user_id=? AND date_key>=?",
+                                (muid, start), fetchone=True)
+                    row['symptoms'] = (r['n'] if r else 0) or 0
+        except Exception:
+            pass
+        out.append(row)
+    return {'has_members': bool(out), 'members': out, 'period_label': period_label}
+
+
 def send_encouragement(to_uid: str, emoji: str = '👏', message: str = '') -> dict:
     """A caregiver sends a member a bit of warmth — turns monitoring into
     connection. Group-scoped; you can't encourage yourself."""

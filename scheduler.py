@@ -271,6 +271,53 @@ def _send_weekly_digests():
         print(f'[scheduler] Weekly digest error: {e}')
 
 
+def _send_caregiver_digests():
+    """Weekly reassurance email to caregivers summarising the family members
+    who share their medicines. Deduped per caregiver per week; opt-out via
+    reminder_settings.caregiver_digest_enabled."""
+    import datetime as dt
+    try:
+        import mailer
+        from auth import make_caregiver_digest_unsub_token
+        from db.family import generate_caregiver_digest
+        week_ago = (dt.datetime.now() - dt.timedelta(days=6)).isoformat()
+        # A caregiver = someone in a group with ≥1 OTHER member sharing medicines
+        cands = execute("""
+            SELECT DISTINCT me.user_id, u.email, u.name
+            FROM family_members me
+            JOIN family_members other
+                 ON other.group_id = me.group_id
+                AND other.user_id <> me.user_id
+                AND other.share_medicines = 1
+            JOIN users u ON u.id = me.user_id
+            LEFT JOIN reminder_settings rs ON rs.user_id = me.user_id
+            WHERE COALESCE(rs.caregiver_digest_enabled, 1) = 1""", fetchall=True)
+        sent = 0
+        for c in cands:
+            already = execute(
+                "SELECT 1 FROM notification_log WHERE user_id=? AND type='caregiver_digest_email' AND created_at >= ? LIMIT 1",
+                (c['user_id'], week_ago), fetchone=True)
+            if already:
+                continue
+            with user_context(c['user_id']):
+                digest = generate_caregiver_digest()
+            if not digest.get('has_members'):
+                continue
+            unsub = (f"{mailer.APP_BASE_URL}/api/caregiver-digest/unsubscribe/"
+                     f"{make_caregiver_digest_unsub_token(c['user_id'])}")
+            if mailer.send_caregiver_digest_email(c['email'], c['name'], digest, unsub):
+                from db.core import new_id, now_iso
+                execute("""INSERT INTO notification_log (id,type,title,body,read,created_at,user_id)
+                           VALUES (?,?,?,?,1,?,?)""",
+                        (new_id(), 'caregiver_digest_email', 'Caregiver digest emailed',
+                         digest['period_label'], now_iso(), c['user_id']), commit=True)
+                sent += 1
+        if sent:
+            print(f'[scheduler] Caregiver digest sent to {sent} caregiver(s)')
+    except Exception as e:
+        print(f'[scheduler] Caregiver digest error: {e}')
+
+
 def _run_loop():
     import schedule
     schedule.every().day.at("05:00").do(_daily_sync)
@@ -278,6 +325,7 @@ def _run_loop():
     schedule.every(5).minutes.do(_push_reminders)
     schedule.every(15).minutes.do(_caregiver_alerts)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
+    schedule.every().sunday.at("18:30").do(_send_caregiver_digests)
     # Also do an initial sync 30 s after startup
     schedule.every(30).seconds.do(lambda: (schedule.cancel_job(schedule.jobs[-1]), _daily_sync()))
     while True:

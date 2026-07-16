@@ -38,6 +38,7 @@ PUBLIC_ROUTES = {
     '/auth/forgot-password',
     '/auth/reset-password',             # token-gated by signature
     '/api/digest/unsubscribe/<token>',  # token-gated by signature
+    '/api/caregiver-digest/unsubscribe/<token>',  # token-gated by signature
 }
 
 

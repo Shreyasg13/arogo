@@ -7546,6 +7546,7 @@ async function loadReminderSettingsUI() {
   set('rs-mood-enabled',    s.mood_reminder_enabled);
   set('rs-mood-time',       s.mood_reminder_time);
   set('rs-digest-enabled',  s.weekly_digest_enabled ?? 1);
+  set('rs-caregiver-digest-enabled', s.caregiver_digest_enabled ?? 1);
 
   // Show/hide section bodies based on toggle state
   ['water','habit','sleep','mood'].forEach(key => {
@@ -7574,6 +7575,7 @@ async function saveReminderSettings() {
     mood_reminder_enabled:   get('rs-mood-enabled'),
     mood_reminder_time:      get('rs-mood-time'),
     weekly_digest_enabled:   get('rs-digest-enabled'),
+    caregiver_digest_enabled: get('rs-caregiver-digest-enabled'),
   };
 
   const r = await fetch('/api/reminders/settings', {

@@ -396,6 +396,52 @@ class TestEncouragement:
                           json={"to_user_id": "nobody"}).status_code == 403
 
 
+class TestCaregiverDigest:
+    """Weekly caregiver digest: summarises members who share their meds, only
+    goes to caregivers, dedupes per week, and honours the unsubscribe link."""
+
+    def test_digest_goes_to_caregiver_only(self, app, carol, dave, group, monkeypatch):
+        import scheduler
+        import mailer
+        dave.post("/api/family/consent", json={"share_medicines": True})
+        r = dave.post("/api/medicines",
+                      json={"name": "DigestPill", "dosage": "1", "times": ["08:00"]})
+        mid = r.get_json()["medicine"]["id"]
+        dave.post(f"/api/medicines/{mid}/log", json={"time": "08:00", "taken": True})
+
+        mails = []
+        monkeypatch.setattr(mailer, "send_email",
+                            lambda to, s, txt: mails.append({"to": to, "subject": s, "text": txt}) or True)
+
+        scheduler._send_caregiver_digests()
+
+        carol_mail = [m for m in mails if m["to"] == "carol@medeasy.test"]
+        assert carol_mail, "caregiver digest not sent to Carol"
+        assert "week" in carol_mail[0]["subject"].lower()
+        assert "dave" in carol_mail[0]["text"].lower()   # summarises the member
+        # Dave isn't a caregiver of anyone sharing meds → no digest for him
+        assert not [m for m in mails if m["to"] == "dave@medeasy.test"]
+
+        # Dedup: a second run the same week sends nothing more
+        mails.clear()
+        scheduler._send_caregiver_digests()
+        assert not [m for m in mails if m["to"] == "carol@medeasy.test"]
+
+    def test_unsubscribe_link_works(self, app, carol, group):
+        from auth import make_caregiver_digest_unsub_token
+        carol_id = next(m["user_id"] for m in group["members"]
+                        if m["email"] == "carol@medeasy.test")
+        token = make_caregiver_digest_unsub_token(carol_id)
+        r = app.test_client().get(f"/api/caregiver-digest/unsubscribe/{token}")
+        assert r.status_code == 200 and b"unsubscribed" in r.data
+        settings = carol.get("/api/reminders/settings").get_json()
+        assert settings["caregiver_digest_enabled"] == 0
+
+    def test_unsubscribe_bad_token_rejected(self, app):
+        r = app.test_client().get("/api/caregiver-digest/unsubscribe/garbage")
+        assert r.status_code == 400
+
+
 class TestMemberManagement:
     def test_member_cannot_remove_others(self, dave, group):
         carol_id = next(m["user_id"] for m in group["members"]
