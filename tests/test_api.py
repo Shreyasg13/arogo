@@ -475,6 +475,37 @@ class TestHydration:
         _, d = jget(client, f"/api/hydration/{TODAY}")
         assert isinstance(d.get("pct"), (int, float))
 
+    def test_logged_beverage_counts_toward_hydration(self, client):
+        """A drink logged in the food tracker is fluid the user already told us
+        about — count it once, attributed, instead of making them log twice."""
+        before = jget(client, f"/api/hydration/{TODAY}")[1]["total_ml"]
+        jpost(client, "/api/food/log", {
+            "food_id": "coffee_latte", "food_name": "Cafe Latte",
+            "quantity_g": 360, "calories": 204, "date_key": TODAY})
+        _, d = jget(client, f"/api/hydration/{TODAY}")
+        assert d["total_ml"] == before + 360
+        # …and it's attributed by name, not silently dumped in as "water"
+        assert any(l["drink_type"] == "Cafe Latte" and l["amount_ml"] == 360
+                   for l in d["logs"])
+
+    def test_solid_food_credits_no_water(self, client):
+        before = jget(client, f"/api/hydration/{TODAY}")[1]["total_ml"]
+        jpost(client, "/api/food/log", {
+            "food_id": "banana", "food_name": "Banana",
+            "quantity_g": 120, "calories": 100, "date_key": TODAY})
+        assert jget(client, f"/api/hydration/{TODAY}")[1]["total_ml"] == before
+
+    def test_deleting_the_drink_removes_its_water_credit(self, client):
+        _, log = jpost(client, "/api/food/log", {
+            "food_id": "coffee_black", "food_name": "Black Coffee",
+            "quantity_g": 240, "calories": 4, "date_key": TODAY})
+        lid = log["log"]["id"]
+        with_drink = jget(client, f"/api/hydration/{TODAY}")[1]["total_ml"]
+        assert with_drink >= 240
+        client.delete(f"/api/food/log/{lid}")
+        after = jget(client, f"/api/hydration/{TODAY}")[1]["total_ml"]
+        assert after == with_drink - 240, "credit must vanish with the food log"
+
     def test_log_water(self, client):
         code, d = jpost(client, "/api/hydration",
                         {"amount_ml": 500, "drink_type": "water", "date_key": TODAY})

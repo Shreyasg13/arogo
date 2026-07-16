@@ -298,7 +298,8 @@ CREATE TABLE IF NOT EXISTS todos (
 );
 CREATE TABLE IF NOT EXISTS hydration_logs (
     id TEXT PRIMARY KEY, amount_ml INTEGER NOT NULL,
-    drink_type TEXT DEFAULT 'water', date_key TEXT NOT NULL, logged_at TEXT NOT NULL
+    drink_type TEXT DEFAULT 'water', date_key TEXT NOT NULL, logged_at TEXT NOT NULL,
+    source_id TEXT
 );
 CREATE TABLE IF NOT EXISTS sleep_logs (
     id TEXT PRIMARY KEY, date_key TEXT NOT NULL, bedtime TEXT NOT NULL,
@@ -513,6 +514,16 @@ def migrate_add_caregiver_digest_flag():
         pass  # already exists
 
 
+def migrate_add_hydration_source():
+    """hydration_logs.source_id — links a credit back to the food log that
+    produced it (a logged latte), so deleting that food log removes the credit
+    instead of silently inflating the day's total."""
+    try:
+        execute("ALTER TABLE hydration_logs ADD COLUMN source_id TEXT")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_caregiver_extras():
     """Later caregiving columns: emergency sharing, viewer/primary alert role,
     and an encouragement 'kind' (kudos vs thinking-of-you ping)."""
@@ -615,6 +626,7 @@ def init_db():
     migrate_add_caregiver_digest_flag()
     migrate_add_caregiver_alerts()
     migrate_add_caregiver_extras()
+    migrate_add_hydration_source()
     migrate_add_custom_food_barcode()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

@@ -176,14 +176,19 @@ def log_sleep(data: dict) -> dict:
 
 # ── Hydration ─────────────────────────────────────────────────────────────────
 
-def log_hydration(amount_ml: int, drink_type: str, date_key: str) -> dict:
+def log_hydration(amount_ml: int, drink_type: str, date_key: str,
+                  source_id: str = None) -> dict:
     # Coerce & clamp: a non-numeric amount would otherwise brick the whole
     # day view (sum() over a mix of ints and strings raises forever).
+    # `source_id` links an auto-credited drink back to the food log it came
+    # from, so deleting that food log removes the credit too.
     amount_ml = to_int(amount_ml, default=250, lo=0, hi=10000)
     hid = new_id()
-    execute("""INSERT INTO hydration_logs (id,amount_ml,drink_type,date_key,logged_at,user_id)
-               VALUES (?,?,?,?,?,?)""",
-            (hid, amount_ml, drink_type, date_key, now_iso(), current_user_id()), commit=True)
+    execute("""INSERT INTO hydration_logs
+                 (id,amount_ml,drink_type,date_key,logged_at,user_id,source_id)
+               VALUES (?,?,?,?,?,?,?)""",
+            (hid, amount_ml, drink_type, date_key, now_iso(), current_user_id(),
+             source_id), commit=True)
     return dict(execute("SELECT * FROM hydration_logs WHERE id=?", (hid,), fetchone=True))
 
 def get_hydration_day(date_key: str) -> dict:

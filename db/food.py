@@ -109,6 +109,23 @@ def calc_tdee(profile: dict) -> dict:
 
 # ── Food Logs ─────────────────────────────────────────────────────────────────
 
+# Categories in food_data.py whose items are drinks. Liquids are ~1g per ml,
+# so the logged grams are the fluid volume.
+BEVERAGE_CATEGORIES = {'beverages', 'indian beverages'}
+
+
+def _beverage_ml(food_id: str, quantity_g) -> int:
+    """Fluid this food contributes, or 0 if it isn't a drink."""
+    try:
+        from food_data import FOOD_BY_ID
+        f = FOOD_BY_ID.get(food_id or '')
+        if f and str(f.get('category', '')).strip().lower() in BEVERAGE_CATEGORIES:
+            return to_int(quantity_g, 0, lo=0, hi=10000)
+    except Exception:
+        pass
+    return 0
+
+
 def log_food(data: dict) -> dict:
     fid = new_id()
     execute("""INSERT INTO food_logs
@@ -123,6 +140,17 @@ def log_food(data: dict) -> dict:
          to_num(data.get('fiber'), 0, lo=0), to_num(data.get('sugar'), 0, lo=0),
          to_num(data.get('sodium'), 0, lo=0), jdump(data.get('nutrients',{})),
          now_iso(), current_user_id()), commit=True)
+
+    # A logged drink is fluid the user already told us about — count it toward
+    # hydration instead of making them log the same latte twice. Attributed by
+    # name and linked to this food log, so it stays honest (and is removed if
+    # the food log is deleted). Never invents water the user didn't log.
+    ml = _beverage_ml(data.get('food_id', ''), data.get('quantity_g'))
+    if ml >= 30:
+        from .wellness import log_hydration
+        log_hydration(ml, data.get('food_name') or 'Drink',
+                      data.get('date_key', today_iso()), source_id=fid)
+
     r = execute("SELECT * FROM food_logs WHERE id=?", (fid,), fetchone=True)
     return _fmt_food_log(r)
 
@@ -142,6 +170,10 @@ def delete_food_log(lid: str) -> bool:
     if not exists:
         return False
     execute("DELETE FROM food_logs WHERE id=? AND user_id=?", (lid, uid), commit=True)
+    # Remove any hydration credited from this drink, so the day's total doesn't
+    # keep counting water from a meal the user just deleted.
+    execute("DELETE FROM hydration_logs WHERE source_id=? AND user_id=?",
+            (lid, uid), commit=True)
     return True
 
 def _fmt_food_log(r) -> dict:
