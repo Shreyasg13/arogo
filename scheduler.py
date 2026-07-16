@@ -73,19 +73,12 @@ def _mark_pushed(uid, key, title, body):
 
 
 def _usual_sip_ml(uid, default=250):
-    """The user's most-frequent single hydration amount — i.e. their real glass
-    or bottle. Quick-log buttons offer what they actually drink instead of a
-    made-up 250ml. Falls back to `default` until they've logged anything."""
+    """The user's real glass/bottle — see db.wellness.usual_sip_ml."""
     try:
-        r = execute("""SELECT amount_ml, COUNT(*) AS n FROM hydration_logs
-                       WHERE user_id=? AND amount_ml > 0
-                       GROUP BY amount_ml ORDER BY n DESC, amount_ml DESC""",
-                    (uid,), fetchone=True)
-        if r and r['amount_ml']:
-            return max(50, min(int(r['amount_ml']), 2000))
+        from db.wellness import usual_sip_ml
+        return usual_sip_ml(uid, default)
     except Exception:
-        pass
-    return default
+        return default
 
 
 def _push_reminders_for_user(uid):

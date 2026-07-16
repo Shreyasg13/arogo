@@ -5449,6 +5449,7 @@ async function loadWellnessStrip() {
     if (hydEl) hydEl.textContent = `${hyd.total_ml || 0} ml`;
     const hBar = document.getElementById('dws-hydration-bar');
     if (hBar) hBar.style.width = (hyd.pct || 0) + '%';
+    if (hyd.usual_ml) setUsualWaterMl(hyd.usual_ml);   // quick-log = their real glass
   }
 
   if (!r) return;
@@ -6285,7 +6286,18 @@ async function loadHydration(dateStr) {
     </div>`).join('');
 }
 
+// The user's real glass/bottle, learned from their own logs (server-computed).
+// Nobody drinks "250ml" — they drink their bottle. 250 is only the cold start.
+let _usualWaterMl = 250;
+
+function setUsualWaterMl(ml) {
+  _usualWaterMl = Math.max(50, Math.min(Number(ml) || 250, 2000));
+  const hint = document.getElementById('ql-water-hint');
+  if (hint) hint.textContent = `${_usualWaterMl}ml`;
+}
+
 async function quickAddWater(ml) {
+  ml = Number(ml) || _usualWaterMl;      // no arg → their usual pour
   const today = localToday();
   const res = await fetch('/api/hydration', {
     method: 'POST',

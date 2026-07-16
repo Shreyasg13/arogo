@@ -191,6 +191,23 @@ def log_hydration(amount_ml: int, drink_type: str, date_key: str,
              source_id), commit=True)
     return dict(execute("SELECT * FROM hydration_logs WHERE id=?", (hid,), fetchone=True))
 
+def usual_sip_ml(uid: str = None, default: int = 250) -> int:
+    """The user's most-frequent deliberate water amount — i.e. their real glass
+    or bottle — so quick-log buttons offer what they actually drink instead of
+    a made-up 250ml. Auto-credited drinks (source_id set) are excluded: a
+    latte's 360ml is not your water container."""
+    try:
+        r = execute("""SELECT amount_ml, COUNT(*) AS n FROM hydration_logs
+                       WHERE user_id=? AND amount_ml > 0 AND source_id IS NULL
+                       GROUP BY amount_ml ORDER BY n DESC, amount_ml DESC""",
+                    (uid or current_user_id(),), fetchone=True)
+        if r and r['amount_ml']:
+            return max(50, min(int(r['amount_ml']), 2000))
+    except Exception:
+        pass
+    return default
+
+
 def get_hydration_day(date_key: str) -> dict:
     uid = current_user_id()
     rows = execute("SELECT * FROM hydration_logs WHERE date_key=? AND user_id=? ORDER BY logged_at",
@@ -203,7 +220,8 @@ def get_hydration_day(date_key: str) -> dict:
     weight  = float((profile or {}).get('weight_kg') or 70)
     goal_ml = round(weight * 35)
     pct     = min(round(total / goal_ml * 100), 100) if goal_ml else 0
-    return {'logs': logs, 'total_ml': total, 'goal_ml': goal_ml, 'pct': pct, 'date': date_key}
+    return {'logs': logs, 'total_ml': total, 'goal_ml': goal_ml, 'pct': pct,
+            'date': date_key, 'usual_ml': usual_sip_ml(uid)}
 
 def delete_hydration_log(lid: str):
     execute("DELETE FROM hydration_logs WHERE id=? AND user_id=?",

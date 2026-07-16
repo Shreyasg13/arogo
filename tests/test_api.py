@@ -475,6 +475,22 @@ class TestHydration:
         _, d = jget(client, f"/api/hydration/{TODAY}")
         assert isinstance(d.get("pct"), (int, float))
 
+    def test_usual_ml_learns_their_container_not_their_latte(self, client):
+        """Quick-log should offer the user's real glass. Nobody drinks '250ml'."""
+        assert jget(client, f"/api/hydration/{TODAY}")[1]["usual_ml"] == 250  # cold start
+        for _ in range(3):
+            jpost(client, "/api/hydration", {"amount_ml": 750, "date_key": TODAY})
+        jpost(client, "/api/hydration", {"amount_ml": 200, "date_key": TODAY})
+        assert jget(client, f"/api/hydration/{TODAY}")[1]["usual_ml"] == 750
+
+        # Auto-credited drinks must not hijack it — a latte is not your bottle,
+        # even if you drink more lattes than bottles.
+        for _ in range(5):
+            jpost(client, "/api/food/log", {
+                "food_id": "coffee_latte", "food_name": "Latte",
+                "quantity_g": 360, "calories": 204, "date_key": TODAY})
+        assert jget(client, f"/api/hydration/{TODAY}")[1]["usual_ml"] == 750
+
     def test_logged_beverage_counts_toward_hydration(self, client):
         """A drink logged in the food tracker is fluid the user already told us
         about — count it once, attributed, instead of making them log twice."""
