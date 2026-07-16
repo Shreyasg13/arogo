@@ -202,6 +202,29 @@ def today_iso(tz: str = None) -> str:
     except Exception:
         pass
     return datetime.date.today().isoformat()
+
+
+def user_today() -> str:
+    """Today in the USER's timezone — the only "today" that should ever decide
+    whether a dose is due, late, or missed.
+
+    The browser and the service worker both key writes off the device's local
+    day (`localToday()` / `toLocaleDateString('en-CA')`). Anything server-side
+    that reads those rows back has to agree, or the two silently disagree at
+    the edges of the day: a user in IST taps "✓ Taken" at 00:30, the row is
+    written under tomorrow's date, and a server on UTC still sees the dose as
+    unlogged — then escalates it to their family as missed.
+
+    Falls back to the server's date when no timezone is known, which is the
+    old behaviour and correct for a user who never set one.
+    """
+    try:
+        from .food import get_user_timezone
+        return today_iso(get_user_timezone())
+    except Exception:
+        return today_iso()
+
+
 def new_id():    return uuid.uuid4().hex
 
 
@@ -524,6 +547,36 @@ def migrate_add_hydration_source():
         pass  # already exists
 
 
+def migrate_add_dose_stock_ledger():
+    """dose_logs.pills_applied — how many pills a "taken" actually removed.
+
+    Stock used to be adjusted by ±pills_per_dose and floored at 0, which made
+    the operation non-reversible at the floor: taking a dose with 0 left
+    swallowed the -1, but un-taking it still added +1, inventing a pill. Round
+    trips inflated too (1 pill, two doses taken then both un-taken → 2). An
+    inflated count silently suppresses the low-stock refill nudge.
+
+    Recording what we actually took means we can restore exactly that and no
+    more. Existing 'taken' rows are backfilled with their medicine's
+    pills_per_dose — the count those doses were charged under the old rule.
+    """
+    try:
+        execute("ALTER TABLE dose_logs ADD COLUMN pills_applied INTEGER DEFAULT 0")
+    except Exception:
+        return  # column exists: already migrated, don't re-backfill
+    try:
+        execute("""
+            UPDATE dose_logs SET pills_applied = COALESCE((
+                SELECT COALESCE(m.pills_per_dose, 1) FROM medicines m
+                WHERE m.id = dose_logs.medicine_id
+                  AND m.user_id = dose_logs.user_id
+                  AND m.pill_count IS NOT NULL
+            ), 0) WHERE taken = 1
+        """, commit=True)
+    except Exception:
+        pass
+
+
 def migrate_unify_spo2_type():
     """Oxygen saturation was stored under two type keys: the vitals form wrote
     'oxygen_sat' while the body-vitals chip, trend chart, family view and lab
@@ -640,6 +693,7 @@ def init_db():
     migrate_add_caregiver_extras()
     migrate_add_hydration_source()
     migrate_unify_spo2_type()
+    migrate_add_dose_stock_ledger()
     migrate_add_custom_food_barcode()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

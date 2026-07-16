@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, send_from_directory, current_app
 from auth import require_auth
 import os, json as json_mod
 from db import *
+from db.core import user_today
 from config import Config
 
 bp = Blueprint("medicines", __name__)
@@ -45,8 +46,10 @@ def toggle_med(mid):
 @require_auth
 def log_dose_route(mid):
     data = request.json or {}
+    # Default to the USER's day, not the server's, so a client that omits the
+    # date lands on the same day get_today_doses() will read it back from.
     ok = log_dose(mid,
-                  data.get('date', today_iso()),
+                  data.get('date', user_today()),
                   data.get('time', ''),
                   taken=data.get('taken', True))
     if not ok:

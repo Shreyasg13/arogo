@@ -17,6 +17,13 @@ pywebpush
 # pywebpush pulls in aiohttp; floor it past a batch of 2026 CVEs
 aiohttp>=3.14.1; python_version >= "3.10"
 
+# Timezone database for zoneinfo. NOT optional: without it ZoneInfo() raises,
+# today_iso(tz) silently falls back to the SERVER's date, and every per-user
+# "today" quietly becomes the server's — which is exactly the bug that made
+# the app escalate doses to family that the user had already taken. Ships the
+# data on hosts that don't carry a system tzdb (notably Windows).
+tzdata
+
 # Safe XML parsing for user-uploaded Apple Health exports
 defusedxml
 

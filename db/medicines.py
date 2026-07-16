@@ -5,7 +5,8 @@ All queries are scoped to the authenticated user via current_user_id().
 """
 import re
 
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
+from .core import (execute, executemany, jdump, jload, now_iso, today_iso, user_today,
+                   new_id, current_user_id)
 
 _TIME_RE = re.compile(r'^([01]?\d|2[0-3]):[0-5]\d$')
 
@@ -113,11 +114,18 @@ def log_dose(medicine_id, date_key, time_key, taken=True):
         """, (lid, medicine_id, date_key, time_key, 1 if new_taken else 0, now_iso(), uid),
             commit=True)
     # Keep pill stock honest: consume on a fresh "taken", restore on un-take.
-    # Guarded on the state *transition* so a double-log never double-counts.
+    # Guarded on the state *transition* so a double-log never double-counts,
+    # and on the recorded ledger so an un-take restores exactly what the take
+    # removed — never more. Restoring blind is how the count invented pills.
+    row_id = existing['id'] if existing else lid
     if new_taken and not prev_taken:
-        _apply_stock_delta(medicine_id, -1)
+        applied = _consume_stock(medicine_id)
+        execute("UPDATE dose_logs SET pills_applied=? WHERE id=? AND user_id=?",
+                (applied, row_id, uid), commit=True)
     elif prev_taken and not new_taken:
-        _apply_stock_delta(medicine_id, +1)
+        _restore_stock(medicine_id, _pills_applied(row_id, uid))
+        execute("UPDATE dose_logs SET pills_applied=0 WHERE id=? AND user_id=?",
+                (row_id, uid), commit=True)
     return True
 
 
@@ -139,7 +147,9 @@ def _in_course(m, day):
 
 def get_today_doses():
     uid = current_user_id()
-    today = today_iso()
+    # The user's day, not the server's — the app and service worker write dose
+    # rows keyed to the device's local date, and this is what reads them back.
+    today = user_today()
     meds = [m for m in list_medicines() if m['active'] and _in_course(m, today)]
     doses = []
     for m in meds:
@@ -187,19 +197,54 @@ def update_medicine_stock(mid: str, pill_count: int, pills_per_dose: int = 1, re
                 (mid, current_user_id()), fetchone=True)
     return dict(r) if r else {}
 
-def _apply_stock_delta(mid: str, doses: int):
-    """Adjust pill stock by `doses` worth of pills (each = pills_per_dose).
-    Negative consumes (dose taken), positive restores (dose un-taken).
-    No-op when the medicine tracks no stock (pill_count IS NULL). Floors at 0."""
+def _pills_applied(dose_log_id: str, uid: str) -> int:
+    r = execute("SELECT pills_applied FROM dose_logs WHERE id=? AND user_id=?",
+                (dose_log_id, uid), fetchone=True)
+    try:
+        return max(0, int(r['pills_applied'] or 0)) if r else 0
+    except (KeyError, TypeError, IndexError):
+        return 0        # pre-migration row: restore nothing rather than invent
+
+
+def _consume_stock(mid: str) -> int:
+    """Take one dose's worth of pills out of stock; return how many actually
+    came out. Stock can't go below zero, so a user who's out of pills consumes
+    0 — and that 0 is what an un-take must give back. Returns 0 when the
+    medicine tracks no stock (pill_count IS NULL)."""
     uid = current_user_id()
     r = execute("SELECT pill_count,pills_per_dose FROM medicines WHERE id=? AND user_id=?",
                 (mid, uid), fetchone=True)
     if not r or r['pill_count'] is None:
-        return
-    per = r['pills_per_dose'] or 1
-    new_count = max(0, r['pill_count'] + doses * per)
+        return 0
+    applied = min(r['pills_per_dose'] or 1, r['pill_count'])
+    if applied <= 0:
+        return 0
     execute("UPDATE medicines SET pill_count=? WHERE id=? AND user_id=?",
-            (new_count, mid, uid), commit=True)
+            (r['pill_count'] - applied, mid, uid), commit=True)
+    return applied
+
+
+def _restore_stock(mid: str, pills: int):
+    """Put back exactly the pills a take removed — no more."""
+    if pills <= 0:
+        return
+    uid = current_user_id()
+    r = execute("SELECT pill_count FROM medicines WHERE id=? AND user_id=?",
+                (mid, uid), fetchone=True)
+    if not r or r['pill_count'] is None:
+        return
+    execute("UPDATE medicines SET pill_count=? WHERE id=? AND user_id=?",
+            (r['pill_count'] + pills, mid, uid), commit=True)
+
+
+def _apply_stock_delta(mid: str, doses: int):
+    """Back-compat shim for callers outside the dose-log ledger."""
+    if doses < 0:
+        _consume_stock(mid)
+    elif doses > 0:
+        r = execute("SELECT pills_per_dose FROM medicines WHERE id=? AND user_id=?",
+                    (mid, current_user_id()), fetchone=True)
+        _restore_stock(mid, (r['pills_per_dose'] or 1) if r else 1)
 
 
 def decrement_pill_count(mid: str):

@@ -260,6 +260,76 @@ class TestDoseLogging:
                    json={"date": TODAY, "time": "08:00", "taken": False})
         assert stock() == 30
 
+    def test_today_doses_follow_the_users_timezone_not_the_servers(self, alice):
+        """The app and service worker write dose rows keyed to the DEVICE's
+        local day. If the server reads them back on its own day, the two
+        disagree at the edges: a user in IST taps "✓ Taken" at 00:30, the row
+        lands on their today, the server still sees the dose unlogged — and
+        escalates it to their family as missed. Same day, both sides."""
+        import datetime as _dt
+        from db.core import user_today, today_iso
+
+        # Kiritimati is UTC+14: its "today" is ahead of any server's for most
+        # of the day, so this fails loudly if we ever read the server's date.
+        alice.post("/api/food/profile", json={"timezone": "Pacific/Kiritimati"})
+        their_today = _dt.datetime.now(
+            __import__("zoneinfo").ZoneInfo("Pacific/Kiritimati")).date().isoformat()
+
+        mid = mk_med(alice, times=["08:00"])["id"]
+        # Log the dose on THEIR day, exactly as the service worker would.
+        alice.post("/api/medicines/%s/log" % mid,
+                   json={"date": their_today, "time": "08:00", "taken": True})
+
+        doses = [d for d in alice.get("/api/medicines/today").get_json()
+                 if d["med_id"] == mid]
+        assert doses, "the medicine should appear in today's doses"
+        assert doses[0]["taken"], (
+            "a dose logged on the user's own day reads back as untaken — "
+            "their family would be alerted about a dose they took")
+
+    def test_un_taking_a_dose_never_invents_pills(self, alice):
+        """Stock must be conservative: an un-take gives back exactly what the
+        take removed. The old arithmetic floored the consume side at 0 but
+        restored unconditionally, so a user who was out of pills could tap
+        Taken then correct it and end up with a pill that never existed —
+        and inflated stock silently suppresses the low-stock refill nudge."""
+        mid = mk_med(alice)["id"]
+        alice.post("/api/medicines/%s/stock" % mid,
+                   json={"pill_count": 0, "pills_per_dose": 1, "refill_threshold": 7})
+
+        def stock():
+            return next(m for m in alice.get("/api/medicines").get_json()
+                        if m["id"] == mid)["pill_count"]
+
+        # Out of pills: taking consumes nothing, so un-taking restores nothing.
+        alice.post("/api/medicines/%s/log" % mid,
+                   json={"date": TODAY, "time": "08:00", "taken": True})
+        assert stock() == 0
+        alice.post("/api/medicines/%s/log" % mid,
+                   json={"date": TODAY, "time": "08:00", "taken": False})
+        assert stock() == 0, "un-taking a dose at zero stock invented a pill"
+
+    def test_take_untake_round_trip_is_conservative(self, alice):
+        """One pill, two scheduled doses: taking both can only consume the one
+        pill that exists, so un-taking both must return to exactly one — not
+        two. The floor made the operation non-reversible and inflated stock."""
+        mid = mk_med(alice, times=["08:00", "20:00"])["id"]
+        alice.post("/api/medicines/%s/stock" % mid,
+                   json={"pill_count": 1, "pills_per_dose": 1, "refill_threshold": 7})
+
+        def stock():
+            return next(m for m in alice.get("/api/medicines").get_json()
+                        if m["id"] == mid)["pill_count"]
+
+        for t in ("08:00", "20:00"):
+            alice.post("/api/medicines/%s/log" % mid,
+                       json={"date": TODAY, "time": t, "taken": True})
+        assert stock() == 0
+        for t in ("08:00", "20:00"):
+            alice.post("/api/medicines/%s/log" % mid,
+                       json={"date": TODAY, "time": t, "taken": False})
+        assert stock() == 1, "take/un-take round trip inflated the pill count"
+
     def test_taking_dose_without_stock_tracking_is_noop(self, alice):
         """A medicine that tracks no stock (pill_count NULL) must not error or
         materialise a phantom count when a dose is taken."""

@@ -11,7 +11,8 @@ Model:
 """
 from __future__ import annotations
 
-from .core import execute, now_iso, today_iso, new_id, current_user_id, user_context, to_num, to_int
+from .core import (execute, now_iso, today_iso, user_today, new_id, current_user_id,
+                   user_context, to_num, to_int)
 
 CONSENT_FIELDS = ['share_sleep', 'share_vitals', 'share_medicines',
                   'share_food', 'share_symptoms', 'share_emergency']
@@ -313,7 +314,7 @@ def care_status() -> list:
     if not me:
         return []
     uid_self = current_user_id()
-    today = today_iso()
+    today = user_today()
     members = execute("""
         SELECT m.user_id, u.name, u.email FROM family_members m
         JOIN users u ON u.id = m.user_id
