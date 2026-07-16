@@ -432,8 +432,13 @@
     </div>
     <div class="panel" id="dash-tasks-panel" style="display:none">
       <div class="panel-header">
-        <h2 class="panel-title">Pending Tasks</h2>
-        <a href="#" class="panel-link" data-ev-click="switchView('todos');return false">All tasks →</a>
+        <h2 class="panel-title">Tasks</h2>
+        <a href="#" class="panel-link" data-ev-click="switchView('todos');return false">Manage →</a>
+      </div>
+      <div class="dash-todo-add">
+        <input type="text" id="dash-todo-input" placeholder="Add a task…" autocomplete="off"
+               aria-label="Add a task" data-ev-keydown="dashAddTodoKey(event)">
+        <button class="dash-todo-add-btn" data-ev-click="dashAddTodo()" aria-label="Add task">＋</button>
       </div>
       <div id="dash-todos-list" class="dash-todos-list"></div>
     </div>

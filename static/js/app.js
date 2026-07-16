@@ -6331,10 +6331,20 @@ loadThoughts = async function() {
 async function loadDashboardTodos() {
   const r = await fetch('/api/todos?status=pending').then(r => r.json()).catch(() => null);
   const el = document.getElementById('dash-todos-list');
-  if (!el) return;
+  if (!el) return 0;
+  // Tasks live on the dashboard: the panel is always shown so the inline
+  // quick-add is always available. The full Tasks screen ("Manage →") keeps
+  // the depth — priorities, due dates, reminders, tags, completed history.
+  const panel = document.getElementById('dash-tasks-panel');
+  if (panel) panel.style.display = '';
+  const agenda = document.getElementById('dash-agenda-grid');
+  if (agenda) agenda.style.display = '';
   const allPending = r?.todos || [];
   const todos = allPending.slice(0, 5);
-  if (todos.length === 0) { el.innerHTML = ''; return 0; }
+  if (todos.length === 0) {
+    el.innerHTML = '<div class="dash-todo-empty">Nothing pending — add a task above.</div>';
+    return 0;
+  }
   const today = localToday();
   const PRI = { high:'🔴', medium:'🟡', low:'🟢' };
   el.innerHTML = todos.map(t => {
@@ -6360,6 +6370,22 @@ async function dashToggleTodo(id) {
   loadDashboardTodos();
   loadTodos();
 }
+
+// Add a task inline from the dashboard (the Tasks screen's most-common action,
+// on home). Defaults to medium priority / no due date; use "Manage →" for those.
+async function dashAddTodo() {
+  const inp = document.getElementById('dash-todo-input');
+  const title = (inp?.value || '').trim();
+  if (!title) return;
+  inp.value = '';
+  await fetch('/api/todos', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, priority: 'medium' })
+  }).catch(() => {});
+  loadDashboardTodos();
+  try { loadTodos(); } catch (e) {}
+}
+function dashAddTodoKey(e) { if (e.key === 'Enter') { e.preventDefault(); dashAddTodo(); } }
 
 // Sidebar user info from profile
 async function updateSidebarUser() {
