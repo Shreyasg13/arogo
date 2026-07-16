@@ -2318,7 +2318,18 @@ function renderMedicinesGrid(meds) {
 
 async function markDoseTaken(medId, time, el) {
   const date = localToday();
-  await fetch(`/api/medicines/${medId}/log`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ date, time, taken:true }) });
+  // Never claim a dose landed without checking. This is the core adherence
+  // loop: if the write failed and we say "taken ✓", the user stops thinking
+  // about it, the dose stays unlogged, and their family gets escalated to
+  // about a dose they actually took.
+  const r = await fetch(`/api/medicines/${medId}/log`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ date, time, taken:true })
+  }).then(r => r.json()).catch(() => null);
+  if (!r?.success) {
+    showToast("Couldn't log that dose — check your connection and try again", 'error');
+    return;
+  }
   showToast('Dose marked as taken ✓', 'success');
   loadMedicines();
   loadDashboard();
@@ -6210,12 +6221,30 @@ async function delSymptom(id) {
 // VITALS
 // ════════════════════════════════════════════════════════════
 
+// Reading flags. Three rules, learned the hard way:
+//
+//   1. We never say "Normal". Vouching for a reading is a clinical call we're
+//      not qualified to make, and the failure mode is the worst one there is:
+//      a green badge telling someone their 85% SpO2 or 138/88 is fine. Silence
+//      says "we're not judging this"; a badge only ever means "worth a look".
+//   2. The thresholds ARE the `reference` string shown right below the input.
+//      One source of truth — the two must never contradict each other.
+//   3. When we can't know, we say nothing: an unrecognised type, a unit we
+//      can't place, or a glucose whose fasting state we never asked about.
+//
+// A flag returns null (no badge) | 'low' | 'elevated' | 'high'.
 const VITAL_CONFIG = {
   blood_pressure: {
     icon:'❤️', label:'Blood Pressure',
     fields:[{id:'vf1',label:'Systolic (mmHg)',ph:'120'},{id:'vf2',label:'Diastolic (mmHg)',ph:'80'}],
     unit:'mmHg',
-    flag: (v1,v2) => (v1>140||v2>90) ? 'high' : (v1<90||v2<60) ? 'low' : 'normal',
+    // v2 is guarded explicitly: `null >= 80` is false but `null < 60` is TRUE,
+    // so a reading with no diastolic would otherwise be flagged "Low".
+    flag: (v1, v2) => {
+      const high = v1 >= 130 || (v2 != null && v2 >= 80);
+      const low  = v1 <  90 || (v2 != null && v2 <  60);
+      return high ? 'high' : low ? 'low' : v1 >= 120 ? 'elevated' : null;
+    },
     reference: 'Normal: 90–120 / 60–80 mmHg · Elevated: 120–129 / <80 · High: >130 / >80 · Low: <90 / <60',
     categories: [{label:'Normal',range:'<120/<80',color:'#22C55E'},{label:'Elevated',range:'120-129/<80',color:'#F59E0B'},{label:'High',range:'>130/>80',color:'#EF4444'},{label:'Low',range:'<90/<60',color:'#3B82F6'}]
   },
@@ -6223,7 +6252,10 @@ const VITAL_CONFIG = {
     icon:'🩸', label:'Blood Sugar',
     fields:[{id:'vf1',label:'mg/dL',ph:'100'}],
     unit:'mg/dL',
-    flag: (v1) => v1>126 ? 'high' : v1<70 ? 'low' : 'normal',
+    // We never ask whether the sample was fasting or post-meal, so 110 could be
+    // textbook-normal or worth a conversation — we can't tell, so we don't say.
+    // Only the readings that are notable either way get a flag.
+    flag: (v1) => v1 > 125 ? 'high' : v1 < 70 ? 'low' : null,
     reference: 'Fasting: 70–100 mg/dL (Normal) · 100–125 (Pre-diabetic) · >126 (Diabetic) · <70 (Low)',
     categories: [{label:'Normal',range:'70–100',color:'#22C55E'},{label:'Pre-diabetic',range:'100–125',color:'#F59E0B'},{label:'High',range:'>126',color:'#EF4444'},{label:'Low',range:'<70',color:'#3B82F6'}]
   },
@@ -6231,7 +6263,7 @@ const VITAL_CONFIG = {
     icon:'💓', label:'Heart Rate',
     fields:[{id:'vf1',label:'BPM',ph:'72'}],
     unit:'bpm',
-    flag: (v1) => v1>100 ? 'high' : v1<60 ? 'low' : 'normal',
+    flag: (v1) => v1 > 100 ? 'high' : v1 < 60 ? 'low' : null,
     reference: 'Normal resting: 60–100 bpm · Athletes may have 40–60 bpm · >100 = Tachycardia · <60 = Bradycardia',
     categories: [{label:'Athlete',range:'40–60',color:'#06B6D4'},{label:'Normal',range:'60–100',color:'#22C55E'},{label:'High',range:'>100',color:'#EF4444'}]
   },
@@ -6239,15 +6271,27 @@ const VITAL_CONFIG = {
     icon:'🌡️', label:'Temperature',
     fields:[{id:'vf1',label:'°F',ph:'98.6'}],
     unit:'°F',
-    flag: (v1) => v1>=100.4 ? 'high' : v1<97 ? 'low' : 'normal',
+    // Readings arrive in both scales (this form logs °F; the body-vitals chip
+    // and lab import log °C), so the number means nothing without its unit.
+    // An unrecognised unit gets no flag rather than a guess.
+    flag: (v1, _v2, unit) => {
+      const u = String(unit || '°F').toUpperCase();
+      if (u.includes('C')) return v1 >= 38 ? 'high' : v1 < 36.1 ? 'low' : null;
+      if (u.includes('F')) return v1 >= 100.4 ? 'high' : v1 < 97 ? 'low' : null;
+      return null;
+    },
     reference: 'Normal: 97–99°F (36.1–37.2°C) · Low-grade fever: 99–100.4°F · Fever: >100.4°F · Hypothermia: <97°F',
     categories: [{label:'Low',range:'<97°F',color:'#3B82F6'},{label:'Normal',range:'97–99°F',color:'#22C55E'},{label:'Fever',range:'>100.4°F',color:'#EF4444'}]
   },
-  oxygen_sat: {
+  // Keyed 'spo2' — the same key the body-vitals chip, the trend chart, the
+  // family view and lab import all use. It was 'oxygen_sat' here alone, so
+  // every real reading missed this config and fell back to a hardcoded
+  // "Normal" badge: an 85% (hypoxia) rendered green.
+  spo2: {
     icon:'💨', label:'SpO2',
     fields:[{id:'vf1',label:'%',ph:'98'}],
     unit:'%',
-    flag: (v1) => v1<95 ? 'low' : v1<98 ? 'normal' : 'normal',
+    flag: (v1) => v1 < 95 ? 'low' : null,
     reference: 'Normal: 95–100% · Acceptable: 92–95% · Low (seek care): <92% · Critical: <88%',
     categories: [{label:'Normal',range:'95–100%',color:'#22C55E'},{label:'Acceptable',range:'92–95%',color:'#F59E0B'},{label:'Low',range:'<92%',color:'#EF4444'}]
   },
@@ -6281,8 +6325,13 @@ async function logVital() {
   if (!v1) { showToast('Enter a reading', 'error'); return; }
   const r = await fetch('/api/vitals', {
     method:'POST', headers:{'Content-Type':'application/json'},
+    // date_key: without it the server files the reading on ITS day, so a
+    // late-night reading east of UTC lands yesterday — while the same reading
+    // typed as "bp 120/80" in the command bar lands today. Every other vitals
+    // path sends localToday(); this one didn't.
     body: JSON.stringify({ type:selectedVitalType, value1:v1, value2:v2||null,
-      unit:cfg.unit, notes:document.getElementById('vital-notes')?.value||'' })
+      unit:cfg.unit, date_key: localToday(),
+      notes:document.getElementById('vital-notes')?.value||'' })
   }).then(r => r.json());
   if (r.success) {
     showToast(`${cfg.label} saved`, 'success');
@@ -6294,6 +6343,19 @@ async function logVital() {
   }
 }
 
+// The one place a reading is judged. Returns null | 'low' | 'elevated' | 'high'
+// — null meaning "we're not judging this", which is the honest answer for a
+// type we don't recognise, a unit we can't place, or a reading whose context
+// we never asked for. It must never return a "you're fine" verdict.
+function vitalFlag(type, v1, v2, unit) {
+  const cfg = VITAL_CONFIG[type];
+  if (!cfg || typeof cfg.flag !== 'function') return null;
+  const n1 = Number(v1);
+  if (!isFinite(n1)) return null;
+  const f = cfg.flag(n1, (v2 === null || v2 === undefined || v2 === '') ? null : Number(v2), unit);
+  return f || null;
+}
+
 async function loadVitals() {
   const r = await fetch('/api/vitals?days=30').then(r => r.json()).catch(() => []);
   const el = document.getElementById('vitals-list');
@@ -6303,8 +6365,8 @@ async function loadVitals() {
     return;
   }
   el.innerHTML = r.map(v => {
-    const cfg = VITAL_CONFIG[v.type] || {icon:'📊',label:v.type,flag:()=>'normal'};
-    const flagStr = v.value2 ? cfg.flag(v.value1,v.value2) : cfg.flag(v.value1);
+    const cfg = VITAL_CONFIG[v.type] || {icon:'📊', label:v.type};
+    const flagStr = vitalFlag(v.type, v.value1, v.value2, v.unit);
     const display = v.value2 ? `${v.value1}/${v.value2}` : v.value1;
     return `<div class="vital-row">
       <div class="vital-type-icon">${cfg.icon}</div>
@@ -6312,7 +6374,7 @@ async function loadVitals() {
         <div class="vital-reading">${display} <span style="font-size:12px;color:var(--gray-400)">${v.unit}</span></div>
         <div class="vital-meta">${v.date_key} ${v.notes ? '· '+escHtml(v.notes) : ''}</div>
       </div>
-      <span class="vital-flag ${flagStr}">${flagStr.charAt(0).toUpperCase()+flagStr.slice(1)}</span>
+      ${flagStr ? `<span class="vital-flag ${flagStr}">${flagStr.charAt(0).toUpperCase()+flagStr.slice(1)}</span>` : ''}
       <button class="todo-act-btn del" data-ev-click="delVital('${v.id}')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>

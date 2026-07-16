@@ -137,6 +137,50 @@ test('parseQuickCommand: rejects out-of-range and normal queries', () => {
   eq(S.parseQuickCommand('sugarcane juice'), null);
 });
 
+// ── Vital flags ──
+// The rule: never vouch for a reading. A flag means "worth a look"; silence
+// means "we're not judging this". A green "Normal" on a bad reading is the
+// worst thing this app could say, so these tests exist to keep it impossible.
+test('vitalFlag never returns a "you are fine" verdict', () => {
+  const healthy = [
+    ['blood_pressure', 118, 76], ['blood_sugar', 90], ['heart_rate', 72],
+    ['spo2', 98], ['temperature', 98.6, null, '°F'], ['temperature', 36.8, null, '°C'],
+  ];
+  for (const [t, a, b, u] of healthy) {
+    const f = S.vitalFlag(t, a, b, u);
+    if (f !== null) throw new Error(`${t} ${a} should get no badge, got ${f}`);
+  }
+});
+test('vitalFlag: low SpO2 is never called normal', () => {
+  // The regression that shipped: spo2 rows missed the config (it was keyed
+  // oxygen_sat) and fell back to a hardcoded 'normal' — 85% rendered green.
+  eq(S.vitalFlag('spo2', 85), 'low');
+  eq(S.vitalFlag('spo2', 94), 'low');
+});
+test('vitalFlag: agrees with the reference text shown under the input', () => {
+  eq(S.vitalFlag('blood_pressure', 138, 88), 'high');   // ref says High >130/>80
+  eq(S.vitalFlag('blood_pressure', 124, 78), 'elevated');
+  eq(S.vitalFlag('blood_pressure', 85, 55), 'low');
+  eq(S.vitalFlag('blood_sugar', 130), 'high');
+  eq(S.vitalFlag('blood_sugar', 65), 'low');
+  eq(S.vitalFlag('heart_rate', 110), 'high');
+});
+test('vitalFlag: temperature reads its unit, not a guess', () => {
+  eq(S.vitalFlag('temperature', 37, null, '°C'), null);    // normal, was "Low"
+  eq(S.vitalFlag('temperature', 39, null, '°C'), 'high');
+  eq(S.vitalFlag('temperature', 101, null, '°F'), 'high');
+  eq(S.vitalFlag('temperature', 96, null, '°F'), 'low');
+  eq(S.vitalFlag('temperature', 37, null, 'kelvin'), null);  // unplaceable -> silent
+});
+test('vitalFlag: stays silent when it cannot know', () => {
+  eq(S.vitalFlag('unknown_type', 999), null);
+  eq(S.vitalFlag('blood_sugar', 110), null);   // fasting state never asked -> no verdict
+  eq(S.vitalFlag('blood_pressure', 130, null), 'high');
+  eq(S.vitalFlag('blood_pressure', 118, null), null);  // null diastolic != "Low"
+  eq(S.vitalFlag('heart_rate', NaN), null);
+  eq(S.vitalFlag('heart_rate', undefined), null);
+});
+
 // ── Helpers ──
 test('escapeHtml escapes the five specials', () => {
   eq(S.escapeHtml(`<img src="x" onerror='a&b'>`),

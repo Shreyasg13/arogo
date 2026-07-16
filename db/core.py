@@ -524,6 +524,18 @@ def migrate_add_hydration_source():
         pass  # already exists
 
 
+def migrate_unify_spo2_type():
+    """Oxygen saturation was stored under two type keys: the vitals form wrote
+    'oxygen_sat' while the body-vitals chip, trend chart, family view and lab
+    import all used 'spo2'. Rows under the odd key matched no config, so they
+    rendered a hardcoded "Normal" badge (an 85% reading showed green) and never
+    appeared in the trend chart or the caregiver's view. One key from here on."""
+    try:
+        execute("UPDATE vitals SET type='spo2' WHERE type='oxygen_sat'", commit=True)
+    except Exception:
+        pass  # fresh database: no vitals table yet
+
+
 def migrate_add_caregiver_extras():
     """Later caregiving columns: emergency sharing, viewer/primary alert role,
     and an encouragement 'kind' (kudos vs thinking-of-you ping)."""
@@ -627,6 +639,7 @@ def init_db():
     migrate_add_caregiver_alerts()
     migrate_add_caregiver_extras()
     migrate_add_hydration_source()
+    migrate_unify_spo2_type()
     migrate_add_custom_food_barcode()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

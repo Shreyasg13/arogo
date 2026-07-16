@@ -2093,7 +2093,7 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .vital-reading { font-size: 16px; font-weight: 700; font-family: 'EB Garamond', serif; color: var(--gray-900); }
 .vital-meta { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
 .vital-flag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
-.vital-flag.normal { background: var(--teal-50); color: var(--teal-700); }
+.vital-flag.elevated { background: #FEF3C7; color: #B45309; }
 .vital-flag.high   { background: #FEE2E2; color: #DC2626; }
 .vital-flag.low    { background: #EDF2F5; color: #5E8299; }
 
