@@ -673,6 +673,18 @@ class TestInsights:
         assert d["total"] >= 1
         assert any(s["type"] == "symptom" for s in d["sections"])
 
+    def test_doctor_summary_compiles(self, client):
+        jpost(client, "/api/medicines",
+              {"name":"Metformin","dosage":"500","unit":"mg","times":["08:00"]})
+        jpost(client, "/api/vitals", {"type":"blood_pressure","value1":128,"value2":82})
+        jpost(client, "/api/symptoms", {"name":"Headache","severity":4})
+        code, d = jget(client, "/api/doctor-summary")
+        assert code == 200
+        assert any(m["name"] == "Metformin" for m in d["medications"])
+        assert "blood_pressure" in d["vitals"]
+        assert any(s["name"] == "Headache" for s in d["symptoms"])
+        assert d["generated"] and "adherence_30d" in d
+
     def test_search_finds_todo(self, client):
         jpost(client, "/api/todos", {"title":"Buy omega-3 supplements","priority":"low"})
         _, d = jget(client, "/api/search?q=omega")

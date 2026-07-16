@@ -14,6 +14,49 @@ bp = Blueprint("insights", __name__)
 def api_weekly_report():
     return jsonify(generate_weekly_report())
 
+
+@bp.route('/api/doctor-summary')
+@require_auth
+def api_doctor_summary():
+    """Compile a one-page summary to bring to a medical appointment:
+    active medicines, latest vitals, recent symptoms, conditions/allergies,
+    and 30-day medication adherence."""
+    from db.core import execute, current_user_id
+    import datetime as dt
+
+    profile = get_profile() or {}
+    emg = get_emergency_info() or {}
+    urow = execute("SELECT name, email FROM users WHERE id=?", (current_user_id(),), fetchone=True)
+
+    meds = [{'name': m['name'], 'dosage': m.get('dosage'), 'unit': m.get('unit'),
+             'frequency': m.get('frequency'), 'times': m.get('times'),
+             'with_food': m.get('with_food')}
+            for m in list_medicines() if m.get('active')]
+
+    latest = {}
+    for v in get_vitals(days=90):          # ordered newest-first
+        if v['type'] not in latest:
+            latest[v['type']] = {'value1': v['value1'], 'value2': v.get('value2'),
+                                 'unit': v.get('unit'), 'date': v.get('date_key')}
+
+    symptoms = [{'name': s['name'], 'severity': s.get('severity'), 'date': s.get('date_key')}
+                for s in get_symptoms(30)[:25]]
+
+    return jsonify({
+        'generated': dt.date.today().isoformat(),
+        'person': {
+            'name': (urow['name'] if urow else '') or (urow['email'] if urow else ''),
+            'age': profile.get('age'), 'gender': profile.get('gender'),
+            'blood_type': emg.get('blood_type') or None,
+        },
+        'conditions': emg.get('conditions') or '',
+        'allergies': emg.get('allergies') or '',
+        'medications': meds,
+        'vitals': latest,
+        'symptoms': symptoms,
+        'adherence_30d': get_adherence_stats(30),
+    })
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Goal Progress
 # ══════════════════════════════════════════════════════════════════════════════

@@ -4680,6 +4680,36 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 .checkin-prompt-dismiss:hover { color:var(--gray-700); background:var(--gray-100); }
 
+/* Doctor visit summary sheet */
+.ds-sheet { color:var(--gray-800); font-size:13.5px; }
+.ds-topline { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--teal-600); padding-bottom:8px; margin-bottom:14px; gap:10px; flex-wrap:wrap; }
+.ds-brand { font-weight:700; color:var(--teal-700); font-size:15px; }
+.ds-name { font-family:'EB Garamond',serif; font-size:26px; color:var(--gray-900); line-height:1.1; }
+.ds-meta { color:var(--gray-500); font-size:13px; margin-top:2px; }
+.ds-flags { margin-top:10px; background:var(--gray-50); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; font-size:13px; }
+.ds-h2 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--teal-700); margin:18px 0 8px; }
+.ds-table { width:100%; border-collapse:collapse; font-size:13px; }
+.ds-table th { text-align:left; color:var(--gray-500); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.04em; padding:4px 8px; border-bottom:1px solid var(--gray-200); }
+.ds-table td { padding:6px 8px; border-bottom:1px solid var(--gray-100); vertical-align:top; }
+.ds-list { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:4px; }
+.ds-muted { color:var(--gray-400); font-size:12px; }
+.ds-empty { color:var(--gray-400); font-size:13px; font-style:italic; }
+.ds-foot { margin-top:20px; border-top:1px solid var(--gray-100); padding-top:8px; }
+
+@media print {
+  body * { visibility:hidden !important; }
+  #doctor-summary-modal, #doctor-summary-modal * { visibility:visible !important; }
+  #doctor-summary-modal { position:absolute; inset:0; background:#fff; display:block !important; padding:0; overflow:visible; }
+  #doctor-summary-sheet { box-shadow:none; border:none; max-width:none; width:100%; margin:0; }
+  .no-print { display:none !important; }
+  /* Force readable dark-on-white regardless of the app theme */
+  .ds-sheet, .ds-table td { color:#1a1a1a !important; }
+  .ds-name { color:#111 !important; }
+  .ds-brand, .ds-h2 { color:#2E5B4B !important; }
+  .ds-meta, .ds-muted, .ds-empty, .ds-table th { color:#555 !important; }
+  .ds-flags { background:#f3f3f3 !important; }
+}
+
 /* Family "how sharing works" explainer */
 .family-explainer { margin-top:10px; font-size:12.5px; }
 .family-explainer summary { cursor:pointer; color:var(--teal-600); font-weight:600; width:fit-content; }

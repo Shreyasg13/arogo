@@ -460,10 +460,15 @@
       <h1 class="page-title">Medical</h1>
       <p class="page-subtitle" id="reports-count-label">Upload and track your reports</p>
     </div>
-    <button class="btn-primary" data-ev-click="openUploadModal()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Upload Report
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-outline" data-ev-click="openDoctorSummary()" title="A printable summary for your next appointment">
+        🩺 Doctor summary
+      </button>
+      <button class="btn-primary" data-ev-click="openUploadModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Upload Report
+      </button>
+    </div>
   </div>
 
   <div class="filter-bar">
@@ -2862,6 +2867,23 @@
     <a href="#" class="mmore" data-view="notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>Alerts</a>
     <button class="mmore" data-ev-click="toggleTheme()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>Theme</button>
+  </div>
+</div>
+
+<!-- Doctor visit summary (printable) -->
+<div class="modal-overlay" id="doctor-summary-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeDoctorSummary')">
+  <div class="modal modal--wide" id="doctor-summary-sheet">
+    <div class="modal-head no-print">
+      <div class="modal-title">Doctor visit summary</div>
+      <button class="modal-close" data-ev-click="closeDoctorSummary()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="doctor-summary-content"></div>
+      <div class="no-print" style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+        <button class="btn-outline" data-ev-click="closeDoctorSummary()">Close</button>
+        <button class="btn-primary" data-ev-click="printDoctorSummary()">Print / Save as PDF</button>
+      </div>
+    </div>
   </div>
 </div>
 
