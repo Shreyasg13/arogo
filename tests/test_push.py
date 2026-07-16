@@ -99,10 +99,18 @@ class TestReminderEngine:
         r = user.post("/api/medicines", json={
             "name": "PushPill", "dosage": "5", "times": [now_hhmm]})
         assert r.status_code == 200
+        mid = r.get_json()["medicine"]["id"]
 
         _push_reminders()
         pushes = [p for p in delivered if "PushPill" in p["title"]]
         assert len(pushes) == 1, f"expected one dose push, got {delivered}"
+
+        # …and it carries a one-tap "✓ Taken" button (the core adherence loop
+        # shouldn't need an app open), plus a snooze.
+        acts = pushes[0]["actions"]
+        assert acts, "dose reminder must carry a quick-log action"
+        assert acts[0]["action"] == f"dose-{mid}-{now_hhmm}"
+        assert any(a["action"] == "snooze" for a in acts)
 
         # Re-running within the same window must not re-notify
         _push_reminders()

@@ -110,9 +110,13 @@ def _push_reminders_for_user(uid):
             continue
         mins = _mins_since(d.get('time') or '', hhmm)
         if mins is not None and 0 <= mins <= 15:
+            # "✓ Taken" logs the dose straight from the notification — the core
+            # adherence loop shouldn't cost an app open either.
             notify(f"med:{d['med_id']}:{d['time']}:{today}",
                    f"💊 Time for {d.get('med_name', 'your medicine')}",
-                   f"Scheduled at {d['time']}" + (' · take with food' if d.get('with_food') else ''))
+                   f"Scheduled at {d['time']}" + (' · take with food' if d.get('with_food') else ''),
+                   actions=[{'action': f"dose-{d['med_id']}-{d['time']}", 'title': '✓ Taken'},
+                            {'action': 'snooze', 'title': 'Later'}])
 
     # 2. Water — only when enabled, inside the active window, and behind pace
     if rs.get('water_enabled'):
@@ -215,7 +219,9 @@ def _caregiver_alerts():
                     title = f"⏰ Don't forget {d.get('med_name', 'your medicine')}"
                     body = (f"It was due at {d['time']}. Take it now — if it stays "
                             f"unlogged, your family will get a heads-up soon.")
-                    if push.push_to_user(uid, title, body, '/'):
+                    acts = [{'action': f"dose-{d['med_id']}-{d['time']}", 'title': '✓ Taken'},
+                            {'action': 'snooze', 'title': 'Later'}]
+                    if push.push_to_user(uid, title, body, '/', acts):
                         _mark_pushed(uid, key, title, body)
 
                 # ── Rung 2: escalate to family, and tell the member ──

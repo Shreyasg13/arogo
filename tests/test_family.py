@@ -229,7 +229,7 @@ class TestCaregiverAlerts:
 
         pushes, mails = [], []
         monkeypatch.setattr(push_module, "push_to_user",
-                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+                            lambda uid, t, b, url='/', actions=None: pushes.append({"uid": uid, "title": t, "actions": actions}) or 1)
         monkeypatch.setattr(mailer, "send_email",
                             lambda to, s, txt: mails.append({"to": to, "subject": s}) or True)
 
@@ -269,7 +269,7 @@ class TestCaregiverAlerts:
 
         pushes, mails = [], []
         monkeypatch.setattr(push_module, "push_to_user",
-                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+                            lambda uid, t, b, url='/', actions=None: pushes.append({"uid": uid, "title": t, "actions": actions}) or 1)
         monkeypatch.setattr(mailer, "send_email",
                             lambda to, s, txt: mails.append(to) or True)
 
@@ -300,7 +300,7 @@ class TestCaregiverAlerts:
 
         pushes = []
         monkeypatch.setattr(push_module, "push_to_user",
-                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+                            lambda uid, t, b, url='/', actions=None: pushes.append({"uid": uid, "title": t, "actions": actions}) or 1)
         monkeypatch.setattr(mailer, "send_email", lambda to, s, txt: True)
 
         scheduler._caregiver_alerts()
@@ -329,7 +329,7 @@ class TestCaregiverAlerts:
 
         pushes, mails = [], []
         monkeypatch.setattr(push_module, "push_to_user",
-                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+                            lambda uid, t, b, url='/', actions=None: pushes.append({"uid": uid, "title": t, "actions": actions}) or 1)
         monkeypatch.setattr(mailer, "send_email", lambda to, s, txt: mails.append(to) or True)
 
         scheduler._caregiver_alerts()
@@ -355,7 +355,7 @@ class TestCaregiverAlerts:
         monkeypatch.setattr(scheduler, "_user_local_now", lambda uid: noon)
         pushes = []
         monkeypatch.setattr(push_module, "push_to_user",
-                            lambda uid, t, b, url='/': pushes.append(t) or 1)
+                            lambda uid, t, b, url='/', actions=None: pushes.append(t) or 1)
         scheduler._caregiver_alerts()
         assert not [t for t in pushes if "TakenAlertPill" in t]
 

@@ -7,7 +7,7 @@
  *
  * Bump CACHE_VERSION when the shell must be refreshed immediately.
  */
-const CACHE_VERSION = 'arogo-v2';   // v2: notification action buttons (quick water log)
+const CACHE_VERSION = 'arogo-v3';   // v3: dose + water quick-log from notifications
 const SHELL = [
   '/',
   '/static/css/style.css',
@@ -53,6 +53,14 @@ self.addEventListener('notificationclick', e => {
   e.notification.close();
   const act = e.action || '';
 
+  // The device's own local day — never UTC (matches the app's localToday rule).
+  const localToday = () => new Date().toLocaleDateString('en-CA');
+
+  const ack = (ok, okBody, tag) => self.registration.showNotification(
+    ok ? '✓ Logged' : "Couldn't log that",
+    { body: ok ? okBody : 'Open Arogo to log it.',
+      icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png', tag });
+
   // "water-250" → log it from here; the app never has to open.
   const water = act.match(/^water-(\d+)$/);
   if (water) {
@@ -62,17 +70,31 @@ self.addEventListener('notificationclick', e => {
         method: 'POST',
         credentials: 'include',          // same-origin session cookie
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_ml: ml, drink_type: 'water' }),
+        body: JSON.stringify({ amount_ml: ml, drink_type: 'water', date_key: localToday() }),
       })
-      .then(r => self.registration.showNotification(
-        r.ok ? '💧 Logged' : "Couldn't log that",
-        { body: r.ok ? `${ml}ml added to today.` : 'Open Arogo to log it.',
-          icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png',
-          tag: 'water-ack' }))
+      .then(r => ack(r.ok, `${ml}ml added to today.`, 'water-ack'))
       .catch(() => {})
     );
     return;
   }
+
+  // "dose-<medId>-<HH:MM>" → mark the dose taken without opening the app.
+  const dose = act.match(/^dose-([0-9a-f]{32})-(\d{1,2}:\d{2})$/);
+  if (dose) {
+    const [, medId, time] = dose;
+    e.waitUntil(
+      fetch(`/api/medicines/${medId}/log`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: localToday(), time, taken: true }),
+      })
+      .then(r => ack(r.ok, `Dose marked taken (${time}).`, 'dose-ack'))
+      .catch(() => {})
+    );
+    return;
+  }
+
   if (act === 'snooze') return;   // dismissed; the next pace check will nudge again
 
   const url = (e.notification.data && e.notification.data.url) || '/';
