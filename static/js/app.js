@@ -1481,9 +1481,12 @@ async function loadCarePanel() {
   if (!el) return;
   const members = await fetch('/api/family/care-status').then(r => r.json()).catch(() => []);
   if (!Array.isArray(members) || !members.length) { el.style.display = 'none'; return; }
+  // Reassurance: turn "no alerts" into explicit good news.
+  const allGood = members.every(m => !m.overdue.length);
+  const ago = (min) => min == null ? '' : min < 1 ? 'just now' : min < 60 ? `${min}m ago` : `${Math.round(min / 60)}h ago`;
   el.innerHTML = `
     <div class="care-panel-head">
-      <span class="care-panel-title">People you're caring for</span>
+      <span class="care-panel-title">People you're caring for${allGood ? ' · everyone’s on track today ✓' : ''}</span>
       <a href="#" class="panel-link" data-ev-click="switchView('family');return false">Family →</a>
     </div>
     <div class="care-list">${members.map(m => {
@@ -1493,7 +1496,8 @@ async function loadCarePanel() {
                     : m.total === 0 ? 'No medicines scheduled today'
                     : done ? 'All doses taken ✓'
                     : `${m.taken} of ${m.total} doses taken`;
-      const detail  = overdue ? m.overdue.map(o => `${escHtml(o.med_name || 'dose')} · ${o.time}`).join(', ') : '';
+      const detail  = overdue ? m.overdue.map(o => `${escHtml(o.med_name || 'dose')} · ${o.time}`).join(', ')
+                    : (m.last_ago_min != null ? `last dose ${ago(m.last_ago_min)}` : '');
       const cls     = overdue ? 'is-alert' : done ? 'is-ok' : 'is-pending';
       const icon    = overdue ? '🚨' : done ? '✓' : '💊';
       // Coordination: on an overdue member, let one caregiver claim it so the

@@ -325,6 +325,11 @@ def care_status() -> list:
         overdue = [{'med_name': d.get('med_name'), 'time': d.get('time')}
                    for d in doses if not d.get('taken')
                    and (_mins_between(d.get('time') or '', hhmm) or 0) >= 120]
+        # Reassurance: how long since their most recent dose, so "no alert"
+        # reads as "they're engaging", not ambiguous silence.
+        taken_times = [d.get('time') for d in doses if d.get('taken') and d.get('time')]
+        last_taken = max(taken_times) if taken_times else None
+        last_ago_min = _mins_between(last_taken, hhmm) if last_taken else None
         # Coordination: has a caregiver claimed "I'll check on this" today?
         ack = execute("""SELECT caregiver_user_id, caregiver_name FROM care_acks
                          WHERE group_id=? AND target_user_id=? AND date_key=?
@@ -336,6 +341,8 @@ def care_status() -> list:
             'total': total,
             'taken': taken,
             'overdue': overdue,
+            'last_taken': last_taken,
+            'last_ago_min': last_ago_min,
             'checking_by': (ack['caregiver_name'] if ack else None),
             'checking_is_me': bool(ack and ack['caregiver_user_id'] == uid_self),
         })
