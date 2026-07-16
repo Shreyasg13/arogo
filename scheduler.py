@@ -72,6 +72,22 @@ def _mark_pushed(uid, key, title, body):
             (new_id(), 'push', title, body, key, now_iso(), uid), commit=True)
 
 
+def _usual_sip_ml(uid, default=250):
+    """The user's most-frequent single hydration amount — i.e. their real glass
+    or bottle. Quick-log buttons offer what they actually drink instead of a
+    made-up 250ml. Falls back to `default` until they've logged anything."""
+    try:
+        r = execute("""SELECT amount_ml, COUNT(*) AS n FROM hydration_logs
+                       WHERE user_id=? AND amount_ml > 0
+                       GROUP BY amount_ml ORDER BY n DESC, amount_ml DESC""",
+                    (uid,), fetchone=True)
+        if r and r['amount_ml']:
+            return max(50, min(int(r['amount_ml']), 2000))
+    except Exception:
+        pass
+    return default
+
+
 def _push_reminders_for_user(uid):
     import push
     from db import get_today_doses
@@ -82,10 +98,10 @@ def _push_reminders_for_user(uid):
     rs = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1",
                  (uid,), fetchone=True) or {}
 
-    def notify(key, title, body):
+    def notify(key, title, body, actions=None):
         if _pushed_today(uid, key, today):
             return
-        if push.push_to_user(uid, title, body):
+        if push.push_to_user(uid, title, body, '/', actions):
             _mark_pushed(uid, key, title, body)
 
     # 1. Medicine doses that came due in the last 15 minutes and aren't taken
@@ -113,9 +129,15 @@ def _push_reminders_for_user(uid):
             if day.get('total_ml', 0) < expected * 0.8:
                 bucket = int((n_mins - s_mins) / max(int(interval_h * 60), 30))
                 remaining = int(goal - day.get('total_ml', 0))
+                # Log straight from the notification — the whole point is that
+                # hydration never costs an app open. `sip` is the user's usual
+                # pour (see _usual_sip_ml), not a fabricated 250.
+                sip = _usual_sip_ml(uid)
                 notify(f"water:{today}:{bucket}",
                        '💧 Hydration check',
-                       f"You're behind on water — about {remaining}ml to go today.")
+                       f"You're behind on water — about {remaining}ml to go today.",
+                       actions=[{'action': f'water-{sip}', 'title': f'💧 {sip}ml'},
+                                {'action': 'snooze',       'title': 'Later'}])
 
     # 3. Evening habit / sleep / mood nudges at their configured times
     for flag, tkey, key, title, body in [

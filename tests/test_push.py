@@ -85,8 +85,9 @@ class TestReminderEngine:
     def delivered(self, monkeypatch):
         box = []
         monkeypatch.setattr(push_module, "push_to_user",
-                            lambda uid, title, body, url='/': box.append(
-                                {"uid": uid, "title": title, "body": body}) or 1)
+                            lambda uid, title, body, url='/', actions=None: box.append(
+                                {"uid": uid, "title": title, "body": body,
+                                 "actions": actions}) or 1)
         return box
 
     def test_due_dose_triggers_push_once(self, app, user, delivered):
@@ -119,3 +120,62 @@ class TestReminderEngine:
 
         _push_reminders()
         assert not [p for p in delivered if "TakenPill" in p["title"]]
+
+
+class TestWaterQuickLog:
+    """The hydration reminder carries action buttons so the user can log water
+    straight from the notification, using their real usual pour."""
+
+    @pytest.fixture()
+    def delivered(self, monkeypatch):
+        box = []
+        monkeypatch.setattr(push_module, "push_to_user",
+                            lambda uid, title, body, url='/', actions=None: box.append(
+                                {"uid": uid, "title": title, "body": body,
+                                 "actions": actions}) or 1)
+        return box
+
+    def test_usual_sip_learns_the_users_container(self, app, user):
+        import scheduler
+        from db.core import user_context
+        uid = execute("SELECT id FROM users WHERE email=?", (EMAIL,), fetchone=True)["id"]
+        execute("DELETE FROM hydration_logs WHERE user_id=?", (uid,), commit=True)
+
+        # No history yet → safe default
+        assert scheduler._usual_sip_ml(uid) == 250
+
+        # They actually drink from a 750ml bottle (most often), plus a stray 200
+        from db import log_hydration, today_iso
+        with user_context(uid):
+            for _ in range(3):
+                log_hydration(750, "water", today_iso())
+            log_hydration(200, "water", today_iso())
+        assert scheduler._usual_sip_ml(uid) == 750   # by frequency, not size/recency
+
+    def test_hydration_reminder_has_quick_log_buttons(self, app, user, delivered, monkeypatch):
+        import scheduler
+        from db.core import user_context
+        uid = execute("SELECT id FROM users WHERE email=?", (EMAIL,), fetchone=True)["id"]
+        user.post("/api/push/subscribe", json={"subscription": FAKE_SUB})
+        user.get("/api/reminders/settings")     # creates defaults (water_enabled=1)
+        execute("DELETE FROM hydration_logs WHERE user_id=?", (uid,), commit=True)
+        execute("DELETE FROM notification_log WHERE user_id=?", (uid,), commit=True)
+
+        # Behind pace late in the day → reminder fires
+        from db import log_hydration, today_iso
+        with user_context(uid):
+            log_hydration(500, "water", today_iso())
+        monkeypatch.setattr(scheduler, "_user_local_now",
+                            lambda u: datetime.datetime.combine(
+                                datetime.date.today(), datetime.time(19, 0)))
+
+        with user_context(uid):
+            scheduler._push_reminders_for_user(uid)
+
+        water = [p for p in delivered if "Hydration" in p["title"]]
+        assert water, f"expected a hydration reminder, got {delivered}"
+        acts = water[0]["actions"]
+        assert acts, "hydration reminder must carry quick-log action buttons"
+        # Button offers their real pour (500), not a hardcoded 250, + a snooze
+        assert acts[0]["action"] == "water-500"
+        assert any(a["action"] == "snooze" for a in acts)

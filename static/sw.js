@@ -7,7 +7,7 @@
  *
  * Bump CACHE_VERSION when the shell must be refreshed immediately.
  */
-const CACHE_VERSION = 'arogo-v1';
+const CACHE_VERSION = 'arogo-v2';   // v2: notification action buttons (quick water log)
 const SHELL = [
   '/',
   '/static/css/style.css',
@@ -35,16 +35,46 @@ self.addEventListener('activate', e => {
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (_) {}
-  e.waitUntil(self.registration.showNotification(data.title || 'Arogo', {
+  const opts = {
     body: data.body || '',
     icon: '/static/icons/icon-192.png',
     badge: '/static/icons/icon-192.png',
     data: { url: data.url || '/' },
-  }));
+  };
+  // Optional action buttons (e.g. "💧 250ml" on a hydration reminder) so the
+  // user can act straight from the notification. Most browsers render 2.
+  if (Array.isArray(data.actions) && data.actions.length) {
+    opts.actions = data.actions.slice(0, 2);
+  }
+  e.waitUntil(self.registration.showNotification(data.title || 'Arogo', opts));
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  const act = e.action || '';
+
+  // "water-250" → log it from here; the app never has to open.
+  const water = act.match(/^water-(\d+)$/);
+  if (water) {
+    const ml = Number(water[1]);
+    e.waitUntil(
+      fetch('/api/hydration', {
+        method: 'POST',
+        credentials: 'include',          // same-origin session cookie
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount_ml: ml, drink_type: 'water' }),
+      })
+      .then(r => self.registration.showNotification(
+        r.ok ? '💧 Logged' : "Couldn't log that",
+        { body: r.ok ? `${ml}ml added to today.` : 'Open Arogo to log it.',
+          icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png',
+          tag: 'water-ack' }))
+      .catch(() => {})
+    );
+    return;
+  }
+  if (act === 'snooze') return;   // dismissed; the next pace check will nudge again
+
   const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {

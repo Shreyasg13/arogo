@@ -61,15 +61,25 @@ def get_public_key() -> str | None:
     return b64urlencode(raw)
 
 
-def send_push(sub_row: dict, title: str, body: str, url: str = '/') -> bool:
-    """Send one notification; drops the subscription if the browser revoked it."""
+def send_push(sub_row: dict, title: str, body: str, url: str = '/',
+              actions: list | None = None) -> bool:
+    """Send one notification; drops the subscription if the browser revoked it.
+
+    `actions` are Web Push notification buttons, e.g.
+        [{'action': 'water-250', 'title': '💧 250ml'}, {'action': 'snooze', ...}]
+    The service worker renders them and handles the tap — letting the user act
+    (e.g. log water) without ever opening the app. Max 2 render on most browsers.
+    """
     if not PUSH_AVAILABLE:
         return False
     from db.core import execute
+    payload = {'title': title, 'body': body, 'url': url}
+    if actions:
+        payload['actions'] = actions
     try:
         webpush(
             subscription_info=json.loads(sub_row['sub_json']),
-            data=json.dumps({'title': title, 'body': body, 'url': url}),
+            data=json.dumps(payload),
             vapid_private_key=_private_pem(),
             vapid_claims={'sub': VAPID_CLAIMS_EMAIL},
         )
@@ -86,11 +96,12 @@ def send_push(sub_row: dict, title: str, body: str, url: str = '/') -> bool:
         return False
 
 
-def push_to_user(user_id: str, title: str, body: str, url: str = '/') -> int:
+def push_to_user(user_id: str, title: str, body: str, url: str = '/',
+                 actions: list | None = None) -> int:
     """Send to every subscription the user has. Returns delivered count."""
     if not PUSH_AVAILABLE:
         return 0
     from db.core import execute
     subs = execute("SELECT * FROM push_subscriptions WHERE user_id=?",
                    (user_id,), fetchall=True)
-    return sum(1 for s in subs if send_push(s, title, body, url))
+    return sum(1 for s in subs if send_push(s, title, body, url, actions))
