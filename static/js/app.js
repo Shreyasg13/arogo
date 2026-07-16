@@ -1079,6 +1079,15 @@ function renderFamilyGroup(g) {
       🚨 Alert my family if I miss a dose by 2+ hours
     </label>` : '';
 
+  // Caregiver role: primary (gets alerts) vs viewer (sees status, no pings)
+  const receiveAlertsToggle = `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;
+                  margin-top:10px;padding:10px 12px;border:1px solid var(--gray-100);border-radius:10px">
+      <input type="checkbox" ${g.my_receive_alerts ? 'checked' : ''}
+             data-ev-change="saveFamilyConsent('receive_care_alerts', this.checked)">
+      🔔 Notify me when a family member misses a dose
+    </label>`;
+
   const inviteSection = isOwner ? `
     <div class="panel" style="padding:18px 20px;margin-bottom:16px">
       <h2 class="panel-title" style="margin-bottom:12px">Invite someone</h2>
@@ -1111,6 +1120,7 @@ function renderFamilyGroup(g) {
       <p style="font-size:12px;color:var(--gray-400)">You share only what you switch on below. Changes apply immediately.</p>
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">${consentToggles}</div>
       ${alertToggle}
+      ${receiveAlertsToggle}
     </div>
     ${inviteSection}
     <div>${memberCards}</div>`;

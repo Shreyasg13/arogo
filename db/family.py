@@ -66,6 +66,7 @@ def get_my_group() -> dict | None:
         'my_role': me['role'],
         'my_consent': {f: bool(me[f]) for f in CONSENT_FIELDS},
         'my_alerts': bool(me['alert_missed_doses']),
+        'my_receive_alerts': bool(me['receive_care_alerts']),
         'members': [{
             'user_id': m['user_id'], 'name': m['name'], 'email': m['email'],
             'role': m['role'], 'joined_at': m['joined_at'],
@@ -179,7 +180,7 @@ def update_consent(flags: dict) -> dict:
                              'family about missed doses')
 
     sets, params = [], []
-    for f in CONSENT_FIELDS + ['alert_missed_doses']:
+    for f in CONSENT_FIELDS + ['alert_missed_doses', 'receive_care_alerts']:
         if f in flags:
             sets.append(f"{f}=?")
             params.append(1 if flags[f] else 0)
@@ -193,6 +194,7 @@ def update_consent(flags: dict) -> dict:
     me = my_membership()
     out = {f: bool(me[f]) for f in CONSENT_FIELDS}
     out['alert_missed_doses'] = bool(me['alert_missed_doses'])
+    out['receive_care_alerts'] = bool(me['receive_care_alerts'])
     return out
 
 

@@ -208,10 +208,12 @@ def _caregiver_alerts():
                     title = f"🚨 {name} missed a dose"
                     body = (f"{med} was scheduled at {d['time']} and hasn't been "
                             f"marked as taken.")
+                    # Only caregivers who opted to receive alerts (primary,
+                    # not viewer) are pinged.
                     others = execute("""
                         SELECT u.id, u.email, u.name FROM family_members m
                         JOIN users u ON u.id = m.user_id
-                        WHERE m.group_id=? AND m.user_id<>?""",
+                        WHERE m.group_id=? AND m.user_id<>? AND m.receive_care_alerts=1""",
                         (w['group_id'], uid), fetchall=True)
                     for o in others:
                         push.push_to_user(o['id'], title, body, '/')

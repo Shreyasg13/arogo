@@ -310,6 +310,37 @@ class TestCaregiverAlerts:
         # Member is told family was notified (never covert)
         assert any(p["uid"] == dave_id and "family" in p["title"].lower() for p in pushes)
 
+    def test_viewer_does_not_receive_alerts(self, app, carol, dave, group, monkeypatch):
+        # Carol opts out of receiving alerts (becomes a "viewer") → she is not
+        # pinged even when Dave misses a dose.
+        import datetime as dt
+        import push as push_module
+        import mailer
+        import scheduler
+
+        carol.post("/api/family/consent", json={"receive_care_alerts": False})
+        dave.post("/api/family/consent",
+                  json={"share_medicines": True, "alert_missed_doses": True})
+        r = dave.post("/api/medicines",
+                      json={"name": "ViewerPill", "dosage": "1", "times": ["09:00"]})
+        assert r.status_code == 200
+        noon = dt.datetime.combine(dt.date.today(), dt.time(12, 0))
+        monkeypatch.setattr(scheduler, "_user_local_now", lambda uid: noon)
+
+        pushes, mails = [], []
+        monkeypatch.setattr(push_module, "push_to_user",
+                            lambda uid, t, b, url='/': pushes.append({"uid": uid, "title": t}) or 1)
+        monkeypatch.setattr(mailer, "send_email", lambda to, s, txt: mails.append(to) or True)
+
+        scheduler._caregiver_alerts()
+
+        carol_id = next(m["user_id"] for m in group["members"]
+                        if m["email"] == "carol@medeasy.test")
+        assert not any(p["uid"] == carol_id and "missed a dose" in p["title"] for p in pushes)
+        assert "carol@medeasy.test" not in mails
+        # restore so later tests keep their assumptions
+        carol.post("/api/family/consent", json={"receive_care_alerts": True})
+
     def test_taken_dose_never_alerts(self, app, dave, group, monkeypatch):
         import datetime as dt
         import push as push_module
