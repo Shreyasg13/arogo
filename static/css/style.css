@@ -4719,6 +4719,8 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .care-item-name { font-size:13.5px; font-weight:600; color:var(--gray-800); }
 .care-item-status { font-size:12px; color:var(--gray-500); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .care-item.is-alert .care-item-status { color:var(--red-500); }
+.care-item-refill { font-size:11.5px; color:#B0791E; margin-top:2px; }
+[data-theme="dark"] .care-item-refill { color:#E0A94A; }
 .care-item-icon { flex-shrink:0; font-size:16px; }
 .care-ack-btn {
   flex-shrink:0; background:var(--red-500); color:#fff; border:none; border-radius:999px;

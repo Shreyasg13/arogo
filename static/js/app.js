@@ -1528,6 +1528,11 @@ async function loadCarePanel() {
                     : `${m.taken} of ${m.total} doses taken`;
       const detail  = overdue ? m.overdue.map(o => `${escHtml(o.med_name || 'dose')} · ${o.time}`).join(', ')
                     : (m.last_ago_min != null ? `last dose ${ago(m.last_ago_min)}` : '');
+      const low     = (m.low_stock && m.low_stock.length) ? m.low_stock[0] : null;
+      const refill  = low
+        ? `🔄 ${escHtml(low.name || 'A medicine')} running low${low.days_left != null ? ` (~${Math.max(0, Math.round(low.days_left))}d)` : ''}`
+          + (m.low_stock.length > 1 ? ` +${m.low_stock.length - 1} more` : '')
+        : '';
       const cls     = overdue ? 'is-alert' : done ? 'is-ok' : 'is-pending';
       const icon    = overdue ? '🚨' : done ? '✓' : '💊';
       // Coordination: on an overdue member, let one caregiver claim it so the
@@ -1545,6 +1550,7 @@ async function loadCarePanel() {
         <div class="care-item-body">
           <div class="care-item-name">${escHtml(m.name)}</div>
           <div class="care-item-status">${status}${detail ? ' · ' + detail : ''}</div>
+          ${refill ? `<div class="care-item-refill">${refill}</div>` : ''}
         </div>
         ${right}
       </div>`;

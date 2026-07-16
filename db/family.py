@@ -323,13 +323,15 @@ def care_status() -> list:
     out = []
     for mem in members:
         muid = mem['user_id']
-        doses = []
+        doses, low_stock = [], []
         try:
             with user_context(muid):
-                from db import get_today_doses
+                from db import get_today_doses, get_low_stock_medicines
                 from db.food import get_user_timezone
                 doses = get_today_doses()
                 hhmm = _local_now_hhmm(get_user_timezone())
+                low_stock = [{'name': lm.get('name'), 'days_left': lm.get('days_left')}
+                             for lm in get_low_stock_medicines()]
         except Exception:
             hhmm = _local_now_hhmm(None)
         total = len(doses)
@@ -353,6 +355,7 @@ def care_status() -> list:
             'total': total,
             'taken': taken,
             'overdue': overdue,
+            'low_stock': low_stock,
             'last_taken': last_taken,
             'last_ago_min': last_ago_min,
             'checking_by': (ack['caregiver_name'] if ack else None),

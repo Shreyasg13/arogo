@@ -415,6 +415,18 @@ class TestCareStatus:
         r = carol.post("/api/family/care-ack", json={"target_user_id": "nobody"})
         assert r.status_code == 403
 
+    def test_care_status_surfaces_low_stock(self, carol, dave, group):
+        dave.post("/api/family/consent", json={"share_medicines": True})
+        r = dave.post("/api/medicines",
+                      json={"name": "RefillPill", "dosage": "1", "times": ["08:00", "20:00"]})
+        mid = r.get_json()["medicine"]["id"]
+        # 2 pills · 1/dose · twice daily → ~1 day left, threshold 7 → low
+        dave.post(f"/api/medicines/{mid}/stock",
+                  json={"pill_count": 2, "pills_per_dose": 1, "refill_threshold": 7})
+        row = next(m for m in carol.get("/api/family/care-status").get_json()
+                   if m["user_id"] == self._dave_id(group))
+        assert any(ls["name"] == "RefillPill" for ls in row["low_stock"])
+
 
 class TestEncouragement:
     """Caregiver → member kudos: sent, received unread, then marked read."""
