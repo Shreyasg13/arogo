@@ -475,6 +475,20 @@ class TestHydration:
         _, d = jget(client, f"/api/hydration/{TODAY}")
         assert isinstance(d.get("pct"), (int, float))
 
+    def test_usual_portions_learn_what_you_actually_eat(self, client):
+        """The food DB's serving_g is a generic average; the picker should open
+        on the user's own plate (2 rotis), learned from their logs."""
+        assert jget(client, "/api/food/db")[1]["usual_portions"] == {}   # cold start
+        for _ in range(4):
+            jpost(client, "/api/food/log", {
+                "food_id": "roti", "food_name": "Roti", "quantity_g": 60,
+                "calories": 90, "date_key": TODAY})
+        jpost(client, "/api/food/log", {                    # a one-off outlier
+            "food_id": "roti", "food_name": "Roti", "quantity_g": 100,
+            "calories": 150, "date_key": TODAY})
+        p = jget(client, "/api/food/db")[1]["usual_portions"]
+        assert p["roti"] == 60, "should learn the habitual portion, not the outlier"
+
     def test_usual_ml_learns_their_container_not_their_latte(self, client):
         """Quick-log should offer the user's real glass. Nobody drinks '250ml'."""
         assert jget(client, f"/api/hydration/{TODAY}")[1]["usual_ml"] == 250  # cold start

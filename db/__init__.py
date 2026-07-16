@@ -16,6 +16,7 @@ from .fitness     import (insert_activity, list_activities, delete_activity, fit
                           log_sync, get_sync_history)
 from .food        import (get_profile, update_profile, calc_tdee,
                           log_food, get_food_logs, delete_food_log, get_nutrition_summary, get_weekly_nutrition,
+                          usual_portions,
                           save_custom_food, list_custom_foods, get_custom_food_by_barcode)
 from .wellness    import (get_thoughts, save_thought, update_thought, delete_thought,
                           get_thoughts_range, count_thoughts_today, MAX_THOUGHTS_PER_DAY,
@@ -43,6 +44,7 @@ __all__ = [
     "save_token", "get_token", "list_tokens", "delete_token", "update_last_sync",
     "log_sync", "get_sync_history",
     "get_profile", "update_profile", "calc_tdee", "log_food", "get_food_logs", "delete_food_log",
+    "usual_portions",
     "get_nutrition_summary", "get_weekly_nutrition", "save_custom_food", "list_custom_foods",
     "get_custom_food_by_barcode",
     "get_thoughts", "save_thought", "update_thought", "delete_thought",

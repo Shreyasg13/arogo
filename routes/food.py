@@ -55,7 +55,10 @@ def food_database():
     return jsonify({
         'foods':      results,
         'custom':     custom_results,
-        'categories': CATEGORIES
+        'categories': CATEGORIES,
+        # What this user actually puts on the plate, per food — so the portion
+        # picker can default to their serving instead of a generic average.
+        'usual_portions': usual_portions(),
     })
 
 @bp.route('/api/food/log', methods=['POST'])

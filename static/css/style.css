@@ -2417,6 +2417,9 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 /* ════════════════════════════════════
    DASHBOARD TODOS PANEL
    ════════════════════════════════════ */
+/* "Your usual portion" hint under the food quantity input */
+.food-qty-usual { font-size:11.5px; color:var(--teal-600); margin-top:5px; font-weight:600; }
+
 /* Inline quick-add for the dashboard Tasks panel */
 .dash-todo-add { display:flex; gap:8px; margin:6px 0 4px; }
 .dash-todo-add input {

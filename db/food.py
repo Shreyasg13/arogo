@@ -154,6 +154,25 @@ def log_food(data: dict) -> dict:
     r = execute("SELECT * FROM food_logs WHERE id=?", (fid,), fetchone=True)
     return _fmt_food_log(r)
 
+def usual_portions() -> dict:
+    """{food_id: grams} — the portion the user habitually eats of each food,
+    learned from their own logs. The food DB's serving_g is a generic average;
+    this is what *they* actually put on the plate, so the picker can default to
+    it instead of making them re-type '2 rotis' every time."""
+    rows = execute("""SELECT food_id, quantity_g, COUNT(*) AS n
+                      FROM food_logs
+                      WHERE user_id=? AND quantity_g > 0
+                      GROUP BY food_id, quantity_g
+                      ORDER BY food_id, n DESC""",
+                   (current_user_id(),), fetchall=True)
+    out = {}
+    for r in rows:            # rows are grouped by food, most-frequent first
+        fid = r['food_id']
+        if fid and fid not in out:
+            out[fid] = int(round(to_num(r['quantity_g'], 0, lo=0, hi=100000)))
+    return out
+
+
 def get_food_logs(date_key: str) -> list:
     rows = execute(
         "SELECT * FROM food_logs WHERE date_key=? AND user_id=? ORDER BY logged_at",

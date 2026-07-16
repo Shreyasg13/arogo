@@ -4289,11 +4289,16 @@ const FOOD_QTY_MODE = {
   "sattu_drink": "scoop"
 };
 
+// {food_id: grams} — what this user habitually eats of each food, so the
+// portion picker opens on THEIR serving instead of the DB's generic average.
+let _usualPortions = {};
+
 async function loadFoodCategories() {
   const r = await fetch('/api/food/db').then(res => res.json()).catch(err => {
     console.error('[Food] /api/food/db failed:', err);
     return {categories:[], foods:[]};
   });
+  if (r.usual_portions) _usualPortions = r.usual_portions;
   const sel = document.getElementById('food-cat-select');
   if (!sel) return;
   const allCats = r.categories || [];
@@ -4376,6 +4381,7 @@ async function searchFoodDB(query) {
       console.error('[Food] search failed:', err);
       return {foods:[], custom:[]};
     });
+    if (r.usual_portions) _usualPortions = r.usual_portions;
     const all = [
       ...(r.foods || []),
       ...(r.custom || []).map(c => ({...c, cal:c.calories}))
@@ -4425,7 +4431,13 @@ function selectFoodItem(food) {
   const col = document.getElementById('food-add-col');
   if (!col) return;
 
-  const scale = (food.serving_g || 100) / 100;
+  // Open on the portion THEY usually eat, if we've seen it before. serving_g is
+  // a generic average; this is their plate. Falls back until they've logged it.
+  const _servingG = food.serving_g || 100;
+  const _usualG   = Number(_usualPortions[food.id]) || 0;
+  const _startG   = _usualG || _servingG;
+
+  const scale = _startG / 100;                    // preview matches the input
   const cal   = Math.round((food.calories || food.cal || 0) * scale);
   const prot  = Math.round(food.protein * scale * 10)/10;
   const carbs = Math.round(food.carbs * scale * 10)/10;
@@ -4441,7 +4453,9 @@ function selectFoodItem(food) {
 
   // Smart quantity mode
   const qtyMode  = FOOD_QTY_MODE[food.id] || 'gram';
-  const servingG = food.serving_g || 100;
+  const servingG = _servingG;      // the food's true serving — drives unit hints
+  const usualG   = _usualG;        // their habitual portion (0 = never logged)
+  const startG   = _startG;        // what the input opens on
 
   // Unit toggle state — stored on window so toggle function can access it
   window._qtyActiveUnit = qtyMode === 'gram' ? 'gram' : 'primary';
@@ -4453,28 +4467,34 @@ function selectFoodItem(food) {
         <label class="form-label">Quantity</label>
         <div class="food-qty-single-row">
           <input type="number" class="form-input" id="food-qty-input"
-                 value="${servingG}" min="1" step="5"
+                 value="${startG}" min="1" step="5"
                  data-ev-input="updateFoodPreview(this.value)">
           <span class="food-qty-unit-badge">g</span>
         </div>
+        ${usualG ? `<div class="food-qty-usual">Your usual portion</div>` : ''}
       </div>`;
     }
 
     // For dual-unit foods: toggle on top, one input below
     let unit1, unit2, step1, step2, default1, hint;
+    // Where we know their habitual grams, open on that — converted into the
+    // unit they're actually shown (2 pcs, 1.5 cups…), not a flat "1".
     if (qtyMode === 'scoop') {
       const ul = food.serving_unit || 'scoop';
       unit1 = ul + 's'; unit2 = 'g';
-      step1 = 0.5; step2 = 1; default1 = 1;
+      step1 = 0.5; step2 = 1;
+      default1 = usualG ? Math.max(0.5, Math.round(usualG / servingG * 2) / 2) : 1;
       hint = `1 ${ul} = ${servingG}g`;
     } else if (qtyMode === 'cup') {
       unit1 = 'cups'; unit2 = 'ml';
       step1 = 0.25; step2 = 10;
-      default1 = Math.round(servingG / 240 * 4) / 4 || 1;
+      default1 = usualG ? Math.max(0.25, Math.round(usualG / 240 * 4) / 4)
+                        : (Math.round(servingG / 240 * 4) / 4 || 1);
       hint = '1 cup = 240ml';
     } else { // count
       unit1 = 'pcs'; unit2 = 'g';
-      step1 = 1; step2 = 1; default1 = 1;
+      step1 = 1; step2 = 1;
+      default1 = usualG ? Math.max(1, Math.round(usualG / servingG)) : 1;
       hint = '1 pc ≈ ' + servingG + 'g';
     }
 
@@ -4493,6 +4513,7 @@ function selectFoodItem(food) {
         '<span class="food-qty-unit-badge" id="food-qty-unit-badge">' + unit1 + '</span>' +
       '</div>' +
       '<div class="food-qty-hint" id="food-qty-hint">' + hint + '</div>' +
+      (usualG ? '<div class="food-qty-usual">Your usual portion</div>' : '') +
     '</div>';
   };
 
@@ -4526,6 +4547,16 @@ function selectFoodItem(food) {
       Add to ${MEAL_TYPES.find(m=>m.id===selectedMealType)?.label || 'Meal'}
     </button>
   </div>`;
+
+  // Keep the macro preview honest: it must show the calories for the quantity
+  // actually in the box. Count/cup modes round to whole pcs/quarter-cups, so a
+  // preview derived from raw grams would understate or overstate what gets
+  // logged. Syncing from the rendered input makes drift impossible.
+  const qtyInput = document.getElementById('food-qty-input');
+  if (qtyInput) {
+    if (qtyMode === 'gram') updateFoodPreview(qtyInput.value);
+    else                    updateFoodPreviewSmart(qtyInput.value, 'primary', servingG, qtyMode);
+  }
 }
 
 // ── Smart quantity unit toggle ─────────────────────────────────────────────
