@@ -7,7 +7,7 @@
  *
  * Bump CACHE_VERSION when the shell must be refreshed immediately.
  */
-const CACHE_VERSION = 'arogo-v3';   // v3: dose + water quick-log from notifications
+const CACHE_VERSION = 'arogo-v4';   // v4: dose + water + mood quick-log from notifications
 const SHELL = [
   '/',
   '/static/css/style.css',
@@ -90,6 +90,28 @@ self.addEventListener('notificationclick', e => {
         body: JSON.stringify({ date: localToday(), time, taken: true }),
       })
       .then(r => ack(r.ok, `Dose marked taken (${time}).`, 'dose-ack'))
+      .catch(() => {})
+    );
+    return;
+  }
+
+  // "mood-happy" → journal the day's mood without opening the app. Keys match
+  // the app's own scale (CI_MOODS) so it reads identically in the journal.
+  const mood = act.match(/^mood-([a-z]+)$/);
+  if (mood) {
+    const key = mood[1];
+    const words = { terrible: 'rough', sad: 'not great', neutral: 'okay',
+                    happy: 'good', excited: 'great' };
+    const word = words[key] || key;
+    e.waitUntil(
+      fetch('/api/thoughts', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: `Check-in: feeling ${word}.`, mood: key,
+                               date_key: localToday() }),
+      })
+      .then(r => ack(r.ok, `Noted — feeling ${word}.`, 'mood-ack'))
       .catch(() => {})
     );
     return;

@@ -160,6 +160,30 @@ class TestWaterQuickLog:
             log_hydration(200, "water", today_iso())
         assert scheduler._usual_sip_ml(uid) == 750   # by frequency, not size/recency
 
+    def test_mood_reminder_can_be_answered_from_the_notification(self, app, user, delivered, monkeypatch):
+        import scheduler
+        from db.core import user_context, execute as ex
+        uid = ex("SELECT id FROM users WHERE email=?", (EMAIL,), fetchone=True)["id"]
+        user.post("/api/push/subscribe", json={"subscription": FAKE_SUB})
+        user.get("/api/reminders/settings")
+        ex("DELETE FROM notification_log WHERE user_id=?", (uid,), commit=True)
+
+        # Pretend it's exactly the configured mood-reminder time
+        rs = user.get("/api/reminders/settings").get_json()
+        h, m = (rs.get("mood_reminder_time") or "18:00").split(":")
+        monkeypatch.setattr(scheduler, "_user_local_now",
+                            lambda u: datetime.datetime.combine(
+                                datetime.date.today(), datetime.time(int(h), int(m))))
+        with user_context(uid):
+            scheduler._push_reminders_for_user(uid)
+
+        mood = [p for p in delivered if "How was your day" in p["title"]]
+        assert mood, f"expected the mood nudge, got {[p['title'] for p in delivered]}"
+        acts = mood[0]["actions"]
+        assert acts, "mood nudge should be answerable from the notification"
+        # The two that matter: fine vs not-fine (keys match the app's CI_MOODS)
+        assert {a["action"] for a in acts} == {"mood-happy", "mood-sad"}
+
     def test_hydration_reminder_has_quick_log_buttons(self, app, user, delivered, monkeypatch):
         import scheduler
         from db.core import user_context

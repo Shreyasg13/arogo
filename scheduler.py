@@ -136,19 +136,25 @@ def _push_reminders_for_user(uid):
                        actions=[{'action': f'water-{sip}', 'title': f'💧 {sip}ml'},
                                 {'action': 'snooze',       'title': 'Later'}])
 
-    # 3. Evening habit / sleep / mood nudges at their configured times
-    for flag, tkey, key, title, body in [
+    # 3. Evening habit / sleep / mood nudges at their configured times.
+    #    The mood nudge answers itself: browsers render 2 buttons, so we offer
+    #    the split that matters — fine vs not-fine ("not great" is the signal
+    #    worth catching). Anything more nuanced is one tap away in the app.
+    MOOD_ACTIONS = [{'action': 'mood-happy', 'title': '😊 Good'},
+                    {'action': 'mood-sad',   'title': '😕 Not great'}]
+    for flag, tkey, key, title, body, acts in [
         ('habit_reminder_enabled', 'habit_reminder_time', 'habit',
-         '⭐ Evening habit check', 'Tick off what you completed today.'),
+         '⭐ Evening habit check', 'Tick off what you completed today.', None),
         ('sleep_reminder_enabled', 'sleep_reminder_time', 'sleep',
-         '🌙 Wind-down time', "Log last night's sleep and get ready for bed."),
+         '🌙 Wind-down time', "Log last night's sleep and get ready for bed.", None),
         ('mood_reminder_enabled', 'mood_reminder_time', 'mood',
-         '😊 How was your day?', 'A one-line journal entry keeps the streak alive.'),
+         '😊 How was your day?', 'A one-line journal entry keeps the streak alive.',
+         MOOD_ACTIONS),
     ]:
         if rs.get(flag):
             mins = _mins_since(rs.get(tkey) or '', hhmm)
             if mins is not None and 0 <= mins <= 15:
-                notify(f"{key}:{today}", title, body)
+                notify(f"{key}:{today}", title, body, acts)
 
 
 def _push_reminders():
