@@ -1957,12 +1957,108 @@ function openReportDetail(r) {
     </div>
     ${r.tags?.length?`<div style="margin-bottom:18px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:8px">Tags</div><div style="display:flex;flex-wrap:wrap;gap:6px">${r.tags.map(t=>`<span class="report-tag">${escHtml(t)}</span>`).join('')}</div></div>`:''}
     ${r.analysis_notes?`<div style="margin-bottom:18px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:8px">Analysis Notes</div><div style="font-size:13.5px;line-height:1.7;color:var(--gray-700);background:var(--gray-25);border:1px solid var(--gray-100);border-radius:var(--r-md);padding:12px">${escHtml(r.analysis_notes)}</div></div>`:''}
+    <div id="rdetail-readings" style="margin-bottom:18px"></div>
     <div class="form-actions" style="margin-top:16px;padding-top:16px">
       <button class="btn-primary" data-ev-click="downloadFile('/uploads/${r.filename}','${r.original_name}')">Download</button>
       <button class="btn-danger" data-ev-click="deleteReport('${r.id}');closeModal('report-detail-overlay')">Delete</button>
     </div>
   `;
   document.getElementById('report-detail-overlay').style.display = 'flex';
+  loadReportReadings(r.id);
+}
+
+// ── Readings found in a report ──
+// An uploaded report used to be a filing cabinet: it went in and nothing came
+// back. We read the numbers out of it and *offer* them — the user confirms
+// every one. Wrong data in a health chart is worse than no data, so nothing
+// here writes a vital until they say so.
+let _reportReadings = [], _reportReadingsDate = '';
+
+function _readingValue(v) {
+  return v.value2 ? `${+v.value1}/${+v.value2}` : `${+v.value1}`;
+}
+
+async function loadReportReadings(rid) {
+  const box = document.getElementById('rdetail-readings');
+  if (!box) return;
+  box.innerHTML = `<div style="font-size:12.5px;color:var(--gray-400)">Checking this report for readings…</div>`;
+  let d;
+  try {
+    d = await (await fetch(`/api/reports/${rid}/readings`)).json();
+  } catch { box.innerHTML = ''; return; }
+
+  _reportReadings = d.readings || [];
+  _reportReadingsDate = d.date_key || localToday();
+
+  if (!_reportReadings.length) {
+    // Say why, rather than showing nothing and letting them wonder.
+    box.innerHTML = d.reason
+      ? `<div style="font-size:12.5px;color:var(--gray-400);background:var(--gray-25);border:1px solid var(--gray-100);border-radius:var(--r-md);padding:10px 12px">${escHtml(d.reason)}</div>`
+      : '';
+    return;
+  }
+
+  box.innerHTML = `
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:8px">
+      Readings in this report
+    </div>
+    <div style="font-size:12.5px;color:var(--gray-500);margin-bottom:10px">
+      We read these off the report — check them against it, then add the ones you want.
+      Nothing is saved to your vitals until you do.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${_reportReadings.map((v, i) => `
+        <label style="display:flex;gap:10px;align-items:flex-start;background:var(--gray-25);border:1px solid var(--gray-100);border-radius:var(--r-md);padding:10px 12px;cursor:pointer">
+          <input type="checkbox" class="rdetail-reading-cb" data-idx="${i}" checked style="margin-top:3px">
+          <span style="flex:1;min-width:0">
+            <span style="font-size:13.5px;color:var(--gray-800)">
+              <b>${escHtml(v.label)}</b>
+              <span style="font-family:'JetBrains Mono',monospace">${_readingValue(v)}</span>
+              ${escHtml(v.unit || '')}
+              ${v.note ? `<span style="color:var(--gray-400);font-size:11.5px"> · ${escHtml(v.note)}</span>` : ''}
+            </span>
+            <span style="display:block;font-size:11.5px;color:var(--gray-400);margin-top:3px;overflow-wrap:anywhere">
+              from the report: “${escHtml(v.context || '')}”
+            </span>
+          </span>
+        </label>`).join('')}
+    </div>
+    <button class="btn-secondary" style="margin-top:10px" data-ev-click="addReportReadings('${rid}')"
+            id="rdetail-add-readings">Add checked to vitals</button>
+  `;
+}
+
+async function addReportReadings() {
+  const btn = document.getElementById('rdetail-add-readings');
+  const picked = [..._reportReadings.keys()].filter(i =>
+    document.querySelector(`.rdetail-reading-cb[data-idx="${i}"]`)?.checked);
+  if (!picked.length) { showToast('Nothing checked to add', 'error'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+
+  let added = 0;
+  for (const i of picked) {
+    const v = _reportReadings[i];
+    try {
+      const r = await fetch('/api/vitals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: v.type, value1: v.value1, value2: v.value2, unit: v.unit,
+          // Date it to the day of the test, not the day it was uploaded.
+          date_key: _reportReadingsDate,
+          notes: 'From lab report',
+        }),
+      });
+      if ((await r.json()).success) added++;
+    } catch { /* counted as not added */ }
+  }
+
+  // Report honestly: if some failed the range check, don't claim they landed.
+  showToast(added === picked.length
+      ? `Added ${added} reading${added > 1 ? 's' : ''} to vitals`
+      : `Added ${added} of ${picked.length} — check the rest by hand`,
+    added ? 'success' : 'error');
+  if (added) { closeModal('report-detail-overlay'); loadDashboard(); }
+  else if (btn) { btn.disabled = false; btn.textContent = 'Add checked to vitals'; }
 }
 
 function deleteReport(id) {
@@ -2059,6 +2155,13 @@ function setupUploadForm() {
         setDates();
         closeModal('upload-modal-overlay');
         loadReports();
+        // If the report has readings in it, this is the moment to offer them —
+        // they just held the document; they'd never think to reopen it later.
+        // Quiet when there's nothing to add: no modal, no interruption.
+        try {
+          const rd = await (await fetch(`/api/reports/${data.report.id}/readings`)).json();
+          if (rd.readings?.length) openReportDetail(data.report);
+        } catch { /* the report is saved either way */ }
       } else showToast(data.error || 'Upload failed', 'error');
     } catch { showToast('Network error', 'error'); }
     finally { btn.disabled = false; btn.textContent = 'Upload & Save'; }

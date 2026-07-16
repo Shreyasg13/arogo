@@ -75,6 +75,36 @@ def del_report(rid):
         return jsonify({'success': True})
     return jsonify({'error': 'Not found'}), 404
 
+@bp.route('/api/reports/<rid>/readings')
+@require_auth
+def report_readings(rid):
+    """Propose the vitals found in an uploaded report — never writes them.
+
+    The user confirms each reading before it becomes a health record; see
+    lab_parse for why we'd rather find nothing than find something wrong.
+    """
+    import lab_parse
+
+    r = get_report(rid)          # user-scoped: None for someone else's report
+    if not r:
+        return jsonify({'error': 'Not found'}), 404
+
+    path = os.path.join(current_app.config['UPLOAD_FOLDER'], r['filename'])
+    if not os.path.exists(path):
+        return jsonify({'readings': [], 'reason': "That file is no longer on the server."})
+
+    text, reason = lab_parse.extract_text(path, r.get('file_ext', ''))
+    if text is None:
+        return jsonify({'readings': [], 'reason': reason})
+
+    readings = lab_parse.find_readings(text)
+    # Date the readings to the day of the test, not the day of the upload.
+    return jsonify({'readings': readings,
+                    'date_key': r.get('report_date') or today_iso(),
+                    'reason': '' if readings else
+                              "We read the report but couldn't find any readings we track."})
+
+
 @bp.route('/api/stats')
 @require_auth
 def stats():
