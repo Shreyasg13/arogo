@@ -1140,6 +1140,15 @@ function renderFamilyGroup(g) {
         ${dangerBtn}
       </div>
       <p style="font-size:12px;color:var(--gray-400)">You share only what you switch on below. Changes apply immediately.</p>
+      <details class="family-explainer">
+        <summary>How sharing works</summary>
+        <ul>
+          <li><b>Nothing is shared by default.</b> Each category below is off until you turn it on — and you can switch any of them off again anytime.</li>
+          <li><b>You choose per category.</b> Sharing medicines doesn't share your journal; sharing sleep doesn't share your vitals.</li>
+          <li><b>Missed-dose alerts are opt-in.</b> Your family is only told about a missed dose if you turn that on — and you always get a heads-up first.</li>
+          <li><b>Primary vs. viewer.</b> Anyone can see what's shared; only those who opt in to "Notify me…" get pinged about missed doses.</li>
+        </ul>
+      </details>
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">${consentToggles}</div>
       ${alertToggle}
       ${receiveAlertsToggle}

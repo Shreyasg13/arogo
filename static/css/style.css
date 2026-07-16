@@ -4680,6 +4680,13 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 .checkin-prompt-dismiss:hover { color:var(--gray-700); background:var(--gray-100); }
 
+/* Family "how sharing works" explainer */
+.family-explainer { margin-top:10px; font-size:12.5px; }
+.family-explainer summary { cursor:pointer; color:var(--teal-600); font-weight:600; width:fit-content; }
+.family-explainer summary:hover { color:var(--teal-700); }
+.family-explainer ul { margin:8px 0 0; padding-left:18px; display:flex; flex-direction:column; gap:6px; color:var(--gray-600); }
+.family-explainer li { line-height:1.45; }
+
 /* Shared emergency card (in a family member's summary) */
 .emergency-card-share {
   background:#FDECEA; border:1px solid #F6C7C0; border-radius:var(--r-md);
