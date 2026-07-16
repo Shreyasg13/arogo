@@ -882,6 +882,28 @@ document.addEventListener('keydown', e => {
   else                                  submitRegister();
 });
 
+// ── Accessibility: Escape closes the topmost open overlay ──
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const open = [...document.querySelectorAll('.modal-overlay, .checkin-overlay, .global-search-wrap')]
+    .filter(el => getComputedStyle(el).display !== 'none');
+  if (open.length) { open[open.length - 1].style.display = 'none'; e.preventDefault(); }
+});
+
+// ── Accessibility: label modals + icon-only controls for screen readers ──
+function _applyA11yLabels() {
+  document.querySelectorAll('.modal').forEach(m => {
+    m.setAttribute('role', 'dialog');
+    m.setAttribute('aria-modal', 'true');
+    const title = m.querySelector('.modal-title');
+    if (title && !m.getAttribute('aria-label')) m.setAttribute('aria-label', title.textContent.trim());
+  });
+  document.querySelectorAll('.modal-close').forEach(b => {
+    if (!b.getAttribute('aria-label')) b.setAttribute('aria-label', 'Close');
+  });
+}
+document.addEventListener('DOMContentLoaded', _applyA11yLabels);
+
 // ── State ──
 let selectedTags = [], selectedFile = null, selectedIcon = '💊', selectedColor = 'teal', selectedActivityType = 'running';
 let notifPermission = 'default';
