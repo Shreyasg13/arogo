@@ -97,7 +97,9 @@ def add_food_log():
             'fiber':     to_num(data.get('fiber',    0), 0, lo=0),
             'sugar':     to_num(data.get('sugar',    0), 0, lo=0),
             'sodium':    to_num(data.get('sodium',   0), 0, lo=0),
-            'nutrients': json_mod.dumps(nutrients),
+            # A dict: log_food jdump()s it. Passing a JSON string here
+            # double-encoded it into a string-inside-a-string.
+            'nutrients': nutrients,
         }
     else:
         # Legacy: look up from FOOD_BY_ID by food_id
@@ -118,7 +120,7 @@ def add_food_log():
             'fiber':     round(food_item.get('fiber',   0) * scale, 1),
             'sugar':     round(food_item.get('sugar',   0) * scale, 1),
             'sodium':    round(food_item.get('sodium',  0) * scale, 1),
-            'nutrients': json_mod.dumps({
+            'nutrients': ({
                 'vit_a':    round(food_item.get('vit_a',    0) * scale, 1),
                 'vit_c':    round(food_item.get('vit_c',    0) * scale, 1),
                 'vit_d':    round(food_item.get('vit_d',    0) * scale, 1),
@@ -155,24 +157,14 @@ def get_food_log(date_key):
 @bp.route('/api/food/log/<lid>', methods=['PATCH'])
 @require_auth
 def api_update_food_log(lid):
-    from db.core import execute
-    d       = request.json or {}
-    new_qty = to_num(d.get('quantity_g', 0), 0, lo=0, hi=100000)
-    if not new_qty or new_qty <= 0:
-        return jsonify({'error': 'Invalid quantity'}), 400
-    from db.core import current_user_id
-    row = execute('SELECT * FROM food_logs WHERE id=? AND user_id=?',
-                  (lid, current_user_id()), fetchone=True)
-    if not row:
+    d = request.json or {}
+    try:
+        log = update_food_log(lid, d.get('quantity_g', 0))
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    if not log:
         return jsonify({'error': 'Not found'}), 404
-    old_qty = float(row['quantity_g']) or 100
-    scale   = new_qty / old_qty
-    execute('UPDATE food_logs SET quantity_g=?,calories=?,protein=?,carbs=?,fat=?,fiber=? WHERE id=? AND user_id=?',
-        (new_qty,
-         round((row['calories'] or 0)*scale,1), round((row['protein'] or 0)*scale,1),
-         round((row['carbs'] or 0)*scale,1),    round((row['fat'] or 0)*scale,1),
-         round((row['fiber'] or 0)*scale,1),    lid, current_user_id()), commit=True)
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'log': log})
 
 @bp.route('/api/food/log/<lid>', methods=['DELETE'])
 @require_auth

@@ -21,6 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
 import datetime
+import json
 import pytest
 import auth as auth_module
 from db.core import init_db, execute
@@ -145,6 +146,102 @@ class TestFoodLogPatch:
         assert row["quantity_g"] == 200
         assert row["calories"] == pytest.approx(400, abs=0.11)
         assert row["protein"] == pytest.approx(10, abs=0.11)
+
+    def test_patch_scales_sugar_sodium_and_micronutrients_too(self, client):
+        """Every per-portion value scales, not just the macros the UI shows.
+
+        The PATCH used to rescale quantity/calories/protein/carbs/fat/fiber and
+        silently leave sugar, sodium and the whole nutrients blob at their
+        original values — so halving a portion halved the calories while sodium
+        stayed put, permanently over-reporting it in the day's totals and in
+        the nutrition advice built on them. For someone tracking sodium because
+        of their blood pressure, a downward correction that leaves sodium
+        untouched is the wrong direction to fail in.
+        """
+        # A real food, so the route derives micronutrients from the food DB.
+        from food_data import FOOD_BY_ID
+        food = next(f for f in FOOD_BY_ID.values() if f.get("calcium"))
+
+        r = _log(client, food_id=food["id"], food_name=food["name"],
+                 quantity_g=200, calories=100, sugar=20, sodium=50)
+        lid = r.get_json()["log"]["id"]
+        before = json.loads(execute("SELECT nutrients FROM food_logs WHERE id=?",
+                                    (lid,), fetchone=True)["nutrients"])
+        assert before["calcium"] > 0, "test needs a food with micronutrients"
+
+        assert client.patch(f"/api/food/log/{lid}",
+                            json={"quantity_g": 100}).status_code == 200
+
+        row = execute("SELECT * FROM food_logs WHERE id=?", (lid,), fetchone=True)
+        assert row["calories"] == pytest.approx(50, abs=0.11)
+        assert row["sugar"] == pytest.approx(10, abs=0.11), "sugar didn't follow the portion"
+        assert row["sodium"] == pytest.approx(25, abs=0.11), "sodium didn't follow the portion"
+        after = json.loads(row["nutrients"])
+        assert after["calcium"] == pytest.approx(before["calcium"] / 2, abs=0.11), \
+            "micronutrients didn't follow the portion"
+
+    def test_nutrients_are_stored_as_a_dict_not_double_encoded(self, client):
+        """The route json.dumps()'d the nutrients dict and log_food jdump()'d it
+        again, so the column held a string inside a string and one jload() gave
+        back a str. get_nutrition_summary papered over it with an isinstance
+        check; anything else reading the column would break on it."""
+        from food_data import FOOD_BY_ID
+        food = next(f for f in FOOD_BY_ID.values() if f.get("calcium"))
+        r = _log(client, food_id=food["id"], food_name=food["name"], quantity_g=100)
+        lid = r.get_json()["log"]["id"]
+
+        raw = execute("SELECT nutrients FROM food_logs WHERE id=?", (lid,), fetchone=True)["nutrients"]
+        assert isinstance(json.loads(raw), dict), \
+            f"nutrients is double-encoded: {raw[:60]}"
+        # …and the API hands back a dict, not a string
+        assert isinstance(r.get_json()["log"]["nutrients"], dict)
+
+    def test_patching_a_drink_keeps_its_hydration_credit_honest(self, client):
+        """The auto-credited water has to follow the drink it came from.
+
+        Deleting a food log already removed its credit; editing one didn't
+        touch it. So correcting a 200ml chai down to a 100ml cup left the day
+        still counting 200ml of water — for a drink that no longer exists at
+        that size — quietly inflating the hydration total and its goal %.
+        """
+        from food_data import FOOD_BY_ID
+        drink = next(f for f in FOOD_BY_ID.values()
+                     if str(f.get("category", "")).lower() in
+                     ("beverages", "indian beverages"))
+
+        r = _log(client, food_id=drink["id"], food_name=drink["name"], quantity_g=200)
+        lid = r.get_json()["log"]["id"]
+
+        def credit():
+            rows = execute("SELECT amount_ml FROM hydration_logs WHERE source_id=?",
+                           (lid,), fetchall=True)
+            return [x["amount_ml"] for x in rows]
+
+        assert credit() == [200], "a logged drink should credit hydration"
+
+        client.patch(f"/api/food/log/{lid}", json={"quantity_g": 100})
+        assert credit() == [100], "the credit drifted from the drink it represents"
+
+        # Below the 30ml threshold it stops representing anything.
+        client.patch(f"/api/food/log/{lid}", json={"quantity_g": 20})
+        assert credit() == [], "a sip too small to credit should leave no credit"
+
+        # …and comes back when it's a real drink again.
+        client.patch(f"/api/food/log/{lid}", json={"quantity_g": 250})
+        assert credit() == [250]
+
+    def test_patch_round_trip_does_not_drift(self, client):
+        """Scaling is applied to the current row each time, so a there-and-back
+        edit must land exactly where it started — not a rounding-error away."""
+        r = _log(client, quantity_g=200, calories=100, sugar=20, sodium=50)
+        lid = r.get_json()["log"]["id"]
+        for qty in (100, 20, 200):
+            client.patch(f"/api/food/log/{lid}", json={"quantity_g": qty})
+        row = execute("SELECT * FROM food_logs WHERE id=?", (lid,), fetchone=True)
+        assert row["quantity_g"] == 200
+        assert row["calories"] == pytest.approx(100, abs=0.11)
+        assert row["sugar"] == pytest.approx(20, abs=0.11)
+        assert row["sodium"] == pytest.approx(50, abs=0.11)
 
     def test_patch_row_of_other_user_404(self, app, client):
         lid = self._make(client)

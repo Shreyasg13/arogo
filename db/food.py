@@ -154,6 +154,89 @@ def log_food(data: dict) -> dict:
     r = execute("SELECT * FROM food_logs WHERE id=?", (fid,), fetchone=True)
     return _fmt_food_log(r)
 
+def _sync_beverage_credit(lid: str, food_id: str, food_name: str,
+                          date_key: str, quantity_g) -> None:
+    """Keep the hydration credited from a drink equal to the drink.
+
+    The credit is derived data: it has to follow the food log it came from or
+    it silently drifts. Correct a 200ml chai down to a 100ml cup and the day
+    would otherwise still count 200ml of water — for a drink that no longer
+    exists at that size.
+    """
+    from .wellness import log_hydration
+    uid = current_user_id()
+    ml  = _beverage_ml(food_id or '', quantity_g)
+    existing = execute("SELECT id FROM hydration_logs WHERE source_id=? AND user_id=?",
+                       (lid, uid), fetchone=True)
+    if ml >= 30:
+        if existing:
+            execute("""UPDATE hydration_logs SET amount_ml=?, drink_type=?, date_key=?
+                       WHERE id=? AND user_id=?""",
+                    (to_int(ml, 0, lo=0, hi=10000), food_name or 'Drink', date_key,
+                     existing['id'], uid), commit=True)
+        else:
+            # Wasn't credited before (e.g. edited up from a sip below the
+            # threshold) — start crediting it now.
+            log_hydration(ml, food_name or 'Drink', date_key, source_id=lid)
+    elif existing:
+        # Fell below the threshold, or isn't a drink any more: the credit no
+        # longer represents anything the user did.
+        execute("DELETE FROM hydration_logs WHERE source_id=? AND user_id=?",
+                (lid, uid), commit=True)
+
+
+def update_food_log(lid: str, new_qty) -> dict:
+    """Rescale a food log to a corrected portion.
+
+    Lives here, next to log_food, on purpose: this has to mirror it exactly.
+    The route used to do the arithmetic itself and scaled only the five macros
+    the UI happened to show — so halving a portion halved the calories while
+    sugar, sodium and every micronutrient stayed put, permanently over-reporting
+    them. For someone tracking sodium because of their blood pressure, a
+    downward correction that leaves sodium untouched is the wrong direction to
+    fail in. It also never touched the drink's hydration credit.
+
+    Returns the updated log, or None if it isn't the user's / doesn't exist.
+    Raises ValueError on a non-positive quantity.
+    """
+    uid = current_user_id()
+    row = execute("SELECT * FROM food_logs WHERE id=? AND user_id=?",
+                  (lid, uid), fetchone=True)
+    if not row:
+        return None
+
+    qty = to_num(new_qty, 0, lo=0, hi=100000)
+    if qty <= 0:
+        raise ValueError('Quantity must be greater than zero')
+    old_qty = to_num(row['quantity_g'], 0, lo=0, hi=100000) or 100
+    scale   = qty / old_qty
+
+    # Every per-portion nutrient, including the JSON blob — get_nutrition_summary
+    # sums both the columns and the blob, so anything missed here shows up in
+    # the day's totals and drives the nutrition advice.
+    nutrients = _load_nutrients(row['nutrients'])
+    scaled    = {k: round(to_num(v, 0) * scale, 2) for k, v in nutrients.items()}
+
+    execute("""UPDATE food_logs
+                  SET quantity_g=?, calories=?, protein=?, carbs=?, fat=?,
+                      fiber=?, sugar=?, sodium=?, nutrients=?
+                WHERE id=? AND user_id=?""",
+            (qty,
+             round(to_num(row['calories'], 0) * scale, 1),
+             round(to_num(row['protein'],  0) * scale, 1),
+             round(to_num(row['carbs'],    0) * scale, 1),
+             round(to_num(row['fat'],      0) * scale, 1),
+             round(to_num(row['fiber'],    0) * scale, 1),
+             round(to_num(row['sugar'],    0) * scale, 1),
+             round(to_num(row['sodium'],   0) * scale, 1),
+             jdump(scaled), lid, uid), commit=True)
+
+    _sync_beverage_credit(lid, row['food_id'], row['food_name'], row['date_key'], qty)
+
+    r = execute("SELECT * FROM food_logs WHERE id=?", (lid,), fetchone=True)
+    return _fmt_food_log(r)
+
+
 def usual_portions() -> dict:
     """{food_id: grams} — the portion the user habitually eats of each food,
     learned from their own logs. The food DB's serving_g is a generic average;
@@ -195,9 +278,25 @@ def delete_food_log(lid: str) -> bool:
             (lid, uid), commit=True)
     return True
 
+def _load_nutrients(v) -> dict:
+    """Always a dict, even for rows written before the double-encode fix.
+
+    The food route used to json.dumps() the nutrients dict before handing it to
+    log_food, which jdump()s it again — so the column held a string inside a
+    string and one jload() gave back a string. get_nutrition_summary papered
+    over it with an isinstance check; every other reader would have broken on
+    it. Unwrap once more when we find that shape, so old rows read the same as
+    new ones.
+    """
+    out = jload(v, {}) if v else {}
+    if isinstance(out, str):
+        out = jload(out, {})
+    return out if isinstance(out, dict) else {}
+
+
 def _fmt_food_log(r) -> dict:
     d = dict(r)
-    d['nutrients'] = jload(d.get('nutrients','{}'), {})
+    d['nutrients'] = _load_nutrients(d.get('nutrients'))
     return d
 
 def get_nutrition_summary(date_key: str) -> dict:
