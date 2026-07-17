@@ -280,7 +280,10 @@ def api_body_metrics():
 @bp.route('/api/body-metrics', methods=['POST'])
 @require_auth
 def api_log_body():
-    m = log_body_metric(request.json or {})
+    try:
+        m = log_body_metric(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'metric': m})
 @bp.route('/api/body-metrics/trend')
 @require_auth

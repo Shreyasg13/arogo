@@ -3,7 +3,8 @@ db/wellness.py — Thoughts/journal, todos with reminders, hydration, sleep, bod
 
 All queries are scoped to the authenticated user via current_user_id().
 """
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int, valid_date
+from .core import (execute, executemany, jdump, jload, now_iso, today_iso, user_today,
+                   new_id, current_user_id, to_num, to_int, valid_date)
 
 
 MAX_THOUGHTS_PER_DAY = 10
@@ -289,6 +290,30 @@ def _opt_num(v, lo=None, hi=None):
         return None
     return to_num(v, 0.0, lo=lo, hi=hi)
 
+def _plausible_weight(raw, coerced):
+    """Guard the weight, distinguishing "didn't tell us" from "typo".
+
+    This matters more now that weighing in feeds the calorie target and the
+    hydration goal: a fat-fingered 700 would quietly hand someone a budget
+    derived from a body nobody has.
+
+      - absent, blank, or non-numeric → None. They didn't give us a weight;
+        that's not an error, there's just nothing to record.
+      - a real number outside human range → reject and ask them to check,
+        rather than clamp it to a number they never typed. (Same call as
+        db/health.py's vitals bounds.)
+    """
+    if raw in (None, ''):
+        return None
+    try:
+        float(raw)
+    except (TypeError, ValueError):
+        return None                     # garbage reads as "not provided"
+    if coerced is not None and not (20 <= coerced <= 400):
+        raise ValueError(f'That weight ({coerced:g}kg) looks off — please double-check it.')
+    return coerced
+
+
 def log_body_metric(data: dict) -> dict:
     bid = new_id()
     # Coerce all numerics: a string weight used to TypeError on the BMI math,
@@ -297,16 +322,46 @@ def log_body_metric(data: dict) -> dict:
     h_cm = _opt_num(data.get('height_cm'),    lo=0, hi=300)
     bf   = _opt_num(data.get('body_fat_pct'), lo=0, hi=100)
     waist= _opt_num(data.get('waist_cm'),     lo=0, hi=500)
+
+    w = _plausible_weight(data.get('weight_kg'), w)
+
+    # Height comes from the profile when the caller doesn't send it — and no
+    # logging path ever does, which is why bmi was always NULL while the UI
+    # dutifully reported "BMI: —" after every weigh-in. The column was dead.
+    if not h_cm:
+        try:
+            from .food import get_profile
+            h_cm = _opt_num((get_profile() or {}).get('height_cm'), lo=0, hi=300)
+        except Exception:
+            h_cm = None
     bmi = round(w / ((h_cm/100)**2), 1) if w and h_cm else None
+
     # A garbage/missing date_key would orphan the row; default to today.
     date_key = data.get('date_key')
     if not valid_date(date_key):
-        date_key = today_iso()
+        date_key = user_today()
     execute("""INSERT INTO body_metrics (id,date_key,weight_kg,body_fat_pct,waist_cm,bmi,notes,created_at,user_id)
                VALUES (?,?,?,?,?,?,?,?,?)""",
             (bid, date_key, w, bf,
              waist, bmi, str(data.get('notes','') or ''), now_iso(),
              current_user_id()), commit=True)
+
+    # Logging your weight should move the things that depend on your weight.
+    # body_metrics feeds the trend chart; user_profile.weight_kg feeds the
+    # calorie target (calc_tdee) and the hydration goal (35ml/kg). Nothing
+    # connected them, so weighing in moved the chart and left every number
+    # derived from your body sitting at whatever the profile last said — or at
+    # an assumed 70kg if it never said anything.
+    #
+    # Only for today's entry: backfilling last month's weight shouldn't
+    # rewrite what you weigh now.
+    if w and date_key == user_today():
+        try:
+            from .food import update_profile
+            update_profile({'weight_kg': w})     # merges; other fields untouched
+        except Exception:
+            pass
+
     return dict(execute("SELECT * FROM body_metrics WHERE id=?", (bid,), fetchone=True))
 
 def get_body_metrics(days: int = 30) -> list:

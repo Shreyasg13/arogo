@@ -173,6 +173,56 @@ class TestHydration:
 # BODY METRICS — the worst offender (KeyError + TypeError + poison)
 # ══════════════════════════════════════════════════════════════════════════════
 class TestBodyMetrics:
+    def test_weighing_in_moves_the_numbers_derived_from_your_weight(self, app):
+        """Logging your weight should change the things that depend on it.
+
+        body_metrics fed the trend chart; user_profile.weight_kg fed the
+        calorie target (calc_tdee) and the hydration goal (35ml/kg). Nothing
+        connected them, so weighing in moved the chart and left every
+        body-derived number sitting at whatever the profile last said — or at
+        an assumed 70kg if it had never said anything.
+        """
+        import datetime as dt
+        c = _user(app)
+        c.post("/api/food/profile", json={"height_cm": 175, "age": 34,
+                                          "gender": "male", "activity_level": "moderate",
+                                          "goal": "maintain", "weight_kg": 70})
+        today = dt.date.today().isoformat()
+        before_cal = c.get("/api/food/profile").get_json()["targets"]["target_calories"]
+        before_water = c.get(f"/api/hydration/{today}").get_json()["goal_ml"]
+
+        r = c.post("/api/body-metrics", json={"weight_kg": 82, "date_key": today})
+        assert r.status_code == 200
+
+        after_cal = c.get("/api/food/profile").get_json()["targets"]["target_calories"]
+        after_water = c.get(f"/api/hydration/{today}").get_json()["goal_ml"]
+        assert after_cal > before_cal, "calorie target ignored the new weight"
+        assert after_water > before_water, "hydration goal ignored the new weight"
+        assert c.get("/api/food/profile").get_json()["profile"]["weight_kg"] == 82
+
+    def test_bmi_uses_the_height_already_on_the_profile(self, app):
+        """No logging path sends height_cm, so bmi was always NULL — a dead
+        column the UI still reported ("BMI: —") after every weigh-in. We
+        already know their height; use it."""
+        import datetime as dt
+        c = _user(app)
+        c.post("/api/food/profile", json={"height_cm": 180, "weight_kg": 75,
+                                          "age": 30, "gender": "female"})
+        r = c.post("/api/body-metrics",
+                   json={"weight_kg": 81, "date_key": dt.date.today().isoformat()})
+        assert r.get_json()["metric"]["bmi"] == pytest.approx(25.0, abs=0.1)
+
+    def test_backfilling_an_old_weight_does_not_rewrite_your_current_one(self, app):
+        """Correcting last month's entry shouldn't tell the app what you weigh
+        today — only today's entry is your current weight."""
+        import datetime as dt
+        c = _user(app)
+        today = dt.date.today().isoformat()
+        c.post("/api/food/profile", json={"height_cm": 175, "age": 34, "gender": "male"})
+        c.post("/api/body-metrics", json={"weight_kg": 82, "date_key": today})
+        c.post("/api/body-metrics", json={"weight_kg": 60, "date_key": "2026-06-01"})
+        assert c.get("/api/food/profile").get_json()["profile"]["weight_kg"] == 82
+
     # BUG (HIGH) db/wellness.py:218 — data['date_key'] KeyError -> 500 when the
     # client omits the date. FIXED: default to today.
     def test_missing_date_key_does_not_500(self, app):
@@ -189,12 +239,20 @@ class TestBodyMetrics:
         assert r.status_code == 200
         assert r.get_json()["metric"]["bmi"] is None
 
-    def test_negative_weight_not_stored(self, app):
+    def test_implausible_weight_is_rejected_not_quietly_clamped(self, app):
+        """A typed -5 or 700 is a typo. This used to clamp to 0 / 1000 and
+        store it — inventing a number the user never typed — which now matters
+        more, because weighing in feeds the calorie target and hydration goal.
+        Ask them to check instead. (A non-numeric value is different: that's
+        "not provided", and stays lenient — see the string test above.)"""
         c = _user(app)
-        r = c.post("/api/body-metrics", json={"date_key": DAY, "weight_kg": -5})
-        assert r.status_code == 200
-        w = r.get_json()["metric"]["weight_kg"]
-        assert w is None or w >= 0
+        for bad in (-5, 0, 700, 1500):
+            r = c.post("/api/body-metrics", json={"date_key": DAY, "weight_kg": bad})
+            assert r.status_code == 400, f"{bad}kg was accepted"
+            assert "double-check" in r.get_json()["error"]
+        # …and a real weight still logs fine.
+        assert c.post("/api/body-metrics",
+                      json={"date_key": DAY, "weight_kg": 72.5}).status_code == 200
 
     def test_valid_bmi_still_computes(self, app):
         c = _user(app)
