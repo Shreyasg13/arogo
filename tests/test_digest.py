@@ -58,7 +58,8 @@ def user(app):
 class TestDigestApi:
     def test_shape(self, user):
         d = user.get("/api/weekly-digest").get_json()
-        assert d["overall_score"] >= 0
+        # None is a legitimate score: it means "nothing to score yet".
+        assert d["overall_score"] is None or d["overall_score"] >= 0
         assert d["headline"]
         assert "period_label" in d          # portable strftime (no %-d)
         for k in ["sleep", "workouts", "habits", "hydration", "nutrition"]:
@@ -72,9 +73,40 @@ class TestDigestApi:
         c.post("/auth/register",
                json={"email": "empty-digest@medeasy.test", "password": PW})
         d = c.get("/api/weekly-digest").get_json()
-        assert d["overall_score"] == 0
+        # Not 0 — a zero says "you failed at everything" where the truth is
+        # "you haven't tracked anything". None lets the UI omit the ring
+        # instead of drawing a red 0 under "Nothing logged yet".
+        assert d["overall_score"] is None
+        assert d["tracked_areas"] == 0
         assert "Tough week" not in d["headline"]
         assert "Nothing logged yet" in d["headline"]
+        # …and it must not complain about features they've never used.
+        assert d["concerns"] == []
+
+    def test_untracked_areas_are_absences_not_zeros(self, app):
+        """Someone who sleeps well and ignores the rest of the app had every
+        untracked category scored as 0 and divided by 5 — so 8h a night became
+        (100+0+0+0+0)/5 = 20/100 and an email headed "Tough week". Not using a
+        feature is not a failure to report back to someone."""
+        auth_module.reset_rate_limiter()
+        c = app.test_client()
+        c.post("/auth/register",
+               json={"email": "sleeper-digest@medeasy.test", "password": PW})
+        for day in range(10, 17):
+            c.post("/api/sleep", json={
+                "date_key": f"2026-07-{day}",
+                "bedtime": f"2026-07-{day}T23:00",
+                "wake_time": f"2026-07-{day + 1}T07:00", "quality": 4})
+
+        d = c.get("/api/weekly-digest").get_json()
+        assert d["scores"]["sleep"] is not None, "sleep was tracked; score it"
+        for untracked in ("workouts", "habits", "hydration", "nutrition"):
+            assert d["scores"][untracked] is None, \
+                f"{untracked} isn't tracked — it must be absent, not 0"
+        assert d["tracked_areas"] == 1
+        assert d["overall_score"] == d["scores"]["sleep"], \
+            "the score must average only what's tracked"
+        assert "Tough week" not in d["headline"]
 
 
 class TestDigestEmailJob:

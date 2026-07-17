@@ -257,11 +257,16 @@ class TestEmptyDataEndpoints:
         body = fresh.get("/api/fitness/prs").get_json()
         assert body["has_data"] is False and body["prs"] == []
 
-    def test_weekly_digest_scores_all_present_and_bounded(self, fresh):
+    def test_weekly_digest_scores_are_absent_or_bounded(self, fresh):
+        """A score is either a real 0-100 or None — never a 0 standing in for
+        "not tracked". This account tracks nothing, so every score is None:
+        scoring absences as zeros is what emailed people "Tough week" for not
+        using features they'd never opened."""
         d = fresh.get("/api/weekly-digest").get_json()
-        assert 0 <= d["overall_score"] <= 100
+        assert d["overall_score"] is None
         for k in ["sleep", "workouts", "habits", "hydration", "nutrition"]:
-            assert 0 <= d["scores"][k] <= 100, f"{k} score out of range"
+            assert k in d["scores"], f"{k} missing from scores"
+            assert d["scores"][k] is None, f"{k} isn't tracked — must be None, not 0"
 
     def test_progress_math_no_nan_or_infinity(self, fresh):
         """No NaN/Infinity/None where the frontend does bare ${...} math."""

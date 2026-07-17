@@ -75,11 +75,22 @@ def send_verification_email(to: str, token: str) -> bool:
 
 
 def send_weekly_digest_email(to: str, name: str, digest: dict, unsub_url: str) -> bool:
+    # The score is None when there's nothing to score, and it's only ever an
+    # average of the areas the user actually tracks — so say which, rather than
+    # implying it's a verdict on their whole week.
+    score = digest.get('overall_score')
+    tracked = digest.get('tracked_areas') or 0
+    if score is None:
+        score_line = f"Your week: {digest['period_label']}"
+    else:
+        area_word = 'area' if tracked == 1 else 'areas'
+        score_line = (f"Your week: {digest['period_label']}  ·  {score}/100 "
+                      f"across the {tracked} {area_word} you track")
     lines = [
         f"Hi {name or 'there'},",
         '',
         digest['headline'],
-        f"Your week: {digest['period_label']}  ·  Overall score {digest['overall_score']}/100",
+        score_line,
         '',
     ]
     if digest.get('highlights'):

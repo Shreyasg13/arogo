@@ -119,6 +119,19 @@ def generate_weekly_report() -> dict:
 
 # ── Weekly digest ─────────────────────────────────────────────────────────────
 
+def _hydration_goal_ml() -> int:
+    """The user's own water goal — not a number we made up about them.
+
+    The digest used to hardcode 2450ml and print it as "goal", while the app
+    stored whatever the user had actually set one table over. (2450 is itself
+    35ml × an assumed 70kg body, which is why it looks specific enough to be
+    believed.)
+    """
+    rs = execute("SELECT water_goal_ml FROM reminder_settings WHERE user_id=?",
+                 (current_user_id(),), fetchone=True)
+    return (rs or {}).get('water_goal_ml') or 2450
+
+
 def generate_weekly_digest() -> dict:
     """Weekly insight digest — scores, highlights, wins, concerns, headline.
     Built on generate_weekly_report(); used by /api/weekly-digest and the
@@ -126,54 +139,78 @@ def generate_weekly_digest() -> dict:
     import datetime as dt
 
     r = generate_weekly_report()
+    hydration_goal = _hydration_goal_ml()
 
-    # ── Scores (0-100) ────────────────────────────────────────────
-    sleep_score = 0
+    # ── Scores (0-100, or None where there's nothing to score) ────
+    #
+    # A category the user doesn't track is an ABSENCE, not a zero. These used
+    # to default to 0 and always divide by 5, so someone who took every
+    # medicine and slept 8h a night but didn't track water, food or habits
+    # scored (100+100+0+0+0)/5 = 40 → "Mixed week", and this goes out as an
+    # email. Not using a feature is not a failure to report back to someone.
+    sleep_score = None
     if r['sleep']['avg_hours']:
         h = r['sleep']['avg_hours']
         sleep_score = min(100, int(min(h, 9) / 9 * 100))
         if r['sleep']['avg_quality']:
             sleep_score = int(sleep_score * 0.7 + (r['sleep']['avg_quality']/5*100) * 0.3)
 
-    workout_score = min(100, int(r['fitness']['workout_days'] / 5 * 100))
-    habit_score   = int(r['habits']['completion_pct'] or 0)
+    # Judge exercise only if they log exercise at all — 0 workout days is
+    # indistinguishable from "doesn't use this part of the app".
+    workout_score = (min(100, int(r['fitness']['workout_days'] / 5 * 100))
+                     if r['fitness']['activities'] else None)
 
-    hydration_score = 0
+    habit_score = (int(r['habits']['completion_pct'] or 0)
+                   if r['habits']['total'] else None)
+
+    hydration_score = None
     if r['nutrition']['avg_hydration_ml']:
-        hydration_score = min(100, int(r['nutrition']['avg_hydration_ml'] / 2450 * 100))
+        goal = _hydration_goal_ml()
+        hydration_score = min(100, int(r['nutrition']['avg_hydration_ml'] / goal * 100))
 
-    cal_score = 0
+    cal_score = None
     if r['nutrition']['adherence_pct']:
         pct = r['nutrition']['adherence_pct']
         # Ideal is 90–110% of target
         cal_score = 100 if 90 <= pct <= 110 else max(0, int(100 - abs(pct - 100) * 2))
 
-    overall_score = int((sleep_score + workout_score + habit_score + hydration_score + cal_score) / 5)
+    tracked = [s for s in (sleep_score, workout_score, habit_score,
+                           hydration_score, cal_score) if s is not None]
+    overall_score = int(sum(tracked) / len(tracked)) if tracked else None
 
     # ── Wins ──────────────────────────────────────────────────────
     wins = []
     sleep_h = r['sleep']['avg_hours']
-    if sleep_h and sleep_h >= 7:
-        wins.append({'icon': '🌙', 'text': f'Averaged {sleep_h}h sleep — at or above the 7h target'})
+    nights  = r['sleep']['nights']
+    # "Averaged" needs something to average. One logged night was being
+    # reported identically to seven, with no denominator — so say how many.
+    # (get_insight_cards one function below already requires >=4; same bar.)
+    enough_nights = nights >= 4
+    if sleep_h and enough_nights and sleep_h >= 7:
+        wins.append({'icon': '🌙', 'text': f'Averaged {sleep_h}h sleep across {nights} of 7 nights'})
     if r['fitness']['workout_days'] >= 4:
         wins.append({'icon': '🏅', 'text': f'{r["fitness"]["workout_days"]} workout days this week — great consistency'})
-    if habit_score >= 80:
+    if habit_score is not None and habit_score >= 80:
         wins.append({'icon': '⭐', 'text': f'{int(habit_score)}% habit completion — nearly perfect week'})
-    if hydration_score >= 90:
+    if hydration_score is not None and hydration_score >= 90:
         wins.append({'icon': '💧', 'text': f'Well hydrated — averaged {r["nutrition"]["avg_hydration_ml"]}ml/day'})
     if r['fitness']['calories_burned'] >= 2000:
         wins.append({'icon': '🔥', 'text': f'{r["fitness"]["calories_burned"]:,} kcal burned through exercise'})
 
     # ── Concerns ──────────────────────────────────────────────────
     concerns = []
-    if sleep_h and sleep_h < 6:
-        concerns.append({'icon': '😴', 'text': f'Sleep averaged {sleep_h}h — below the 7h minimum. Early bedtime this week?'})
-    elif sleep_h and sleep_h < 7:
-        concerns.append({'icon': '🌙', 'text': f'Sleep was a bit short ({sleep_h}h avg). Aim for 7h+ tonight.'})
+    if sleep_h and enough_nights and sleep_h < 6:
+        concerns.append({'icon': '😴', 'text': f'Sleep averaged {sleep_h}h across {nights} nights — '
+                                               f'under the 7–9h usually recommended. Early night this week?'})
+    elif sleep_h and enough_nights and sleep_h < 7:
+        concerns.append({'icon': '🌙', 'text': f'Sleep was a bit short ({sleep_h}h avg over {nights} nights). '
+                                               f'Aim for 7h+ tonight.'})
 
-    if r['fitness']['workout_days'] == 0:
-        concerns.append({'icon': '🏃', 'text': 'No workouts logged this week. Even a 20-min walk counts.'})
-    elif r['fitness']['workout_days'] <= 1:
+    # Only comment on exercise if they log exercise. "No workouts logged this
+    # week" fired unconditionally, so it went to people who have never used
+    # fitness tracking and never intend to — a complaint about a feature, not
+    # about their week.
+    if r['fitness']['activities'] and r['fitness']['workout_days'] <= 1:
         concerns.append({'icon': '🏃', 'text': f'Only {r["fitness"]["workout_days"]} workout day this week. Try for 3+.'})
 
     if habit_score is not None and habit_score < 50 and r['habits']['total'] > 0:
@@ -183,13 +220,19 @@ def generate_weekly_digest() -> dict:
         top = r['symptoms'][0]
         concerns.append({'icon': '🩺', 'text': f'{top["name"]} appeared {top["count"]} time{"s" if top["count"]>1 else ""} this week. Worth noting if it continues.'})
 
-    if hydration_score < 60:
-        concerns.append({'icon': '💧', 'text': f'Hydration was low ({r["nutrition"]["avg_hydration_ml"]}ml avg, goal 2450ml). Try a water reminder.'})
+    # This one had no data guard at all, so a user who never logged water was
+    # told they "averaged 0ml" — a health claim about someone who simply didn't
+    # use the feature — measured against a goal they never set.
+    if hydration_score is not None and hydration_score < 60:
+        concerns.append({'icon': '💧', 'text': f'Hydration was low ({r["nutrition"]["avg_hydration_ml"]}ml avg, '
+                                               f'goal {hydration_goal}ml). Try a water reminder.'})
 
     # ── Highlights ────────────────────────────────────────────────
     highlights = []
-    if r['sleep']['nights'] > 0:
-        highlights.append({'label': 'Avg sleep',    'value': f'{sleep_h}h' if sleep_h else '—', 'icon': '🌙'})
+    if r['sleep']['nights'] > 0 and sleep_h:
+        # Carry the denominator: 1 night and 7 nights were shown identically.
+        highlights.append({'label': f'Avg sleep ({nights}/7 nights)',
+                           'value': f'{sleep_h}h', 'icon': '🌙'})
     if r['fitness']['workout_days'] > 0:
         highlights.append({'label': 'Workout days', 'value': str(r['fitness']['workout_days']),  'icon': '🏋️'})
     if r['habits']['total'] > 0:
@@ -209,8 +252,13 @@ def generate_weekly_digest() -> dict:
         or r['habits'].get('done_count', 0) > 0
         or bool(r['symptoms'])
     )
-    if not has_data:
+    if not has_data or overall_score is None:
         headline = "Nothing logged yet — start tracking and your progress will show up here."
+        # An empty week has no score and no complaints. The headline was already
+        # careful about this; the score ring and the concerns below it weren't,
+        # so the friendly sentence sat above a red 0 and two scoldings.
+        overall_score = None
+        concerns = []
     elif overall_score >= 80:
         headline = "Strong week — you're building good habits 💪"
     elif overall_score >= 60:
@@ -230,7 +278,12 @@ def generate_weekly_digest() -> dict:
         'period':        r['period'],
         'period_label':  period_label,
         'headline':      headline,
+        # None when there's nothing to score. Never 0 — a zero would say "you
+        # failed at everything" where the truth is "you didn't track anything".
         'overall_score': overall_score,
+        'tracked_areas': len(tracked),
+        # Each score is None for an area the user doesn't track, so the UI can
+        # leave it out rather than draw an empty bar next to the ones that count.
         'scores': {
             'sleep':      sleep_score,
             'workouts':   workout_score,

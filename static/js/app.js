@@ -9966,9 +9966,13 @@ async function loadWeeklyDigest() {
 
   if (!d) { section.innerHTML = ''; return; }
 
-  const { headline, overall_score, scores, highlights, wins, concerns, period_label } = d;
+  const { headline, overall_score, scores, highlights, wins, concerns,
+          period_label, tracked_areas } = d;
 
-  // Score ring color
+  // overall_score is null when there's nothing to score. It must not become 0:
+  // a red 0 ring under "Nothing logged yet — start tracking" read as sarcasm,
+  // and it said "you failed" where the truth was "you didn't track anything".
+  const hasScore = overall_score != null;
   const scoreColor = overall_score >= 80 ? '#22C55E'
                    : overall_score >= 60 ? '#4F8D74'
                    : overall_score >= 40 ? '#F59E0B' : '#EF4444';
@@ -9978,7 +9982,12 @@ async function loadWeeklyDigest() {
     sleep: '🌙 Sleep', workouts: '🏃 Workouts',
     habits: '⭐ Habits', hydration: '💧 Hydration', nutrition: '🍽️ Nutrition',
   };
-  const scoreBars = Object.entries(scores).map(([key, val]) => `
+  // Only bar the areas they actually track. A null score means "not tracked",
+  // and drawing it as an empty red 0% bar next to the real ones turns an
+  // absence into a failure.
+  const scoreBars = Object.entries(scores)
+    .filter(([, val]) => val != null)
+    .map(([key, val]) => `
     <div class="wd-score-row">
       <span class="wd-score-label">${SCORE_LABELS[key] || key}</span>
       <div class="wd-score-bar-wrap">
@@ -10023,7 +10032,8 @@ async function loadWeeklyDigest() {
           <div class="wd-period">${escHtml(period_label)}</div>
           <div class="wd-headline">${escHtml(headline)}</div>
         </div>
-        <div class="wd-ring-wrap">
+        ${hasScore ? `
+        <div class="wd-ring-wrap" title="Averaged across the ${tracked_areas} area${tracked_areas === 1 ? '' : 's'} you track">
           <svg width="64" height="64" viewBox="0 0 64 64">
             <circle cx="32" cy="32" r="26" fill="none" stroke="var(--gray-100)" stroke-width="6"/>
             <circle cx="32" cy="32" r="26" fill="none"
@@ -10033,7 +10043,7 @@ async function loadWeeklyDigest() {
               transform="rotate(-90 32 32)"/>
           </svg>
           <div class="wd-ring-num" style="color:${scoreColor}">${overall_score}</div>
-        </div>
+        </div>` : ''}
       </div>
 
       <!-- Highlights strip -->
@@ -10041,11 +10051,12 @@ async function loadWeeklyDigest() {
 
       <!-- Scores + wins/concerns -->
       <div class="wd-body">
-        <!-- Score bars -->
+        <!-- Score bars (only the areas they track; hidden entirely if none) -->
+        ${scoreBars ? `
         <div class="wd-scores">
           <div class="wd-section-title">Area scores</div>
           ${scoreBars}
-        </div>
+        </div>` : ''}
 
         <!-- Wins and concerns -->
         <div class="wd-narrative">
