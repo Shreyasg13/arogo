@@ -1046,6 +1046,23 @@ async function loadFamily() {
   box.innerHTML = group ? renderFamilyGroup(group) : renderFamilyEmpty();
 }
 
+// The privacy explainer. Written to reassure someone deciding whether to let
+// their family see any of this — and it used to render only *inside* an
+// existing group, so the one person who most needed it could never reach it.
+// It belongs wherever that decision is being made.
+function familyExplainer() {
+  return `
+      <details class="family-explainer">
+        <summary>How sharing works</summary>
+        <ul>
+          <li><b>Nothing is shared by default.</b> Each category is off until you turn it on — and you can switch any of them off again anytime.</li>
+          <li><b>You choose per category.</b> Sharing medicines doesn't share your journal; sharing sleep doesn't share your vitals.</li>
+          <li><b>Missed-dose alerts are opt-in.</b> Your family is only told about a missed dose if you turn that on — and you always get a heads-up first.</li>
+          <li><b>Primary vs. viewer.</b> Anyone can see what's shared; only those who opt in to "Notify me…" get pinged about missed doses.</li>
+        </ul>
+      </details>`;
+}
+
 function renderFamilyEmpty() {
   return `
     <div class="panel" style="padding:32px;text-align:center;max-width:480px">
@@ -1060,6 +1077,7 @@ function renderFamilyEmpty() {
                style="max-width:220px">
         <button class="btn-primary" data-ev-click="createFamilyGroup()">Create group</button>
       </div>
+      <div style="margin-top:18px;text-align:left">${familyExplainer()}</div>
     </div>`;
 }
 
@@ -1153,15 +1171,7 @@ function renderFamilyGroup(g) {
         ${dangerBtn}
       </div>
       <p style="font-size:12px;color:var(--gray-400)">You share only what you switch on below. Changes apply immediately.</p>
-      <details class="family-explainer">
-        <summary>How sharing works</summary>
-        <ul>
-          <li><b>Nothing is shared by default.</b> Each category below is off until you turn it on — and you can switch any of them off again anytime.</li>
-          <li><b>You choose per category.</b> Sharing medicines doesn't share your journal; sharing sleep doesn't share your vitals.</li>
-          <li><b>Missed-dose alerts are opt-in.</b> Your family is only told about a missed dose if you turn that on — and you always get a heads-up first.</li>
-          <li><b>Primary vs. viewer.</b> Anyone can see what's shared; only those who opt in to "Notify me…" get pinged about missed doses.</li>
-        </ul>
-      </details>
+      ${familyExplainer()}
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">${consentToggles}</div>
       ${alertToggle}
       ${receiveAlertsToggle}
@@ -5069,14 +5079,29 @@ function triggerLiveTDEEUpdate() {
 // THOUGHTS — Daily Journal
 // ════════════════════════════════════════════════════════════
 
+// The app's mood vocabulary — one list, because there's one `mood` column.
+//
+// It grew two: the journal offered 8 categorical moods while the check-in, the
+// quick-log sheet and the push actions used a 5-point scale whose lowest rung,
+// `terrible`, existed nowhere in here. So a day logged as "Rough" rendered a
+// literal "undefined" in the week dots, and read as plain 😐 Neutral
+// everywhere that had a fallback — the app quietly downgrading someone's worst
+// day to an average one. `terrible` is a real thing a user told us; it belongs
+// in the vocabulary that displays them.
+//
+// Anything rendering a mood must go through here, and must tolerate a key it
+// doesn't know rather than printing `undefined` at someone.
 const MOOD_EMOJI = {
-  neutral:'😐', happy:'😊', excited:'🤩', calm:'😌',
-  anxious:'😰', tired:'😴', sad:'😞', angry:'😤'
+  terrible:'😩', sad:'😞', neutral:'😐', happy:'😊', excited:'🤩',
+  calm:'😌', anxious:'😰', tired:'😴', angry:'😤'
 };
 const MOOD_COLOR = {
-  neutral:'#4F8D74', happy:'#22C55E', excited:'#F59E0B', calm:'#06B6D4',
-  anxious:'#8B5CF6', tired:'#9CA3AF', sad:'#3B82F6', angry:'#EF4444'
+  terrible:'#DC2626', sad:'#3B82F6', neutral:'#4F8D74', happy:'#22C55E',
+  excited:'#F59E0B', calm:'#06B6D4', anxious:'#8B5CF6', tired:'#9CA3AF',
+  angry:'#EF4444'
 };
+function moodEmoji(mood) { return MOOD_EMOJI[mood] || '😐'; }
+function moodColor(mood) { return MOOD_COLOR[mood] || '#4F8D74'; }
 
 let currentThoughtsDate = localToday();
 let selectedMood = 'neutral';
@@ -5138,7 +5163,7 @@ function renderThoughtsList(thoughts) {
     return `<div class="thought-card" data-mood="${mood}" data-id="${t.id}">
       <div class="thought-card-header">
         <div class="thought-meta">
-          <span class="thought-mood-badge">${MOOD_EMOJI[mood] || '😐'}</span>
+          <span class="thought-mood-badge">${moodEmoji(mood)}</span>
           <span class="thought-time">${time}</span>
         </div>
         <div class="thought-card-actions">
@@ -5177,7 +5202,7 @@ async function loadWeekMoods() {
     const key = d.toISOString().split('T')[0];
     const mood = byDay[key];
     return mood
-      ? `<div class="week-mood-dot" title="${key}"><div class="week-mood-emoji">${MOOD_EMOJI[mood]}</div><div class="week-mood-day">${days[i]}</div></div>`
+      ? `<div class="week-mood-dot" title="${key}"><div class="week-mood-emoji">${moodEmoji(mood)}</div><div class="week-mood-day">${days[i]}</div></div>`
       : `<div class="week-mood-dot"><div class="week-mood-emoji" style="opacity:.18">○</div><div class="week-mood-day" style="opacity:.3">${days[i]}</div></div>`;
   }).join('');
 }
@@ -5217,7 +5242,7 @@ async function submitThought() {
   if (r?.success) {
     ta.value = '';
     updateThoughtCounter(ta);
-    showToast(`Thought saved ${MOOD_EMOJI[selectedMood]}`, 'success');
+    showToast(`Thought saved ${moodEmoji(selectedMood)}`, 'success');
     loadThoughts();
   } else {
     showToast(r?.error || 'Failed to save', 'error');
@@ -5791,8 +5816,8 @@ async function loadMoodAnalytics() {
   const distHtml = sorted.map(([mood, count]) => {
     const pct = Math.round(count/maxCount*100);
     return `<div class="mood-dist-row">
-      <div class="mood-dist-emoji">${MOOD_EMOJI[mood]||'😐'}</div>
-      <div class="mood-dist-bar-track"><div class="mood-dist-bar" style="width:${pct}%;background:${MOOD_COLOR[mood]||'#4F8D74'}"></div></div>
+      <div class="mood-dist-emoji">${moodEmoji(mood)}</div>
+      <div class="mood-dist-bar-track"><div class="mood-dist-bar" style="width:${pct}%;background:${moodColor(mood)}"></div></div>
       <div class="mood-dist-count">${count}</div>
     </div>`;
   }).join('');
@@ -5806,7 +5831,7 @@ async function loadMoodAnalytics() {
       <div class="panel-header"><h2 class="panel-title">Insights</h2></div>
       <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
         <div style="font-size:13px;color:var(--gray-600)">📝 <strong>${total}</strong> thoughts logged this week</div>
-        <div style="font-size:13px;color:var(--gray-600)">🏆 Most common mood: ${sorted[0] ? `<strong>${MOOD_EMOJI[sorted[0][0]]} ${sorted[0][0]}</strong>` : '—'}</div>
+        <div style="font-size:13px;color:var(--gray-600)">🏆 Most common mood: ${sorted[0] ? `<strong>${moodEmoji(sorted[0][0])} ${sorted[0][0]}</strong>` : '—'}</div>
         <div style="font-size:13px;color:var(--gray-600)">🌟 Positive thoughts: <strong>${(counts['happy']||0)+(counts['excited']||0)+(counts['calm']||0)}</strong></div>
         <div style="font-size:13px;color:var(--gray-600)">💙 Challenging days: <strong>${(counts['sad']||0)+(counts['anxious']||0)+(counts['angry']||0)}</strong></div>
       </div>
@@ -6939,7 +6964,7 @@ async function runGlobalSearch(q) {
         let title='', meta='', badge='';
 
         if (s.type==='food')     { title=item.food_name; meta=`${item.date_key} · ${item.meal_type||''} · ${Math.round(item.calories||0)} kcal`; }
-        if (s.type==='thought')  { title=item.content?.slice(0,90)+(item.content?.length>90?'…':''); meta=`${item.date_key} · ${MOOD_EMOJI[item.mood]||''} ${item.mood||''}`; }
+        if (s.type==='thought')  { title=item.content?.slice(0,90)+(item.content?.length>90?'…':''); meta=`${item.date_key} · ${item.mood ? moodEmoji(item.mood) : ''} ${item.mood||''}`; }
         if (s.type==='symptom')  { title=item.name; meta=`${item.date_key} · ${(item.time_of_day||'').replace('_',' ')} · ${item.severity}/10 severity${item.notes?' · '+item.notes:''}`; }
         if (s.type==='todo')     {
           title=item.title;
@@ -8514,13 +8539,16 @@ const CI_STEPS  = ['mood', 'sleep', 'symptoms', 'water'];
 let   ciStep    = 0;
 const ciSel     = { mood: null, sleep: null, symptoms: [], water: null };
 
+// Emoji come from MOOD_EMOJI, not a second hardcoded copy — the two drifted
+// (the check-in showed 😕 for `sad` where the journal showed 😞, for the same
+// stored value).
 const CI_MOODS = [
-  { emoji: '😩', label: 'Rough',   mood: 'terrible' },
-  { emoji: '😕', label: 'Low',     mood: 'sad'      },
-  { emoji: '😐', label: 'Okay',    mood: 'neutral'  },
-  { emoji: '😊', label: 'Good',    mood: 'happy'    },
-  { emoji: '🤩', label: 'Great',   mood: 'excited'  },
-];
+  { label: 'Rough', mood: 'terrible' },
+  { label: 'Low',   mood: 'sad'      },
+  { label: 'Okay',  mood: 'neutral'  },
+  { label: 'Good',  mood: 'happy'    },
+  { label: 'Great', mood: 'excited'  },
+].map(m => ({ ...m, emoji: MOOD_EMOJI[m.mood] }));
 const CI_SLEEP = [
   { label: 'Under 5h', sub: 'Very short',    dur: 4,   quality: 1 },
   { label: '5 – 6h',   sub: 'A bit short',   dur: 5.5, quality: 2 },
@@ -9848,9 +9876,9 @@ async function loadMoodSleepCorrelation(days) {
       const pct = Math.min(Math.round(pm.avg_duration / 10 * 100), 100);
       return `
         <div class="msc-mood-row">
-          <div class="msc-mood-emoji">${MOOD_EMOJI[m] || '😐'}</div>
+          <div class="msc-mood-emoji">${moodEmoji(m)}</div>
           <div class="msc-mood-bar-wrap">
-            <div class="msc-mood-bar" style="width:${pct}%;background:${MOOD_COLOR[m]||'#4F8D74'}"></div>
+            <div class="msc-mood-bar" style="width:${pct}%;background:${moodColor(m)}"></div>
           </div>
           <div class="msc-mood-val">${pm.avg_duration}h</div>
           <div class="msc-mood-count">${pm.count}d</div>
@@ -9976,7 +10004,7 @@ async function renderMoodSleepScatter(paired) {
 
   // Colour each point by mood
   const pointColors = points.map(pt =>
-    (MOOD_COLOR[pt.mood] || '#4F8D74') + 'CC'
+    moodColor(pt.mood) + 'CC'
   );
 
   _moodSleepChart = new window.Chart(canvas, {
@@ -10001,7 +10029,7 @@ async function renderMoodSleepScatter(paired) {
           callbacks: {
             label: ctx => {
               const pt = ctx.raw;
-              return ` ${MOOD_EMOJI[pt.mood]||'😐'} ${pt.mood} after ${pt.x}h sleep (${pt.date})`;
+              return ` ${moodEmoji(pt.mood)} ${pt.mood} after ${pt.x}h sleep (${pt.date})`;
             },
           },
         },

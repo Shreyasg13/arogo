@@ -181,6 +181,36 @@ test('vitalFlag: stays silent when it cannot know', () => {
   eq(S.vitalFlag('heart_rate', undefined), null);
 });
 
+// ── Moods ──
+// One `mood` column means one vocabulary. It grew two, and the lowest rung of
+// the capture scale (`terrible`) existed in neither display map — so a day
+// logged as "Rough" rendered a literal "undefined" at the user.
+test('every mood the app can capture renders as itself', () => {
+  // The 5-point scale used by the check-in, the quick-log sheet and the push
+  // notification actions (static/sw.js), plus the journal's categorical set.
+  // Each must map to its OWN emoji — not the 😐 fallback, which is how
+  // "Rough" used to read as an average day.
+  const captured = ['terrible', 'sad', 'happy', 'excited',
+                    'calm', 'anxious', 'tired', 'angry'];
+  const seen = new Set();
+  for (const m of captured) {
+    const e = S.moodEmoji(m);
+    if (e === '😐') throw new Error(`${m} falls back to neutral — it has no emoji of its own`);
+    if (seen.has(e)) throw new Error(`${m} shares an emoji with another mood (${e})`);
+    seen.add(e);
+    if (S.moodColor(m) === '#4F8D74') throw new Error(`${m} falls back to the default colour`);
+  }
+  eq(S.moodEmoji('neutral'), '😐');
+});
+test('moodEmoji never returns undefined, even for an unknown mood', () => {
+  // The regression: `terrible` was in the capture scale but neither display
+  // map, so the week dots printed a literal "undefined".
+  eq(S.moodEmoji('terrible'), '😩');
+  eq(S.moodEmoji('nonsense'), '😐');
+  eq(S.moodEmoji(undefined), '😐');
+  eq(S.moodEmoji(''), '😐');
+});
+
 // ── Helpers ──
 test('escapeHtml escapes the five specials', () => {
   eq(S.escapeHtml(`<img src="x" onerror='a&b'>`),
