@@ -156,35 +156,13 @@ class TestActivityValidation:
         assert r.status_code in (200, 201)
 
 
-class TestHealthScoreNeverNegative:
-    """
-    BUG #3 (HIGH): /api/health-score can return a NEGATIVE total (and a
-    negative activity component) after a single negative-calorie/duration
-    activity is logged.
+# The dashboard health-score ring and /api/health-score are gone (see the
+# commit removing them): a user with perfect medication adherence scored
+# 0/100 grade "E", because adherence was not one of its five components and
+# every untracked component counted as a zero. The negative-total guard that
+# used to live here went with the endpoint. The real numbers it sat on top of
+# — next action, meds taken today — are covered in test_stress_medical.py.
 
-    routes/insights.py:547
-        act_score = round(min(week_mins / 150.0, 1.0) * 20)
-    With week_mins = -50 this is round(min(-0.33,1)*20) = -7.
-    The overall total then sums to a negative number. The dashboard ring
-    (app.js:10095  Math.round(score/100*138.2)) turns that into a negative
-    stroke-dasharray, and the grade math (<35 -> 'E') is fed garbage.
-
-    Root cause is really BUG #2 (unvalidated input), but the score endpoint
-    should also floor each component at 0 defensively.
-
-    Suggested fix: act_score = round(max(0.0, min(week_mins/150.0, 1.0)) * 20)
-    and clamp the overall total to >= 0.
-    """
-
-    def test_health_score_components_never_negative(self, app):
-        c = _register(app, "hsneg@audit.test")
-        _complete_profile(c)
-        c.post("/api/fitness/activities",
-               json={"type": "running", "duration": -50, "calories": -999})
-        hs = c.get("/api/health-score").get_json()
-        assert hs["score"] >= 0, f"overall health score went negative: {hs['score']}"
-        for comp in hs["components"]:
-            assert comp["score"] >= 0, f"{comp['key']} component negative: {comp['score']}"
 
 
 class TestCalorieBalanceNegativeBurn:
@@ -239,7 +217,6 @@ class TestEmptyDataEndpoints:
     brand-new user. calorie-balance is the known offender (see BUG #1)."""
 
     @pytest.mark.parametrize("path", [
-        "/api/health-score",
         "/api/weekly-digest",
         "/api/report/weekly",
         "/api/progress",
@@ -286,13 +263,6 @@ class TestEmptyDataEndpoints:
 class TestPartialData:
     """Partial data (profile but no logs, or logs but no profile) is where
     divide-by-zero and null math typically hide."""
-
-    def test_health_score_profile_only(self, app):
-        c = _register(app, "partial1@audit.test")
-        _complete_profile(c)
-        r = c.get("/api/health-score")
-        assert r.status_code == 200
-        assert r.get_json()["score"] >= 0
 
     def test_calorie_balance_food_but_no_profile(self, app):
         """Logs exist but calc_tdee still returns None target — BUG #1 path."""

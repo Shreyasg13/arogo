@@ -1407,7 +1407,6 @@ async function loadDashboard() {
   try { loadCarePanel(); }      catch (e) {}
   try { loadEncouragements(); } catch (e) {}
   try { loadLowStock(); }       catch (e) {}
-  loadHealthScore();
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -10625,105 +10624,6 @@ async function copyYesterdayMeals() {
 // HEALTH SCORE
 // ════════════════════════════════════════════════════════════════
 
-let _healthScore = null;  // cache for modal
-
-async function loadHealthScore() {
-  const data = await fetch('/api/health-score', {cache: 'no-store'})
-    .then(r => r.json()).catch(() => null);
-  if (!data) return;
-
-  _healthScore = data;
-  const { score, label } = data;
-
-  // ── Hero card ─────────────────────────────────────────────────
-  const card  = document.getElementById('dash-score-card');
-  const valEl = document.getElementById('dash-score-val');
-  const lblEl = document.getElementById('dash-score-label');
-  const ring  = document.getElementById('dash-score-ring');
-
-  if (valEl) valEl.textContent = score;
-  if (lblEl) lblEl.textContent = label;
-
-  // Friendly empty state for brand-new accounts (score with no data)
-  if (lblEl && (!data.components || score <= 1)) lblEl.textContent = 'Start logging to build your score';
-
-  // Animate the ring (circumference = 2π×22 ≈ 138.2)
-  if (ring) {
-    const dash = Math.round(score / 100 * 138.2);
-    ring.style.transition = 'stroke-dasharray 0.8s ease';
-    ring.setAttribute('stroke-dasharray', `${dash} 138.2`);
-  }
-}
-
-function openHealthScoreModal() {
-  const data = _healthScore;
-  if (!data) return;
-
-  const { score, grade, label, message, components } = data;
-  const scoreColor =
-    score >= 80 ? '#22C55E' :
-    score >= 60 ? '#4F8D74' :
-    score >= 40 ? '#F59E0B' : '#EF4444';
-
-  // Ring (circumference 2π×32 ≈ 201)
-  const ring = document.getElementById('hs-ring-fill');
-  if (ring) {
-    const dash = Math.round(score / 100 * 201);
-    ring.setAttribute('stroke', scoreColor);
-    ring.setAttribute('stroke-dasharray', `${dash} 201`);
-  }
-
-  setText('hs-big-num', score);
-  setText('hs-grade',   grade);
-  setText('hs-label',   label);
-  setText('hs-message', message);
-
-  const gradeEl = document.getElementById('hs-grade');
-  if (gradeEl) gradeEl.style.color = scoreColor;
-
-  const bigNumEl = document.getElementById('hs-big-num');
-  if (bigNumEl) bigNumEl.style.color = scoreColor;
-
-  // Component bars
-  const compEl = document.getElementById('hs-components');
-  if (compEl) {
-    compEl.innerHTML = components.map(c => {
-      const pct        = Math.round(c.score / c.max * 100);
-      const barColor   =
-        pct >= 80 ? '#22C55E' :
-        pct >= 60 ? '#4F8D74' :
-        pct >= 40 ? '#F59E0B' : '#EF4444';
-      return `
-        <div class="hs-comp-row">
-          <div class="hs-comp-left">
-            <span class="hs-comp-icon">${c.icon}</span>
-            <div>
-              <div class="hs-comp-name">${c.label}</div>
-              <div class="hs-comp-detail">${escHtml(c.detail)}</div>
-            </div>
-          </div>
-          <div class="hs-comp-right">
-            <div class="hs-comp-score" style="color:${barColor}">${c.score}<span style="font-size:11px;color:var(--gray-400);font-weight:400">/${c.max}</span></div>
-            <div class="hs-comp-bar-wrap">
-              <div class="hs-comp-bar" style="width:${pct}%;background:${barColor}"></div>
-            </div>
-            <div class="hs-comp-tip">${escHtml(c.tip)}</div>
-          </div>
-        </div>`;
-    }).join('');
-  }
-
-  // Footer
-  const footEl = document.getElementById('hs-footer');
-  if (footEl) {
-    const unlogged = components.filter(c => c.score === 0);
-    footEl.innerHTML = unlogged.length
-      ? `<div>Log ${unlogged.map(c => c.label.toLowerCase()).join(', ')} to improve your score.</div>`
-      : `<div>All 5 components tracked today 🎉</div>`;
-  }
-
-  document.getElementById('health-score-overlay').style.display = 'flex';
-}
 
 
 // ════════════════════════════════════════════════════════════════

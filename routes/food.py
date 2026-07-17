@@ -341,34 +341,45 @@ def generate_nutrition_suggestions(totals, targets, profile):
     vit_c = totals.get('vit_c', 0)
     vit_d = totals.get('vit_d', 0)
     calcium = totals.get('calcium', 0)
-    t_cal  = targets.get('target_calories') or 2000
-    t_prot = targets.get('protein_g') or 56
-    t_fat  = targets.get('fat_g') or 65
-    t_carb = targets.get('carbs_g') or 250
+    # These are None until the profile has weight/height/age/gender. They used
+    # to fall back to 2000/56/65/250 — population averages — and then this
+    # function told the user they were "1,500 kcal below target" and offered to
+    # fix it. Advice against a target nobody set isn't personalised; it's just
+    # confident. Everything keyed off them is gated on has_targets below.
+    t_cal  = targets.get('target_calories')
+    t_prot = targets.get('protein_g')
     goal   = profile.get('goal') or 'maintain'
     gender = profile.get('gender') or 'other'
-
-    deficit = t_cal - cal
+    has_targets = bool(t_cal)
 
     if cal == 0:
         suggestions.append({'type':'info','icon':'🍽️','text':'Log your meals to see personalised nutrition insights.','priority':0})
         return suggestions
 
-    # Calorie balance
-    if deficit > 500:
-        suggestions.append({'type':'warning','icon':'⚠️','text':"You're " + str(int(deficit)) + " kcal below target. Add a protein-rich meal like dal or paneer.",'priority':1})
-    elif deficit < -300:
-        suggestions.append({'type':'warning','icon':'🔴','text':"You're " + str(int(-deficit)) + " kcal over target. Consider a lighter dinner tonight.",'priority':1})
-    elif 0 <= deficit <= 200:
-        suggestions.append({'type':'success','icon':'✅','text':f"Great calorie balance! Only {int(deficit)} kcal left for today.",'priority':5})
+    if has_targets:
+        # Calorie balance
+        deficit = t_cal - cal
+        if deficit > 500:
+            suggestions.append({'type':'warning','icon':'⚠️','text':"You're " + str(int(deficit)) + " kcal below target. Add a protein-rich meal like dal or paneer.",'priority':1})
+        elif deficit < -300:
+            suggestions.append({'type':'warning','icon':'🔴','text':"You're " + str(int(-deficit)) + " kcal over target. Consider a lighter dinner tonight.",'priority':1})
+        elif 0 <= deficit <= 200:
+            suggestions.append({'type':'success','icon':'✅','text':f"Great calorie balance! Only {int(deficit)} kcal left for today.",'priority':5})
 
-    # Protein
-    if prot < t_prot * 0.7:
-        lacking = round(t_prot - prot, 1)
-        fix = 'Add chicken tikka, paneer, or a whey shake' if goal in ('gain','gain_fast') else 'Add a bowl of dal or 2 boiled eggs'
-        suggestions.append({'type':'warning','icon':'💪','text':f"Protein low ({prot}g of {t_prot}g target). {fix} to add ~{lacking}g.",'priority':2})
-    elif prot >= t_prot * 0.9:
-        suggestions.append({'type':'success','icon':'💪','text':f"Excellent protein intake ({prot}g)! Muscles will thank you.",'priority':5})
+        # Protein
+        if t_prot and prot < t_prot * 0.7:
+            lacking = round(t_prot - prot, 1)
+            fix = 'Add chicken tikka, paneer, or a whey shake' if goal in ('gain','gain_fast') else 'Add a bowl of dal or 2 boiled eggs'
+            suggestions.append({'type':'warning','icon':'💪','text':f"Protein low ({prot}g of {t_prot}g target). {fix} to add ~{lacking}g.",'priority':2})
+        elif t_prot and prot >= t_prot * 0.9:
+            suggestions.append({'type':'success','icon':'💪','text':f"Excellent protein intake ({prot}g)! Muscles will thank you.",'priority':5})
+    else:
+        # Say what's missing and how to get it, instead of inventing a target
+        # to measure them against. The advice below this needs no target —
+        # fibre/iron/vitamins are general reference intakes, not personal goals.
+        suggestions.append({'type':'info','icon':'🎯',
+                            'text':'Add your height, weight, age and gender to get calorie and protein targets.',
+                            'priority':1})
 
     # Fiber
     if fiber < 15:
@@ -392,8 +403,14 @@ def generate_nutrition_suggestions(totals, targets, profile):
     if calcium < cal_rda * 0.5:
         suggestions.append({'type':'info','icon':'🥛','text':f"Calcium is low ({calcium}mg). Have a glass of milk, dahi, or paneer.",'priority':3})
 
-    # Hydration reminder
-    suggestions.append({'type':'info','icon':'💧','text':f"Drink at least {targets.get('water_ml',2500)}ml water today. Coconut water is a great electrolyte boost.",'priority':4})
+    # Hydration reminder — only quote a number if it's derived from their body;
+    # the old `water_ml, 2500` default was one more invented personal goal.
+    water_ml = targets.get('water_ml')
+    suggestions.append({'type':'info','icon':'💧',
+                        'text': (f"Drink at least {water_ml}ml water today. Coconut water is a great electrolyte boost."
+                                 if water_ml else
+                                 "Keep your water up through the day. Coconut water is a great electrolyte boost."),
+                        'priority':4})
 
     suggestions.sort(key=lambda x: x['priority'])
     return suggestions[:6]

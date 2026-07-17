@@ -357,20 +357,8 @@
   <!-- Single "what do I do right now" hero (filled by renderNextAction) -->
   <div id="dash-next-action" class="next-action" style="display:none"></div>
 
-  <!-- Focal "Today" panel: calm health score + inline stats -->
+  <!-- Focal "Today" panel: the day at a glance -->
   <div class="today-panel">
-    <div class="today-score dash-clickable" id="dash-score-card" data-ev-click="openHealthScoreModal()" title="Health score breakdown">
-      <svg class="today-score-ring" viewBox="0 0 76 76">
-        <circle cx="38" cy="38" r="31" fill="none" stroke="var(--teal-100)" stroke-width="6"/>
-        <circle cx="38" cy="38" r="31" fill="none" stroke="var(--teal-600)" stroke-width="6"
-          stroke-dasharray="0 194.8" stroke-linecap="round" transform="rotate(-90 38 38)" id="dash-score-ring"/>
-      </svg>
-      <div class="today-score-center">
-        <div class="today-score-num" id="dash-score-val">—</div>
-        <div class="today-score-of">/ 100</div>
-      </div>
-      <div class="today-score-label" id="dash-score-label">calculating…</div>
-    </div>
 
     <div class="today-stats">
       <div class="tstat dash-clickable" data-ev-click="switchView('medicines')">
@@ -2937,49 +2925,6 @@
 
 
 <!-- ═══════════ HEALTH SCORE MODAL ═══════════ -->
-<div class="modal-overlay" id="health-score-overlay" style="display:none">
-  <div class="modal" style="max-width:440px;width:100%">
-    <div class="modal-head">
-      <h2 class="modal-title" id="hs-modal-title">Today's Health Score</h2>
-      <button class="modal-close" data-ev-click="closeModal('health-score-overlay')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2.2" stroke-linecap="round">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-    <div class="modal-body" style="padding:0 24px 24px">
-
-      <!-- Score ring + grade -->
-      <div class="hs-top">
-        <div class="hs-ring-wrap">
-          <svg width="80" height="80" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="32" fill="none" stroke="var(--gray-100)" stroke-width="7"/>
-            <circle cx="40" cy="40" r="32" fill="none"
-              stroke="#4F8D74" stroke-width="7"
-              stroke-dasharray="0 201" stroke-linecap="round"
-              transform="rotate(-90 40 40)" id="hs-ring-fill"/>
-          </svg>
-          <div class="hs-ring-inner">
-            <div class="hs-big-num" id="hs-big-num">—</div>
-            <div class="hs-grade" id="hs-grade">—</div>
-          </div>
-        </div>
-        <div class="hs-right">
-          <div class="hs-label" id="hs-label">—</div>
-          <div class="hs-message" id="hs-message"></div>
-        </div>
-      </div>
-
-      <!-- Component breakdown -->
-      <div id="hs-components" style="margin-top:16px"></div>
-
-      <!-- Footer nudge -->
-      <div class="hs-footer" id="hs-footer"></div>
-
-    </div>
-  </div>
-</div>
 
 
 <!-- ═══════════ ONBOARDING MODAL ═══════════ -->

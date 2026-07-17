@@ -4226,53 +4226,10 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
    HEALTH SCORE MODAL
    ════════════════════════════════════════ */
 
-.hs-top {
-  display: flex; align-items: center; gap: 20px;
-  padding: 16px 0 14px;
-  border-bottom: 1px solid var(--gray-100);
-  margin-bottom: 4px;
-}
-.hs-ring-wrap {
-  position: relative; width: 80px; height: 80px; flex-shrink: 0;
-}
-.hs-ring-inner {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-}
-.hs-big-num  { font-size: 22px; font-weight: 800; line-height: 1; }
-.hs-grade    { font-size: 13px; font-weight: 700; margin-top: 1px; }
-.hs-right    { flex: 1; }
-.hs-label    { font-size: 18px; font-weight: 700; color: var(--gray-900);
-               font-family: 'EB Garamond', serif; }
-.hs-message  { font-size: 13px; color: var(--gray-500); margin-top: 4px; line-height: 1.4; }
 
 /* Component rows */
-.hs-comp-row {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 12px 0; border-bottom: 1px solid var(--gray-50);
-}
-.hs-comp-row:last-child { border-bottom: none; }
-.hs-comp-left {
-  display: flex; align-items: flex-start; gap: 8px; flex: 1;
-}
-.hs-comp-icon   { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-.hs-comp-name   { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
-.hs-comp-detail { font-size: 11.5px; color: var(--gray-400); margin-top: 2px; }
-.hs-comp-right  { flex-shrink: 0; width: 110px; }
-.hs-comp-score  { font-size: 16px; font-weight: 700; text-align: right; margin-bottom: 4px; }
-.hs-comp-bar-wrap {
-  height: 5px; background: var(--gray-100); border-radius: 99px; overflow: hidden; margin-bottom: 4px;
-}
-.hs-comp-bar    { height: 100%; border-radius: 99px; transition: width .4s ease; }
-.hs-comp-tip    { font-size: 11px; color: var(--gray-400); text-align: right; line-height: 1.3; }
 
 /* Footer */
-.hs-footer {
-  margin-top: 14px; padding: 10px 14px;
-  background: var(--gray-50); border-radius: 8px;
-  font-size: 12.5px; color: var(--gray-500); text-align: center;
-}
 
 /* ════════════════════════════════════════
    ONBOARDING MODAL
@@ -4870,7 +4827,7 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
    EB Garamond is a book serif; give headings a heavier weight so they
    read as substantial rather than thin. */
 .page-title, .logo-name, .today-score-num, .hero-score-num,
-.hs-big-num, .modal-title, .cbd-title, .panel-title-lg,
+.modal-title, .cbd-title, .panel-title-lg,
 .ob-title, .onboarding-title, h1, h2.page-title {
   font-weight: 600;
 }
@@ -4878,7 +4835,7 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 
 /* Typography refinement — tighter tracking on serif titles */
 .page-title { letter-spacing:-.5px; }
-.today-score-num, .hs-big-num, .hero-score-num { letter-spacing:-1px; }
+.today-score-num, .hero-score-num { letter-spacing:-1px; }
 
 /* ── Unified screen header eyebrow (section label above each title) ── */
 .page-eyebrow {
