@@ -7377,26 +7377,19 @@ async function loadReport() {
   const Q_EMOJI = {1:'😩',2:'😕',3:'😐',4:'😊',5:'😴'};
   const GOAL_LABELS = {lose_fast:'Lose weight fast',lose:'Lose weight',maintain:'Maintain weight',gain:'Gain muscle',gain_fast:'Build mass'};
 
-  // Compute overall health score (0–100) from available data
-  let scoreComponents = [], scoreTotal = 0;
-  if (r.sleep?.avg_hours) {
-    const s = Math.min(r.sleep.avg_hours / 7.5, 1) * 100;
-    scoreComponents.push(s); scoreTotal += s;
-  }
-  if (r.fitness?.workout_days != null) {
-    const s = Math.min(r.fitness.workout_days / 4, 1) * 100;
-    scoreComponents.push(s); scoreTotal += s;
-  }
-  if (r.nutrition?.adherence_pct != null) {
-    const s = Math.min(r.nutrition.adherence_pct, 100);
-    scoreComponents.push(s); scoreTotal += s;
-  }
-  if (r.habits?.completion_pct != null) {
-    scoreComponents.push(r.habits.completion_pct); scoreTotal += r.habits.completion_pct;
-  }
-  const healthScore = scoreComponents.length ? Math.round(scoreTotal / scoreComponents.length) : null;
-  const scoreColor = healthScore >= 80 ? '#22C55E' : healthScore >= 60 ? '#F59E0B' : '#EF4444';
-  const scoreLabel = healthScore >= 80 ? 'Excellent' : healthScore >= 60 ? 'Good' : healthScore >= 40 ? 'Fair' : 'Needs attention';
+  // There is deliberately no "health score" here.
+  //
+  // This page is footed "For your doctor:" and has a Download PDF button, so
+  // whatever sits on it gets read as an assessment. A single number averaging
+  // sleep, workouts, calories and habits — with no vitals, no medication
+  // adherence, no symptoms, nothing clinical in it at all — is not an
+  // assessment of anyone's health, and printing it next to that footer invited
+  // a doctor to read it as one. It also scored *not tracking* as failing: the
+  // fitness term counted 0 workouts as 0/100, so a user who logs 8h of sleep
+  // and doesn't use fitness tracking scored 50 and was labelled "Fair".
+  //
+  // The raw metrics below say more, and each carries its own denominator, so a
+  // doctor can see what the numbers rest on.
 
   // Build the period label
   const d1 = new Date(r.period?.start + 'T12:00:00');
@@ -7416,9 +7409,6 @@ async function loadReport() {
   <div class="report-action-bar">
     <div class="report-action-bar-left">
       <div class="report-period-chip">📅 ${periodStr}</div>
-      ${healthScore!=null ? `<div class="report-score-chip" style="background:${scoreColor}18;color:${scoreColor};border-color:${scoreColor}40">
-        <span style="font-weight:800">${healthScore}</span>/100 · ${scoreLabel}
-      </div>` : ''}
     </div>
     <button class="btn-primary" data-ev-click="printReport()">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -7437,21 +7427,7 @@ async function loadReport() {
         <div class="rpt-generated">Generated ${generatedStr}</div>
         <div class="rpt-goal-chip">${GOAL_LABELS[r.profile?.goal]||'—'}</div>
       </div>
-      <div class="rpt-header-right">
-        ${healthScore != null ? `
-        <div class="rpt-score-circle" style="--score-color:${scoreColor}">
-          <svg viewBox="0 0 80 80" class="rpt-score-ring">
-            <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="7"/>
-            <circle cx="40" cy="40" r="34" fill="none" stroke="${scoreColor}" stroke-width="7"
-              stroke-dasharray="${2*Math.PI*34}" stroke-dashoffset="${2*Math.PI*34*(1-healthScore/100)}"
-              stroke-linecap="round" transform="rotate(-90 40 40)"/>
-          </svg>
-          <div class="rpt-score-inner">
-            <div class="rpt-score-num">${healthScore}</div>
-            <div class="rpt-score-sub">Health score</div>
-          </div>
-        </div>` : ''}
-      </div>
+      <div class="rpt-header-right"></div>
     </div>
 
     <!-- 6-metric grid -->
@@ -7465,8 +7441,10 @@ async function loadReport() {
         ${r.sleep?.avg_hours ? metricBar(r.sleep.avg_hours, 9, '#818CF8') : ''}
         <div class="rpt-detail-rows">
           ${r.sleep?.avg_quality ? `<div class="rpt-detail-row"><span>Quality</span><span>${Q_EMOJI[Math.round(r.sleep.avg_quality)]} ${Q_LABEL[Math.round(r.sleep.avg_quality)]}</span></div>` : ''}
-          <div class="rpt-detail-row"><span>Target</span><span>7.5h / night</span></div>
-          ${r.sleep?.avg_hours ? `<div class="rpt-detail-row ${r.sleep.avg_hours>=7?'rpt-row--good':'rpt-row--warn'}"><span>Status</span><span>${r.sleep.avg_hours>=7?'✅ On target':'⚠️ Below target'}</span></div>` : ''}
+          <!-- "Guideline", not "Target": the user never set 7.5h, so calling it
+               theirs — and then marking them "Below target" against it — is
+               putting words in their mouth on a page their doctor reads. -->
+          <div class="rpt-detail-row"><span>Common guideline</span><span>7–9h / night</span></div>
         </div>
       </div>
 
@@ -7478,8 +7456,11 @@ async function loadReport() {
         ${metricBar(r.fitness?.workout_days||0, 7, '#34D399')}
         <div class="rpt-detail-rows">
           <div class="rpt-detail-row"><span>Calories burned</span><span>${(r.fitness?.calories_burned||0).toLocaleString()} kcal</span></div>
-          <div class="rpt-detail-row"><span>Target</span><span>4 days / week</span></div>
-          ${r.fitness?.workout_days!=null ? `<div class="rpt-detail-row ${r.fitness.workout_days>=4?'rpt-row--good':'rpt-row--warn'}"><span>Status</span><span>${r.fitness.workout_days>=4?'✅ On target':'⚠️ Below target'}</span></div>` : ''}
+          <!-- The old status row fired whenever workout_days was non-null,
+               which is always: it's 0, not null. So someone who simply doesn't
+               use fitness tracking got stamped "Below target" against a goal
+               they never set. Only speak when something was actually logged. -->
+          ${r.fitness?.activities ? `<div class="rpt-detail-row"><span>Common guideline</span><span>150 min / week</span></div>` : ''}
         </div>
       </div>
 
@@ -7490,9 +7471,14 @@ async function loadReport() {
         <div class="rpt-sub">${(r.nutrition?.calories_eaten||0).toLocaleString()} kcal consumed</div>
         ${r.nutrition?.adherence_pct != null ? metricBar(r.nutrition.adherence_pct, 100, '#FB923C') : ''}
         <div class="rpt-detail-rows">
-          <div class="rpt-detail-row"><span>Weekly target</span><span>${(r.nutrition?.weekly_target||0).toLocaleString()} kcal</span></div>
-          <div class="rpt-detail-row"><span>Daily target</span><span>${(r.nutrition?.target||0).toLocaleString()} kcal/day</span></div>
-          <div class="rpt-detail-row"><span>Avg hydration</span><span>${r.nutrition?.avg_hydration_ml||0} ml/day</span></div>
+          <!-- target_calories is null until the user gives us weight/height/
+               age/gender. It used to render "0 kcal/day", which reads like a
+               measurement rather than a blank. Say it's not set. -->
+          ${r.nutrition?.target ? `
+          <div class="rpt-detail-row"><span>Weekly target</span><span>${(r.nutrition.weekly_target||0).toLocaleString()} kcal</span></div>
+          <div class="rpt-detail-row"><span>Daily target</span><span>${r.nutrition.target.toLocaleString()} kcal/day</span></div>`
+          : `<div class="rpt-detail-row"><span>Daily target</span><span>Not set</span></div>`}
+          ${r.nutrition?.avg_hydration_ml ? `<div class="rpt-detail-row"><span>Avg hydration</span><span>${r.nutrition.avg_hydration_ml} ml/day</span></div>` : ''}
         </div>
       </div>
 
@@ -7576,12 +7562,6 @@ function printReport() {
   .rpt-generated{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:10px}
   .rpt-goal-chip{display:inline-block;padding:3px 12px;border-radius:99px;
     background:rgba(255,255,255,.1);font-size:12px;color:rgba(255,255,255,.7)}
-  .rpt-score-circle{position:relative;width:80px;height:80px}
-  .rpt-score-ring{position:absolute;inset:0;width:80px;height:80px}
-  .rpt-score-inner{position:absolute;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center}
-  .rpt-score-num{font-size:22px;font-weight:800;color:#fff}
-  .rpt-score-sub{font-size:9px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em}
 
   /* Grid */
   .rpt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
