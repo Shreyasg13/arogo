@@ -286,7 +286,6 @@ function showApp() {
   try { updateSidebarUser(); }       catch(e) {}
   try { checkNotifPermission(); }    catch(e) {}
   try { setupPushSubscription(); }   catch(e) {}
-  try { scheduleReminderChecks(); }  catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
 
   const tdp = document.getElementById('thoughts-date-picker');
@@ -837,6 +836,22 @@ function _urlB64ToUint8(b64) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
+// The only reminder path. The client used to run a second one beside it — a
+// setInterval loop that fired its own dose/water/habit/sleep/mood
+// notifications whenever the tab was open. It was strictly worse and actively
+// harmful, so it's gone; don't bring it back:
+//
+//   - Two notifications for one dose, worded differently, whenever the tab
+//     happened to be open. Only the server's had a working button.
+//   - Its "✓ Mark as Taken" button emitted the action `taken`, which the
+//     service worker doesn't handle — so it fell through to "open the app"
+//     and the dose was never logged. The user believed it was.
+//   - It registered a second, blob-built service worker at scope '/', which
+//     would have displaced the real /sw.js — killing push and offline — if
+//     browsers hadn't rejected blob: script URLs.
+//
+// scheduler.py covers every one of those reminders, works with the tab closed,
+// and its action buttons write straight through the service worker.
 async function setupPushSubscription() {
   try {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -907,7 +922,6 @@ document.addEventListener('DOMContentLoaded', _applyA11yLabels);
 // ── State ──
 let selectedTags = [], selectedFile = null, selectedIcon = '💊', selectedColor = 'teal', selectedActivityType = 'running';
 let notifPermission = 'default';
-let reminderIntervals = [];
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -930,7 +944,6 @@ document.addEventListener('DOMContentLoaded', () => {
   loadDashboard();
   updateSidebarUser();
   checkNotifPermission();
-  scheduleReminderChecks();
   scheduleTodoReminderChecks();
   // Init date pickers
   const tdp = document.getElementById('thoughts-date-picker');
@@ -2410,7 +2423,6 @@ function setupMedForm() {
       document.getElementById('refill-chevron').style.transform = 'rotate(-90deg)';
       closeModal('med-modal-overlay');
       loadMedicines();
-      scheduleReminderChecks();
     } else showToast('Failed to add medicine', 'error');
   });
 }
@@ -2481,107 +2493,11 @@ function requestNotifPermission() {
     document.getElementById('notif-banner').style.display = 'none';
     if (perm === 'granted') {
       showToast('Notifications enabled! 🔔', 'success');
-      scheduleReminderChecks();
-      setupPushSubscription();   // server-sent reminders even when the tab is closed
+      // Reminders come from the server (scheduler.py) so they arrive with the
+      // tab closed and their action buttons actually work.
+      setupPushSubscription();
     }
   });
-}
-
-function scheduleReminderChecks() {
-  reminderIntervals.forEach(clearInterval);
-  reminderIntervals = [];
-  if (notifPermission !== 'granted') return;
-  registerNotifServiceWorker();
-  const interval = setInterval(async () => {
-    const doses = await fetch('/api/medicines/today').then(r => r.json()).catch(() => []);
-    const now = new Date().toTimeString().slice(0,5);
-    doses.forEach(d => { if (d.time === now && !d.taken) fireReminderNotification(d); });
-  }, 60000);
-  reminderIntervals.push(interval);
-  setTimeout(async () => {
-    const doses = await fetch('/api/medicines/today').then(r => r.json()).catch(() => []);
-    const now = new Date().toTimeString().slice(0,5);
-    doses.forEach(d => { if (d.time === now && !d.taken) fireReminderNotification(d); });
-  }, 2000);
-}
-
-function fireReminderNotification(dose) {
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.ready.then(reg => {
-      reg.showNotification('💊 Medicine Reminder', {
-        body: `Time to take ${dose.med_name} — ${dose.dosage} ${dose.unit}${dose.with_food ? ' (with food)' : ''}`,
-        tag: `dose-${dose.med_id}-${dose.time}`,
-        requireInteraction: true,
-        data: { med_id: dose.med_id, time: dose.time, med_name: dose.med_name },
-        actions: [
-          { action: 'taken', title: '✓ Mark as Taken' },
-          { action: 'snooze', title: '⏰ Snooze 10 min' }
-        ]
-      });
-    });
-  } else {
-    const n = new Notification('💊 Medicine Reminder', {
-      body: `Time to take ${dose.med_name} — ${dose.dosage} ${dose.unit}${dose.with_food ? ' (with food)' : ''}`,
-      tag: `dose-${dose.med_id}-${dose.time}`,
-      requireInteraction: true
-    });
-    n.onclick = () => { window.focus(); markDoseTaken(dose.med_id, dose.time, null); n.close(); };
-  }
-}
-
-function registerNotifServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  const swCode = `
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  const { med_id, time, med_name } = e.notification.data || {};
-  if (e.action === 'taken') {
-    e.waitUntil(
-      fetch('/api/medicines/' + med_id + '/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: localToday(), time, taken: true })
-      }).then(() =>
-        self.registration.showNotification('Dose Logged', {
-          body: med_name + ' marked as taken',
-          tag: 'dose-confirm',
-          requireInteraction: false
-        })
-      )
-    );
-    e.waitUntil(clients.matchAll({ type: 'window' }).then(list => {
-      if (list.length) return list[0].focus();
-      return clients.openWindow('/');
-    }));
-  } else if (e.action === 'snooze') {
-    e.waitUntil(new Promise(resolve => {
-      setTimeout(() => {
-        self.registration.showNotification('Medicine Reminder (Snoozed)', {
-          body: 'Still need to take ' + med_name,
-          tag: 'dose-' + med_id + '-snooze',
-          requireInteraction: true,
-          data: { med_id, time, med_name },
-          actions: [
-            { action: 'taken', title: 'Mark as Taken' },
-            { action: 'snooze', title: 'Snooze 10 min' }
-          ]
-        });
-        resolve();
-      }, 600000);
-    }));
-  } else {
-    e.waitUntil(clients.matchAll({ type: 'window' }).then(list => {
-      if (list.length) return list[0].focus();
-      return clients.openWindow('/');
-    }));
-  }
-});
-`;
-  const blob = new Blob([swCode], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(blob);
-  navigator.serviceWorker.register(swUrl, { scope: '/' })
-    .then(() => console.log('[SW] Registered'))
-    .catch(err => console.warn('[SW] Failed:', err));
 }
 
 // ── Fitness ──
@@ -7791,149 +7707,19 @@ async function checkLowStock() {
 // ════════════════════════════════════════════════════════════
 
 // ════════════════════════════════════════════════════════════
-// SMART REMINDER SYSTEM
-// Reads user settings from /api/reminders/settings before firing.
-// Water reminders are spaced by interval and only fire when behind.
+// REMINDER SETTINGS
+// The reminders themselves are fired server-side by scheduler.py — this is
+// only the settings UI. The client used to run its own reminder loop beside
+// the server's, which meant two notifications for one dose whenever the tab
+// happened to be open. See the notes on setupPushSubscription.
 // ════════════════════════════════════════════════════════════
 
-const _nudgeFired  = {};
-let   _remSettings = null;  // cached settings
+let _remSettings = null;  // cached settings
 
 async function loadReminderSettings() {
   const s = await fetch('/api/reminders/settings').then(r => r.json()).catch(() => null);
   if (s) _remSettings = s;
   return s;
-}
-
-async function getReminderSettings() {
-  if (!_remSettings) await loadReminderSettings();
-  return _remSettings || {};
-}
-
-// ── Water reminder logic ──────────────────────────────────────
-// Smart: only fires if behind on goal AND enough time has passed since last log
-async function checkWaterReminder(s, today, hour, min) {
-  if (!s.water_enabled) return;
-
-  const startH = parseInt((s.water_start || '08:00').split(':')[0]);
-  const endH   = parseInt((s.water_end   || '21:00').split(':')[0]);
-  if (hour < startH || hour >= endH) return;  // outside window
-
-  // Check if interval has passed since last fire
-  const intervalMin = Math.round((s.water_interval_h || 2) * 60);
-  const lastKey = `water_last_${today}`;
-  const lastFired = _nudgeFired[lastKey] || 0;  // minutes-since-midnight
-  const nowMin = hour * 60 + min;
-  if (lastFired > 0 && nowMin - lastFired < intervalMin) return;
-
-  // Fetch hydration status
-  const h = await fetch(`/api/reminders/water-status`).then(r => r.json()).catch(() => null);
-  if (!h) return;
-
-  // Smart: only fire if meaningfully behind
-  const expectedPct = Math.min(
-    100,
-    ((nowMin - startH * 60) / ((endH - startH) * 60)) * 100
-  );
-  if (h.pct >= expectedPct - 10) return;  // on track, skip
-
-  // Check if they drank recently (within 45 min)
-  if (h.last_log) {
-    const lastLogMin = new Date(h.last_log);
-    const minsAgo = (Date.now() - lastLogMin.getTime()) / 60000;
-    if (minsAgo < 45) return;  // just drank, skip
-  }
-
-  _nudgeFired[lastKey] = nowMin;
-
-  const remaining = Math.round((h.goal_ml - h.total_ml) / 1000 * 10) / 10;
-  const msg = h.total_ml === 0
-    ? `Haven't logged any water today. Goal is ${h.goal_ml}ml.`
-    : `${h.total_ml}ml so far, ${h.goal_ml - h.total_ml}ml to go. ${remaining}L remaining.`;
-
-  fireSmartNotification('💧 Time to drink some water', msg, 'hydration-' + today + '-' + nowMin);
-  logNotification('hydration', '💧 Water Reminder', msg);
-}
-
-// ── Habit reminder ────────────────────────────────────────────
-async function checkHabitReminder(s, today, hour, min) {
-  if (!s.habit_reminder_enabled) return;
-  const [rh, rm] = (s.habit_reminder_time || '20:00').split(':').map(Number);
-  if (hour !== rh || min >= rm + 10) return;
-  if (_nudgeFired['habit_' + today]) return;
-  _nudgeFired['habit_' + today] = true;
-
-  const d = await fetch('/api/habits').then(r => r.json()).catch(() => null);
-  if (!d) return;
-  const remaining = (d.habits || []).filter(h => !h.done_today).length;
-  if (remaining === 0) return;
-
-  const msg = remaining === 1
-    ? '1 habit still unchecked for today.'
-    : `${remaining} habits still unchecked for today.`;
-  fireSmartNotification('⭐ Habit check', msg, 'habit-' + today);
-  logNotification('system', '⭐ Habit Reminder', msg);
-}
-
-// ── Sleep reminder ────────────────────────────────────────────
-async function checkSleepReminder(s, today, hour, min) {
-  if (!s.sleep_reminder_enabled) return;
-  const [rh, rm] = (s.sleep_reminder_time || '22:00').split(':').map(Number);
-  if (hour !== rh || min >= rm + 10) return;
-  if (_nudgeFired['sleep_' + today]) return;
-  _nudgeFired['sleep_' + today] = true;
-
-  const logs = await fetch('/api/sleep?days=1').then(r => r.json()).catch(() => []);
-  if (Array.isArray(logs) && logs.some(l => l.date_key === today)) return;
-
-  const msg = "Don't forget to log tonight's sleep when you wake up.";
-  fireSmartNotification('🌙 Sleep reminder', msg, 'sleep-' + today);
-  logNotification('sleep', '🌙 Sleep Reminder', msg);
-}
-
-// ── Mood / journal reminder ───────────────────────────────────
-async function checkMoodReminder(s, today, hour, min) {
-  if (!s.mood_reminder_enabled) return;
-  const [rh, rm] = (s.mood_reminder_time || '18:00').split(':').map(Number);
-  if (hour !== rh || min >= rm + 10) return;
-  if (_nudgeFired['mood_' + today]) return;
-  _nudgeFired['mood_' + today] = true;
-
-  const t = await fetch(`/api/thoughts/${today}`).then(r => r.json()).catch(() => null);
-  if (Array.isArray(t) && t.length > 0) return;
-
-  const msg = 'How are you feeling today? Take a moment to capture your thoughts.';
-  fireSmartNotification('😊 Daily journal', msg, 'mood-' + today);
-  logNotification('system', '😊 Journal Reminder', msg);
-}
-
-// ── Fire browser notification ─────────────────────────────────
-function fireSmartNotification(title, body, tag) {
-  if (Notification.permission !== 'granted') return;
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.ready.then(reg =>
-      reg.showNotification(title, { body, tag, requireInteraction: false })
-    );
-  } else {
-    new Notification(title, { body, tag });
-  }
-}
-
-// ── Main check loop ───────────────────────────────────────────
-async function checkDailyNudges() {
-  if (Notification.permission !== 'granted') return;
-  const s     = await getReminderSettings();
-  const now   = new Date();
-  const hour  = now.getHours();
-  const min   = now.getMinutes();
-  const today = now.toISOString().slice(0, 10);
-
-  await Promise.all([
-    checkWaterReminder(s, today, hour, min),
-    checkHabitReminder(s, today, hour, min),
-    checkSleepReminder(s, today, hour, min),
-    checkMoodReminder(s, today, hour, min),
-  ]);
 }
 
 // ── Reminder settings UI ──────────────────────────────────────
@@ -8034,10 +7820,6 @@ async function saveReminderSettings() {
 }
 
 
-// Run nudge check every 5 minutes
-setInterval(checkDailyNudges, 5 * 60 * 1000);
-// Also run once on load (in case user opens app at 2pm)
-setTimeout(checkDailyNudges, 3000);
 
 
 
