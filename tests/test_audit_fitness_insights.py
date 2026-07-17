@@ -96,14 +96,21 @@ class TestCalorieBalanceCrash:
         target = int(targets.get('target_calories') or 2000)
     """
 
-    def test_calorie_balance_no_profile_should_not_500(self, fresh):
+    def test_calorie_balance_no_profile_reports_no_target(self, fresh):
+        """Without weight/height/age/gender there IS no calorie target, and the
+        endpoint must say so rather than invent one. `or 2000` used to fill the
+        hole, and the dashboard printed the result as "2000 kcal remaining" —
+        the most confident number on a new user's first screen, about a budget
+        nobody had computed. Still must not 500 (int(None) once did)."""
         r = fresh.get("/api/calorie-balance")
-        assert r.status_code == 200, (
-            "calorie-balance 500s for a profile-less user; "
-            "int(targets.get('target_calories', 2000)) == int(None). "
-            "Use `or 2000`.")
+        assert r.status_code == 200
         body = r.get_json()
-        assert body["today"]["target"], "target should fall back to a sane default"
+        assert body["has_target"] is False
+        assert body["today"]["target"] is None, "a target we can't compute must not be invented"
+        assert body["today"]["budget"] is None, "no target means no budget…"
+        assert body["today"]["net"] is None, "…and nothing 'remaining'"
+        # Eaten is still true without a target, and still reported.
+        assert body["today"]["eaten"] == 0
 
     def test_calorie_balance_ok_with_profile(self, profiled):
         r = profiled.get("/api/calorie-balance")

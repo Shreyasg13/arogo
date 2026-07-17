@@ -1411,11 +1411,21 @@ async function loadDashboard() {
   // Calorie balance — calm inline stat (no coloured card)
   fetch('/api/calorie-balance').then(r => r.json()).then(cb => {
     const t = cb.today || {};
-    const net = t.net ?? 0;
-    setText('dash-cal-deficit', Math.abs(net));
-    setText('dash-cal-deficit-sub',
-      t.burned > 0 ? `${t.burned} kcal burned` :
-      net > 100 ? 'kcal remaining' : net < -100 ? 'kcal over budget' : 'calories today');
+    // No target → no budget, so there is no "remaining". Show what they
+    // actually ate, which needs no target to be true. `net ?? 0` used to turn
+    // a missing budget into "2000 kcal remaining" — the most confident thing
+    // on a new user's first screen, about a number nobody had computed.
+    if (!cb.has_target) {
+      setText('dash-cal-deficit', t.eaten || 0);
+      setText('dash-cal-deficit-sub',
+        t.eaten ? 'calories eaten' : 'no meals logged yet');
+    } else {
+      const net = t.net ?? 0;
+      setText('dash-cal-deficit', Math.abs(net));
+      setText('dash-cal-deficit-sub',
+        t.burned > 0 ? `${t.burned} kcal burned` :
+        net > 100 ? 'kcal remaining' : net < -100 ? 'kcal over budget' : 'calories today');
+    }
     renderNextAction(doses, cb);   // refine the hero once calorie state is known
   }).catch(() => {});
 
@@ -1773,10 +1783,13 @@ async function openCalorieBreakdown() {
   const profile  = cb.profile || {};
   const eaten    = t.eaten    || 0;
   const burned   = t.burned   || 0;
-  const target   = t.target   || 2000;
-  const budget   = t.budget   || target;   // target + burned
-  const net      = t.net      || 0;
-  const pct      = Math.min(Math.round((eaten / budget) * 100), 150);
+  // No profile → no target, and therefore no budget, no net and no percentage.
+  // These used to fall back to 2000 and present the result as the user's own.
+  const known    = cb.has_target && t.target;
+  const target   = known ? t.target : null;
+  const budget   = known ? (t.budget || target) : null;
+  const net      = known ? (t.net || 0) : null;
+  const pct      = known ? Math.min(Math.round((eaten / budget) * 100), 150) : 0;
   const today    = localToday();
 
   // Date label
@@ -1784,9 +1797,9 @@ async function openCalorieBreakdown() {
   setText('cbd-date-label', d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }));
 
   // Equation — show budget (target + burned) not raw target
-  setText('cbd-target-val', budget + ' kcal');
+  setText('cbd-target-val', known ? budget + ' kcal' : 'Not set');
   setText('cbd-eaten-val',  eaten  + ' kcal');
-  setText('cbd-result-val', Math.abs(net) + ' kcal');
+  setText('cbd-result-val', known ? Math.abs(net) + ' kcal' : '—');
 
   // Sub-label under target shows the breakdown when exercise exists
   const targetBlock = document.querySelector('.cbd-eq-block--target');
@@ -1820,16 +1833,17 @@ async function openCalorieBreakdown() {
   const foodDay = await fetch(`/api/food/log/${today}`).then(r => r.json()).catch(() => null);
   const totals  = foodDay?.summary?.totals || {};
   const macros  = [
-    { id:'prot',  val: Math.round(totals.protein||0), target: targets.protein_g||56,  unit:'g' },
-    { id:'carb',  val: Math.round(totals.carbs||0),   target: targets.carbs_g||250,   unit:'g' },
-    { id:'fat',   val: Math.round(totals.fat||0),     target: targets.fat_g||65,      unit:'g' },
-    { id:'fiber', val: Math.round(totals.fiber||0),   target: targets.fiber_g||30,    unit:'g' },
+    { id:'prot',  val: Math.round(totals.protein||0), target: targets.protein_g, unit:'g' },
+    { id:'carb',  val: Math.round(totals.carbs||0),   target: targets.carbs_g,   unit:'g' },
+    { id:'fat',   val: Math.round(totals.fat||0),     target: targets.fat_g,     unit:'g' },
+    { id:'fiber', val: Math.round(totals.fiber||0),   target: targets.fiber_g,   unit:'g' },
   ];
   macros.forEach(m => {
     const bar = document.getElementById(`cbd-bar-${m.id}`);
     const val = document.getElementById(`cbd-${m.id}-val`);
-    if (bar) bar.style.width = Math.min((m.val / m.target) * 100, 100).toFixed(0) + '%';
-    if (val) val.textContent = `${m.val}${m.unit} / ${m.target}${m.unit}`;
+    const has = hasTargets(targets) && m.target;
+    if (bar) bar.style.width = has ? Math.min((m.val / m.target) * 100, 100).toFixed(0) + '%' : '0%';
+    if (val) val.textContent = has ? `${m.val}${m.unit} / ${m.target}${m.unit}` : `${m.val}${m.unit}`;
   });
 
   // Workouts today
@@ -2546,34 +2560,45 @@ async function loadFitness() {
   // Use TODAY's burned calories only (not the whole week)
   const burnedCal    = stats.today?.calories || 0;
   const eatenCal     = foodDay?.summary?.totals?.calories || 0;
-  const targetCal    = profile?.targets?.target_calories || 2000;
-  // Net = TDEE target - (eaten - burned): how many kcal you still have left today
-  // A positive number means you still have room; negative means surplus over goal
-  const net          = Math.round((targetCal + burnedCal) - eatenCal);  // surplus capacity
-  const pct          = targetCal > 0 ? Math.min(Math.round((eatenCal / (targetCal + burnedCal)) * 100), 150) : 0;
-
-  setText('cdb-burned', burnedCal.toLocaleString() + ' kcal');
-  setText('cdb-eaten',  Math.round(eatenCal) + ' kcal');
-  setText('cdb-target', targetCal + ' kcal/day');
-  setText('cdb-progress-pct', pct + '%');
+  // null, not 2000: calc_tdee can't compute a target without weight/height/
+  // age/gender, and inventing one meant a brand-new user got a red "over
+  // budget" bar for exceeding a number the app made up about them.
+  const targetCal    = profile?.targets?.target_calories || null;
 
   const netEl    = document.getElementById('cdb-net');
   const netLbl   = document.getElementById('cdb-net-label');
   const progress = document.getElementById('cdb-progress');
   const banner   = document.getElementById('calorie-deficit-banner');
 
-  if (netEl) {
-    // net > 0 = room left to eat; net < 0 = exceeded budget
-    netEl.textContent = (net >= 0 ? '' : '') + Math.abs(net) + ' kcal';
-  }
-  if (netLbl) netLbl.textContent = net > 100 ? '✅ Remaining' : net < -100 ? '⚠️ Over budget' : '⚖️ Balanced';
-  if (progress) {
-    progress.style.width = Math.min(pct, 100) + '%';
-    progress.classList.toggle('over', pct > 105);
-  }
-  if (banner) {
-    banner.classList.remove('cdb-deficit','cdb-surplus','cdb-balanced');
-    banner.classList.add(net > 100 ? 'cdb-deficit' : net < -100 ? 'cdb-surplus' : 'cdb-balanced');
+  setText('cdb-burned', burnedCal.toLocaleString() + ' kcal');
+  setText('cdb-eaten',  Math.round(eatenCal) + ' kcal');
+
+  if (!targetCal) {
+    // Eaten and burned are true without a target. Net, target and the progress
+    // bar are not — so say they're missing and point at how to get them.
+    setText('cdb-target', 'Not set');
+    setText('cdb-progress-pct', '—');
+    if (netEl)  netEl.textContent = '—';
+    if (netLbl) netLbl.textContent = 'Add your details for a target';
+    if (progress) { progress.style.width = '0%'; progress.classList.remove('over'); }
+    if (banner) banner.classList.remove('cdb-deficit','cdb-surplus','cdb-balanced');
+  } else {
+    // Net = TDEE target - (eaten - burned): how many kcal you still have left today
+    // A positive number means you still have room; negative means surplus over goal
+    const net = Math.round((targetCal + burnedCal) - eatenCal);
+    const pct = Math.min(Math.round((eatenCal / (targetCal + burnedCal)) * 100), 150);
+    setText('cdb-target', targetCal + ' kcal/day');
+    setText('cdb-progress-pct', pct + '%');
+    if (netEl)  netEl.textContent = Math.abs(net) + ' kcal';
+    if (netLbl) netLbl.textContent = net > 100 ? '✅ Remaining' : net < -100 ? '⚠️ Over budget' : '⚖️ Balanced';
+    if (progress) {
+      progress.style.width = Math.min(pct, 100) + '%';
+      progress.classList.toggle('over', pct > 105);
+    }
+    if (banner) {
+      banner.classList.remove('cdb-deficit','cdb-surplus','cdb-balanced');
+      banner.classList.add(net > 100 ? 'cdb-deficit' : net < -100 ? 'cdb-surplus' : 'cdb-balanced');
+    }
   }
 
   // ── Nutrition strip ──
@@ -2585,25 +2610,31 @@ async function loadFitness() {
 
 function renderFitnessNutritionStrip(foodDay, targets) {
   if (!targets) return;
+  // Same rule as the food page: without a real TDEE these "targets" are just
+  // population averages presented as the user's own goals.
+  const known = hasTargets(targets);
   const t    = foodDay?.summary?.totals || {};
   const defs = [
-    { id:'cal',  val: Math.round(t.calories||0), target: targets.target_calories||2000, unit:'kcal', label:'Calories', color:'#4F8D74' },
-    { id:'prot', val: Math.round(t.protein||0),  target: targets.protein_g||56,         unit:'g',    label:'Protein',  color:'#5E8299' },
-    { id:'carb', val: Math.round(t.carbs||0),    target: targets.carbs_g||250,          unit:'g',    label:'Carbs',    color:'#E0A34E' },
-    { id:'fat',  val: Math.round(t.fat||0),      target: targets.fat_g||65,             unit:'g',    label:'Fat',      color:'#D07D4E' },
-    { id:'fiber',val: Math.round(t.fiber||0),    target: targets.fiber_g||30,           unit:'g',    label:'Fiber',    color:'#5A9E70' },
+    { id:'cal',  val: Math.round(t.calories||0), target: targets.target_calories, unit:'kcal', label:'Calories', color:'#4F8D74' },
+    { id:'prot', val: Math.round(t.protein||0),  target: targets.protein_g,       unit:'g',    label:'Protein',  color:'#5E8299' },
+    { id:'carb', val: Math.round(t.carbs||0),    target: targets.carbs_g,         unit:'g',    label:'Carbs',    color:'#E0A34E' },
+    { id:'fat',  val: Math.round(t.fat||0),      target: targets.fat_g,           unit:'g',    label:'Fat',      color:'#D07D4E' },
+    { id:'fiber',val: Math.round(t.fiber||0),    target: targets.fiber_g,         unit:'g',    label:'Fiber',    color:'#5A9E70' },
   ];
   const R = 18, C = 2 * Math.PI * R; // circumference ~113
 
   defs.forEach(d => {
-    const pct    = Math.min(d.val / d.target, 1);
+    const pct    = (known && d.target) ? Math.min(d.val / d.target, 1) : 0;
     const offset = C - pct * C;
     const ring   = document.getElementById(`fns-ring-${d.id}`);
     const valEl  = document.getElementById(`fns-${d.id}-val`);
     const subEl  = document.getElementById(`fns-${d.id}-sub`);
     if (ring)  ring.style.strokeDashoffset = offset.toFixed(1);
     if (valEl) valEl.textContent = d.id === 'cal' ? d.val : d.val + d.unit;
-    if (subEl) subEl.textContent = `/ ${d.target}${d.id !== 'cal' ? d.unit : ''}`;
+    // No denominator when we don't have one — an unfilled ring beats a ring
+    // measured against an invented goal.
+    if (subEl) subEl.textContent = (known && d.target)
+      ? `/ ${d.target}${d.id !== 'cal' ? d.unit : ''}` : d.label;
   });
 
   // Nutrition suggestions in strip
@@ -3899,19 +3930,32 @@ async function loadFoodTracker() {
   loadQuickMeals();
 }
 
+// True only once the profile has enough (weight/height/age/gender) for
+// calc_tdee to compute real numbers. Without it, every "target" in the UI is a
+// population average wearing the user's name — 2000 kcal, 56g protein, 250g
+// carbs. The backend is careful to return null here; the frontend used to
+// paper over it with `|| 2000` and then colour a progress bar red for going
+// "over" a budget nobody ever set.
+function hasTargets(targets) {
+  return !!(targets && targets.target_calories);
+}
+
 // ── Macro rings ──────────────────────────────────────────────────────────────
 function updateRings(totals, targets) {
+  const known = hasTargets(targets);
   const macros = [
-    { key:'calories', id:'cal',   target: targets?.target_calories || 2000, unit:'kcal', color:'#4F8D74' },
-    { key:'protein',  id:'prot',  target: targets?.protein_g  || 56,        unit:'g',    color:'#5E8299' },
-    { key:'carbs',    id:'carbs', target: targets?.carbs_g    || 250,        unit:'g',    color:'#E0A34E' },
-    { key:'fat',      id:'fat',   target: targets?.fat_g      || 65,         unit:'g',    color:'#D07D4E' },
-    { key:'fiber',    id:'fiber', target: targets?.fiber_g    || 30,         unit:'g',    color:'#5A9E70' },
+    { key:'calories', id:'cal',   target: targets?.target_calories, unit:'kcal', color:'#4F8D74' },
+    { key:'protein',  id:'prot',  target: targets?.protein_g,       unit:'g',    color:'#5E8299' },
+    { key:'carbs',    id:'carbs', target: targets?.carbs_g,         unit:'g',    color:'#E0A34E' },
+    { key:'fat',      id:'fat',   target: targets?.fat_g,           unit:'g',    color:'#D07D4E' },
+    { key:'fiber',    id:'fiber', target: targets?.fiber_g,         unit:'g',    color:'#5A9E70' },
   ];
 
   macros.forEach(m => {
     const val = Math.round(totals?.[m.key] || 0);
-    const pct = Math.min((val / m.target) * 100, 100).toFixed(0);
+    // No target → no denominator, so no percentage and no filled bar. What the
+    // user ate is still true and still shown.
+    const pct = (known && m.target) ? Math.min((val / m.target) * 100, 100).toFixed(0) : 0;
 
     // Compact bar — value
     const valEl = document.getElementById(`fmc-${m.id}`);
@@ -3923,13 +3967,15 @@ function updateRings(totals, targets) {
 
     // Compact bar — target label
     const tgtEl = document.getElementById(`fmc-${m.id}-target`);
-    if (tgtEl) tgtEl.textContent = `/ ${m.target}${m.id !== 'cal' ? 'g' : ''}`;
+    if (tgtEl) tgtEl.textContent = (known && m.target)
+      ? `/ ${m.target}${m.id !== 'cal' ? 'g' : ''}` : '';
 
     // Legacy ring SVG support (kept in case rings still exist somewhere)
     const ring = document.getElementById(`ring-${m.id}`);
     if (ring) ring.style.strokeDashoffset = (201 - (pct / 100) * 201).toFixed(1);
     setText(`ring-${m.id}-val`,    val);
-    setText(`ring-${m.id}-target`, `/ ${m.target}${m.unit !== 'kcal' ? m.unit : ''}`);
+    setText(`ring-${m.id}-target`, (known && m.target)
+      ? `/ ${m.target}${m.unit !== 'kcal' ? m.unit : ''}` : '');
   });
 }
 
@@ -4052,15 +4098,17 @@ function renderMicronutrients(totals, logCount) {
 function renderFoodWeeklyChart(weekData, targets) {
   const el = document.getElementById('food-weekly-chart');
   if (!el || weekData.length === 0) return;
-  const tCal  = targets.target_calories || 2000;
-  const maxCal = Math.max(...weekData.map(d => d.calories), tCal, 1);
+  // Without a real target there's nothing to be "over" or "low" against, so
+  // the bars are scaled to the week's own range and left uncoloured.
+  const tCal   = targets?.target_calories || null;
+  const maxCal = Math.max(...weekData.map(d => d.calories), tCal || 0, 1);
   const days   = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
   el.innerHTML = weekData.map((d, i) => {
     const pct  = (d.calories / maxCal * 80).toFixed(0);
-    const over = d.calories > tCal * 1.1;
-    const low  = d.calories < tCal * 0.4;
-    const cls  = over ? 'fw-bar--over' : low ? 'fw-bar--low' : 'fw-bar--ok';
+    const over = tCal ? d.calories > tCal * 1.1 : false;
+    const low  = tCal ? d.calories < tCal * 0.4 : false;
+    const cls  = !tCal ? 'fw-bar--ok' : over ? 'fw-bar--over' : low ? 'fw-bar--low' : 'fw-bar--ok';
     const isToday = d.date === foodDate;
     return `<div class="fw-bar-col">
       <div class="fw-bar ${cls}" style="height:${pct}px;opacity:${isToday?1:.7}"></div>
@@ -6387,7 +6435,15 @@ async function loadHydration(dateStr) {
   if (fill)    fill.style.height = pct + '%';
   if (pctEl)   pctEl.textContent = pct + '%';
   if (lvlEl)   lvlEl.textContent = (r.total_ml || 0) + 'ml';
-  if (badgeEl) badgeEl.textContent = `Goal: ${goalMl}ml`;
+  // Don't call a number "your goal" when we made it up. 2450ml is 35ml × an
+  // assumed 70kg — specific enough that the user believes we know their body.
+  // Say it's a default, and how to make it theirs.
+  if (badgeEl) {
+    badgeEl.textContent = r.goal_is_default ? `Goal: ${goalMl}ml (default)` : `Goal: ${goalMl}ml`;
+    badgeEl.title = r.goal_is_default
+      ? 'A general starting point — set a water goal, or add your weight, to personalise it'
+      : '';
+  }
 
   // Update dashboard wellness strip at the same time
   const stripEl  = document.getElementById('dws-hydration');
@@ -7193,11 +7249,18 @@ function renderProgress(r) {
 
   // Calorie adherence bars
   const calDays = daysSlice(r.nutrition?.daily) || [];
-  const targetCal = r.nutrition?.target_daily || 2000;
+  // Null until the profile can produce a TDEE. Without it there's no "% of
+  // goal" to colour a bar against, so scale to the week's own range instead.
+  const targetCal = r.nutrition?.target_daily || null;
+  const calMax    = Math.max(...calDays.map(d => d.cal || 0), 1);
   const calBars = calDays.map((d,i) => {
-    const pct = d.cal > 0 ? Math.min(Math.round((d.cal/targetCal)*100), 150) : 0;
-    const color = pct > 115 ? '#EF4444' : pct > 95 ? '#22C55E' : pct > 70 ? '#F59E0B' : 'var(--gray-200)';
-    return `<div class="prog-cal-bar ${pct>115?'over':''}" style="height:${Math.max(pct,4)}%;background:${color}" title="${d.date}: ${d.cal} kcal (${pct}% of goal)"></div>`;
+    const pct = targetCal
+      ? (d.cal > 0 ? Math.min(Math.round((d.cal/targetCal)*100), 150) : 0)
+      : Math.round((d.cal || 0) / calMax * 100);
+    const color = !targetCal ? 'var(--gray-200)'
+      : pct > 115 ? '#EF4444' : pct > 95 ? '#22C55E' : pct > 70 ? '#F59E0B' : 'var(--gray-200)';
+    const label = targetCal ? `${d.date}: ${d.cal} kcal (${pct}% of goal)` : `${d.date}: ${d.cal} kcal`;
+    return `<div class="prog-cal-bar ${targetCal && pct>115?'over':''}" style="height:${Math.max(pct,4)}%;background:${color}" title="${label}"></div>`;
   }).join('');
   const noCalMsg = calDays.every(d=>d.cal===0) ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">Log meals to see calorie data</div>` : '';
 
@@ -7215,8 +7278,16 @@ function renderProgress(r) {
     </div>`).join('');
   const noHabitMsg = habits.length === 0 ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">No habits tracked — add habits on the Consistency page</div>` : '';
 
-  // Status badge helper
-  const badge = (pct, good=70, warn=40) => {
+  // Status badge helper.
+  //
+  // `has` is not optional in spirit: with no data every pct is 0, so an empty
+  // account used to get four red "📋 Needs work" badges — while the header one
+  // line above correctly said "Start logging to see your progress". The page
+  // scolded a user for not having used an app they'd just installed, and
+  // contradicted itself doing it. No data, no verdict; the sections already
+  // carry their own "start logging" empty states.
+  const badge = (pct, good=70, warn=40, has=true) => {
+    if (!has) return '';
     const cls = pct >= good ? 'good' : pct >= warn ? 'warn' : 'bad';
     const txt = pct >= good ? '✅ On target' : pct >= warn ? '⚠️ Almost there' : '📋 Needs work';
     return `<span class="prog-status-badge ${cls}">${txt}</span>`;
@@ -7231,10 +7302,19 @@ function renderProgress(r) {
     <div class="prog-section">
       <div class="prog-section-head">
         <div class="prog-section-title">🎯 Current Goal</div>
-        <div class="prog-section-meta">${r.targets?.target_calories||'—'} kcal/day · ${r.targets?.protein_g||'—'}g protein</div>
+        <!-- Was "— kcal/day · —g protein" under a heading called "Current
+             Goal": a section that states nothing and offers no way to set one.
+             Show the targets only when they exist; otherwise the body below
+             becomes a way in. -->
+        ${r.targets?.target_calories
+          ? `<div class="prog-section-meta">${r.targets.target_calories} kcal/day · ${r.targets.protein_g||'—'}g protein</div>`
+          : ''}
       </div>
       <div class="prog-section-body" style="display:flex;align-items:center;gap:20px">
-        <div style="font-size:22px;font-weight:700;color:var(--gray-900)">${GOAL_LABELS[r.profile?.goal]||'—'}</div>
+        ${r.profile?.goal
+          ? `<div style="font-size:22px;font-weight:700;color:var(--gray-900)">${GOAL_LABELS[r.profile.goal]||''}</div>`
+          : `<a href="#" data-ev-click="switchView('food');return false"
+                style="font-size:14px;font-weight:600;color:var(--teal-600)">Set your goal →</a>`}
         ${latest ? `<div style="font-size:13px;color:var(--gray-500)">Current weight: <strong>${latest.weight}kg</strong> · BMI: <strong>${latest.bmi||'—'}</strong></div>` : ''}
         <div style="margin-left:auto;font-size:13px;color:${overallColor};font-weight:700">${overallLabel}</div>
       </div>
@@ -7254,7 +7334,7 @@ function renderProgress(r) {
       <div class="prog-section">
         <div class="prog-section-head">
           <div class="prog-section-title">🏃 Workout Frequency</div>
-          ${badge(workoutPct)}
+          ${badge(workoutPct, 70, 40, !!(r.workouts?.this_month || r.workouts?.total))}
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
@@ -7275,7 +7355,7 @@ function renderProgress(r) {
       <div class="prog-section">
         <div class="prog-section-head">
           <div class="prog-section-title">🌙 Sleep Consistency</div>
-          ${badge(sleepPct, 90, 70)}
+          ${badge(sleepPct, 90, 70, sleepDays.length > 0)}
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
@@ -7298,7 +7378,7 @@ function renderProgress(r) {
       <div class="prog-section">
         <div class="prog-section-head">
           <div class="prog-section-title">🍽️ Calorie Adherence</div>
-          ${badge(calPct)}
+          ${badge(calPct, 70, 40, !!targetCal && !noCalMsg)}
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
@@ -7322,7 +7402,7 @@ function renderProgress(r) {
     <div class="prog-section">
       <div class="prog-section-head">
         <div class="prog-section-title">⭐ Habit Completion</div>
-        ${badge(habitPct)}
+        ${badge(habitPct, 70, 40, habits.length > 0)}
       </div>
       <div class="prog-section-body">
         ${noHabitMsg}

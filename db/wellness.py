@@ -214,13 +214,32 @@ def get_hydration_day(date_key: str) -> dict:
                    (date_key, uid), fetchall=True)
     logs = [dict(r) for r in rows]
     total = sum(to_num(r.get('amount_ml'), 0) for r in logs)
-    # Calculate goal from profile (35ml per kg body weight, default 2450ml)
-    profile = execute("SELECT weight_kg FROM user_profile WHERE user_id=? LIMIT 1",
-                      (uid,), fetchone=True)
-    weight  = float((profile or {}).get('weight_kg') or 70)
-    goal_ml = round(weight * 35)
-    pct     = min(round(total / goal_ml * 100), 100) if goal_ml else 0
+
+    # The goal, in order of how much we actually know:
+    #   1. what the user set        → theirs
+    #   2. 35ml/kg of their weight  → derived from their body
+    #   3. nothing                  → say so
+    #
+    # It used to fall through to 35 × an assumed 70kg = 2450ml and label that
+    # "Goal: 2450ml". The oddly specific number is what sells it — the user
+    # assumes we know something about them. We didn't; we'd never asked.
+    rs = execute("SELECT water_goal_ml FROM reminder_settings WHERE user_id=? LIMIT 1",
+                 (uid,), fetchone=True)
+    goal_ml = (rs or {}).get('water_goal_ml') or None
+    goal_is_default = False
+    if not goal_ml:
+        profile = execute("SELECT weight_kg FROM user_profile WHERE user_id=? LIMIT 1",
+                          (uid,), fetchone=True)
+        weight = (profile or {}).get('weight_kg')
+        if weight:
+            goal_ml = round(float(weight) * 35)
+        else:
+            goal_ml = 2450          # a starting point, flagged as not theirs
+            goal_is_default = True
+
+    pct = min(round(total / goal_ml * 100), 100) if goal_ml else 0
     return {'logs': logs, 'total_ml': total, 'goal_ml': goal_ml, 'pct': pct,
+            'goal_is_default': goal_is_default,
             'date': date_key, 'usual_ml': usual_sip_ml(uid)}
 
 def delete_hydration_log(lid: str):

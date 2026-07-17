@@ -654,7 +654,12 @@ def get_goal_progress() -> dict:
         'weight_trend': weight_trend,
         'workouts': {
             'this_month': workout_days_month, 'days_elapsed': days_in_month,
-            'frequency_pct': round(workout_days_month/days_in_month*100),
+            # Rolling 30-day window, not days-elapsed-this-month: with
+            # `today.day` as the denominator a single workout read 100% on the
+            # 1st and 50% on the 2nd, which is noise rendered with the
+            # authority of a statistic. A fixed window means the same thing
+            # every day of the month.
+            'frequency_pct': round(len(workout_map) / 30 * 100),
             'daily': daily_workouts
         },
         'habits': {

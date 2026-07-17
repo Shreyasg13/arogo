@@ -78,8 +78,14 @@ def api_calorie_balance():
     targets  = calc_tdee(raw_prof)
     profile  = {'profile': raw_prof, 'targets': targets}
     # target_calories is present-but-None until the profile has weight/height/
-    # age/gender — the `.get` default never fires, so guard with `or 2000`.
-    target   = int(targets.get('target_calories') or 2000)
+    # age/gender. It stays None: `or 2000` used to invent a calorie budget for
+    # a user who never gave us a body to compute one from, and the dashboard
+    # then printed it as "2000 kcal remaining" — the most confident number on
+    # a brand-new user's first screen, about a budget nobody had calculated.
+    # calc_tdee is careful to return None; honour it and let the UI ask.
+    target = targets.get('target_calories')
+    target = int(target) if target else None
+    has_target = target is not None
 
     # Today's food
     food_sum = get_nutrition_summary(today)
@@ -90,10 +96,12 @@ def api_calorie_balance():
     today_acts    = [a for a in all_acts if a.get('date') == today]
     burned_today  = sum(max(0, a.get('calories', 0) or 0) for a in today_acts)
 
-    # Net balance: positive = deficit (under budget), negative = surplus (over budget)
-    # budget = target + burned (exercise earns more calories)
-    budget  = target + burned_today
-    net     = budget - eaten   # positive → still has room; negative → over
+    # Net balance: positive = deficit (under budget), negative = surplus (over
+    # budget). budget = target + burned (exercise earns more calories).
+    # With no target there is no budget and no "remaining" — those are None
+    # rather than a number derived from a guess.
+    budget  = (target + burned_today) if has_target else None
+    net     = (budget - eaten) if has_target else None
 
     # 7-day daily breakdown
     daily = []
@@ -103,18 +111,19 @@ def api_calorie_balance():
         d_eat = round(fs['totals'].get('calories', 0))
         d_acts = [a for a in all_acts if a.get('date') == d]
         d_burn = sum(max(0, a.get('calories', 0) or 0) for a in d_acts)
-        d_bud  = target + d_burn
+        d_bud  = (target + d_burn) if has_target else None
         daily.append({
             'date':    d,
             'eaten':   d_eat,
             'burned':  d_burn,
             'target':  target,
             'budget':  d_bud,
-            'net':     d_bud - d_eat,
+            'net':     (d_bud - d_eat) if has_target else None,
             'logged':  fs['log_count'] > 0,
         })
 
     return jsonify({
+        'has_target': has_target,
         'today': {
             'date':    today,
             'eaten':   eaten,
