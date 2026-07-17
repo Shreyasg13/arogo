@@ -21,6 +21,7 @@ from db.core import init_db, execute
 from app import create_app
 
 EMAIL = "push@medeasy.test"
+TODAY = datetime.date.today().isoformat()
 PW = "push-pw-123456"
 
 FAKE_SUB = {
@@ -159,6 +160,46 @@ class TestWaterQuickLog:
                 log_hydration(750, "water", today_iso())
             log_hydration(200, "water", today_iso())
         assert scheduler._usual_sip_ml(uid) == 750   # by frequency, not size/recency
+
+    def test_tapping_the_suggested_amount_does_not_teach_it_back_to_us(self, app, user):
+        """The reminder's button offers usual_sip_ml, and the tap writes it
+        back. If that counted as a deliberate choice, the app's own made-up
+        250ml default would be laundered into "what they drink" and keep
+        outvoting the real bottle they log by hand — the feature defeating its
+        own stated purpose, self-reinforcingly."""
+        import scheduler
+        uid = execute("SELECT id FROM users WHERE email=?", (EMAIL,), fetchone=True)["id"]
+        execute("DELETE FROM hydration_logs WHERE user_id=?", (uid,), commit=True)
+
+        # Cold start: the app suggests 250 because it knows nothing.
+        assert scheduler._usual_sip_ml(uid) == 250
+
+        # They tap that suggestion five times — the service worker's exact POST.
+        for _ in range(5):
+            r = user.post("/api/hydration", json={
+                "amount_ml": 250, "drink_type": "water",
+                "date_key": TODAY, "source": "notification"})
+            assert r.status_code == 200
+
+        # …and deliberately log their real 500ml bottle four times in-app.
+        for _ in range(4):
+            user.post("/api/hydration", json={"amount_ml": 500, "drink_type": "water",
+                                              "date_key": TODAY})
+
+        assert scheduler._usual_sip_ml(uid) == 500, (
+            "the app's own suggested default outvoted the container the user "
+            "actually chose")
+        # The water still counts toward the day — it was drunk either way.
+        total = execute("SELECT SUM(amount_ml) AS t FROM hydration_logs WHERE user_id=?",
+                        (uid,), fetchone=True)["t"]
+        assert total == 5 * 250 + 4 * 500
+
+    def test_hydration_rejects_a_garbage_date(self, app, user):
+        """A bogus date_key orphans the log on a day the UI can't navigate to,
+        where it counts toward no total and can't be deleted. The food route
+        already rejected this; hydration was the gap."""
+        assert user.post("/api/hydration",
+                         json={"amount_ml": 250, "date_key": "tomorrow"}).status_code == 400
 
     def test_mood_reminder_can_be_answered_from_the_notification(self, app, user, delivered, monkeypatch):
         import scheduler

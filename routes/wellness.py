@@ -152,12 +152,28 @@ def api_hydration_day(date_key):
 def api_hydration_week():
     return jsonify(get_hydration_week())
 
+# Water logged by tapping the reminder's button is marked, because it isn't
+# evidence of anything the user chose. The button's amount comes FROM
+# usual_sip_ml, so counting the tap as a deliberate choice feeds our own number
+# back in as if it were theirs — see usual_sip_ml for the loop this closes.
+HYDRATION_SOURCE_NOTIF = 'notif'
+
+
 @bp.route('/api/hydration', methods=['POST'])
 @require_auth
 def api_log_hydration():
     d = request.json or {}
-    log_hydration(d.get('amount_ml', 250), d.get('drink_type','water'),
-                  d.get('date_key', today_iso(get_user_timezone())))
+    # A garbage date_key would orphan the log on a day the UI can't navigate
+    # to, where it counts toward no total and can't be deleted. The food route
+    # already rejects this; hydration was the gap.
+    date_key = d.get('date_key') or today_iso(get_user_timezone())
+    if not valid_date(date_key):
+        return jsonify({'success': False, 'error': 'Invalid date'}), 400
+    # Only this one literal is honoured — the client can't set arbitrary
+    # provenance (source_id also links food-log credits, which it must not forge).
+    source = HYDRATION_SOURCE_NOTIF if d.get('source') == 'notification' else None
+    log_hydration(d.get('amount_ml', 250), d.get('drink_type', 'water'), date_key,
+                  source_id=source)
     return jsonify({'success': True})
 
 @bp.route('/api/hydration/<lid>', methods=['DELETE'])

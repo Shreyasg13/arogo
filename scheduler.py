@@ -281,6 +281,19 @@ def _caregiver_alerts():
         print(f'[scheduler] Caregiver alert error: {e}')
 
 
+def _digest_log_title(base: str) -> str:
+    """Say "emailed" only when an email actually went out.
+
+    mailer.send_*() returns True after merely printing to stderr when SMTP
+    isn't configured, so a deployment missing SMTP_HOST would tell every user
+    their digest was emailed, every week, while sending nothing. The digest is
+    generated and readable in the app either way — "ready" is the true word for
+    that. (Same dev-mode blind spot as the caregiver alert; see _caregiver_alerts.)
+    """
+    import mailer          # lazily, as everywhere else in this module
+    return f'{base} emailed' if mailer.is_configured() else f'{base} ready'
+
+
 def _send_weekly_digests():
     """Email the weekly digest to every opted-in user (Sunday evenings).
     Deduped per user per week via notification_log."""
@@ -309,7 +322,7 @@ def _send_weekly_digests():
                     from db.core import new_id, now_iso
                     execute("""INSERT INTO notification_log (id,type,title,body,read,created_at,user_id)
                                VALUES (?,?,?,?,1,?,?)""",
-                            (new_id(), 'digest_email', 'Weekly digest emailed',
+                            (new_id(), 'digest_email', _digest_log_title('Weekly digest'),
                              digest['headline'], now_iso(), u['id']), commit=True)
                     sent += 1
         if sent:
@@ -356,7 +369,7 @@ def _send_caregiver_digests():
                 from db.core import new_id, now_iso
                 execute("""INSERT INTO notification_log (id,type,title,body,read,created_at,user_id)
                            VALUES (?,?,?,?,1,?,?)""",
-                        (new_id(), 'caregiver_digest_email', 'Caregiver digest emailed',
+                        (new_id(), 'caregiver_digest_email', _digest_log_title('Caregiver digest'),
                          digest['period_label'], now_iso(), c['user_id']), commit=True)
                 sent += 1
         if sent:

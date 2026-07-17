@@ -109,6 +109,23 @@ class TestDigestApi:
         assert "Tough week" not in d["headline"]
 
 
+class TestDigestHonesty:
+    def test_feed_does_not_claim_emailed_when_smtp_is_unconfigured(self, app, monkeypatch):
+        """mailer.send_*() returns True after merely printing to stderr when
+        SMTP_HOST is unset, so a deploy missing SMTP would tell every user
+        their digest was emailed, every week, while sending nothing. The digest
+        is readable in-app either way — "ready" is the true word for that."""
+        import mailer
+        import scheduler
+
+        monkeypatch.setattr(mailer, "is_configured", lambda: False)
+        assert "emailed" not in scheduler._digest_log_title("Weekly digest")
+        assert scheduler._digest_log_title("Weekly digest") == "Weekly digest ready"
+
+        monkeypatch.setattr(mailer, "is_configured", lambda: True)
+        assert scheduler._digest_log_title("Weekly digest") == "Weekly digest emailed"
+
+
 class TestDigestEmailJob:
     def test_sends_once_per_week(self, app, user, sent):
         from scheduler import _send_weekly_digests

@@ -70,7 +70,12 @@ self.addEventListener('notificationclick', e => {
         method: 'POST',
         credentials: 'include',          // same-origin session cookie
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_ml: ml, drink_type: 'water', date_key: localToday() }),
+        // `source` marks this as a tap on OUR suggested amount, not a
+        // container the user chose — the button's number comes from
+        // usual_sip_ml, so counting it as a preference would feed the app's
+        // own default back in as if it were theirs.
+        body: JSON.stringify({ amount_ml: ml, drink_type: 'water',
+                               date_key: localToday(), source: 'notification' }),
       })
       .then(r => ack(r.ok, `${ml}ml added to today.`, 'water-ack'))
       .catch(() => {})

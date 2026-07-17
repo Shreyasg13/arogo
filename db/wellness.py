@@ -192,10 +192,20 @@ def log_hydration(amount_ml: int, drink_type: str, date_key: str,
     return dict(execute("SELECT * FROM hydration_logs WHERE id=?", (hid,), fetchone=True))
 
 def usual_sip_ml(uid: str = None, default: int = 250) -> int:
-    """The user's most-frequent deliberate water amount — i.e. their real glass
-    or bottle — so quick-log buttons offer what they actually drink instead of
-    a made-up 250ml. Auto-credited drinks (source_id set) are excluded: a
-    latte's 360ml is not your water container."""
+    """The user's most-frequent DELIBERATE water amount — their real glass or
+    bottle — so quick-log buttons offer what they actually drink instead of a
+    made-up 250ml.
+
+    Only rows with no source_id count, which excludes two kinds of number that
+    aren't a container the user chose:
+
+      - auto-credited drinks: a latte's 360ml is not your water bottle.
+      - taps on the reminder's quick-log button: that button's amount comes
+        from *this function*, so counting the tap as a preference feeds our own
+        default straight back in. Five taps of the suggested 250 would then
+        outvote four deliberate 500ml logs — the feature defeating its own
+        purpose, and laundering a number we invented into "what they drink".
+    """
     try:
         r = execute("""SELECT amount_ml, COUNT(*) AS n FROM hydration_logs
                        WHERE user_id=? AND amount_ml > 0 AND source_id IS NULL
