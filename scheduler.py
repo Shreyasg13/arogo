@@ -242,19 +242,37 @@ def _caregiver_alerts():
                         JOIN users u ON u.id = m.user_id
                         WHERE m.group_id=? AND m.user_id<>? AND m.receive_care_alerts=1""",
                         (w['group_id'], uid), fetchall=True)
+                    # Count who we actually reached. Both of these can fail
+                    # quietly: push returns 0 when nobody's subscribed or
+                    # pywebpush is missing, and send_email returns True after
+                    # merely printing to stderr when SMTP isn't configured.
+                    reached = 0
                     for o in others:
-                        push.push_to_user(o['id'], title, body, '/')
-                        mailer.send_email(
+                        pushed = bool(push.push_to_user(o['id'], title, body, '/'))
+                        # Send first, then judge: send_email must still be called
+                        # so dev flows keep logging it, but a dev-mode "True"
+                        # (printed to stderr, nothing sent) must not count as
+                        # having reached a human being.
+                        sent = mailer.send_email(
                             o['email'], title,
                             f"Hi {o['name'] or 'there'},\n\n{body}\n\n"
                             f"They opted in to these alerts so you can check on them.\n"
                             f"Open Arogo: {mailer.APP_BASE_URL}/\n")
+                        if pushed or (sent and mailer.is_configured()):
+                            reached += 1
                     # Transparency: the member always learns when family is told.
                     # Log THIS honest message to the member's own feed (also the
                     # dedup record), not the third-person "X missed a dose".
-                    tp_title = "We let your family know"
-                    tp_body  = (f"{med} ({d['time']}) is still unlogged, so your family "
-                                f"was notified. Take it and this clears.")
+                    # If we reached nobody, say so — a member who believes
+                    # someone is now checking on them may decide not to act.
+                    if reached:
+                        tp_title = "We let your family know"
+                        tp_body  = (f"{med} ({d['time']}) is still unlogged, so your family "
+                                    f"was notified. Take it and this clears.")
+                    else:
+                        tp_title = "Couldn't reach your family"
+                        tp_body  = (f"{med} ({d['time']}) is still unlogged and we couldn't "
+                                    f"reach anyone in your family. Please take it, or call them.")
                     push.push_to_user(uid, tp_title, tp_body, '/')
                     _mark_pushed(uid, key, tp_title, tp_body)
             except Exception as e:

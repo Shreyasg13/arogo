@@ -1589,30 +1589,44 @@ async function loadCarePanel() {
   el.style.display = '';
 }
 
+// Every action below tells one person something reassuring about another. If
+// the write didn't land, claiming it did is worse than staying quiet: the
+// member stops worrying because they believe their family knows they're okay,
+// and the family is still sitting there waiting. So: check, then speak.
+// Returns the parsed body on success, or null — never throws.
+async function postJson(url, body) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    if (!r.ok) return null;
+    const d = await r.json().catch(() => ({}));
+    return (d && d.success === false) ? null : (d || {});
+  } catch {
+    return null;
+  }
+}
+
 async function careAck(uid) {
-  await fetch('/api/family/care-ack', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ target_user_id: uid })
-  }).catch(() => {});
+  const ok = await postJson('/api/family/care-ack', { target_user_id: uid });
+  if (!ok) { showToast("Couldn't let them know — check your connection", 'error'); return; }
   showToast("Thanks — your family will see you're on it", 'success');
   loadCarePanel();
 }
 
 // Caregiver → member encouragement (one tap; turns monitoring into connection)
 async function cheer(uid, name) {
-  await fetch('/api/family/encourage', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to_user_id: uid, emoji: '👏', message: '' })
-  }).catch(() => {});
-  showToast(`👏 Sent encouragement to ${name || 'them'}`, 'success');
+  const ok = await postJson('/api/family/encourage', { to_user_id: uid, emoji: '👏', message: '' });
+  showToast(ok ? `👏 Sent encouragement to ${name || 'them'}`
+               : "Couldn't send that — try again", ok ? 'success' : 'error');
 }
 
 async function pingMember(uid, name) {
-  await fetch('/api/family/ping', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to_user_id: uid })
-  }).catch(() => {});
-  showToast(`💛 Let ${name || 'them'} know you're thinking of them`, 'success');
+  const ok = await postJson('/api/family/ping', { to_user_id: uid });
+  showToast(ok ? `💛 Let ${name || 'them'} know you're thinking of them`
+               : "Couldn't send that — try again", ok ? 'success' : 'error');
 }
 
 // Recipient side: warm cards for encouragements sent to me
@@ -1636,7 +1650,13 @@ async function loadEncouragements() {
 }
 
 async function replyOkay(eid) {
-  await fetch(`/api/family/encouragements/${eid}/ok`, { method: 'POST' }).catch(() => {});
+  const ok = await postJson(`/api/family/encouragements/${eid}/ok`);
+  if (!ok) {
+    // Leave the card up so they can retry — this is someone answering a
+    // worried family member; a swallowed failure leaves both sides stranded.
+    showToast("Couldn't send your reply — check your connection", 'error');
+    return;
+  }
   showToast("Sent — they'll know you're okay 💛", 'success');
   loadEncouragements();
 }

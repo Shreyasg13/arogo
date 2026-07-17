@@ -250,6 +250,45 @@ class TestCaregiverAlerts:
         scheduler._caregiver_alerts()
         assert not pushes and not mails
 
+    def test_member_is_told_the_truth_when_family_cannot_be_reached(
+            self, app, carol, dave, group, monkeypatch):
+        """The member always learns when family is told — but only if they were.
+
+        Push returns 0 with nobody subscribed, and send_email returns True after
+        merely printing to stderr when SMTP isn't configured. Both failures are
+        silent, so a deployment missing SMTP could reach nobody while telling
+        the member "your family was notified" — and a member who believes
+        someone is now checking on them may reasonably decide not to act."""
+        import datetime as dt
+        import push as push_module
+        import mailer
+        import scheduler
+
+        dave.post("/api/family/consent",
+                  json={"share_medicines": True, "alert_missed_doses": True})
+        dave.post("/api/medicines", json={
+            "name": "UnreachablePill", "dosage": "10", "times": ["09:00"]})
+        noon = dt.datetime.combine(dt.date.today(), dt.time(12, 0))
+        monkeypatch.setattr(scheduler, "_user_local_now", lambda uid: noon)
+
+        # Nobody subscribed to push, and SMTP isn't configured: zero humans reached.
+        pushes = []
+        monkeypatch.setattr(push_module, "push_to_user",
+                            lambda uid, t, b, url='/', actions=None:
+                            pushes.append({"uid": uid, "title": t, "body": b}) or 0)
+        monkeypatch.setattr(mailer, "send_email", lambda to, s, txt: True)
+        monkeypatch.setattr(mailer, "is_configured", lambda: False)
+
+        scheduler._caregiver_alerts()
+
+        dave_id = next(m["user_id"] for m in group["members"]
+                       if m["email"] == "dave@medeasy.test")
+        told = [p for p in pushes if p["uid"] == dave_id]
+        assert told, "the member should always hear what happened"
+        assert "couldn't reach" in told[0]["title"].lower(), \
+            f"member was told family knew when nobody was reached: {told[0]['title']}"
+        assert "was notified" not in told[0]["body"]
+
     def test_self_correct_nudge_before_family_is_told(self, app, dave, group, monkeypatch):
         # 90 min overdue → only the MEMBER is nudged; family is NOT alerted yet.
         import datetime as dt
