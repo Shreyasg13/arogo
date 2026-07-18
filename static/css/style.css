@@ -4276,78 +4276,83 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
    SLEEP STEPPER PICKER
    ════════════════════════════════════════ */
 
-.stp-row {
-  display: flex; align-items: flex-start; gap: 6px;
-  margin-bottom: 4px;
+/* ── Duration-first sleep entry ──────────────────────────────────
+   Lead with how long you slept — a big draggable range (native, so it's
+   touch-drag on a phone and arrow-keyable on a desktop for free) flanked by
+   −/+ steppers. Exact bed/wake times live behind a disclosure. */
+.sleep-dur-head {
+  text-align: center; margin-bottom: 10px;
 }
+.sleep-dur-readout {
+  font-family: 'EB Garamond', serif;
+  font-size: 40px; font-weight: 600; line-height: 1;
+  letter-spacing: -.02em;
+}
+.sleep-dur--good .sleep-dur-readout { color: #4F8D74; }
+.sleep-dur--ok   .sleep-dur-readout { color: #C08A2D; }
+.sleep-dur--low  .sleep-dur-readout { color: #D0654E; }
+.sleep-dur-caption { font-size: 11.5px; color: var(--gray-400); margin-top: 4px; }
 
-.stp-block {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
+.sleep-dur-control {
+  display: flex; align-items: center; gap: 12px;
 }
-.stp-icon  { font-size: 18px; line-height: 1; }
-.stp-label {
-  font-size: 12px; font-weight: 600; color: var(--gray-700);
-  letter-spacing: .01em;
-}
-.stp-sub { font-size: 10.5px; color: var(--gray-400); margin-bottom: 6px; }
-
-.stp-mid {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 8px; padding-top: 48px; flex-shrink: 0;
-}
-.stp-arrow-icon { font-size: 16px; color: var(--gray-300); }
-
-/* Duration chip */
-.stp-dur-chip {
-  font-size: 12px; font-weight: 700; padding: 4px 10px;
-  border-radius: 99px; white-space: nowrap; letter-spacing: -.01em;
-}
-.stp-dur--good { background: #DCFCE7; color: #468A5B; }
-.stp-dur--ok   { background: #FEF3C7; color: #92400E; }
-.stp-dur--low  { background: #FEE2E2; color: #DC2626; }
-
-/* Picker widget */
-.stp-picker {
-  display: flex; align-items: center; gap: 2px;
-  background: var(--gray-50); border: 1px solid var(--gray-150);
-  border-radius: 12px; padding: 6px 8px;
-  width: 100%;
-}
-.stp-col {
-  flex: 1; min-width: 0; display: flex; flex-direction: column;
-  align-items: center; gap: 2px;
-}
-.stp-col--ampm { flex: 0 0 34px; }
-
-.stp-arrow {
-  width: 28px; height: 22px; border: none; background: none;
-  color: var(--gray-300); font-size: 10px; cursor: pointer;
-  border-radius: 6px; transition: all .1s;
+.sleep-dur-step {
+  flex: 0 0 auto; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--gray-200); background: var(--gray-0);
+  color: var(--gray-600); font-size: 22px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  transition: all .12s; -webkit-tap-highlight-color: transparent;
 }
-.stp-arrow:hover { background: var(--gray-100); color: var(--gray-600); }
-.stp-arrow:active { transform: scale(.92); }
+.sleep-dur-step:hover  { border-color: var(--teal-400); color: var(--teal-700); background: var(--teal-50); }
+.sleep-dur-step:active { transform: scale(.92); }
 
-.stp-val {
-  font-size: 26px; font-weight: 700; color: var(--gray-900);
-  font-family: 'Manrope', sans-serif;
-  letter-spacing: -.03em; line-height: 1;
-  min-width: 36px; text-align: center;
+.sleep-dur-range {
+  flex: 1; min-width: 0; height: 40px; margin: 0;
+  -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer;
 }
+.sleep-dur-range::-webkit-slider-runnable-track {
+  height: 8px; border-radius: 99px;
+  background: linear-gradient(90deg, var(--teal-400) 0%, var(--teal-400) var(--fill,50%), var(--gray-150) var(--fill,50%));
+}
+.sleep-dur-range::-moz-range-track   { height: 8px; border-radius: 99px; background: var(--gray-150); }
+.sleep-dur-range::-moz-range-progress { height: 8px; border-radius: 99px; background: var(--teal-400); }
+.sleep-dur-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 26px; height: 26px; margin-top: -9px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--teal-500);
+  box-shadow: 0 2px 6px rgba(14,111,94,.3); cursor: grab;
+}
+.sleep-dur-range::-moz-range-thumb {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--teal-500);
+  box-shadow: 0 2px 6px rgba(14,111,94,.3); cursor: grab;
+}
+.sleep-dur-range:active::-webkit-slider-thumb { cursor: grabbing; }
 
-.stp-colon {
-  font-size: 22px; font-weight: 700; color: var(--gray-400);
-  padding: 0 1px; line-height: 1; margin-top: 4px;
-}
+/* Tick labels: shown on desktop (wider), hidden on phones to stay clean */
+.sleep-dur-ticks { display: none; justify-content: space-between;
+  font-size: 10px; color: var(--gray-300); margin: 4px 56px 0; }
+@media (min-width: 620px) { .sleep-dur-ticks { display: flex; } }
 
-.stp-ampm-btn {
-  width: 34px; height: 34px; border: none; border-radius: 8px;
-  font-size: 11px; font-weight: 700; cursor: pointer;
-  background: var(--gray-100); color: var(--gray-600);
-  font-family: 'Manrope', sans-serif;
-  transition: all .15s; letter-spacing: .02em;
+/* Exact-times disclosure */
+.sleep-exact-toggle {
+  background: none; border: none; cursor: pointer; padding: 4px 0;
+  font-family: 'Manrope', sans-serif; font-size: 12.5px; font-weight: 600;
+  color: var(--teal-700); display: inline-flex; align-items: center; gap: 5px;
 }
-.stp-ampm-btn:hover { opacity: .85; }
+.sleep-exact-toggle .chev { transition: transform .15s; }
+.sleep-exact-toggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.sleep-exact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.sleep-exact-field { display: flex; flex-direction: column; gap: 5px; }
+.sleep-exact-field label { font-size: 11.5px; font-weight: 600; color: var(--gray-600); }
+.sleep-exact-field input[type="time"] {
+  font-family: 'Manrope', sans-serif; font-size: 15px;
+  padding: 9px 10px; border: 1px solid var(--gray-200);
+  border-radius: 10px; background: var(--gray-0); color: var(--gray-900);
+}
+.sleep-exact-field input[type="time"]:focus {
+  outline: none; border-color: var(--teal-400); box-shadow: 0 0 0 3px var(--teal-50);
+}
 
 /* Section labels */
 .stp-section-label {

@@ -7931,61 +7931,37 @@ async function loadSleepView() {
         </div>
         <div style="padding:16px 20px 20px">
 
-          <!-- Time pickers row -->
-          <div class="stp-row">
+          <!-- Duration-first: lead with how long you slept -->
+          <div id="sleep-dur-wrap" class="sleep-dur--good">
+            <div class="sleep-dur-head">
+              <div class="stp-section-label" style="margin-bottom:6px">How long did you sleep?</div>
+              <div class="sleep-dur-readout" id="sleep-dur-readout">7h 30m</div>
+              <div class="sleep-dur-caption" id="sleep-dur-caption"></div>
+            </div>
+            <div class="sleep-dur-control">
+              <button type="button" class="sleep-dur-step" data-ev-click="sleepDurStep(-15)" aria-label="15 minutes less">−</button>
+              <input type="range" class="sleep-dur-range" id="sleep-dur-range"
+                     min="180" max="720" step="15" value="450"
+                     data-ev-input="sleepDurDrag(this.value)" aria-label="Sleep duration">
+              <button type="button" class="sleep-dur-step" data-ev-click="sleepDurStep(15)" aria-label="15 minutes more">+</button>
+            </div>
+            <div class="sleep-dur-ticks"><span>3h</span><span>5h</span><span>7h</span><span>9h</span><span>12h</span></div>
 
-            <!-- Bedtime -->
-            <div class="stp-block">
-              <div class="stp-icon">🌙</div>
-              <div class="stp-label">Bedtime</div>
-              <div class="stp-sub">Last night</div>
-              <div class="stp-picker">
-                <div class="stp-col">
-                  <button class="stp-arrow" data-ev-click="stpStep('bed','h',-1)">▲</button>
-                  <div class="stp-val" id="stp-bed-h">11</div>
-                  <button class="stp-arrow" data-ev-click="stpStep('bed','h',1)">▼</button>
-                </div>
-                <div class="stp-colon">:</div>
-                <div class="stp-col">
-                  <button class="stp-arrow" data-ev-click="stpStep('bed','m',-1)">▲</button>
-                  <div class="stp-val" id="stp-bed-m">00</div>
-                  <button class="stp-arrow" data-ev-click="stpStep('bed','m',1)">▼</button>
-                </div>
-                <div class="stp-col stp-col--ampm">
-                  <button class="stp-ampm-btn" id="stp-bed-ampm" data-ev-click="stpToggleAmpm('bed')">PM</button>
-                </div>
+            <!-- Exact times, on demand -->
+            <button type="button" class="sleep-exact-toggle" id="sleep-exact-toggle"
+                    aria-expanded="false" data-ev-click="toggleSleepExact()">
+              <span class="chev">›</span> Set exact times
+            </button>
+            <div class="sleep-exact-row" id="sleep-exact-row" style="display:none">
+              <div class="sleep-exact-field">
+                <label>🌙 Bedtime</label>
+                <input type="time" id="sleep-bed-time" data-ev-input="sleepExactChanged('bed')">
+              </div>
+              <div class="sleep-exact-field">
+                <label>☀️ Wake time</label>
+                <input type="time" id="sleep-wake-time" data-ev-input="sleepExactChanged('wake')">
               </div>
             </div>
-
-            <!-- Duration badge -->
-            <div class="stp-mid">
-              <div class="stp-arrow-icon">→</div>
-              <div class="stp-dur-chip" id="stp-dur-chip">8h 0m</div>
-            </div>
-
-            <!-- Wake time -->
-            <div class="stp-block">
-              <div class="stp-icon">☀️</div>
-              <div class="stp-label">Wake time</div>
-              <div class="stp-sub">This morning</div>
-              <div class="stp-picker">
-                <div class="stp-col">
-                  <button class="stp-arrow" data-ev-click="stpStep('wake','h',-1)">▲</button>
-                  <div class="stp-val" id="stp-wake-h">7</div>
-                  <button class="stp-arrow" data-ev-click="stpStep('wake','h',1)">▼</button>
-                </div>
-                <div class="stp-colon">:</div>
-                <div class="stp-col">
-                  <button class="stp-arrow" data-ev-click="stpStep('wake','m',-1)">▲</button>
-                  <div class="stp-val" id="stp-wake-m">00</div>
-                  <button class="stp-arrow" data-ev-click="stpStep('wake','m',1)">▼</button>
-                </div>
-                <div class="stp-col stp-col--ampm">
-                  <button class="stp-ampm-btn" id="stp-wake-ampm" data-ev-click="stpToggleAmpm('wake')">AM</button>
-                </div>
-              </div>
-            </div>
-
           </div>
 
           <!-- Quality -->
@@ -8046,8 +8022,7 @@ async function loadSleepView() {
     </div>`;
 
   window._svQuality = 4;
-  window._stpState  = { bed: {h:11, m:0, ampm:'PM'}, wake: {h:7, m:0, ampm:'AM'} };
-  stpUpdate();
+  initSleepEntry();          // sets duration + wake anchor from the user's usual
   loadSleepTrend();
   renderSleepFocal();
 }
@@ -8106,112 +8081,127 @@ function refreshSleep() {
   try { loadWellnessStrip(); } catch (e) {}
 }
 
-// ── Stepper logic ──────────────────────────────────────────────
-function stpStep(side, part, dir) {
-  const s = window._stpState[side];
-  if (part === 'h') {
-    s.h = ((s.h - 1 + dir + 12) % 12) + 1;  // wraps 1-12
-  } else {
-    s.m = (s.m + dir * 5 + 60) % 60;          // wraps 0-55 in 5min steps
-  }
-  stpUpdate();
+// ── Duration-first sleep entry ─────────────────────────────────
+// The state is a duration plus a wake-time anchor; bedtime is derived
+// (wake − duration). The "Set exact times" row just exposes those two
+// anchors as native time inputs, kept in sync both ways. Sleep tracking
+// cares about how long and how well — so we lead with duration and let
+// exact clock times be optional.
+const _SLEEP_DUR_MIN = 180, _SLEEP_DUR_MAX = 720;   // 3h … 12h
+
+const _fmtDurMin = m => { const h = Math.floor(m/60), mm = m%60; return h + 'h' + (mm ? ' ' + mm + 'm' : ''); };
+const _minToHHMM = m => { m = ((m%1440)+1440)%1440; return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
+const _min12 = m => { m = ((m%1440)+1440)%1440; let h = Math.floor(m/60); const ap = h < 12 ? 'AM' : 'PM'; h = h%12 || 12; return h + ':' + String(m%60).padStart(2,'0') + ' ' + ap; };
+const _clampDur = m => Math.max(_SLEEP_DUR_MIN, Math.min(_SLEEP_DUR_MAX, m));
+
+async function initSleepEntry() {
+  const usual = await usualSleep();
+  window._sleepEntry = { durMin: usual.durMin, wakeMin: usual.wakeMin };
+  window._sleepExactOpen = false;
+  sleepDurRender();
 }
 
-function stpToggleAmpm(side) {
-  const s = window._stpState[side];
-  s.ampm = s.ampm === 'AM' ? 'PM' : 'AM';
-  stpUpdate();
+// The user's usual duration + wake, learned from their own recent logs — the
+// same "default to what you actually do" idea as food portions and water pours.
+// A brand-new user falls back to 7h30m waking at 07:00.
+async function usualSleep() {
+  try {
+    const logs = await fetch('/api/sleep?days=30', {cache:'no-store'}).then(r => r.json());
+    if (Array.isArray(logs) && logs.length) {
+      const durs = logs.map(l => Math.round((l.duration_h||0)*60)).filter(x => x > 0).sort((a,b)=>a-b);
+      let durMin = durs.length ? durs[Math.floor(durs.length/2)] : 450;   // median
+      durMin = _clampDur(Math.round(durMin/15)*15);
+      const wakeCount = {};
+      logs.forEach(l => {
+        const t = (l.wake_time||'').slice(11,16); if (!/^\d\d:\d\d$/.test(t)) return;
+        const [h,m] = t.split(':').map(Number); const wm = Math.round((h*60+m)/15)*15;
+        wakeCount[wm] = (wakeCount[wm]||0) + 1;
+      });
+      let wakeMin = 420, best = 0;   // 07:00
+      Object.entries(wakeCount).forEach(([wm,c]) => { if (c > best) { best = c; wakeMin = +wm; } });
+      return { durMin, wakeMin };
+    }
+  } catch (e) {}
+  return { durMin: 450, wakeMin: 420 };
 }
 
-function stpUpdate() {
-  const b = window._stpState.bed;
-  const w = window._stpState.wake;
-
-  // Update displays
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('stp-bed-h',    b.h);
-  set('stp-bed-m',    String(b.m).padStart(2,'0'));
-  set('stp-bed-ampm', b.ampm);
-  set('stp-wake-h',   w.h);
-  set('stp-wake-m',   String(w.m).padStart(2,'0'));
-  set('stp-wake-ampm',w.ampm);
-
-  // AMPM button colour
-  ['bed','wake'].forEach(side => {
-    const btn = document.getElementById('stp-' + side + '-ampm');
-    if (!btn) return;
-    const isPM = window._stpState[side].ampm === 'PM';
-    btn.style.background = isPM ? '#4F8D74' : 'var(--gray-100)';
-    btn.style.color      = isPM ? '#fff'    : 'var(--gray-600)';
-  });
-
-  // Compute duration
-  function to24(h, m, ampm) {
-    let h24 = h % 12;
-    if (ampm === 'PM') h24 += 12;
-    return h24 * 60 + m;
+function sleepDurStep(delta) {
+  const s = window._sleepEntry; if (!s) return;
+  s.durMin = _clampDur(s.durMin + delta);
+  sleepDurRender();
+}
+function sleepDurDrag(val) {
+  const s = window._sleepEntry; if (!s) return;
+  s.durMin = _clampDur(parseInt(val) || 450);
+  sleepDurRender();
+}
+function toggleSleepExact() {
+  window._sleepExactOpen = !window._sleepExactOpen;
+  const row = document.getElementById('sleep-exact-row');
+  const btn = document.getElementById('sleep-exact-toggle');
+  if (row) row.style.display = window._sleepExactOpen ? 'grid' : 'none';
+  if (btn) btn.setAttribute('aria-expanded', window._sleepExactOpen ? 'true' : 'false');
+  sleepDurRender();   // populate the inputs with the current implied times
+}
+// Editing an exact time drives the duration back the other way: change the wake
+// anchor and the duration holds; type a bedtime and the duration recomputes.
+function sleepExactChanged(which) {
+  const s = window._sleepEntry; if (!s) return;
+  const parse = id => { const v = document.getElementById(id)?.value || '';
+    if (!/^\d\d:\d\d$/.test(v)) return null; const [h,m] = v.split(':').map(Number); return h*60 + m; };
+  const wm = parse('sleep-wake-time'), bm = parse('sleep-bed-time');
+  if (which === 'wake' && wm != null) {
+    s.wakeMin = wm;                                   // duration unchanged
+  } else if (which === 'bed' && bm != null) {
+    const wake = wm != null ? wm : s.wakeMin;
+    let d = ((wake - bm) % 1440 + 1440) % 1440;
+    s.durMin = _clampDur(d === 0 ? _SLEEP_DUR_MAX : d);
+    if (wm != null) s.wakeMin = wm;
   }
-
-  let bedMins  = to24(b.h, b.m, b.ampm);
-  let wakeMins = to24(w.h, w.m, w.ampm);
-  // Sleep always crosses midnight — if wake ≤ bed treat as next day
-  if (wakeMins <= bedMins) wakeMins += 24 * 60;
-  // Cap at 16h (sanity check)
-  const totalMins = Math.min(wakeMins - bedMins, 960);
-  const h = Math.floor(totalMins / 60);
-  const m = totalMins % 60;
-
-  // Store for save
-  const bedH24  = to24(b.h, b.m, b.ampm);
-  const wakeH24 = to24(w.h, w.m, w.ampm) % 24;
-  window._svBedTime  = String(Math.floor(bedH24  / 60)).padStart(2,'0') + ':' + String(bedH24  % 60).padStart(2,'0');
-  window._svWakeTime = String(wakeH24).padStart(2,'0') + ':' + String(w.m).padStart(2,'0');
-
-  // Chip
-  const chip = document.getElementById('stp-dur-chip');
-  if (chip) {
-    chip.textContent = h + 'h' + (m > 0 ? ' ' + m + 'm' : '');
-    chip.className = 'stp-dur-chip ' +
-      (h >= 7 ? 'stp-dur--good' : h >= 5 ? 'stp-dur--ok' : 'stp-dur--low');
-  }
+  sleepDurRender(true);   // true → don't overwrite the field being edited
 }
 
+function sleepDurRender(fromExact) {
+  const s = window._sleepEntry; if (!s) return;
+  const bedMin = ((s.wakeMin - s.durMin) % 1440 + 1440) % 1440;
+  const h = Math.floor(s.durMin/60);
 
-
-function svPreview() {
-  const bedTime  = document.getElementById('sleep-bed-sv')?.value  || '23:00';
-  const wakeTime = document.getElementById('sleep-wake-sv')?.value || '07:00';
-  const chip     = document.getElementById('sv-duration-chip');
-  const text     = document.getElementById('sv-duration-text');
-  if (!text) return;
-
-  // Parse times into today/yesterday context
-  const [bh, bm] = bedTime.split(':').map(Number);
-  const [wh, wm] = wakeTime.split(':').map(Number);
-  let bedMins  = bh * 60 + bm;
-  let wakeMins = wh * 60 + wm;
-  if (wakeMins <= bedMins) wakeMins += 24 * 60;   // wake is next day
-  const totalMins = wakeMins - bedMins;
-  const h = Math.floor(totalMins / 60);
-  const m = totalMins % 60;
-
-  const quality = h >= 7 ? '😴' : h >= 5 ? '😐' : '😕';
-  text.textContent = `${quality} ${h}h ${m > 0 ? m + 'm' : ''} of sleep`;
-  if (chip) {
-    chip.style.background = h >= 7 ? '#F0FDF4' : h >= 5 ? '#FFFBEB' : '#FEF2F2';
-    chip.style.color       = h >= 7 ? '#468A5B' : h >= 5 ? '#92400E' : '#DC2626';
+  const wrap    = document.getElementById('sleep-dur-wrap');
+  const readout = document.getElementById('sleep-dur-readout');
+  const cap     = document.getElementById('sleep-dur-caption');
+  const range   = document.getElementById('sleep-dur-range');
+  if (readout) readout.textContent = _fmtDurMin(s.durMin);
+  if (wrap)    wrap.className = h >= 7 ? 'sleep-dur--good' : h >= 5 ? 'sleep-dur--ok' : 'sleep-dur--low';
+  // Show the clock times this duration implies — keeps duration-first honest
+  // about exactly what it will save.
+  if (cap)     cap.textContent = `${_min12(bedMin)} → ${_min12(s.wakeMin)}`;
+  if (range) {
+    if (+range.value !== s.durMin) range.value = s.durMin;
+    range.style.setProperty('--fill', (s.durMin - _SLEEP_DUR_MIN) / (_SLEEP_DUR_MAX - _SLEEP_DUR_MIN) * 100 + '%');
+  }
+  if (!fromExact) {
+    const bedEl = document.getElementById('sleep-bed-time'), wakeEl = document.getElementById('sleep-wake-time');
+    if (bedEl)  bedEl.value  = _minToHHMM(bedMin);
+    if (wakeEl) wakeEl.value = _minToHHMM(s.wakeMin);
   }
 
-  // Update date labels
-  const bedLabel  = document.getElementById('sv-bed-date-label');
-  const wakeLabel = document.getElementById('sv-wake-date-label');
-  if (bedLabel)  bedLabel.textContent  = bh <= 8 ? 'Tonight' : 'Last night';
-  if (wakeLabel) wakeLabel.textContent = wakeMins > 24*60 ? 'Next morning' : 'This morning';
+  // Absolute datetimes for save — bedtime falls on the previous day whenever
+  // the duration crosses midnight, which the old yesterday-string hack got
+  // wrong for early/short entries. Anchor to this morning's wake and subtract.
+  const now = new Date();
+  const wakeDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Math.floor(s.wakeMin/60), s.wakeMin%60);
+  const bedDate  = new Date(wakeDate.getTime() - s.durMin*60000);
+  const fmtDT = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` +
+                     `T${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  window._svBed  = fmtDT(bedDate);
+  window._svWake = fmtDT(wakeDate);
 }
 
 function selectSleepQ(q, suffix) {
   const grid = document.getElementById('sleep-q-' + (suffix || ''));
-  if (grid) grid.querySelectorAll('.sleep-q-btn').forEach(b => {
+  // The quality buttons carry class .sdial-q-btn — the old selector looked for
+  // .sleep-q-btn and so never moved the highlight.
+  if (grid) grid.querySelectorAll('.sdial-q-btn').forEach(b => {
     b.classList.toggle('active', parseInt(b.dataset.q) === q);
   });
   if (suffix === 'sv') window._svQuality = q;
@@ -8219,14 +8209,9 @@ function selectSleepQ(q, suffix) {
 }
 
 async function saveSleepLogFromView() {
-  const bedTime  = window._svBedTime;
-  const wakeTime = window._svWakeTime;
-  if (!bedTime || !wakeTime) { showToast('Set bedtime and wake time', 'error'); return; }
-
-  const today     = localToday();
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  const bed  = yesterday + 'T' + bedTime;
-  const wake = today     + 'T' + wakeTime;
+  // Full local datetimes computed by sleepDurRender (bed may be the prior day).
+  const bed = window._svBed, wake = window._svWake;
+  if (!bed || !wake) { showToast('Set how long you slept', 'error'); return; }
 
   const r = await fetch('/api/sleep', {
     method:'POST', headers:{'Content-Type':'application/json'},
