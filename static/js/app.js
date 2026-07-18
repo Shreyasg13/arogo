@@ -5743,7 +5743,7 @@ async function loadSleepData() {
 
 async function delSleep(id) {
   await fetch(`/api/sleep/${id}`, {method:'DELETE'});
-  loadSleepData(); loadSleepTrend(); loadWellnessStrip();
+  refreshSleep();   // recompute the average now that a night is gone
 }
 
 // ════════════════════════════════════════════════════════════
@@ -6392,7 +6392,13 @@ async function loadVitals() {
 
 async function delVital(id) {
   await fetch(`/api/vitals/${id}`, {method:'DELETE'});
-  loadVitals();
+  // A reading feeds three places: the Medical list, and the Body & Vitals
+  // history + trend chart. delVital is called from both views, but only
+  // refreshed the Medical list — so deleting from Body & Vitals left its
+  // history and trend stale. Refresh all three; each no-ops if not mounted.
+  try { loadVitals(); }      catch (e) {}
+  try { loadVitalsView(); }  catch (e) {}
+  try { loadVitalTrends(); } catch (e) {}
 }
 
 // ════════════════════════════════════════════════════════════
@@ -8054,9 +8060,17 @@ async function renderSleepFocal() {
   el.style.display = 'flex';
   const sorted = [...logs].sort((a, b) => (b.date_key || '').localeCompare(a.date_key || ''));
   const last = sorted[0];
+  // Average over the nights actually logged in the window — not the window
+  // length. logs holds only real entries, so dividing by logs.length is right.
   const avg = logs.reduce((s, l) => s + (l.duration_h || 0), 0) / logs.length;
   const fmtDur = h => `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`;
   const qEmoji = { 1: '😩', 2: '😕', 3: '😐', 4: '😊', 5: '😴' }[last.quality] || '';
+  // "last night" only when the newest log really is last night — otherwise it
+  // claimed a days-old entry was last night's. Fall back to its date.
+  const _y = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+  const lastLabel = (last.date_key === localToday() || last.date_key === _y)
+    ? 'last night'
+    : new Date(last.date_key + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
   const byDate = {}; logs.forEach(l => { byDate[l.date_key] = l.duration_h; });
   const days = [];
   for (let i = 6; i >= 0; i--) {
@@ -8071,7 +8085,7 @@ async function renderSleepFocal() {
   el.innerHTML = `
     <div style="min-width:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4px 8px">
       <div class="today-score-num" style="font-size:32px">${fmtDur(last.duration_h || 0)}</div>
-      <div style="font-size:12.5px;color:var(--gray-500);margin-top:4px">last night ${qEmoji}</div>
+      <div style="font-size:12.5px;color:var(--gray-500);margin-top:4px">${lastLabel} ${qEmoji}</div>
     </div>
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
@@ -8080,6 +8094,16 @@ async function renderSleepFocal() {
       </div>
       <div style="display:flex;align-items:flex-end;gap:5px;height:52px;padding:0 4px">${bars}</div>
     </div>`;
+}
+
+// Re-render every sleep number from fresh data. Call this after any add or
+// delete so the 7-day average, the 30-night stats and the dashboard strip all
+// move together — the focal card used to be left stale because save/delete
+// refreshed the trend and strip but not it.
+function refreshSleep() {
+  try { renderSleepFocal(); } catch (e) {}
+  try { loadSleepTrend(); }  catch (e) {}
+  try { loadWellnessStrip(); } catch (e) {}
 }
 
 // ── Stepper logic ──────────────────────────────────────────────
@@ -8216,8 +8240,7 @@ async function saveSleepLogFromView() {
 
   if (r?.success) {
     showToast('Sleep logged ✓', 'success');
-    loadSleepTrend();
-    loadWellnessStrip();
+    refreshSleep();   // focal 7-day average included — not just the trend/strip
   } else {
     showToast(r?.error || 'Failed to save', 'error');
   }
