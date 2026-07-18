@@ -55,7 +55,11 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .user-status { width:8px; height:8px; border-radius:50%; background:var(--green-500); flex-shrink:0; box-shadow:0 0 0 2px rgba(22,163,74,.2); }
 
 /* ── MAIN ── */
-.main-content { margin-left:var(--sidebar-w); flex:1; padding:28px 32px; min-height:100vh; }
+/* min-width:0 so this flex child can shrink to the space actually available.
+   Without it a flex item keeps its `min-width:auto` (min-content) size and
+   grows to include the vertical scrollbar's width, giving the whole app a few
+   px of phantom horizontal scroll on mobile. */
+.main-content { margin-left:var(--sidebar-w); flex:1; min-width:0; padding:28px 32px; min-height:100vh; }
 .view { display:none; }
 .view.active { display:block; }
 
@@ -266,7 +270,9 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 
 /* Icon/color picker */
 .icon-picker { display:flex; gap:16px; align-items:center; }
-.icon-options,.color-options { display:flex; gap:6px; }
+/* Wrap: the icon/colour swatch rows have enough items to overrun a phone-width
+   modal, and there's no reason they can't flow onto a second line. */
+.icon-options,.color-options { display:flex; flex-wrap:wrap; gap:6px; }
 .icon-opt { width:36px; height:36px; border-radius:var(--r-md); border:2px solid var(--gray-100); background:var(--gray-50); font-size:18px; cursor:pointer; transition:all .15s; display:flex; align-items:center; justify-content:center; }
 .icon-opt.selected { border-color:var(--teal-400); background:var(--teal-50); }
 .color-opt { width:24px; height:24px; border-radius:50%; border:3px solid transparent; cursor:pointer; transition:all .15s; }
@@ -681,10 +687,14 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 
 /* ── Activity type picker — categorised ── */
 .activity-type-picker {
-  display:flex; flex-direction:column; gap:12px;
+  display:flex; flex-direction:column; flex-wrap:nowrap; gap:12px;
   max-height:280px; overflow-y:auto;
   padding-right:4px;
 }
+/* flex-wrap:nowrap is deliberate — an earlier `.activity-type-picker` rule
+   sets flex-wrap:wrap, and combined with this column direction + capped height
+   the categories wrapped sideways into extra columns, blowing the modal ~925px
+   wide. This is a vertical scroll list; it must not wrap. */
 .activity-type-picker::-webkit-scrollbar { width:4px; }
 .activity-type-picker::-webkit-scrollbar-track { background:var(--gray-50); border-radius:2px; }
 .activity-type-picker::-webkit-scrollbar-thumb { background:var(--gray-200); border-radius:2px; }
@@ -2287,8 +2297,13 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 @media (max-width: 1100px) { .sym-full-grid { grid-template-columns: repeat(6,1fr); } }
 @media (max-width: 800px)  { .sym-full-grid { grid-template-columns: repeat(4,1fr); } }
+/* Four across still overflows a phone — labels like "Breathless" can't shrink
+   below their min-content and push the grid wide. Three across, and let a
+   long label wrap rather than force the column open. */
+@media (max-width: 480px)  { .sym-full-grid { grid-template-columns: repeat(3,1fr); } }
 
 .sym-toggle-btn {
+  min-width: 0; overflow-wrap: anywhere;
   padding: 10px 6px 8px;
   border: 1.5px solid var(--gray-200);
   border-radius: var(--r-lg);
@@ -3789,6 +3804,14 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
    SLEEP TREND VIEW
    ════════════════════════════════════════ */
 
+.sleep-stat-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px;
+}
+/* Four across won't fit a phone — the "↑ improving" trend cell can't shrink,
+   so it pushed the whole card past the viewport. Two across on mobile. */
+@media (max-width: 768px) {
+  .sleep-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
 .sleep-stat-card {
   background: var(--gray-50); border-radius: 10px; padding: 10px 12px;
   text-align: center;
@@ -4259,7 +4282,7 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 }
 
 .stp-block {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px;
 }
 .stp-icon  { font-size: 18px; line-height: 1; }
 .stp-label {
@@ -4291,7 +4314,7 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   width: 100%;
 }
 .stp-col {
-  flex: 1; display: flex; flex-direction: column;
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
   align-items: center; gap: 2px;
 }
 .stp-col--ampm { flex: 0 0 34px; }
@@ -4482,6 +4505,42 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   .fitness-stats-row { grid-template-columns:repeat(2,1fr); gap:10px; }
   .form-row { grid-template-columns:1fr; }
   .hydration-quick-add { grid-template-columns:repeat(4,1fr); }
+
+  /* The journal mood picker grew a 9th mood; label + nine 30px chips no longer
+     fit one phone row. Let the row wrap the picker below the label, and the
+     picker wrap its own chips, rather than overflow. */
+  .composer-mood-row { flex-wrap: wrap; }
+  .mood-picker { flex-wrap: wrap; }
+
+  /* Calorie banner: a 3-column grid (equation | spacer | goal+progress) with
+     overflow:hidden, so on a phone the goal/progress column wasn't just
+     overflowing — it was clipped away entirely. Stack it. */
+  .calorie-deficit-banner { grid-template-columns:1fr; gap:14px; padding:18px; }
+  .cdb-right { align-items:stretch; }
+  .cdb-goal-row { justify-content:space-between; }
+  .cdb-metrics { justify-content:space-between; gap:8px; }
+
+  /* Todos: the stat cells' 24px side padding overflowed the stats bar, and the
+     filter row's sort dropdown spilled past the edge. Tighten and allow wrap. */
+  .todo-stats-bar { padding:12px 14px; }
+  .todo-stat { padding:0 10px; }
+  .todo-stat-val { font-size:22px; }
+  .todo-filters { flex-wrap:wrap; gap:8px; }
+  .todo-filters > div[style*="flex:1"] { display:none; }
+
+  /* Page-level two-column grids that lay out full panels side by side.
+     Several views build these with an inline `grid-template-columns:1fr 1fr`,
+     which no media query can reach — so at phone width two panels stay side by
+     side and the second is pushed off-screen (Body & Vitals, Sleep, etc.).
+     Collapse any panel-holding grid to a single column. Scoped by :has(> .panel)
+     so inner form pairs (weight/body-fat) are untouched. */
+  [style*="grid-template-columns:1fr 1fr"]:has(> .panel) {
+    /* minmax(0,1fr), not 1fr: a bare 1fr track is minmax(auto,1fr) and won't
+       shrink below the panel's min-content, which left the single column wider
+       than the screen (the sleep steppers did exactly this). minmax(0,1fr)
+       pins the track to the available width and lets the panel fit. */
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 
   /* Global search + modals fit small screens */
   .gs-modal { width:calc(100vw - 24px); margin:12px auto; }

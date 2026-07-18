@@ -9377,7 +9377,7 @@ async function loadSleepTrend(days) {
     const TREND_COLOR = {improving: '#22C55E',      worsening: '#EF4444',      stable: '#888780'};
     if (strip) {
       strip.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+        <div class="sleep-stat-grid">
           <div class="sleep-stat-card">
             <div class="sleep-stat-val">${s.avg_duration}h</div>
             <div class="sleep-stat-lab">Avg duration</div>
