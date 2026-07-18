@@ -577,6 +577,31 @@ def migrate_add_dose_stock_ledger():
         pass
 
 
+def migrate_dedupe_sleep_logs():
+    """One night = one entry. Older builds inserted a fresh row every time you
+    logged sleep for a date, so a night could accumulate duplicates (log_sleep
+    now upserts on (user, date_key)). Collapse each existing group to its most
+    recent entry; deterministic tie-break by id so it's stable if re-run."""
+    try:
+        rows = execute("SELECT id, user_id, date_key, created_at FROM sleep_logs",
+                       fetchall=True)
+    except Exception:
+        return   # no sleep_logs table yet
+    best = {}    # (user_id, date_key) -> (created_at, id) of the row to keep
+    for r in rows:
+        key  = (r['user_id'], r['date_key'])
+        cand = (r['created_at'] or '', r['id'])
+        if key not in best or cand > best[key]:
+            best[key] = cand
+    keep = {v[1] for v in best.values()}
+    for r in rows:
+        if r['id'] not in keep:
+            try:
+                execute("DELETE FROM sleep_logs WHERE id=?", (r['id'],), commit=True)
+            except Exception:
+                pass
+
+
 def migrate_unify_spo2_type():
     """Oxygen saturation was stored under two type keys: the vitals form wrote
     'oxygen_sat' while the body-vitals chip, trend chart, family view and lab
@@ -694,6 +719,7 @@ def init_db():
     migrate_add_hydration_source()
     migrate_unify_spo2_type()
     migrate_add_dose_stock_ledger()
+    migrate_dedupe_sleep_logs()
     migrate_add_custom_food_barcode()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")

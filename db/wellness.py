@@ -157,22 +157,45 @@ def _sleep_duration(bedtime: str, wake_time: str) -> float:
         return 0.0
 
 def log_sleep(data: dict) -> dict:
-    sid      = new_id()
+    """Record a night's sleep — one entry per night.
+
+    Logging the same date again REPLACES that night rather than stacking a
+    duplicate: you sleep once a night, and re-logging is a correction, not a
+    second night. Keyed on (user_id, date_key).
+    """
+    uid      = current_user_id()
     bed      = data.get('bedtime', '') if isinstance(data.get('bedtime'), str) else ''
     wake     = data.get('wake_time', '') if isinstance(data.get('wake_time'), str) else ''
     dur      = _sleep_duration(bed, wake)
-    # A garbage date_key would orphan the log on a non-navigable day; fall back
-    # to the bedtime's date, then today. Quality is coerced/clamped (1..5) so a
-    # non-numeric or out-of-range value can't 500 or poison the trend view.
-    date_key = data.get('date_key') or (bed[:10] if bed else today_iso())
+    quality  = to_int(data.get('quality', 3), 3, lo=1, hi=5)
+    notes    = str(data.get('notes', '') or '')
+    # A night is identified by the morning you woke, NOT the bedtime date —
+    # otherwise "11pm → 7am" and "1am → 7am" (same night) get different keys,
+    # and re-logging one duplicates instead of replacing the other. Prefer the
+    # wake date; fall back to bedtime's date, then today. A garbage date_key
+    # would orphan the log on a non-navigable day, so it's validated too.
+    date_key = data.get('date_key') or (wake[:10] if wake else bed[:10]) or today_iso()
     if not valid_date(date_key):
-        date_key = bed[:10] if valid_date(bed[:10]) else today_iso()
-    execute("""INSERT INTO sleep_logs (id,date_key,bedtime,wake_time,duration_h,quality,notes,created_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (sid, date_key, bed, wake, dur,
-             to_int(data.get('quality', 3), 3, lo=1, hi=5),
-             str(data.get('notes', '') or ''), now_iso(),
-             current_user_id()), commit=True)
+        for cand in (wake[:10], bed[:10]):
+            if valid_date(cand):
+                date_key = cand
+                break
+        else:
+            date_key = today_iso()
+
+    existing = execute("SELECT id FROM sleep_logs WHERE date_key=? AND user_id=? LIMIT 1",
+                       (date_key, uid), fetchone=True)
+    if existing:
+        sid = existing['id']
+        execute("""UPDATE sleep_logs
+                      SET bedtime=?, wake_time=?, duration_h=?, quality=?, notes=?, created_at=?
+                    WHERE id=? AND user_id=?""",
+                (bed, wake, dur, quality, notes, now_iso(), sid, uid), commit=True)
+    else:
+        sid = new_id()
+        execute("""INSERT INTO sleep_logs (id,date_key,bedtime,wake_time,duration_h,quality,notes,created_at,user_id)
+                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                (sid, date_key, bed, wake, dur, quality, notes, now_iso(), uid), commit=True)
     return dict(execute("SELECT * FROM sleep_logs WHERE id=?", (sid,), fetchone=True))
 
 # ── Hydration ─────────────────────────────────────────────────────────────────

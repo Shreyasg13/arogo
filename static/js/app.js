@@ -8249,6 +8249,9 @@ async function saveSleepLogFromView() {
     body: JSON.stringify({
       bedtime:   bed,
       wake_time: wake,
+      // The night is keyed to the morning you woke, so re-logging the same
+      // night replaces it regardless of whether bedtime was before midnight.
+      date_key:  wake.slice(0, 10),
       quality:   window._svQuality || 4,
       notes:     document.getElementById('sleep-notes-sv')?.value || '',
     })

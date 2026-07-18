@@ -117,6 +117,45 @@ class TestSleep:
         assert r.status_code == 200
         assert 1 <= r.get_json()["log"]["quality"] <= 5
 
+    def test_relogging_a_night_replaces_it_not_duplicates(self, app):
+        """One night, one entry. Logging the same date again is a correction,
+        not a second night — it must update the row, not stack a duplicate,
+        so the history and the average reflect the latest values only."""
+        c = _user(app, "sleep-upsert@medeasy.test")
+        night = "2026-07-20"
+        for wake, q in [("06:30", 3), ("07:00", 4), ("07:30", 5)]:
+            r = c.post("/api/sleep", json={"bedtime": night + "T23:00",
+                                           "wake_time": "2026-07-21T" + wake,
+                                           "quality": q, "date_key": night})
+            assert r.status_code == 200
+
+        rows = [s for s in c.get("/api/sleep").get_json() if s["date_key"] == night]
+        assert len(rows) == 1, f"re-logging duplicated the night: {len(rows)} rows"
+        # The surviving row holds the LAST values (7h30m, quality 5)
+        assert rows[0]["quality"] == 5
+        assert rows[0]["duration_h"] == 8.5
+
+        # A genuinely different night is still its own entry.
+        c.post("/api/sleep", json={"bedtime": "2026-07-19T23:00",
+                                   "wake_time": "2026-07-20T07:00",
+                                   "quality": 4, "date_key": "2026-07-19"})
+        nights = {s["date_key"] for s in c.get("/api/sleep").get_json()}
+        assert {"2026-07-19", "2026-07-20"} <= nights
+
+    def test_night_is_keyed_to_the_wake_date_not_bedtime(self, app):
+        """A night is the morning you woke, so 11pm→7am and 1am→7am are the
+        same night — even though one bedtime is before midnight and the other
+        after. Without an explicit date_key the server derives it from the wake
+        date, so re-logging replaces rather than splitting into two rows."""
+        c = _user(app, "sleep-wakekey@medeasy.test")
+        c.post("/api/sleep", json={"bedtime": "2026-07-24T23:00",   # 8h, bed on the 24th
+                                   "wake_time": "2026-07-25T07:00", "quality": 4})
+        c.post("/api/sleep", json={"bedtime": "2026-07-25T01:00",   # 6h, bed on the 25th
+                                   "wake_time": "2026-07-25T07:00", "quality": 3})
+        rows = [s for s in c.get("/api/sleep").get_json() if s["date_key"] == "2026-07-25"]
+        assert len(rows) == 1, "same wake morning split into two rows"
+        assert rows[0]["duration_h"] == 6   # the replacement won
+
     # Garbage date_key must not orphan the log on a non-navigable day.
     def test_garbage_date_key_defaulted(self, app):
         c = _user(app)
