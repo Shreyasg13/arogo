@@ -41,6 +41,9 @@ def food_database():
 
     # Use the fixed search_food with both query and category
     results = search_food(query=query, category=cat, limit=limit)
+    # `source` is provenance metadata for the DB only — never expose it to the
+    # client. Strip it into copies so the shared FOOD_DB dicts stay intact.
+    results = [{k: v for k, v in f.items() if k != 'source'} for f in results]
 
     # Tag and filter custom foods
     custom_results = []
