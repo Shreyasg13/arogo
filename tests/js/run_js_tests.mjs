@@ -224,5 +224,35 @@ test('_urlB64ToUint8 decodes url-safe base64', () => {
   eq([...out], [1, 2, 3]);
 });
 
+// ── Count-by-piece quantity conversions ──
+test('pluralUnit handles regular, -y, -ch and "half" units', () => {
+  eq(S.pluralUnit('almond'), 'almonds');
+  eq(S.pluralUnit('cherry'), 'cherries');
+  eq(S.pluralUnit('strawberry'), 'strawberries');
+  eq(S.pluralUnit('sandwich'), 'sandwiches');
+  eq(S.pluralUnit('walnut half'), 'walnut halves');
+  eq(S.pluralUnit('date'), 'dates');
+});
+test('trimG drops trailing .0 but keeps real decimals', () => {
+  eq(S.trimG(40), '40');
+  eq(S.trimG(1.2), '1.2');
+  eq(S.trimG(8.8), '8.8');
+});
+test('_toGrams: count multiplies pieces by per-piece weight', () => {
+  eq(S._toGrams(25, 'primary', 'count', 1.2), 30);   // 25 almonds ≈ 30 g
+  eq(S._toGrams(2, 'primary', 'count', 24), 48);      // 2 dates = 48 g
+  eq(S._toGrams(30, 'secondary', 'count', 1.2), 30);  // grams entered directly
+});
+test('_fromGrams: count rounds to whole pieces, never below 1', () => {
+  eq(S._fromGrams(30, 'primary', 'count', 1.2), 25);  // 30 g ≈ 25 almonds
+  eq(S._fromGrams(48, 'primary', 'count', 24), 2);
+  eq(S._fromGrams(0.4, 'primary', 'count', 1.2), 1);  // never rounds to 0 pieces
+});
+test('count round-trip lands on the calories the DB would scale', () => {
+  // one almond = 1.2 g, DB per-100g calories = 579  →  1 almond ≈ 7 kcal
+  const grams = S._toGrams(1, 'primary', 'count', 1.2);
+  eq(Math.round(579 * grams / 100), 7);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -4266,135 +4266,41 @@ const CAT_GROUPS = {
   '💪 Fitness':      ['Supplements','Fats & Oils'],
 };
 
+// How a food's quantity is entered. `count` is NOT listed here any more — a
+// food is counted by pieces when its DB record carries a `piece` {unit,g}
+// (e.g. one almond = 1.2 g), so the picker can offer a real "× N almonds"
+// stepper instead of assuming the whole serving is one piece. This map now
+// only holds the two modes that aren't per-item: `cup` (liquids, 240 ml) and
+// `scoop` (supplements, one scoop = serving_g).
 const FOOD_QTY_MODE = {
-  "roti": "count",
-  "paratha": "count",
-  "puri": "count",
-  "idli": "count",
-  "dosa": "count",
-  "samosa": "count",
-  "vada_pav": "count",
-  "egg_boiled": "count",
-  "banana": "count",
-  "mango": "count",
-  "apple": "count",
-  "papaya": "count",
-  "guava": "count",
-  "pomegranate": "count",
-  "brown_bread": "count",
-  "green_tea": "cup",
-  "coconut_water": "cup",
-  "masala_chai": "cup",
-  "black_chai": "cup",
-  "ginger_chai": "cup",
-  "turmeric_milk": "cup",
-  "rose_sharbat": "cup",
-  "nimbu_pani": "cup",
-  "aam_panna": "cup",
-  "jaljeera": "cup",
-  "badam_milk": "cup",
-  "mango_lassi": "cup",
-  "pani_puri": "count",
-  "aloo_paratha": "count",
-  "methi_paratha": "count",
-  "tandoori_roti": "count",
-  "uttapam": "count",
-  "banana_smoothie": "cup",
-  "omelette": "count",
-  "hummus": "count",
-  "coffee_black": "cup",
-  "coffee_latte": "cup",
-  "orange_juice": "cup",
-  "apple_pie": "count",
-  "hummus_pita": "count",
-  "pita_bread": "count",
-  "egg_hopper": "count",
-  "kottu_roti": "count",
-  "bolani": "count",
-  "golgappa_pani_puri": "count",
-  "kati_roll": "count",
-  "bhel_puri": "count",
-  "dark_choc_70": "count",
-  "milk_chocolate_bar": "count",
-  "kitkat": "count",
-  "snickers": "count",
-  "ferrero_rocher": "count",
-  "bounty": "count",
-  "twix": "count",
-  "dairy_milk": "count",
-  "white_chocolate": "count",
-  "m_and_m": "count",
-  "lindt_excellence": "count",
-  "kinder_bueno": "count",
-  "raisins": "count",
-  "medjool_dates": "count",
-  "dried_apricots": "count",
-  "dried_figs": "count",
-  "prunes": "count",
-  "dried_cranberries": "count",
-  "dried_mango": "count",
-  "dried_blueberries": "count",
-  "dried_cherries": "count",
-  "dried_pineapple": "count",
-  "dried_goji": "count",
-  "makhana": "count",
-  "trail_mix_tropical": "count",
-  "strawberries": "count",
-  "watermelon": "count",
-  "grapes": "count",
-  "kiwi": "count",
-  "pear": "count",
-  "peach": "count",
-  "pineapple": "count",
-  "lychee": "count",
-  "blueberries": "count",
-  "orange": "count",
-  "cherry": "count",
-  "oreo": "count",
-  "digestive_biscuit": "count",
-  "starbucks_latte_grande": "cup",
-  "starbucks_frappuccino": "cup",
-  "egg_salad_sandwich": "count",
-  "eggs_benedict": "count",
-  "breakfast_burrito": "count",
-  "avocado_toast_egg": "count",
-  "chocolate_chip_cookie": "count",
-  "banana_pudding": "count",
-  "peach_cobbler": "count",
-  "cold_brew_black": "cup",
-  "iced_coffee_creamer": "cup",
-  "chocolate_milk": "cup",
-  "green_smoothie": "cup",
-  "berry_smoothie": "cup",
-  "apple_cider": "cup",
-  "kombucha": "cup",
-  "protein_smoothie": "cup",
-  "cornbread": "count",
-  "deviled_eggs": "count",
-  "hard_boiled_egg_2": "count",
-  "bread_sourdough": "count",
-  "whole_milk": "cup",
-  "skimmed_milk": "cup",
-  "semi_milk": "cup",
-  "oat_milk": "cup",
-  "almond_milk": "cup",
-  "soy_milk": "cup",
-  "coconut_milk_drk": "cup",
-  "buffalo_milk": "cup",
-  "goat_milk": "cup",
-  "whey_concentrate": "scoop",
-  "whey_isolate": "scoop",
-  "whey_hydrolysate": "scoop",
-  "casein_protein": "scoop",
-  "plant_protein": "scoop",
-  "mass_gainer": "scoop",
-  "creatine": "scoop",
-  "bcaa_powder": "scoop",
-  "protein_bar": "scoop",
-  "collagen_peptides": "scoop",
-  "ashwagandha": "scoop",
-  "sattu_drink": "scoop"
+  "green_tea": "cup", "coconut_water": "cup", "masala_chai": "cup",
+  "black_chai": "cup", "ginger_chai": "cup", "turmeric_milk": "cup",
+  "rose_sharbat": "cup", "nimbu_pani": "cup", "aam_panna": "cup",
+  "jaljeera": "cup", "badam_milk": "cup", "mango_lassi": "cup",
+  "banana_smoothie": "cup", "coffee_black": "cup", "coffee_latte": "cup",
+  "orange_juice": "cup", "cold_brew_black": "cup", "iced_coffee_creamer": "cup",
+  "chocolate_milk": "cup", "green_smoothie": "cup", "berry_smoothie": "cup",
+  "apple_cider": "cup", "kombucha": "cup", "protein_smoothie": "cup",
+  "starbucks_latte_grande": "cup", "starbucks_frappuccino": "cup",
+  "whole_milk": "cup", "skimmed_milk": "cup", "semi_milk": "cup",
+  "oat_milk": "cup", "almond_milk": "cup", "soy_milk": "cup",
+  "coconut_milk_drk": "cup", "buffalo_milk": "cup", "goat_milk": "cup",
+  "whey_concentrate": "scoop", "whey_isolate": "scoop", "whey_hydrolysate": "scoop",
+  "casein_protein": "scoop", "plant_protein": "scoop", "mass_gainer": "scoop",
+  "creatine": "scoop", "bcaa_powder": "scoop", "protein_bar": "scoop",
+  "collagen_peptides": "scoop", "ashwagandha": "scoop", "sattu_drink": "scoop",
 };
+
+// "almond" -> "almonds", "cherry" -> "cherries", "walnut half" -> "walnut halves"
+function pluralUnit(u) {
+  if (!u) return 'pieces';
+  if (/half$/.test(u)) return u.replace(/half$/, 'halves');
+  if (/[^aeiou]y$/.test(u)) return u.replace(/y$/, 'ies');
+  if (/(s|sh|ch|x)$/.test(u)) return u + 'es';
+  return u + 's';
+}
+// Grams label without a trailing ".0" (1.2 -> "1.2", 40 -> "40")
+function trimG(g) { return Number(g).toFixed(1).replace(/\.0$/, ''); }
 
 // {food_id: grams} — what this user habitually eats of each food, so the
 // portion picker opens on THEIR serving instead of the DB's generic average.
@@ -4559,10 +4465,18 @@ function selectFoodItem(food) {
   ];
 
   // Smart quantity mode
-  const qtyMode  = FOOD_QTY_MODE[food.id] || 'gram';
+  // A food is counted by pieces when the DB gives it a piece weight; otherwise
+  // fall back to the cup/scoop map, else plain grams.
+  const piece    = (food.piece && food.piece.g) ? food.piece : null;
+  const qtyMode  = piece ? 'count' : (FOOD_QTY_MODE[food.id] || 'gram');
   const servingG = _servingG;      // the food's true serving — drives unit hints
   const usualG   = _usualG;        // their habitual portion (0 = never logged)
   const startG   = _startG;        // what the input opens on
+  // Grams in one "primary" unit: one piece for count, one scoop = serving.
+  const unitName = piece ? (piece.unit || 'piece') : 'piece';
+  const unitG    = piece ? piece.g : servingG;
+  window._foodCountUnit = unitName; // so switchQtyUnit can relabel the badge/hint
+  window._foodUnitG     = unitG;
 
   // Unit toggle state — stored on window so toggle function can access it
   window._qtyActiveUnit = qtyMode === 'gram' ? 'gram' : 'primary';
@@ -4598,25 +4512,29 @@ function selectFoodItem(food) {
       default1 = usualG ? Math.max(0.25, Math.round(usualG / 240 * 4) / 4)
                         : (Math.round(servingG / 240 * 4) / 4 || 1);
       hint = '1 cup = 240ml';
-    } else { // count
-      unit1 = 'pcs'; unit2 = 'g';
+    } else { // count — by real pieces (almonds, dates, biscuits…)
+      unit1 = pluralUnit(unitName); unit2 = 'g';
       step1 = 1; step2 = 1;
-      default1 = usualG ? Math.max(1, Math.round(usualG / servingG)) : 1;
-      hint = '1 pc ≈ ' + servingG + 'g';
+      default1 = Math.max(1, Math.round((usualG || servingG) / unitG));
+      hint = '1 ' + unitName + ' ≈ ' + trimG(unitG) + 'g';
     }
+
+    // The conversion basis handed to the toggle/preview handlers: one piece for
+    // count, one scoop (=serving_g) for scoop; cup ignores it and uses 240 ml.
+    const basisG = qtyMode === 'count' ? unitG : servingG;
 
     return '<div class="form-group" style="margin-bottom:12px">' +
       '<div class="food-qty-header">' +
         '<label class="form-label" style="margin:0">Quantity</label>' +
         '<div class="food-unit-toggle" id="food-unit-toggle">' +
-          '<button class="fut-btn active" id="fut-btn-primary" data-ev-click="switchQtyUnit(\'primary\',' + servingG + ',\'' + qtyMode + '\')">' + unit1 + '</button>' +
-          '<button class="fut-btn" id="fut-btn-secondary" data-ev-click="switchQtyUnit(\'secondary\',' + servingG + ',\'' + qtyMode + '\')">' + unit2 + '</button>' +
+          '<button class="fut-btn active" id="fut-btn-primary" data-ev-click="switchQtyUnit(\'primary\',' + basisG + ',\'' + qtyMode + '\')">' + unit1 + '</button>' +
+          '<button class="fut-btn" id="fut-btn-secondary" data-ev-click="switchQtyUnit(\'secondary\',' + basisG + ',\'' + qtyMode + '\')">' + unit2 + '</button>' +
         '</div>' +
       '</div>' +
       '<div class="food-qty-single-row">' +
         '<input type="number" class="form-input" id="food-qty-input"' +
-               ' value="' + default1 + '" min="0.25" step="' + step1 + '"' +
-               ' data-ev-input="updateFoodPreviewSmart(this.value,\'primary\',' + servingG + ',\'' + qtyMode + '\')">' +
+               ' value="' + default1 + '" min="' + (qtyMode === 'count' ? '1' : '0.25') + '" step="' + step1 + '"' +
+               ' data-ev-input="updateFoodPreviewSmart(this.value,\'primary\',' + basisG + ',\'' + qtyMode + '\')">' +
         '<span class="food-qty-unit-badge" id="food-qty-unit-badge">' + unit1 + '</span>' +
       '</div>' +
       '<div class="food-qty-hint" id="food-qty-hint">' + hint + '</div>' +
@@ -4662,7 +4580,7 @@ function selectFoodItem(food) {
   const qtyInput = document.getElementById('food-qty-input');
   if (qtyInput) {
     if (qtyMode === 'gram') updateFoodPreview(qtyInput.value);
-    else                    updateFoodPreviewSmart(qtyInput.value, 'primary', servingG, qtyMode);
+    else                    updateFoodPreviewSmart(qtyInput.value, 'primary', unitG, qtyMode);
   }
 }
 
@@ -4681,8 +4599,9 @@ function _toGrams(val, activeUnit, mode, servingG) {
 // Convert grams to the target unit
 function _fromGrams(grams, targetUnit, mode, servingG) {
   if (targetUnit === 'primary') {
-    if (mode === 'scoop' || mode === 'count') return Math.round(grams / servingG * 10) / 10;
-    if (mode === 'cup')                       return Math.round(grams / 240 * 4) / 4;
+    if (mode === 'count') return Math.max(1, Math.round(grams / servingG)); // whole pieces
+    if (mode === 'scoop') return Math.round(grams / servingG * 10) / 10;
+    if (mode === 'cup')   return Math.round(grams / 240 * 4) / 4;
   }
   return Math.round(grams); // secondary = grams/ml
 }
@@ -4709,10 +4628,12 @@ function switchQtyUnit(targetUnit, servingG, mode) {
   // Update badge text
   const badge = document.getElementById('food-qty-unit-badge');
   const hint  = document.getElementById('food-qty-hint');
+  const cUnit = window._foodCountUnit || 'piece';
   if (badge) {
     if (targetUnit === 'primary') {
       badge.textContent = mode === 'scoop' ? (window._foodScoopUnit || 'scoops')
-                        : mode === 'cup'   ? 'cups' : 'pcs';
+                        : mode === 'cup'   ? 'cups'
+                        : pluralUnit(cUnit);
     } else {
       badge.textContent = mode === 'cup' ? 'ml' : 'g';
     }
@@ -4721,7 +4642,7 @@ function switchQtyUnit(targetUnit, servingG, mode) {
     if (targetUnit === 'primary') {
       hint.textContent = mode === 'scoop' ? '1 scoop = ' + servingG + 'g'
                        : mode === 'cup'   ? '1 cup = 240ml'
-                       : '1 pc ≈ ' + servingG + 'g';
+                       : '1 ' + cUnit + ' ≈ ' + trimG(servingG) + 'g';
     } else {
       hint.textContent = mode === 'cup' ? 'enter in ml' : 'enter in grams';
     }
@@ -4770,10 +4691,12 @@ function updateFoodPreview(qty) {
 async function logSelectedFood() {
   if (!selectedFoodItem) return;
   const unitEl    = document.getElementById('food-qty-input');
-  const mode      = FOOD_QTY_MODE[selectedFoodItem?.id] || 'gram';
-  const servG     = selectedFoodItem?.serving_g || 100;
+  const piece     = (selectedFoodItem?.piece && selectedFoodItem.piece.g) ? selectedFoodItem.piece : null;
+  const mode      = piece ? 'count' : (FOOD_QTY_MODE[selectedFoodItem?.id] || 'gram');
+  // Conversion basis: grams in one piece (count) or one scoop (=serving_g).
+  const basisG    = piece ? piece.g : (selectedFoodItem?.serving_g || 100);
   const activeUnit= window._qtyActiveUnit || (mode === 'gram' ? 'gram' : 'primary');
-  const qty       = _toGrams(parseFloat(unitEl?.value) || 1, activeUnit, mode, servG);
+  const qty       = _toGrams(parseFloat(unitEl?.value) || 1, activeUnit, mode, basisG);
   const scale     = qty / 100;
   const f     = selectedFoodItem;
 
