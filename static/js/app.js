@@ -7939,11 +7939,11 @@ async function loadSleepView() {
               <div class="sleep-dur-caption" id="sleep-dur-caption"></div>
             </div>
             <div class="sleep-dur-control">
-              <button type="button" class="sleep-dur-step" data-ev-click="sleepDurStep(-15)" aria-label="15 minutes less">−</button>
+              <button type="button" class="sleep-dur-step" id="sleep-dur-minus" aria-label="15 minutes less (hold for 30-minute jumps)">−</button>
               <input type="range" class="sleep-dur-range" id="sleep-dur-range"
                      min="180" max="720" step="15" value="450"
                      data-ev-input="sleepDurDrag(this.value)" aria-label="Sleep duration">
-              <button type="button" class="sleep-dur-step" data-ev-click="sleepDurStep(15)" aria-label="15 minutes more">+</button>
+              <button type="button" class="sleep-dur-step" id="sleep-dur-plus" aria-label="15 minutes more (hold for 30-minute jumps)">+</button>
             </div>
             <div class="sleep-dur-ticks"><span>3h</span><span>5h</span><span>7h</span><span>9h</span><span>12h</span></div>
 
@@ -8098,7 +8098,38 @@ async function initSleepEntry() {
   const usual = await usualSleep();
   window._sleepEntry = { durMin: usual.durMin, wakeMin: usual.wakeMin };
   window._sleepExactOpen = false;
+  // Tap = 15 min; press-and-hold accelerates to 30-min jumps. Wired here (not
+  // via the click-dispatcher) because that only handles click, and hold needs
+  // pointer events. The buttons are freshly rendered each loadSleepView, so
+  // these listeners don't accumulate.
+  attachSleepHold(document.getElementById('sleep-dur-minus'), -1);
+  attachSleepHold(document.getElementById('sleep-dur-plus'),  +1);
   sleepDurRender();
+}
+
+// Press-and-hold stepper. A quick tap steps once by 15 minutes; holding past a
+// short threshold starts repeating in 30-minute chunks until release. Keyboard
+// activation (Enter/Space fires click, not pointerdown) still gets one 15-min
+// step, and we swallow the click that follows a pointer press so a mouse tap
+// doesn't count twice.
+function attachSleepHold(btn, dir) {
+  if (!btn || btn._holdWired) return;
+  btn._holdWired = true;
+  let holdTimer = null, repeatTimer = null;
+  const stop = () => { clearTimeout(holdTimer); clearInterval(repeatTimer); holdTimer = repeatTimer = null; };
+  btn.addEventListener('pointerdown', e => {
+    if (e.button != null && e.button !== 0) return;   // left button / touch only
+    e.preventDefault();
+    sleepDurStep(dir * 15);                            // immediate feedback
+    holdTimer = setTimeout(() => {
+      repeatTimer = setInterval(() => sleepDurStep(dir * 30), 150);
+    }, 450);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => btn.addEventListener(ev, stop));
+  // Keyboard activation (Enter/Space) fires a click with detail 0; a mouse or
+  // touch click reports detail ≥ 1 and was already handled by pointerdown, so
+  // we only act on the keyboard case — no flag to get stuck.
+  btn.addEventListener('click', e => { if (e.detail === 0) sleepDurStep(dir * 15); });
 }
 
 // The user's usual duration + wake, learned from their own recent logs — the

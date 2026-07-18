@@ -4302,6 +4302,9 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   color: var(--gray-600); font-size: 22px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all .12s; -webkit-tap-highlight-color: transparent;
+  /* Hold-to-repeat: don't let a sustained press scroll the page or select the
+     glyph. */
+  touch-action: none; user-select: none; -webkit-user-select: none;
 }
 .sleep-dur-step:hover  { border-color: var(--teal-400); color: var(--teal-700); background: var(--teal-50); }
 .sleep-dur-step:active { transform: scale(.92); }
