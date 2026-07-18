@@ -222,16 +222,24 @@ def api_sleep_trend():
     best_dur = round(max(durations), 1)
     avg_qual = round(sum(qualities) / len(qualities), 1)
 
-    # Trend: compare first half vs second half duration
-    mid        = len(durations) // 2 or 1
-    first_avg  = sum(durations[:mid]) / mid
-    second_avg = sum(durations[mid:]) / max(len(durations[mid:]), 1)
-    if second_avg - first_avg > 0.2:
-        dur_trend = 'improving'
-    elif first_avg - second_avg > 0.2:
-        dur_trend = 'worsening'
+    # Duration trend — only once there's a week's worth of nights, and only for
+    # a shift big enough to mean something. Calling sleep "worsening" off two or
+    # three nights (really off a single short night) reads as an alarm the data
+    # can't support. Below the threshold we don't classify at all.
+    TREND_MIN_NIGHTS = 7
+    TREND_DELTA_H    = 0.5           # 30 min; smaller swings are night-to-night noise
+    if len(durations) >= TREND_MIN_NIGHTS:
+        mid        = len(durations) // 2
+        first_avg  = sum(durations[:mid]) / mid
+        second_avg = sum(durations[mid:]) / (len(durations) - mid)
+        if second_avg - first_avg > TREND_DELTA_H:
+            dur_trend = 'improving'
+        elif first_avg - second_avg > TREND_DELTA_H:
+            dur_trend = 'worsening'
+        else:
+            dur_trend = 'stable'
     else:
-        dur_trend = 'stable'
+        dur_trend = 'insufficient'   # not enough nights to say anything yet
 
     # Days with 7h+ (recommended)
     good_nights = sum(1 for d in durations if d >= 7)
@@ -529,16 +537,22 @@ def api_symptom_patterns():
         times           = Counter(e['time_of_day'] for e in entries)
         peak_time       = times.most_common(1)[0][0] if times else 'morning'
 
-        # Severity trend — compare first half vs second half
-        mid = len(severities) // 2 or 1
-        first_avg = sum(severities[:mid]) / mid
-        last_avg  = sum(severities[mid:]) / max(len(severities[mid:]), 1)
-        if last_avg - first_avg > 0.5:
-            trend = 'worsening'
-        elif first_avg - last_avg > 0.5:
-            trend = 'improving'
+        # Severity trend — only once a symptom's been logged enough times to
+        # mean something. Calling a symptom "worsening" off two or three entries
+        # is the kind of false alarm that worries people about their health;
+        # below the minimum we don't classify it.
+        if len(severities) >= 5:
+            mid = len(severities) // 2
+            first_avg = sum(severities[:mid]) / mid
+            last_avg  = sum(severities[mid:]) / (len(severities) - mid)
+            if last_avg - first_avg > 0.5:
+                trend = 'worsening'
+            elif first_avg - last_avg > 0.5:
+                trend = 'improving'
+            else:
+                trend = 'stable'
         else:
-            trend = 'stable'
+            trend = 'insufficient'
 
         # Unique days this appeared
         days_list = sorted(set(e['date_key'] for e in entries))

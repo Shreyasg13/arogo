@@ -9269,8 +9269,10 @@ async function loadSymptomPatterns() {
   const { symptoms, alerts, co_occur, heatmap } = data;
   if (!symptoms.length) { panel.innerHTML = ''; return; }
 
-  const TREND_ICON  = { worsening:'↑', improving:'↓', stable:'→' };
-  const TREND_COLOR = { worsening:'#EF4444', improving:'#22C55E', stable:'#888780' };
+  // 'insufficient' (too few loggings to judge) shows no arrow at all — a blank
+  // reads as "no trend yet", never a false ↑ worsening on a symptom.
+  const TREND_ICON  = { worsening:'↑', improving:'↓', stable:'→', insufficient:'' };
+  const TREND_COLOR = { worsening:'#EF4444', improving:'#22C55E', stable:'#888780', insufficient:'#888780' };
   const TIME_LABEL  = { morning:'morning', afternoon:'afternoon', evening:'evening',
                         night:'night', all_day:'all day' };
   const SEV_COLOR   = s => s >= 8 ? '#EF4444' : s >= 5 ? '#F59E0B' : '#22C55E';
@@ -9301,7 +9303,7 @@ async function loadSymptomPatterns() {
       </div>
       <div class="spp-freq-meta">
         <span>${s.count}×</span>
-        <span style="color:${TREND_COLOR[s.trend]};font-weight:600">${TREND_ICON[s.trend]}</span>
+        <span style="color:${TREND_COLOR[s.trend] || '#888780'};font-weight:600">${TREND_ICON[s.trend] || ''}</span>
         <span style="color:var(--gray-400);font-size:11px">${TIME_LABEL[s.peak_time]}</span>
       </div>
     </div>`).join('');
@@ -9415,8 +9417,12 @@ async function loadSleepTrend(days) {
   if (!data.total || !s.avg_duration) {
     if (strip) strip.innerHTML = '<div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">No sleep logged yet</div>';
   } else {
-    const TREND_ICON  = {improving: '↑ improving', worsening: '↓ worsening', stable: '→ stable'};
-    const TREND_COLOR = {improving: '#22C55E',      worsening: '#EF4444',      stable: '#888780'};
+    // 'insufficient' → a calm dash, not a red verdict. A trend needs a week of
+    // nights (see the API); until then we say so plainly instead of alarming
+    // the user off one short night.
+    const TREND_ICON  = {improving: '↑ improving', worsening: '↓ worsening', stable: '→ stable', insufficient: '—'};
+    const TREND_COLOR = {improving: '#22C55E',      worsening: '#EF4444',      stable: '#888780',  insufficient: '#888780'};
+    const trendInsufficient = s.dur_trend === 'insufficient' || !TREND_ICON[s.dur_trend];
     if (strip) {
       strip.innerHTML = `
         <div class="sleep-stat-grid">
@@ -9433,8 +9439,8 @@ async function loadSleepTrend(days) {
             <div class="sleep-stat-lab">Nights ≥ 7h</div>
           </div>
           <div class="sleep-stat-card">
-            <div class="sleep-stat-val" style="color:${TREND_COLOR[s.dur_trend]}">${TREND_ICON[s.dur_trend]}</div>
-            <div class="sleep-stat-lab">Trend</div>
+            <div class="sleep-stat-val" style="color:${TREND_COLOR[s.dur_trend] || '#888780'}">${TREND_ICON[s.dur_trend] || '—'}</div>
+            <div class="sleep-stat-lab">${trendInsufficient ? 'Trend · need a week' : 'Trend'}</div>
           </div>
         </div>`;
     }

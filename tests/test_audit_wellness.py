@@ -175,6 +175,34 @@ class TestSleep:
         # The trend endpoint sums quality — a stored string would 500 it.
         assert c.get("/api/sleep/trend").status_code == 200
 
+    def test_trend_needs_a_week_before_it_calls_worsening(self, app):
+        """A "worsening" verdict off two or three nights (really off one short
+        night) is a false alarm the data can't support. Below a week of nights
+        the trend is 'insufficient', not a red arrow."""
+        import datetime as dt
+
+        def log_night(client, morning_iso, wake_hhmm):
+            morning = dt.date.fromisoformat(morning_iso)
+            prev = (morning - dt.timedelta(days=1)).isoformat()
+            client.post("/api/sleep", json={"bedtime": prev + "T23:00",
+                                            "wake_time": morning_iso + "T" + wake_hhmm,
+                                            "quality": 4, "date_key": morning_iso})
+
+        # Three nights, the last one short — exactly what the old code flagged.
+        c = _user(app, "sleep-trend@medeasy.test")
+        for morning, wake in [("2026-08-02", "07:45"), ("2026-08-03", "07:45"),
+                              ("2026-08-04", "06:00")]:
+            log_night(c, morning, wake)
+        assert c.get("/api/sleep/trend?days=30").get_json()["stats"]["dur_trend"] \
+            == "insufficient", "classified a trend off 3 nights"
+
+        # Seven nights with a real decline in the second half → now it may speak.
+        c2 = _user(app, "sleep-trend7@medeasy.test")
+        for i, wake in enumerate(["07:00"] * 4 + ["04:00"] * 3):   # 8h ×4, then 5h ×3
+            log_night(c2, "2026-08-%02d" % (11 + i), wake)
+        assert c2.get("/api/sleep/trend?days=30").get_json()["stats"]["dur_trend"] \
+            == "worsening"
+
     def test_duration_is_never_negative(self, app):
         c = _user(app)
         r = c.post("/api/sleep", json={"bedtime": "2026-07-12T23:00",
