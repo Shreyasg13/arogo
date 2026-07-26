@@ -77,6 +77,21 @@ def create_app(config=Config):
             return jsonify({'error': 'Internal server error'}), 500
         return e
 
+    # ── security.txt (RFC 9116) — where to report a vulnerability ─────────────
+    @app.route('/.well-known/security.txt')
+    def security_txt():
+        import datetime as _dt
+        from flask import Response
+        contact = os.environ.get('SECURITY_CONTACT', 'mailto:security@arogo.app')
+        base = os.environ.get('APP_BASE_URL', 'http://localhost:5000').rstrip('/')
+        expires = (_dt.datetime.utcnow() + _dt.timedelta(days=365)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        body = (f"Contact: {contact}\n"
+                f"Expires: {expires}\n"
+                f"Preferred-Languages: en\n"
+                f"Policy: {base}/.well-known/security.txt\n"
+                f"# Full policy & breach procedure: SECURITY.md in the Arogo repo\n")
+        return Response(body, mimetype='text/plain')
+
     @app.after_request
     def apply_security_headers(response):
         try:

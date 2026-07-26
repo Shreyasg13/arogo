@@ -30,6 +30,7 @@ PW = "security-pw-12345"
 PUBLIC_ROUTES = {
     '/',                                # SPA shell (auth screen)
     '/sw.js',                           # service worker
+    '/.well-known/security.txt',        # RFC 9116 disclosure contact (public by design)
     '/auth/register',
     '/auth/login',
     '/auth/token',

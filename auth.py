@@ -30,8 +30,12 @@ TOKEN_MAX_AGE  = 86400 * 7      # 7 days
 PBKDF2_ITERS   = 260_000        # OWASP 2023 recommendation for SHA-256
 SALT_BYTES     = 32
 
-# Set COOKIE_SECURE=1 when serving over HTTPS (production)
-COOKIE_SECURE  = os.environ.get('COOKIE_SECURE', '').lower() in ('1', 'true')
+# Session cookies are Secure (HTTPS-only) BY DEFAULT in production — leaving it
+# opt-in meant one forgotten env var shipped session cookies over plain HTTP.
+# Dev (FLASK_DEBUG=1) defaults off so localhost HTTP still works; set
+# COOKIE_SECURE=0 explicitly to override in prod only if TLS terminates upstream.
+_IS_DEBUG      = os.environ.get('FLASK_DEBUG', '1') == '1'
+COOKIE_SECURE  = os.environ.get('COOKIE_SECURE', '0' if _IS_DEBUG else '1').lower() in ('1', 'true')
 
 # ── Rate limiter (DB-backed, per IP) ──────────────────────────────────────────
 # Stored in the auth_attempts table so the limit holds across multiple
