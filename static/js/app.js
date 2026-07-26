@@ -1405,6 +1405,7 @@ function renderFamilySummary(s) {
 // Medication leads — it's Arogo's core loop, so onboarding starts there.
 const FIRSTRUN_STEPS = [
   {key: 'medicines',      icon: '💊', label: 'Add your first medication', ev: 'openMedModal()', primary: true},
+  {key: 'family',         icon: '👪', label: 'Connect a family member', ev: "switchView('family')"},
   {key: 'food_logs',      icon: '🍽️', label: 'Log your first meal',  ev: "quickAdd('food')"},
   {key: 'hydration_logs', icon: '💧', label: 'Log a glass of water', ev: 'quickWater(250)'},
   {key: 'habits',         icon: '⭐', label: 'Create a habit',       ev: "switchView('habits')"},

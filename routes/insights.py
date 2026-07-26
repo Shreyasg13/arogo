@@ -577,6 +577,13 @@ def api_export_counts():
         'hydration_logs':     execute("SELECT COUNT(*) as n FROM hydration_logs WHERE date_key BETWEEN ? AND ? AND user_id=?",  (from_date, to_date, uid), fetchone=True)['n'],
         'habits':             execute("SELECT COUNT(*) as n FROM habits WHERE active=1 AND user_id=?",                          (uid,), fetchone=True)['n'],
         'medicines':          execute("SELECT COUNT(*) as n FROM medicines WHERE active=1 AND user_id=?",                       (uid,), fetchone=True)['n'],
+        # "Connected a family member" = sent a family invite OR added a
+        # zero-install alert contact (a phone). Either means a caregiver is
+        # linked — the first-run step that most improves retention.
+        'family': (
+            execute("SELECT COUNT(*) as n FROM family_invites WHERE invited_by=?", (uid,), fetchone=True)['n']
+            + execute("SELECT COUNT(*) as n FROM caregiver_contacts WHERE user_id=?", (uid,), fetchone=True)['n']
+        ),
     }
     return jsonify(counts)
 
