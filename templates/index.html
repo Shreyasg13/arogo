@@ -2000,9 +2000,14 @@
   </div>
   <div class="modal-body">
     <form id="med-form">
-      <div class="form-group">
+      <div class="form-group" style="position:relative">
         <label class="form-label">Medicine Name</label>
-        <input type="text" class="form-input" name="name" placeholder="e.g. Metformin, Aspirin" required>
+        <input type="text" class="form-input" id="med-name-input" name="name" placeholder="e.g. Metformin, Aspirin" required
+               autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
+               aria-controls="med-name-suggest" aria-label="Medicine name"
+               data-ev-input="drugAutocomplete(this.value)" data-ev-keydown="drugAutocompleteKey(event)">
+        <div id="med-name-suggest" class="drug-suggest" role="listbox" style="display:none"></div>
+        <div id="med-name-dup" style="display:none;font-size:12px;color:var(--amber-600,#b45309);margin-top:6px"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Dosage</label><input type="text" class="form-input" name="dosage" placeholder="500" required></div>

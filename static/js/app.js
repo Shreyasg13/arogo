@@ -2330,9 +2330,84 @@ async function loadMedicines() {
   ]);
   renderTodayTimeline(doses);
   renderMedicinesGrid(meds);
+  // cache active names so the add-medicine form can warn about duplicates
+  window._activeMedNames = (Array.isArray(meds) ? meds : [])
+    .filter(m => m.active).map(m => (m.name || '').trim().toLowerCase());
   const mc = document.getElementById('med-count');
   if (mc) mc.textContent = `${meds.filter(m=>m.active).length} active`;
   loadMedAdherence();
+}
+
+// ── Drug-name autocomplete on the add-medicine form ─────────────────────────
+let _drugSuggestTimer = null, _drugSuggestIdx = -1;
+
+function drugAutocomplete(value) {
+  const box = document.getElementById('med-name-suggest');
+  const input = document.getElementById('med-name-input');
+  checkDupMedicine(value);
+  const q = (value || '').trim();
+  if (!box) return;
+  if (q.length < 2) { _hideDrugSuggest(); return; }
+  clearTimeout(_drugSuggestTimer);
+  _drugSuggestTimer = setTimeout(async () => {
+    const r = await fetch('/api/medicines/drugs?q=' + encodeURIComponent(q)).then(x => x.json()).catch(() => null);
+    if (!r || !r.drugs || !r.drugs.length) { _hideDrugSuggest(); return; }
+    // don't keep showing the list once it exactly matches what they typed
+    if (r.drugs.length === 1 && r.drugs[0].name.toLowerCase() === q.toLowerCase()) { _hideDrugSuggest(); return; }
+    _drugSuggestIdx = -1;
+    box.innerHTML = r.drugs.map((d, i) =>
+      `<div class="drug-suggest-item" role="option" data-idx="${i}" data-ev-click="pickDrug('${escHtml(d.name).replace(/'/g, "\\'")}')">
+        <span>${escHtml(d.name)}</span><span class="dsi-hint">${escHtml(d.hint || '')}</span>
+      </div>`).join('');
+    box.style.display = 'block';
+    if (input) input.setAttribute('aria-expanded', 'true');
+  }, 150);
+}
+
+function _hideDrugSuggest() {
+  const box = document.getElementById('med-name-suggest');
+  const input = document.getElementById('med-name-input');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+  if (input) input.setAttribute('aria-expanded', 'false');
+  _drugSuggestIdx = -1;
+}
+
+function pickDrug(name) {
+  const input = document.getElementById('med-name-input');
+  if (input) { input.value = name; input.focus(); }
+  _hideDrugSuggest();
+  checkDupMedicine(name);
+}
+
+function drugAutocompleteKey(e) {
+  const box = document.getElementById('med-name-suggest');
+  if (!box || box.style.display === 'none') return;
+  const items = [...box.querySelectorAll('.drug-suggest-item')];
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') { _drugSuggestIdx = Math.min(_drugSuggestIdx + 1, items.length - 1); _highlightDrug(items); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { _drugSuggestIdx = Math.max(_drugSuggestIdx - 1, 0); _highlightDrug(items); e.preventDefault(); }
+  else if (e.key === 'Enter' && _drugSuggestIdx >= 0) { items[_drugSuggestIdx].click(); e.preventDefault(); }
+  else if (e.key === 'Escape') { _hideDrugSuggest(); }
+}
+
+function _highlightDrug(items) {
+  items.forEach((it, i) => it.classList.toggle('active', i === _drugSuggestIdx));
+  items[_drugSuggestIdx]?.scrollIntoView({ block: 'nearest' });
+}
+
+// Safe, data-free duplicate check — no interaction data, just "you already
+// track this name", so the same medicine isn't added twice by accident.
+function checkDupMedicine(value) {
+  const warn = document.getElementById('med-name-dup');
+  if (!warn) return;
+  const name = (value || '').trim().toLowerCase();
+  const names = window._activeMedNames || [];
+  if (name && names.includes(name)) {
+    warn.textContent = '⚠️ You already track a medicine called “' + value.trim() + '”.';
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+  }
 }
 
 function fmt12(t) {

@@ -6,6 +6,15 @@ from db import *
 from db.core import user_today
 from config import Config
 
+try:
+    from drug_data import search_drugs
+except ImportError:
+    import importlib.util as _ilu
+    _p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'drug_data.py')
+    _s = _ilu.spec_from_file_location('drug_data', _p)
+    _m = _ilu.module_from_spec(_s); _s.loader.exec_module(_m)
+    search_drugs = _m.search_drugs
+
 bp = Blueprint("medicines", __name__)
 
 
@@ -15,6 +24,15 @@ bp = Blueprint("medicines", __name__)
 @require_auth
 def get_medicines():
     return jsonify(list_medicines())
+
+
+@bp.route('/api/medicines/drugs', methods=['GET'])
+@require_auth
+def drug_autocomplete():
+    """Name suggestions for the add-medicine field. Identification only — no
+    dosing, no interactions (see drug_data.py)."""
+    q = request.args.get('q', '')
+    return jsonify({'drugs': search_drugs(q, limit=8)})
 
 @bp.route('/api/medicines', methods=['POST'])
 @require_auth
