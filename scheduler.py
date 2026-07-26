@@ -260,6 +260,21 @@ def _caregiver_alerts():
                             f"Open Arogo: {mailer.APP_BASE_URL}/\n")
                         if pushed or (sent and mailer.is_configured()):
                             reached += 1
+                    # Zero-install path: also reach account-less caregiver
+                    # contacts over SMS/WhatsApp. Same honesty rule as email —
+                    # a dev-mode send (logged, not delivered) doesn't count as
+                    # reaching a human.
+                    import sms
+                    sms_name = w['name'] or 'your family member'
+                    contacts = execute(
+                        """SELECT id, name, phone, channel FROM caregiver_contacts
+                           WHERE user_id=? AND alerts_enabled=1""",
+                        (uid,), fetchall=True) or []
+                    for c in contacts:
+                        ext_msg = (f"Arogo: {sms_name}'s {med} ({d['time']}) hasn't been "
+                                   f"marked as taken. A quick check-in would help.")
+                        if sms.notify_contact(c, ext_msg) and sms.is_configured(c.get('channel', 'sms')):
+                            reached += 1
                     # Transparency: the member always learns when family is told.
                     # Log THIS honest message to the member's own feed (also the
                     # dedup record), not the third-person "X missed a dose".

@@ -212,3 +212,67 @@ def encouragement_reply_ok(eid):
 def encouragements_read():
     family.mark_encouragements_read()
     return jsonify({'success': True})
+
+
+# ── Zero-install caregiver alert contacts (SMS/WhatsApp, no account) ──────────
+
+@bp.route('/api/family/alert-contacts', methods=['GET'])
+@require_auth
+def list_alert_contacts():
+    import sms
+    return jsonify({
+        'contacts': family.list_caregiver_contacts(),
+        # so the UI can be honest about whether messages will actually send
+        'sms_live':      sms.is_configured('sms'),
+        'whatsapp_live': sms.is_configured('whatsapp'),
+    })
+
+
+@bp.route('/api/family/alert-contacts', methods=['POST'])
+@require_auth
+def add_alert_contact():
+    d = request.json or {}
+    try:
+        c = family.add_caregiver_contact(
+            d.get('name', ''), d.get('phone', ''), d.get('channel', 'sms'))
+        return jsonify({'success': True, 'contact': c})
+    except ValueError as e:
+        return _err(e)
+
+
+@bp.route('/api/family/alert-contacts/<cid>', methods=['PATCH'])
+@require_auth
+def update_alert_contact(cid):
+    d = request.json or {}
+    ok = family.update_caregiver_contact(
+        cid, alerts_enabled=d.get('alerts_enabled'), channel=d.get('channel'))
+    if not ok:
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'success': True})
+
+
+@bp.route('/api/family/alert-contacts/<cid>', methods=['DELETE'])
+@require_auth
+def delete_alert_contact(cid):
+    if not family.delete_caregiver_contact(cid):
+        return jsonify({'error': 'Not found'}), 404
+    return jsonify({'success': True})
+
+
+@bp.route('/api/family/alert-contacts/<cid>/test', methods=['POST'])
+@require_auth
+def test_alert_contact(cid):
+    """Send a one-off test so the member can confirm the number works."""
+    import sms
+    contact = next((c for c in family.list_caregiver_contacts() if c['id'] == cid), None)
+    if not contact:
+        return jsonify({'error': 'Not found'}), 404
+    me = execute("SELECT name FROM users WHERE id=?", (g.user_id,), fetchone=True)
+    who = (me['name'] if me and me['name'] else 'Someone') + " set up Arogo alerts"
+    sent = sms.notify_contact(
+        contact,
+        f"{who} for you. If a dose is missed, you'll get a heads-up here. "
+        f"This is just a test — nothing to do.")
+    live = sms.is_configured(contact.get('channel', 'sms'))
+    return jsonify({'success': True, 'delivered': bool(sent and live),
+                    'dev_mode': not live})

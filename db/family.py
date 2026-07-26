@@ -11,6 +11,8 @@ Model:
 """
 from __future__ import annotations
 
+import re
+
 from .core import (execute, now_iso, today_iso, user_today, new_id, current_user_id,
                    user_context, to_num, to_int)
 
@@ -494,3 +496,73 @@ def ack_care(target_uid: str) -> dict:
                 (new_id(), me['group_id'], target_uid, uid, name, today_iso(), now_iso()),
                 commit=True)
     return {'ok': True, 'checking_by': None}
+
+
+# ── Zero-install caregiver alert contacts (a phone, no account needed) ────────
+# A member can add a family member's phone so they get missed-dose alerts over
+# SMS/WhatsApp without installing Arogo — the highest-leverage way to make the
+# caregiver bond work for people who won't sign up.
+
+def _normalize_phone(raw: str) -> str:
+    """Return an E.164-ish number (+ then 8–15 digits) or '' if it can't be one.
+
+    We require an explicit country code (leading +) instead of guessing one —
+    a guessed code could text a stranger. Spaces/dashes/parens are stripped.
+    """
+    s = re.sub(r'[\s\-().]', '', (raw or '').strip())
+    if s.startswith('00'):
+        s = '+' + s[2:]
+    if not s.startswith('+'):
+        return ''
+    digits = s[1:]
+    if not digits.isdigit() or not (8 <= len(digits) <= 15):
+        return ''
+    return '+' + digits
+
+
+def list_caregiver_contacts(uid: str = None) -> list:
+    uid = uid or current_user_id()
+    return execute("""SELECT id, name, phone, channel, alerts_enabled, created_at
+                      FROM caregiver_contacts WHERE user_id=? ORDER BY created_at""",
+                   (uid,), fetchall=True) or []
+
+
+def add_caregiver_contact(name: str, phone: str, channel: str = 'sms') -> dict:
+    name = (name or '').strip()[:80]
+    if not name:
+        raise ValueError('A name is required')
+    e164 = _normalize_phone(phone)
+    if not e164:
+        raise ValueError('Enter the phone number with country code, e.g. +91XXXXXXXXXX')
+    channel = 'whatsapp' if channel == 'whatsapp' else 'sms'
+    cid = new_id()
+    execute("""INSERT INTO caregiver_contacts
+                 (id,user_id,name,phone,channel,alerts_enabled,created_at)
+               VALUES (?,?,?,?,?,1,?)""",
+            (cid, current_user_id(), name, e164, channel, now_iso()), commit=True)
+    return execute("""SELECT id, name, phone, channel, alerts_enabled, created_at
+                      FROM caregiver_contacts WHERE id=?""", (cid,), fetchone=True)
+
+
+def update_caregiver_contact(cid: str, alerts_enabled=None, channel=None) -> bool:
+    owned = execute("SELECT id FROM caregiver_contacts WHERE id=? AND user_id=?",
+                    (cid, current_user_id()), fetchone=True)
+    if not owned:
+        return False
+    if alerts_enabled is not None:
+        execute("UPDATE caregiver_contacts SET alerts_enabled=? WHERE id=? AND user_id=?",
+                (1 if alerts_enabled else 0, cid, current_user_id()), commit=True)
+    if channel in ('sms', 'whatsapp'):
+        execute("UPDATE caregiver_contacts SET channel=? WHERE id=? AND user_id=?",
+                (channel, cid, current_user_id()), commit=True)
+    return True
+
+
+def delete_caregiver_contact(cid: str) -> bool:
+    owned = execute("SELECT id FROM caregiver_contacts WHERE id=? AND user_id=?",
+                    (cid, current_user_id()), fetchone=True)
+    if not owned:
+        return False
+    execute("DELETE FROM caregiver_contacts WHERE id=? AND user_id=?",
+            (cid, current_user_id()), commit=True)
+    return True

@@ -450,6 +450,15 @@ CREATE TABLE IF NOT EXISTS reminder_settings (
     caregiver_digest_enabled INTEGER NOT NULL DEFAULT 1,
     updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS caregiver_contacts (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    channel TEXT NOT NULL DEFAULT 'sms',
+    alerts_enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
 """
 
 

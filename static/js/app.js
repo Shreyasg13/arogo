@@ -1044,6 +1044,76 @@ async function loadFamily() {
   const r = await fetch('/api/family', {credentials: 'same-origin'}).catch(() => null);
   const group = r && r.ok ? (await r.json()).group : null;
   box.innerHTML = group ? renderFamilyGroup(group) : renderFamilyEmpty();
+  if (group) loadAlertContacts();
+}
+
+// ── Zero-install caregiver alert contacts (SMS/WhatsApp) ────────────────────
+async function loadAlertContacts() {
+  const list = document.getElementById('alert-contacts-list');
+  if (!list) return;
+  const r = await fetch('/api/family/alert-contacts', {credentials: 'same-origin'}).catch(() => null);
+  const d = (r && r.ok) ? await r.json() : {contacts: [], sms_live: false, whatsapp_live: false};
+  const contacts = d.contacts || [];
+  if (!contacts.length) {
+    list.innerHTML = `<div style="font-size:12px;color:var(--gray-400)">No alert contacts yet.</div>`;
+    return;
+  }
+  list.innerHTML = contacts.map(c => {
+    const live = c.channel === 'whatsapp' ? d.whatsapp_live : d.sms_live;
+    const chan = c.channel === 'whatsapp' ? 'WhatsApp' : 'SMS';
+    // Be honest: until a provider is wired, say alerts are simulated, don't imply delivery.
+    const status = live ? '' :
+      ` <span style="font-size:10px;color:var(--amber-600,#b45309)" title="No SMS provider is configured yet, so these are simulated">· not sending yet</span>`;
+    return `
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--gray-50)">
+        <div style="flex:1;min-width:120px">
+          <b>${escapeHtml(c.name)}</b>
+          <span style="color:var(--gray-400)">· ${escapeHtml(c.phone)} · ${chan}</span>${status}
+        </div>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+          <input type="checkbox" ${c.alerts_enabled ? 'checked' : ''}
+                 data-ev-change="toggleAlertContact('${c.id}', this.checked)"> on
+        </label>
+        <button class="btn-outline" style="font-size:11px" data-ev-click="testAlertContact('${c.id}')">Test</button>
+        <button class="btn-outline" style="font-size:11px;color:#DC2626" data-ev-click="deleteAlertContact('${c.id}')">Remove</button>
+      </div>`;
+  }).join('');
+}
+
+async function addAlertContact() {
+  const name = (document.getElementById('ac-name')?.value || '').trim();
+  const phone = (document.getElementById('ac-phone')?.value || '').trim();
+  const channel = document.getElementById('ac-channel')?.value || 'sms';
+  if (!name || !phone) { showToast('Enter a name and phone number', 'error'); return; }
+  const r = await fetch('/api/family/alert-contacts', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify({name, phone, channel}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not add contact', 'error'); return; }
+  showToast('Added ' + name);
+  loadAlertContacts();
+}
+
+async function toggleAlertContact(id, on) {
+  await fetch('/api/family/alert-contacts/' + id, {
+    method: 'PATCH', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify({alerts_enabled: on}),
+  }).catch(() => {});
+}
+
+async function deleteAlertContact(id) {
+  await fetch('/api/family/alert-contacts/' + id, {method: 'DELETE', credentials: 'same-origin'}).catch(() => {});
+  loadAlertContacts();
+}
+
+async function testAlertContact(id) {
+  const r = await fetch('/api/family/alert-contacts/' + id + '/test', {
+    method: 'POST', credentials: 'same-origin'});
+  const d = await r.json().catch(() => ({}));
+  if (d.delivered) showToast('✓ Test message sent');
+  else if (d.dev_mode) showToast('Simulated — no SMS provider is set up yet', 'info');
+  else showToast('Could not send test', 'error');
 }
 
 // The privacy explainer. Written to reassure someone deciding whether to let
@@ -1160,6 +1230,29 @@ function renderFamilyGroup(g) {
         </div>` : ''}
     </div>` : '';
 
+  // Zero-install alert contacts — a phone that gets pinged if I miss a dose,
+  // no app needed on their end. Filled in by loadAlertContacts().
+  const alertContactsSection = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:4px">📱 Text a loved one if I miss a dose</h2>
+      <p style="font-size:12px;color:var(--gray-400);margin-bottom:12px">
+        Add a phone number and they'll get an SMS or WhatsApp if one of my doses is 2+ hours
+        overdue — no app or account needed on their end. This works once
+        <b>🚨 Alert my family if I miss a dose</b> is on above. I can remove anyone anytime.</p>
+      <div id="alert-contacts-list" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="text" class="form-input" id="ac-name" placeholder="Name (e.g. Mom)"
+               aria-label="Contact name" style="max-width:150px">
+        <input type="tel" class="form-input" id="ac-phone" placeholder="+9198XXXXXXXX"
+               aria-label="Phone with country code" style="max-width:175px">
+        <select class="form-input" id="ac-channel" aria-label="Channel" style="max-width:130px">
+          <option value="sms">SMS</option>
+          <option value="whatsapp">WhatsApp</option>
+        </select>
+        <button class="btn-primary" data-ev-click="addAlertContact()">Add</button>
+      </div>
+    </div>`;
+
   const dangerBtn = isOwner
     ? `<button class="btn-outline" style="color:#DC2626" data-ev-click="deleteFamilyGroup()">Delete group</button>`
     : `<button class="btn-outline" style="color:#DC2626" data-ev-click="leaveFamilyGroup()">Leave group</button>`;
@@ -1177,6 +1270,7 @@ function renderFamilyGroup(g) {
       ${receiveAlertsToggle}
     </div>
     ${inviteSection}
+    ${alertContactsSection}
     <div>${memberCards}</div>`;
 }
 
