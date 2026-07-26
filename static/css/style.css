@@ -4914,15 +4914,18 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 /* ── Drug-name autocomplete (add-medicine) ── */
 .drug-suggest {
   position: absolute; left: 0; right: 0; top: 100%; z-index: 40;
-  background: var(--surface, #fff); border: 1px solid var(--gray-100, #e5e7eb);
-  border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  /* Theme-aware: --gray-0 is the input surface and --gray-900 the readable
+     text in BOTH light and dark (the scale inverts under [data-theme=dark]). */
+  background: var(--gray-0); border: 1px solid var(--gray-200);
+  border-radius: 10px; box-shadow: var(--shadow-md, 0 8px 24px rgba(0,0,0,.12));
   margin-top: 4px; max-height: 240px; overflow-y: auto;
 }
 .drug-suggest-item {
   display: flex; align-items: baseline; gap: 8px; justify-content: space-between;
   padding: 9px 12px; cursor: pointer; font-size: 13px;
-  border-bottom: 1px solid var(--gray-50, #f3f4f6);
+  color: var(--gray-900);
+  border-bottom: 1px solid var(--gray-100);
 }
 .drug-suggest-item:last-child { border-bottom: none; }
-.drug-suggest-item.active, .drug-suggest-item:hover { background: var(--teal-50, #eef6f2); }
-.drug-suggest-item .dsi-hint { font-size: 11px; color: var(--gray-400, #9ca3af); flex-shrink: 0; }
+.drug-suggest-item.active, .drug-suggest-item:hover { background: var(--teal-50); }
+.drug-suggest-item .dsi-hint { font-size: 11px; color: var(--gray-500); flex-shrink: 0; }
