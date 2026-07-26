@@ -6709,6 +6709,40 @@ function openGlobalSearch() {
   // Show hints on open
   document.getElementById('gs-hints').style.display = 'block';
   document.getElementById('global-search-results').innerHTML = '';
+  // Reveal the mic only where the browser can actually transcribe speech.
+  const mic = document.getElementById('gs-mic');
+  if (mic) mic.style.display = _speechSupported() ? 'inline-block' : 'none';
+}
+
+// ── Voice input: speak a meal, feed it to the same NL parser ────────────────
+function _speechSupported() {
+  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+let _voiceRec = null;
+function startVoiceSearch() {
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mic = document.getElementById('gs-mic');
+  const inp = document.getElementById('global-search-input');
+  if (!Rec || !inp) { showToast('Voice input isn’t available on this browser', 'error'); return; }
+  if (_voiceRec) { try { _voiceRec.stop(); } catch {} _voiceRec = null; return; }  // toggle off
+  const rec = new Rec();
+  _voiceRec = rec;
+  rec.lang = (navigator.language && /^en/i.test(navigator.language)) ? navigator.language : 'en-IN';
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+  if (mic) mic.textContent = '🔴';
+  rec.onresult = (e) => {
+    const txt = Array.from(e.results).map(r => r[0].transcript).join('').trim();
+    inp.value = txt;
+    runGlobalSearch(txt);                     // live preview as they speak
+  };
+  const done = () => { _voiceRec = null; if (mic) mic.textContent = '🎤'; };
+  rec.onerror = (e) => {
+    done();
+    if (e && e.error === 'not-allowed') showToast('Microphone permission denied', 'error');
+  };
+  rec.onend = done;
+  try { rec.start(); } catch { done(); }
 }
 
 // Detect quick-log commands typed into global search
@@ -6816,6 +6850,84 @@ function highlightRow(rows) {
   rows[_gsSelectedIdx]?.scrollIntoView({block:'nearest'});
 }
 
+// ── Natural-language food logging from the command bar ──────────────────────
+let _pendingFoodLog = null;
+
+// Only treat a phrase as a meal to log when it carries a clear signal, so we
+// never hijack an ordinary history search for a single word like "chicken".
+function _looksLikeFoodLog(q) {
+  const s = (q || '').trim().toLowerCase();
+  if (s.length < 3) return false;
+  if (/^(log|ate|eat|had)\b/.test(s)) return true;               // "log 2 rotis"
+  if (/\b(breakfast|lunch|dinner|snack|brunch)\b/.test(s)) return true;
+  if (/^\d/.test(s) && /[a-z]/.test(s)) return true;             // "2 rotis"
+  if (/\b(and|with)\b/.test(s) && /[a-z]/.test(s)) return true;  // "dal and rice"
+  return false;
+}
+
+async function _fetchFoodPreview(q) {
+  try {
+    const r = await fetch('/api/food/parse', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ text: q, hour: new Date().getHours() }),
+    });
+    return await r.json();
+  } catch { return null; }
+}
+
+function renderFoodLogPreview(res, p) {
+  const mealLabel = (MEAL_TYPES.find(m => m.id === p.meal) || {}).label || p.meal;
+  const total = p.items.reduce((s, i) => s + (i.calories || 0), 0);
+  const lines = p.items.map(i =>
+    `<div class="gsfl-item">${i.emoji || '🍽️'} <b>${escHtml(i.amount_label)}</b> ${escHtml(i.food_name)}` +
+    ` · ${Math.round(i.calories || 0)} kcal` +
+    (i.confident ? '' : ' <span style="color:var(--amber-600,#b45309)">· best guess</span>') +
+    `</div>`).join('');
+  const unmatched = (p.unmatched && p.unmatched.length)
+    ? `<div class="gsfl-item" style="color:var(--gray-400)">Couldn’t find: ${p.unmatched.map(escHtml).join(', ')}</div>`
+    : '';
+  res.innerHTML = `<div class="gs-result-row gs-action-row" data-ev-click="confirmFoodLog()">
+      <div class="gs-result-icon">🍽️</div>
+      <div class="gs-result-main">
+        <div class="gs-result-title">Log ${p.items.length} item${p.items.length > 1 ? 's' : ''} to ${escHtml(mealLabel)} · ~${Math.round(total)} kcal</div>
+        <div class="gs-result-meta" style="display:flex;flex-direction:column;gap:2px;margin-top:4px">${lines}${unmatched}</div>
+        <div class="gs-result-meta" style="margin-top:4px">Press Enter to log</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--teal-600);
+                   background:var(--teal-50);border-radius:6px;padding:3px 8px">LOG</span>
+    </div>`;
+  _gsSelectedIdx = 0;
+  highlightRow([...res.querySelectorAll('.gs-result-row')]);
+}
+
+async function confirmFoodLog() {
+  const p = _pendingFoodLog;
+  if (!p || !p.items || !p.items.length) return;
+  const date = localToday();
+  let ok = 0;
+  for (const it of p.items) {
+    try {
+      const r = await fetch('/api/food/log', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          food_id: it.food_id, food_name: it.food_name, meal_type: p.meal,
+          date_key: date, quantity_g: it.grams,
+          calories: it.calories, protein: it.protein, carbs: it.carbs,
+          fat: it.fat, fiber: it.fiber,
+        }),
+      });
+      if (r.ok) ok++;
+    } catch { /* keep going; report the honest count below */ }
+  }
+  _pendingFoodLog = null;
+  closeGlobalSearch();
+  const mealLabel = (MEAL_TYPES.find(m => m.id === p.meal) || {}).label || p.meal;
+  if (ok) showToast(`✓ Logged ${ok} item${ok > 1 ? 's' : ''} to ${mealLabel}`, 'success');
+  else    showToast('Could not log that — try again', 'error');
+  // refresh the food view if it's showing today
+  if (ok && typeof loadFoodDay === 'function' && foodDate === date) loadFoodDay(date);
+}
+
 // Ctrl+K / Cmd+K
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openGlobalSearch(); }
@@ -6859,6 +6971,20 @@ async function runGlobalSearch(q) {
     _gsSelectedIdx = 0;
     highlightRow([...res.querySelectorAll('.gs-result-row')]);
     return;
+  }
+
+  // ── Natural-language food logging: "2 rotis and dal for lunch" ──
+  if (_looksLikeFoodLog(q)) {
+    res.innerHTML = '<div class="gs-empty" style="padding:20px;font-size:13px">Reading your meal…</div>';
+    const preview = await _fetchFoodPreview(q);
+    // user kept typing while we waited — drop this stale result
+    if (((document.getElementById('global-search-input')?.value) || '').trim() !== q) return;
+    if (preview && preview.items && preview.items.length) {
+      _pendingFoodLog = preview;
+      renderFoodLogPreview(res, preview);
+      return;
+    }
+    // nothing matched → fall through to the normal history search
   }
 
   res.innerHTML = '<div class="gs-empty" style="padding:20px;font-size:13px">Searching…</div>';

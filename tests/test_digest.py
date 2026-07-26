@@ -3,6 +3,7 @@ tests/test_digest.py — Weekly digest: API shape, email job, unsubscribe.
 
 Run:  pytest tests/test_digest.py -v
 """
+import datetime as dt
 import os
 os.environ["MEDEASY_DB"] = ":memory:"
 
@@ -92,11 +93,17 @@ class TestDigestApi:
         c = app.test_client()
         c.post("/auth/register",
                json={"email": "sleeper-digest@medeasy.test", "password": PW})
-        for day in range(10, 17):
+        # Log the last 7 nights relative to today so the entries always land
+        # inside the digest's rolling 7-day window (was hardcoded July dates,
+        # which silently aged out of the window and failed after any rollover).
+        today = dt.date.today()
+        for offset in range(7):
+            wake = today - dt.timedelta(days=offset)
+            bed = wake - dt.timedelta(days=1)
             c.post("/api/sleep", json={
-                "date_key": f"2026-07-{day}",
-                "bedtime": f"2026-07-{day}T23:00",
-                "wake_time": f"2026-07-{day + 1}T07:00", "quality": 4})
+                "date_key": wake.isoformat(),
+                "bedtime": f"{bed.isoformat()}T23:00",
+                "wake_time": f"{wake.isoformat()}T07:00", "quality": 4})
 
         d = c.get("/api/weekly-digest").get_json()
         assert d["scores"]["sleep"] is not None, "sleep was tracked; score it"

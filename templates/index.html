@@ -263,6 +263,9 @@
           data-ev-input="runGlobalSearch(this.value)"
           data-ev-keydown="handleSearchKey(event)"
           autocomplete="off" spellcheck="false">
+        <button type="button" class="gs-mic" id="gs-mic" data-ev-click="startVoiceSearch()"
+          title="Speak to log — e.g. &quot;2 rotis and dal for lunch&quot;" aria-label="Voice input"
+          style="display:none;background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;flex-shrink:0">🎤</button>
         <div class="gs-kbd">Esc</div>
       </div>
       <!-- Quick filters -->
@@ -284,10 +287,10 @@
       <div class="gs-hints" id="gs-hints">
         <div class="gs-hints-title">Log it here — type and press Enter</div>
         <div class="gs-hints-grid">
+          <div class="gs-hint-chip" data-ev-click="fillSearch('2 rotis and dal for lunch')">2 rotis and dal</div>
           <div class="gs-hint-chip" data-ev-click="fillSearch('water 500')">water 500</div>
           <div class="gs-hint-chip" data-ev-click="fillSearch('bp 120/80')">bp 120/80</div>
           <div class="gs-hint-chip" data-ev-click="fillSearch('weight 72.5')">weight 72.5</div>
-          <div class="gs-hint-chip" data-ev-click="fillSearch('sugar 110')">sugar 110</div>
         </div>
         <div class="gs-hints-title" style="margin-top:14px">Or search for</div>
         <div class="gs-hints-grid">

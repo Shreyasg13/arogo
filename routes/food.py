@@ -21,6 +21,16 @@ except ImportError as _e:
     CATEGORIES  = _mod.CATEGORIES
     FOOD_DB     = _mod.FOOD_DB
     FOOD_BY_ID  = _mod.FOOD_BY_ID
+
+try:
+    from food_nlp import parse_food_phrase
+except ImportError:
+    import importlib.util as _ilu2
+    _p2 = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'food_nlp.py')
+    _s2 = _ilu2.spec_from_file_location('food_nlp', _p2)
+    _m2 = _ilu2.module_from_spec(_s2); _s2.loader.exec_module(_m2)
+    parse_food_phrase = _m2.parse_food_phrase
+
 bp = Blueprint("food", __name__)
 
 
@@ -139,6 +149,28 @@ def add_food_log():
 
     result = log_food(entry)
     return jsonify({'success': True, 'log': result})
+
+
+@bp.route('/api/food/parse', methods=['POST'])
+@require_auth
+def parse_food():
+    """Turn a natural-language phrase into a food-log PREVIEW (never logs).
+
+    The client shows the preview and only POSTs to /api/food/log on confirm, so
+    a wrong match is always seen and cancellable — never written silently.
+    """
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({'items': [], 'unmatched': [], 'meal': 'snack', 'meal_explicit': False})
+    hour = data.get('hour')
+    try:
+        hour = int(hour) if hour is not None else None
+        if hour is not None and not (0 <= hour <= 23):
+            hour = None
+    except (TypeError, ValueError):
+        hour = None
+    return jsonify(parse_food_phrase(text, now_hour=hour))
 
 
 @bp.route('/api/food/log/<date_key>')
