@@ -8786,6 +8786,66 @@ async function doExport() {
   showToast(`Downloading ${_exportFmt.toUpperCase()} export…`, 'success');
 }
 
+// ── Complete data export + account deletion (DPDP/GDPR) ─────────────────────
+async function downloadAllData() {
+  showToast('Preparing your data…', 'info');
+  try {
+    const r = await fetch('/api/account/export', {credentials: 'same-origin'});
+    if (!r.ok) throw new Error('export failed');
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'arogo-my-data.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ Downloaded all your data', 'success');
+  } catch { showToast('Could not prepare your data — try again', 'error'); }
+}
+
+function openDeleteAccount() {
+  const panel = document.getElementById('delete-account-panel');
+  if (!panel) return;
+  // Reveal a password confirm inline — deletion is irreversible, so require the
+  // password and an explicit second click.
+  panel.innerHTML = `
+    <h2 class="panel-title" style="margin-bottom:6px;color:#B91C1C">Delete my account</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+      This permanently erases your account and every record. Enter your password to confirm.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input type="password" class="form-input" id="delete-account-pw" placeholder="Your password"
+             aria-label="Confirm password" style="max-width:220px" autocomplete="current-password">
+      <button class="btn-outline" data-ev-click="resetDeleteAccount()">Cancel</button>
+      <button class="btn-outline" style="color:#fff;background:#B91C1C;border-color:#B91C1C"
+              data-ev-click="confirmDeleteAccount()">Permanently delete</button>
+    </div>`;
+}
+
+function resetDeleteAccount() {
+  const panel = document.getElementById('delete-account-panel');
+  if (!panel) return;
+  panel.innerHTML = `
+    <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C">Delete my account</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+      Permanently deletes your account and <b>all</b> your data — medicines, logs,
+      family links, everything. This cannot be undone. Consider downloading your data first.</p>
+    <button class="btn-outline" style="color:#B91C1C;border-color:#e7a3a3"
+            data-ev-click="openDeleteAccount()">Delete account…</button>`;
+}
+
+async function confirmDeleteAccount() {
+  const pw = document.getElementById('delete-account-pw')?.value || '';
+  if (!pw) { showToast('Enter your password to confirm', 'error'); return; }
+  const r = await fetch('/api/account', {
+    method: 'DELETE', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify({password: pw}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not delete account', 'error'); return; }
+  // Account and session are gone — send them back to the sign-in screen.
+  showToast('Your account and data have been deleted', 'success');
+  setTimeout(() => { window.location.href = '/'; }, 1200);
+}
+
 // ════════════════════════════════════════════════════════════════
 // DAILY CHECK-IN
 // Shown once per day on first dashboard open.

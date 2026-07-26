@@ -1868,6 +1868,26 @@
       Download JSON
     </button>
   </div>
+
+  <!-- Complete export (everything we hold) -->
+  <div class="panel" style="padding:18px 20px;margin-top:20px">
+    <h2 class="panel-title" style="margin-bottom:4px">Download everything</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+      A single file with <b>every record</b> Arogo holds about you, across all
+      features — not just the range above. This is your data; take it anytime.</p>
+    <button class="btn-outline" data-ev-click="downloadAllData()">Download all my data (JSON)</button>
+  </div>
+
+  <!-- Danger zone: account deletion -->
+  <div class="panel" id="delete-account-panel" style="padding:18px 20px;margin-top:20px;border:1px solid #f3c2c2">
+    <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C">Delete my account</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+      Permanently deletes your account and <b>all</b> your data — medicines, logs,
+      family links, everything. This cannot be undone. Consider downloading your
+      data first.</p>
+    <button class="btn-outline" style="color:#B91C1C;border-color:#e7a3a3"
+            data-ev-click="openDeleteAccount()">Delete account…</button>
+  </div>
 </div>
 
 </main>

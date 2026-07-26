@@ -289,3 +289,35 @@ def change_password():
     resp = make_response(jsonify({'success': True, 'message': 'Password updated'}))
     set_auth_cookie(resp, g.user_id)
     return resp
+
+
+@bp.route('/api/account/export', methods=['GET'])
+@require_auth
+def account_export():
+    """Download everything we hold about this user (GDPR/DPDP data access)."""
+    import json as _json
+    from db.account import export_all_data
+    data = export_all_data(g.user_id)
+    payload = _json.dumps(data, indent=2, ensure_ascii=False, default=str)
+    resp = make_response(payload)
+    resp.headers['Content-Type'] = 'application/json; charset=utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename="arogo-my-data.json"'
+    return resp
+
+
+@bp.route('/api/account', methods=['DELETE'])
+@require_auth
+@rate_limit_auth
+def account_delete():
+    """Hard-delete the account and all associated data. Requires the password."""
+    d = request.json or {}
+    row = execute('SELECT password_hash FROM users WHERE id = ?', (g.user_id,), fetchone=True)
+    if not row:
+        return jsonify({'error': 'User not found'}), 404
+    if not check_password(d.get('password') or '', row['password_hash']):
+        return jsonify({'error': 'Password is incorrect'}), 401
+    from db.account import delete_account
+    delete_account(g.user_id)
+    resp = make_response(jsonify({'success': True}))
+    clear_auth_cookie(resp)
+    return resp
