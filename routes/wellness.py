@@ -99,13 +99,15 @@ def api_medicine_streaks():
                 'full':  full_day,
             })
 
-        # Streak = consecutive fully-taken days counting BACK from today
-        streak = 0
-        for d in reversed(day_data):
-            if d['full']:
-                streak += 1
-            else:
-                break
+        # Streak = fully-taken days counting BACK from today, but a single
+        # missed day is forgiven (grace) rather than resetting to zero. A
+        # forgiven day is NOT counted as taken — streak is real full days only.
+        from streaks import forgiving_streak
+        full_days = {d['date'] for d in day_data if d['full']}
+        earliest = dt.date.fromisoformat(range_start) if date_range else today
+        _st = forgiving_streak(full_days, today=today, grace=1, earliest=earliest)
+        streak = _st['streak']
+        streak_grace_used = _st['grace_used']
 
         adh_pct = round(all_taken / all_total * 100, 1) if all_total else 0
 
@@ -119,6 +121,7 @@ def api_medicine_streaks():
             'frequency':   m.get('frequency', 'once_daily'),
             'times':       times,
             'streak':      streak,
+            'grace_used':  streak_grace_used,
             'best_streak': best_streak,
             'adherence_pct': adh_pct,
             'taken_total': all_taken,

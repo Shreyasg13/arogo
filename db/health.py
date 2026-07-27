@@ -74,10 +74,13 @@ def get_habit_stats(days: int = 30) -> dict:
                        (h['id'], start30, uid), fetchall=True)
         done_dates = {r['date_key'] for r in logs}
 
-        # Streak (consecutive days back from today)
-        streak, d = 0, today
-        while d.isoformat() in done_dates:
-            streak += 1; d -= dt.timedelta(days=1)
+        # Streak back from today, forgiving a single missed day (grace) instead
+        # of resetting to zero. A forgiven day is never counted as done.
+        from streaks import forgiving_streak
+        _st = forgiving_streak(done_dates, today=today, grace=1,
+                               earliest=dt.date.fromisoformat(start30))
+        streak = _st['streak']
+        grace_used = _st['grace_used']
 
         # 7-day history: list of {date, done} for bar chart
         week7 = []
@@ -96,6 +99,7 @@ def get_habit_stats(days: int = 30) -> dict:
                        'done_dates':  list(done_dates),
                        'done_today':  today_iso in done_dates,
                        'streak':      streak,
+                       'grace_used':  grace_used,
                        'completions': len(done_dates),
                        'week7':       week7,
                        'cal28':       cal28})

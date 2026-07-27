@@ -6795,7 +6795,7 @@ async function loadMedAdherence() {
         </div>
         <div class="adh-dot-grid">${dots}</div>
         <div class="adh-med-foot">
-          <span>Best streak: ${m.best_streak} days</span>
+          <span>Best streak: ${m.best_streak} days${m.grace_used ? ` · 🛟 ${m.grace_used} rest day${m.grace_used > 1 ? 's' : ''} kept it going` : ''}</span>
           <span>${m.taken_total} of ${m.days.reduce((s,d)=>s+d.total,0)} doses taken</span>
         </div>
       </div>`;
