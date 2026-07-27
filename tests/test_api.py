@@ -254,9 +254,14 @@ class TestFood:
         _, d = jget(client, "/api/food/db")
         assert len(d["foods"]) > 0
 
-    def test_food_db_42_categories(self, client):
+    def test_food_db_categories(self, client):
+        # Count-agnostic: the DB grows over time (new cuisines/categories added),
+        # so assert a healthy floor and that a couple of expected ones are present
+        # rather than pinning an exact number that every addition would break.
         _, d = jget(client, "/api/food/db")
-        assert len(d["categories"]) == 42
+        assert len(d["categories"]) >= 42
+        assert "Indian Main" in d["categories"]
+        assert "Indo-Chinese" in d["categories"]
 
     def test_search_whey(self, client):
         _, d = jget(client, "/api/food/db?q=whey")

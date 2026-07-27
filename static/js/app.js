@@ -4414,7 +4414,7 @@ function openAddFoodModal(mealType) {
 const CAT_EMOJI = {
   'American':'🇺🇸','American Fast Food':'🍔','American Breakfast':'🥞','American Desserts':'🍰',
   'Indian Main':'🍛','Indian Bread':'🫓','Indian Snacks':'🟡','Indian Street Food':'🌆',
-  'Indian Beverages':'☕','Indian Sides':'🫙','Indian Sweets':'🍬','South Indian':'🥞',
+  'Indian Beverages':'☕','Indian Sides':'🫙','Indian Sweets':'🍬','South Indian':'🥞','Indo-Chinese':'🥡',
   'Pakistani':'🥘','Bangladeshi':'🐟','Sri Lankan':'🫓','Nepali':'🥟','Afghan':'🫙',
   'South Asian Sweets':'🍮','Street Food':'🌆',
   'Italian':'🍝','Mediterranean':'🫙','Thai':'🌶️','Japanese':'🍣',
@@ -4428,7 +4428,7 @@ const CAT_EMOJI = {
 
 const CAT_GROUPS = {
   '🇺🇸 American':    ['American','American Fast Food','American Breakfast','American Desserts'],
-  '🇮🇳 Indian':      ['Indian Main','Indian Bread','Indian Snacks','Indian Street Food','Indian Beverages','Indian Sides','Indian Sweets','South Indian'],
+  '🇮🇳 Indian':      ['Indian Main','Indian Bread','Indian Snacks','Indian Street Food','Indian Beverages','Indian Sides','Indian Sweets','South Indian','Indo-Chinese'],
   '🌏 South Asian':  ['Pakistani','Bangladeshi','Sri Lankan','Nepali','Afghan','South Asian Sweets','Street Food'],
   '🌍 World Cuisine':['Italian','Mediterranean','Thai','Japanese','Global Mains','Global Breakfast','Global Snacks'],
   '🥗 Healthy':      ['Protein','Dairy','Fruits','Vegetables','Salads','Rice & Grains','Breakfast','Beverages'],
