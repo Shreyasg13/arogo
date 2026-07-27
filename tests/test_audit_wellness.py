@@ -467,9 +467,15 @@ class TestIsolation:
     def test_sleep_logs_private(self, app):
         alice = _user(app, "iso-sleep-a@medeasy.test")
         bob = _user(app, "iso-sleep-b@medeasy.test")
-        alice.post("/api/sleep", json={"bedtime": "2026-07-12T23:00",
-                                       "wake_time": "2026-07-13T07:00",
-                                       "quality": 4, "date_key": DAY})
+        # Use last night (relative to today), not a fixed date: /api/sleep
+        # returns a rolling 14-day window, so a hardcoded date silently ages
+        # out of it. Anchored to the wake date, which is what the API returns.
+        today = datetime.date.today()
+        bed = (today - datetime.timedelta(days=1)).isoformat()
+        wake = today.isoformat()
+        alice.post("/api/sleep", json={"bedtime": f"{bed}T23:00",
+                                       "wake_time": f"{wake}T07:00",
+                                       "quality": 4, "date_key": wake})
         assert len(alice.get("/api/sleep").get_json()) == 1
         assert len(bob.get("/api/sleep").get_json()) == 0
 
