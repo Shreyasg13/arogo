@@ -37,6 +37,7 @@ function toggleTheme() {
 
 document.addEventListener('DOMContentLoaded', _syncThemeToggleUI);
 document.addEventListener('DOMContentLoaded', _syncSimpleToggleUI);
+document.addEventListener('DOMContentLoaded', _applySimpleLabels);
 
 // ── Simple View (senior / large-type mode) ────────────────────────
 // A second display axis alongside dark/light. 'simple' enlarges text and
@@ -66,11 +67,28 @@ function _syncSimpleToggleUI() {
   }
 }
 
+// Swap medical/tracker jargon for plain language in Simple View. Any static
+// element with a `data-simple` attribute shows that text in Simple View and
+// its original text otherwise — e.g. <button data-simple="❤️ BP & Sugar">.
+// The original is stashed on first swap so Standard View restores exactly.
+function _applySimpleLabels() {
+  const on = document.documentElement.dataset.mode === 'simple';
+  document.querySelectorAll('[data-simple]').forEach(el => {
+    if (on) {
+      if (el.dataset.stdLabel === undefined) el.dataset.stdLabel = el.textContent;
+      el.textContent = el.dataset.simple;
+    } else if (el.dataset.stdLabel !== undefined) {
+      el.textContent = el.dataset.stdLabel;
+    }
+  });
+}
+
 function applyUiMode(mode) {
   const el = document.documentElement;
   if (mode === 'simple') el.dataset.mode = 'simple';
   else delete el.dataset.mode;
   _syncSimpleToggleUI();
+  _applySimpleLabels();
 }
 
 // Persist a choice both locally (instant, no-flash next load) and to the
