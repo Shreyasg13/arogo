@@ -4929,3 +4929,13 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .drug-suggest-item:last-child { border-bottom: none; }
 .drug-suggest-item.active, .drug-suggest-item:hover { background: var(--teal-50); }
 .drug-suggest-item .dsi-hint { font-size: 11px; color: var(--gray-500); flex-shrink: 0; }
+
+/* ── Diet-preference filter chips (food picker) ── */
+.diet-pref-row { display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 2px; }
+.diet-chip {
+  font-size:12px; padding:5px 11px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--gray-200); background:var(--gray-0); color:var(--gray-700);
+  transition:background .12s,border-color .12s,color .12s;
+}
+.diet-chip:hover { border-color:var(--teal-400); }
+.diet-chip.active { background:var(--teal-500); border-color:var(--teal-500); color:#fff; }

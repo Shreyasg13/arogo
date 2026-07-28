@@ -4034,6 +4034,7 @@ let selectedMealType = 'lunch';
 let selectedFoodItem = null;
 let foodSearchTimer  = null;
 let activeFoodCat    = '';
+let _dietPref        = '';   // '', 'veg', 'egg', 'vegan', 'jain' — filters the food picker
 
 const MEAL_TYPES = [
   { id:'breakfast', label:'Breakfast', icon:'☀️' },
@@ -4486,6 +4487,7 @@ async function loadFoodCategories() {
     return {categories:[], foods:[]};
   });
   if (r.usual_portions) _usualPortions = r.usual_portions;
+  if ('diet_pref' in r) { _dietPref = r.diet_pref || ''; highlightDietChips(); }
   const sel = document.getElementById('food-cat-select');
   if (!sel) return;
   const allCats = r.categories || [];
@@ -4527,6 +4529,28 @@ async function loadFoodCategories() {
   }
 }
 
+function highlightDietChips() {
+  document.querySelectorAll('#diet-pref-row .diet-chip').forEach(b =>
+    b.classList.toggle('active', (b.dataset.diet || '') === (_dietPref || '')));
+}
+
+async function setDietPref(pref) {
+  pref = pref || '';
+  _dietPref = pref;
+  highlightDietChips();
+  // Persist so the choice sticks across sessions and applies everywhere the
+  // picker is used. Send 'all' to clear (empty string is coerced to no-change).
+  try {
+    await fetch('/api/food/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ diet_pref: pref || 'all' })
+    });
+  } catch (err) { console.error('[Food] diet_pref save failed:', err); }
+  searchFoodDB(document.getElementById('food-search-input')?.value || '');
+}
+
 function filterFoodCat(cat) {
   activeFoodCat = cat;
   const sel = document.getElementById('food-cat-select');
@@ -4564,6 +4588,7 @@ async function searchFoodDB(query) {
   foodSearchTimer = setTimeout(async () => {
     const params = new URLSearchParams({ q: query, limit: 80 });
     if (activeFoodCat) params.set('category', activeFoodCat);
+    if (_dietPref) params.set('diet', _dietPref);
     const r = await fetch(`/api/food/db?${params}`).then(res => res.json()).catch(err => {
       console.error('[Food] search failed:', err);
       return {foods:[], custom:[]};

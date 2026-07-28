@@ -2355,6 +2355,15 @@
         </div>
       </div>
 
+      <!-- Diet preference filter — only suggest foods matching the diet -->
+      <div class="diet-pref-row" id="diet-pref-row" role="group" aria-label="Diet preference">
+        <button class="diet-chip active" data-diet=""       data-ev-click="setDietPref('')">All</button>
+        <button class="diet-chip"        data-diet="veg"    data-ev-click="setDietPref('veg')">🥦 Veg</button>
+        <button class="diet-chip"        data-diet="egg"    data-ev-click="setDietPref('egg')">🥚 Eggetarian</button>
+        <button class="diet-chip"        data-diet="vegan"  data-ev-click="setDietPref('vegan')">🌱 Vegan</button>
+        <button class="diet-chip"        data-diet="jain"   data-ev-click="setDietPref('jain')">🌿 Jain</button>
+      </div>
+
       <!-- Category dropdown -->
       <div class="food-cat-dropdown-wrap">
         <label class="food-cat-label">

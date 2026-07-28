@@ -43,9 +43,17 @@ def update_profile(data: dict) -> dict:
         try: return int(v)
         except: return fallback
 
+    # Diet preference: normalize to a known value or None (= no filter / show all)
+    _DIETS = {'veg', 'vegan', 'egg', 'jain', 'nonveg'}
+    diet_pref = data.get('diet_pref', p.get('diet_pref'))
+    if diet_pref in ('', 'all', 'none'):
+        diet_pref = None
+    elif diet_pref is not None and diet_pref not in _DIETS:
+        diet_pref = p.get('diet_pref')  # ignore garbage, keep existing
+
     execute("""UPDATE user_profile SET
         name=?, weight_kg=?, height_cm=?, age=?, gender=?,
-        activity_level=?, goal=?, target_weight_kg=?, timezone=?, updated_at=?
+        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, updated_at=?
         WHERE id=? AND user_id=?""",
         (data.get('name', p.get('name')) or '',
          _float('weight_kg', p.get('weight_kg')),
@@ -56,6 +64,7 @@ def update_profile(data: dict) -> dict:
          data.get('goal', p.get('goal')),
          new_target,
          data.get('timezone', p.get('timezone')),
+         diet_pref,
          now_iso(), p['id'], current_user_id()), commit=True)
     return get_profile()
 

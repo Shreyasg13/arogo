@@ -290,6 +290,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     activity_level TEXT DEFAULT NULL, goal TEXT DEFAULT NULL,
     target_weight_kg REAL DEFAULT NULL,
     timezone TEXT DEFAULT NULL,
+    diet_pref TEXT DEFAULT NULL,
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS food_logs (
@@ -522,6 +523,14 @@ def migrate_add_timezone():
         pass  # already exists
 
 
+def migrate_add_diet_pref():
+    """Add diet_pref column to user_profile if missing (veg/vegan/egg/jain/nonveg)."""
+    try:
+        execute("ALTER TABLE user_profile ADD COLUMN diet_pref TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_token_version():
     """users.token_version — bumped to revoke all of a user's sessions."""
     try:
@@ -720,6 +729,7 @@ def init_db():
     migrate_add_user_id()
     migrate_fix_profile_defaults()
     migrate_add_timezone()
+    migrate_add_diet_pref()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_digest_flag()

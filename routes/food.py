@@ -49,13 +49,19 @@ def food_database():
     limit  = to_int(request.args.get('limit', 80), 80, lo=1, hi=500)
     custom = list_custom_foods()
 
-    # Use the fixed search_food with both query and category
-    results = search_food(query=query, category=cat, limit=limit)
+    # Diet preference: an explicit ?diet= override wins, else the saved profile
+    # preference. It restricts suggestions so a vegetarian never sees chicken.
+    diet = request.args.get('diet')
+    if diet is None:
+        diet = (get_profile() or {}).get('diet_pref')
+
+    # Use the fixed search_food with query, category, and diet filter
+    results = search_food(query=query, category=cat, limit=limit, diet=diet)
     # `source` is provenance metadata for the DB only — never expose it to the
     # client. Strip it into copies so the shared FOOD_DB dicts stay intact.
     results = [{k: v for k, v in f.items() if k != 'source'} for f in results]
 
-    # Tag and filter custom foods
+    # Tag and filter custom foods (kept regardless of diet — the user made them)
     custom_results = []
     for c in custom:
         if query and query.lower() not in c['name'].lower():
@@ -69,6 +75,7 @@ def food_database():
         'foods':      results,
         'custom':     custom_results,
         'categories': CATEGORIES,
+        'diet_pref':  diet or None,   # so the picker can show the active filter
         # What this user actually puts on the plate, per food — so the portion
         # picker can default to their serving instead of a generic average.
         'usual_portions': usual_portions(),
