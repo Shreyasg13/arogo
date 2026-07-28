@@ -12,6 +12,14 @@ from db.core import init_db
 
 
 def create_app(config=Config):
+    # Error tracking first, so failures during app setup are also captured.
+    # No-op unless SENTRY_DSN is set (see observability.py).
+    try:
+        from observability import init_error_tracking
+        init_error_tracking("web")
+    except Exception:
+        pass
+
     app = Flask(__name__)
     app.config.from_object(config)
 

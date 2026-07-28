@@ -1,33 +1,21 @@
-# Render blueprint — deploy MedEasy with one click from the dashboard
-# (New + → Blueprint → point at this repo). Fill in the sync:false
-# env vars in the dashboard after the first deploy.
-services:
-  - type: web
-    name: medeasy
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT "app:create_app()"
-    healthCheckPath: /
+# Render blueprint — deploy Arogo with one click from the dashboard
+# (New + → Blueprint → point at this repo). Fill in the sync:false env vars
+# in the dashboard after the first deploy.
+#
+# Two services share one database: the `web` service serves requests, and the
+# `scheduler` worker runs the background jobs (dose reminders, caregiver
+# missed-dose escalation, weekly digests, OAuth sync). They MUST share
+# SECRET_KEY — the worker signs digest-unsubscribe tokens that the web service
+# verifies — so those secrets live in a shared env var group.
+# (Internal infra names stay "medeasy"; only the product is renamed Arogo.)
+
+envVarGroups:
+  - name: medeasy-shared
     envVars:
-      - key: PYTHON_VERSION
-        value: "3.11.9"
-      - key: FLASK_DEBUG
-        value: "0"
-      - key: COOKIE_SECURE
-        value: "1"
-      - key: SCHEDULER_ENABLED
-        # gunicorn workers don't run the scheduler anyway (no __main__);
-        # run reminders/digests via a separate worker or cron if needed
-        value: "0"
       - key: SECRET_KEY
-        generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: medeasy-db
-          property: connectionString
+        generateValue: true          # one value, shared by web + worker
       - key: APP_BASE_URL
-        sync: false   # set to the public URL after first deploy
+        sync: false                  # set to the public URL after first deploy
       - key: SMTP_HOST
         sync: false
       - key: SMTP_USER
@@ -36,6 +24,51 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      - key: SENTRY_DSN
+        sync: false                  # optional; error tracking off when blank
+
+services:
+  - type: web
+    name: medeasy
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT "app:create_app()"
+    healthCheckPath: /healthz         # 200 always; body also reports scheduler liveness
+    envVars:
+      - fromGroup: medeasy-shared
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: SCHEDULER_ENABLED
+        value: "0"                    # the web dynos must NOT run jobs (the worker does)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medeasy-db
+          property: connectionString
+
+  # Background jobs run here — ONE process, so jobs never double-fire.
+  - type: worker
+    name: medeasy-scheduler
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run_scheduler.py
+    envVars:
+      - fromGroup: medeasy-shared
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: SCHEDULER_ENABLED
+        value: "1"                    # this is the one process that runs the jobs
+      - key: DATABASE_URL
+        fromDatabase:
+          name: medeasy-db
+          property: connectionString
 
 databases:
   - name: medeasy-db

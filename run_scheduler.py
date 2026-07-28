@@ -18,6 +18,11 @@ from scheduler import start_scheduler
 
 
 def main():
+    try:
+        from observability import init_error_tracking
+        init_error_tracking("scheduler")
+    except Exception:
+        pass
     init_db()
     started = start_scheduler()
     # start_scheduler() no-ops when SCHEDULER_ENABLED=0; if this process is

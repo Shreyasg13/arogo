@@ -78,3 +78,13 @@ are firing** — wire this into your uptime monitor.
 - [ ] Invite a second account to a family group via email
 - [ ] Sunday digest arrives (or trigger `_send_weekly_digests()` manually)
 - [ ] Lighthouse run on the live URL
+- [ ] `GET /healthz` shows `scheduler.ok: true`
+- [ ] `python scripts/backup.py backup` succeeds; a daily backup + off-box copy
+      is scheduled (SQLite disks are ephemeral on Render free tier)
+- [ ] (optional) `SENTRY_DSN` set → force a test error and confirm it lands,
+      scrubbed of request/PII
+
+## Operations
+
+Day-2 operations — health checks, the backup/restore drill, error tracking, and
+the quiet failure modes — live in **[RUNBOOK.md](RUNBOOK.md)**.

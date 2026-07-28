@@ -10,6 +10,20 @@ Jobs:
 import threading, time, datetime, os
 from db import get_today_doses, log_sync, get_sync_history, execute, user_context
 
+try:
+    import observability
+except Exception:                       # never let telemetry break the jobs
+    observability = None
+
+
+def _report(job: str, e: Exception):
+    """Log a swallowed job failure to stderr AND to error tracking. Background
+    jobs run on a headless worker, so a bare print() is easy to never see."""
+    print(f"[scheduler] {job} error: {e}")
+    if observability:
+        observability.capture(e, job=job)
+
+
 _scheduler_thread = None
 
 
@@ -35,7 +49,7 @@ def _daily_sync():
         results = sync_all_connected()
         print(f"[scheduler] Daily sync: {results}")
     except Exception as e:
-        print(f"[scheduler] Daily sync error: {e}")
+        _report("daily_sync", e)
 
 # ── Server-sent push reminders (works with the browser tab closed) ───────────
 
@@ -178,7 +192,7 @@ def _push_reminders():
                 except Exception as e:
                     print(f"[scheduler] push reminders for {u['user_id'][:8]}: {e}")
     except Exception as e:
-        print(f'[scheduler] Push reminder error: {e}')
+        _report("push_reminders", e)
 
 
 # ── Caregiver alerts: tell the family when a dose is 2h+ overdue ─────────────
@@ -310,7 +324,7 @@ def _caregiver_alerts():
             except Exception as e:
                 print(f"[scheduler] caregiver alert for {uid[:8]}: {e}")
     except Exception as e:
-        print(f'[scheduler] Caregiver alert error: {e}')
+        _report("caregiver_alerts", e)
 
 
 def _digest_log_title(base: str) -> str:
@@ -360,7 +374,7 @@ def _send_weekly_digests():
         if sent:
             print(f'[scheduler] Weekly digest sent to {sent} user(s)')
     except Exception as e:
-        print(f'[scheduler] Weekly digest error: {e}')
+        _report("weekly_digest", e)
 
 
 def _send_caregiver_digests():
@@ -407,7 +421,7 @@ def _send_caregiver_digests():
         if sent:
             print(f'[scheduler] Caregiver digest sent to {sent} caregiver(s)')
     except Exception as e:
-        print(f'[scheduler] Caregiver digest error: {e}')
+        _report("caregiver_digest", e)
 
 
 def _run_loop():
