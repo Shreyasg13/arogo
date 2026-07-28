@@ -4939,3 +4939,102 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 }
 .diet-chip:hover { border-color:var(--teal-400); }
 .diet-chip.active { background:var(--teal-500); border-color:var(--teal-500); color:#fff; }
+
+/* ══════════════════════════════════════════════════════════════════
+   SIMPLE VIEW — senior / large-type mode (data-mode="simple")
+   A second display axis alongside dark/light. Enlarges text & tap
+   targets, raises contrast, and collapses the nav to essentials.
+   Works in both light and dark themes (values reference theme vars).
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Contrast: pull muted "helper" greys toward the body text colour.
+   Referencing --gray-600/700 keeps this correct after the dark theme
+   inverts the grey ramp. */
+:root[data-mode="simple"] {
+  --gray-400: var(--gray-600);
+  --gray-500: var(--gray-700);
+}
+
+/* Base type + rhythm */
+:root[data-mode="simple"] body { font-size: 16.5px; line-height: 1.65; }
+
+/* High-traffic + core-loop text — bumped explicitly because the app
+   sizes in px, so a root bump alone would not cascade. */
+:root[data-mode="simple"] .panel-title      { font-size: 17.5px; }
+:root[data-mode="simple"] .page-title        { font-size: 24px; }
+:root[data-mode="simple"] .page-subtitle,
+:root[data-mode="simple"] .page-greeting     { font-size: 15px; }
+:root[data-mode="simple"] .sug-text          { font-size: 15.5px; line-height: 1.6; }
+:root[data-mode="simple"] .hero-card-value   { font-size: 34px; }
+:root[data-mode="simple"] .hero-card-label,
+:root[data-mode="simple"] .hero-card-sub     { font-size: 14px; }
+/* Medication dose rows — the thing a senior user reads most */
+:root[data-mode="simple"] .dash-dose-name    { font-size: 16.5px; font-weight: 600; }
+:root[data-mode="simple"] .dash-dose-detail  { font-size: 14px; }
+:root[data-mode="simple"] .dash-dose-time    { font-size: 14.5px; }
+
+/* Controls: larger text + 48px minimum tap targets */
+:root[data-mode="simple"] .btn-primary,
+:root[data-mode="simple"] .btn-outline,
+:root[data-mode="simple"] .btn-secondary,
+:root[data-mode="simple"] .btn-danger,
+:root[data-mode="simple"] .theme-toggle-btn {
+  font-size: 16px;
+  min-height: 48px;
+  padding-top: 12px; padding-bottom: 12px;
+}
+:root[data-mode="simple"] .form-input,
+:root[data-mode="simple"] .filter-select,
+:root[data-mode="simple"] input[type="text"],
+:root[data-mode="simple"] input[type="number"],
+:root[data-mode="simple"] input[type="email"],
+:root[data-mode="simple"] input[type="password"],
+:root[data-mode="simple"] input[type="date"],
+:root[data-mode="simple"] input[type="time"],
+:root[data-mode="simple"] select,
+:root[data-mode="simple"] textarea {
+  font-size: 16px;          /* also stops iOS from zooming on focus */
+  min-height: 48px;
+}
+:root[data-mode="simple"] .nav-item {
+  font-size: 15.5px;
+  min-height: 48px;
+}
+:root[data-mode="simple"] .dash-dose-check {
+  width: 34px; height: 34px;
+}
+
+/* Navigation collapse: only the essentials, no group labels */
+:root[data-mode="simple"] .sidebar-nav .nav-section-label { display: none; }
+:root[data-mode="simple"] .sidebar-nav .nav-item:not([data-essential]) { display: none; }
+:root[data-mode="simple"] .sidebar-nav .nav-item:first-of-type { margin-top: 8px; }
+
+/* Active-state hint on the toggle chips */
+:root[data-mode="simple"] #simple-toggle,
+:root[data-mode="simple"] #simple-toggle-icon { color: var(--teal-500); }
+
+/* ── Age-60+ one-time "Simple View" offer ── */
+#simple-prompt {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(20, 16, 12, .55); padding: 20px;
+}
+.simple-prompt-inner {
+  background: var(--gray-0); color: var(--gray-900);
+  border: 1px solid var(--gray-100); border-radius: 18px;
+  max-width: 400px; width: 100%; padding: 28px 24px; text-align: center;
+  box-shadow: 0 24px 60px rgba(0,0,0,.28);
+}
+.simple-prompt-icon  { font-size: 40px; margin-bottom: 10px; }
+.simple-prompt-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.simple-prompt-body  { font-size: 15.5px; line-height: 1.6; color: var(--gray-600); margin-bottom: 22px; }
+.simple-prompt-actions { display: flex; flex-direction: column; gap: 10px; }
+.simple-prompt-yes {
+  background: var(--teal-500); color: #fff; border: none;
+  font-size: 17px; font-weight: 600; padding: 15px; border-radius: 12px;
+  min-height: 52px; cursor: pointer;
+}
+.simple-prompt-no {
+  background: transparent; color: var(--gray-500); border: 1px solid var(--gray-200);
+  font-size: 15px; padding: 13px; border-radius: 12px; min-height: 48px; cursor: pointer;
+}

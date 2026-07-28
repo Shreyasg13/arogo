@@ -51,9 +51,17 @@ def update_profile(data: dict) -> dict:
     elif diet_pref is not None and diet_pref not in _DIETS:
         diet_pref = p.get('diet_pref')  # ignore garbage, keep existing
 
+    # UI mode: 'simple' (senior / large-type layout) or 'standard' (explicitly
+    # declined). None = never chosen, so the age>=60 prompt may still offer it.
+    ui_mode = data.get('ui_mode', p.get('ui_mode'))
+    if ui_mode in ('', 'none', 'default'):
+        ui_mode = None
+    elif ui_mode not in (None, 'simple', 'standard'):
+        ui_mode = p.get('ui_mode')  # ignore garbage, keep existing
+
     execute("""UPDATE user_profile SET
         name=?, weight_kg=?, height_cm=?, age=?, gender=?,
-        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, updated_at=?
+        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, ui_mode=?, updated_at=?
         WHERE id=? AND user_id=?""",
         (data.get('name', p.get('name')) or '',
          _float('weight_kg', p.get('weight_kg')),
@@ -65,6 +73,7 @@ def update_profile(data: dict) -> dict:
          new_target,
          data.get('timezone', p.get('timezone')),
          diet_pref,
+         ui_mode,
          now_iso(), p['id'], current_user_id()), commit=True)
     return get_profile()
 

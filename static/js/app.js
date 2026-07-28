@@ -36,6 +36,102 @@ function toggleTheme() {
 }
 
 document.addEventListener('DOMContentLoaded', _syncThemeToggleUI);
+document.addEventListener('DOMContentLoaded', _syncSimpleToggleUI);
+
+// ── Simple View (senior / large-type mode) ────────────────────────
+// A second display axis alongside dark/light. 'simple' enlarges text and
+// tap targets, raises contrast, and collapses the nav to the essentials.
+// localStorage me_ui_mode is the source of truth for a no-flash first paint;
+// the profile.ui_mode column mirrors it so the choice follows the user across
+// devices (and lets a caregiver set it for the patient). Values:
+//   'simple'   → large UI on
+//   'standard' → explicitly declined (do not re-prompt)
+//   (absent)   → never chosen (age>=60 prompt may still offer it)
+(function initUiMode() {
+  try {
+    if (localStorage.getItem('me_ui_mode') === 'simple')
+      document.documentElement.dataset.mode = 'simple';
+  } catch (e) {}
+})();
+
+function _syncSimpleToggleUI() {
+  const on = document.documentElement.dataset.mode === 'simple';
+  const icon  = document.getElementById('simple-toggle-icon');
+  const label = document.getElementById('simple-toggle-label');
+  if (icon)  icon.textContent  = on ? '🔎' : '🔍';
+  if (label) label.textContent = on ? 'Standard view' : 'Simple view';
+}
+
+function applyUiMode(mode) {
+  const el = document.documentElement;
+  if (mode === 'simple') el.dataset.mode = 'simple';
+  else delete el.dataset.mode;
+  _syncSimpleToggleUI();
+}
+
+// Persist a choice both locally (instant, no-flash next load) and to the
+// profile (cross-device). `mode` is 'simple' or 'standard'.
+function setUiMode(mode) {
+  applyUiMode(mode);
+  try { localStorage.setItem('me_ui_mode', mode); } catch (e) {}
+  fetch('/api/food/profile', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ ui_mode: mode }),
+  }).catch(() => {});
+}
+
+function toggleSimpleMode() {
+  setUiMode(document.documentElement.dataset.mode === 'simple' ? 'standard' : 'simple');
+  dismissSimplePrompt();
+}
+
+// One-time offer shown to users aged 60+ who haven't chosen a view yet.
+function offerSimpleMode() {
+  if (document.getElementById('simple-prompt')) return;
+  const card = document.createElement('div');
+  card.id = 'simple-prompt';
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', 'Simple view offer');
+  card.innerHTML =
+    '<div class="simple-prompt-inner">' +
+      '<div class="simple-prompt-icon">🔎</div>' +
+      '<div class="simple-prompt-title">Prefer bigger text?</div>' +
+      '<div class="simple-prompt-body">Simple View makes text larger, buttons easier to tap, ' +
+        'and keeps just the essentials on screen. You can switch back any time in Settings.</div>' +
+      '<div class="simple-prompt-actions">' +
+        '<button class="simple-prompt-yes" type="button">Turn on Simple View</button>' +
+        '<button class="simple-prompt-no" type="button">No thanks</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(card);
+  card.querySelector('.simple-prompt-yes').addEventListener('click', () => { setUiMode('simple'); dismissSimplePrompt(); });
+  card.querySelector('.simple-prompt-no').addEventListener('click', () => { setUiMode('standard'); dismissSimplePrompt(); });
+}
+
+function dismissSimplePrompt() {
+  const card = document.getElementById('simple-prompt');
+  if (card) card.remove();
+}
+
+// Reconcile with the server profile: adopt a cross-device choice if this
+// device hasn't decided, then offer Simple View to 60+ users who never have.
+function reconcileUiMode(profile) {
+  if (!profile) return;
+  let local = null;
+  try { local = localStorage.getItem('me_ui_mode'); } catch (e) {}
+  const server = profile.ui_mode || null;   // 'simple' | 'standard' | null
+  if (!local && server) {
+    // Another device chose for this account — honour it here too.
+    applyUiMode(server);
+    try { localStorage.setItem('me_ui_mode', server); } catch (e) {}
+    local = server;
+  }
+  const decided = local || server;          // any explicit choice, anywhere
+  const age = parseInt(profile.age, 10);
+  if (!decided && Number.isFinite(age) && age >= 60) offerSimpleMode();
+}
 
 // ── CSP-safe event dispatch ───────────────────────────────────────
 // Inline on*="…" attributes are blocked by our Content-Security-Policy
@@ -268,7 +364,9 @@ function showApp() {
     headers: {'Content-Type': 'application/json'},
     credentials: 'same-origin',
     body: JSON.stringify({ timezone: browserTimezone() }),
-  }).catch(() => {});
+  }).then(r => r.ok ? r.json() : null)
+    .then(d => { if (d && d.profile) reconcileUiMode(d.profile); })
+    .catch(() => {});
 
   // Run all setup functions that DOMContentLoaded used to run
   try { setGreeting(); }             catch(e) {}
@@ -11110,6 +11208,13 @@ async function obSubmit() {
 
   hideOnboarding();
   showApp();
+
+  // First-run offer: 60+ users get a one-tap Simple View prompt.
+  if (Number.isFinite(age) && age >= 60) {
+    let decided = null;
+    try { decided = localStorage.getItem('me_ui_mode'); } catch (e) {}
+    if (!decided) setTimeout(offerSimpleMode, 400);
+  }
 }
 
 

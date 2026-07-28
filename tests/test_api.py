@@ -323,6 +323,24 @@ class TestFood:
         assert code == 200 and d["success"]
         assert d["targets"]["target_calories"] > 0
 
+    def test_ui_mode_persists_and_normalizes(self, client):
+        # simple = senior/large-type layout; round-trips through the profile
+        code, d = jpost(client, "/api/food/profile", {"ui_mode": "simple"})
+        assert code == 200 and d["profile"]["ui_mode"] == "simple"
+        # explicit opt-out is stored (not None) so the age-60 prompt won't re-fire
+        _, d = jpost(client, "/api/food/profile", {"ui_mode": "standard"})
+        assert d["profile"]["ui_mode"] == "standard"
+        # garbage is ignored — the previous valid choice is kept
+        _, d = jpost(client, "/api/food/profile", {"ui_mode": "huge!!"})
+        assert d["profile"]["ui_mode"] == "standard"
+        # empty / 'none' clears back to "never chosen"
+        _, d = jpost(client, "/api/food/profile", {"ui_mode": "none"})
+        assert d["profile"]["ui_mode"] is None
+        # unrelated profile updates must not disturb a saved ui_mode
+        jpost(client, "/api/food/profile", {"ui_mode": "simple"})
+        _, d = jpost(client, "/api/food/profile", {"name": "Ayush"})
+        assert d["profile"]["ui_mode"] == "simple"
+
     def test_weekly_nutrition(self, client):
         code, _ = jget(client, "/api/food/weekly")
         assert code == 200

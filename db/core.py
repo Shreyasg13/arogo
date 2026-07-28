@@ -291,6 +291,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     target_weight_kg REAL DEFAULT NULL,
     timezone TEXT DEFAULT NULL,
     diet_pref TEXT DEFAULT NULL,
+    ui_mode TEXT DEFAULT NULL,
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS food_logs (
@@ -531,6 +532,14 @@ def migrate_add_diet_pref():
         pass  # already exists
 
 
+def migrate_add_ui_mode():
+    """Add ui_mode column to user_profile if missing (simple = senior/large UI)."""
+    try:
+        execute("ALTER TABLE user_profile ADD COLUMN ui_mode TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_token_version():
     """users.token_version — bumped to revoke all of a user's sessions."""
     try:
@@ -730,6 +739,7 @@ def init_db():
     migrate_fix_profile_defaults()
     migrate_add_timezone()
     migrate_add_diet_pref()
+    migrate_add_ui_mode()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_digest_flag()
