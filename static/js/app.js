@@ -4421,6 +4421,7 @@ const CAT_EMOJI = {
   'Global Mains':'🌍','Global Breakfast':'🌅','Global Snacks':'🍿','Cafe':'☕',
   'Korean':'🇰🇷','Vietnamese':'🇻🇳','Mexican':'🌮','European':'🥐',
   'Filipino':'🇵🇭','Indonesian':'🇮🇩','Caribbean':'🏝️','African':'🍲','Alcohol':'🍺',
+  'Condiments':'🧂','Cereals':'🥣','Jain':'🌿',
   'Fruits':'🍎','Vegetables':'🥦','Protein':'🥩','Dairy':'🥛',
   'Nuts & Seeds':'🌰','Dry Fruits':'🍇','Trail Mix':'🥜','Chocolates':'🍫',
   'Packaged Snacks':'📦','Supplements':'💪','Beverages':'🥤',
@@ -4430,12 +4431,12 @@ const CAT_EMOJI = {
 
 const CAT_GROUPS = {
   '🇺🇸 American':    ['American','American Fast Food','American Breakfast','American Desserts'],
-  '🇮🇳 Indian':      ['Indian Main','Indian Bread','Indian Snacks','Indian Street Food','Indian Beverages','Indian Sides','Indian Sweets','South Indian','Indo-Chinese'],
+  '🇮🇳 Indian':      ['Indian Main','Indian Bread','Indian Snacks','Indian Street Food','Indian Beverages','Indian Sides','Indian Sweets','South Indian','Indo-Chinese','Jain'],
   '🌏 South Asian':  ['Pakistani','Bangladeshi','Sri Lankan','Nepali','Afghan','South Asian Sweets','Street Food'],
   '🌍 World Cuisine':['Italian','European','Mediterranean','Thai','Japanese','Korean','Vietnamese','Mexican','Filipino','Indonesian','Caribbean','African','Global Mains','Global Breakfast','Global Snacks','Cafe'],
   '🍺 Bar':          ['Alcohol'],
-  '🥗 Healthy':      ['Protein','Dairy','Fruits','Vegetables','Salads','Rice & Grains','Breakfast','Beverages'],
-  '🍿 Snacks':       ['Nuts & Seeds','Dry Fruits','Trail Mix','Chocolates','Packaged Snacks','Dips & Spreads'],
+  '🥗 Healthy':      ['Protein','Dairy','Fruits','Vegetables','Salads','Rice & Grains','Breakfast','Cereals','Beverages'],
+  '🍿 Snacks':       ['Nuts & Seeds','Dry Fruits','Trail Mix','Chocolates','Packaged Snacks','Dips & Spreads','Condiments'],
   '💪 Fitness':      ['Supplements','Fats & Oils'],
 };
 
