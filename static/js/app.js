@@ -1286,6 +1286,11 @@ function renderFamilyGroup(g) {
     const actions = [];
     if (!isMe && shared.length)
       actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="toggleFamilySummary('${m.user_id}')">View shared data</button>`);
+    // Simple View control — only when this member opted in (allows_display).
+    if (!isMe && m.allows_display) {
+      const on = m.ui_mode === 'simple';
+      actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="setMemberDisplay('${m.user_id}','${on ? 'standard' : 'simple'}')">${on ? '🔎 Simple View: on' : '🔍 Turn on Simple View'}</button>`);
+    }
     if (isOwner && !isMe)
       actions.push(`<button class="btn-outline" style="font-size:12px;color:#DC2626" data-ev-click="removeFamilyMember('${m.user_id}')">Remove</button>`);
     return `
@@ -1329,6 +1334,16 @@ function renderFamilyGroup(g) {
       <input type="checkbox" ${g.my_receive_alerts ? 'checked' : ''}
              data-ev-change="saveFamilyConsent('receive_care_alerts', this.checked)">
       🔔 Notify me when a family member misses a dose
+    </label>`;
+
+  // Opt-in so a family member can switch Simple View on your account for you
+  // (e.g. an adult child setting up a parent's phone). You're always notified.
+  const allowDisplayToggle = `
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;
+                  margin-top:10px;padding:10px 12px;border:1px solid var(--gray-100);border-radius:10px">
+      <input type="checkbox" ${g.my_allow_display ? 'checked' : ''}
+             data-ev-change="saveFamilyConsent('allow_family_display', this.checked)">
+      👁️ Let my family turn Simple View on or off for me
     </label>`;
 
   const inviteSection = isOwner ? `
@@ -1388,6 +1403,7 @@ function renderFamilyGroup(g) {
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">${consentToggles}</div>
       ${alertToggle}
       ${receiveAlertsToggle}
+      ${allowDisplayToggle}
     </div>
     ${inviteSection}
     ${alertContactsSection}
@@ -1410,6 +1426,24 @@ async function saveFamilyConsent(field, on) {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     credentials: 'same-origin', body: JSON.stringify({[field]: on}),
   }).catch(() => {});
+  loadFamily();
+}
+
+// Caregiver flips a consenting member's Simple View. Server enforces the
+// consent gate; the member is notified. `mode` is 'simple' or 'standard'.
+async function setMemberDisplay(uid, mode) {
+  let d = {};
+  try {
+    const r = await fetch(`/api/family/member/${uid}/display`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin', body: JSON.stringify({ui_mode: mode}),
+    });
+    d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not change their display');
+    showToast(mode === 'simple' ? 'Simple View turned on for them' : 'Switched them to Standard View');
+  } catch (e) {
+    showToast(e.message || 'Could not change their display', 'error');
+  }
   loadFamily();
 }
 

@@ -404,6 +404,7 @@ CREATE TABLE IF NOT EXISTS family_members (
     share_emergency INTEGER DEFAULT 0,
     alert_missed_doses INTEGER NOT NULL DEFAULT 0,
     receive_care_alerts INTEGER NOT NULL DEFAULT 1,
+    allow_family_display INTEGER NOT NULL DEFAULT 0,
     joined_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS family_invites (
@@ -536,6 +537,15 @@ def migrate_add_ui_mode():
     """Add ui_mode column to user_profile if missing (simple = senior/large UI)."""
     try:
         execute("ALTER TABLE user_profile ADD COLUMN ui_mode TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
+def migrate_add_family_display():
+    """Add allow_family_display to family_members if missing — lets a member
+    opt in to a caregiver adjusting their Simple View."""
+    try:
+        execute("ALTER TABLE family_members ADD COLUMN allow_family_display INTEGER NOT NULL DEFAULT 0")
     except Exception:
         pass  # already exists
 
@@ -740,6 +750,7 @@ def init_db():
     migrate_add_timezone()
     migrate_add_diet_pref()
     migrate_add_ui_mode()
+    migrate_add_family_display()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_digest_flag()

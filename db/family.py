@@ -59,9 +59,10 @@ def get_my_group() -> dict | None:
         SELECT m.user_id, m.role, m.joined_at,
                m.share_sleep, m.share_vitals, m.share_medicines,
                m.share_food, m.share_symptoms, m.share_emergency,
-               m.alert_missed_doses, m.receive_care_alerts,
-               u.name, u.email
+               m.alert_missed_doses, m.receive_care_alerts, m.allow_family_display,
+               u.name, u.email, p.ui_mode
         FROM family_members m JOIN users u ON u.id = m.user_id
+        LEFT JOIN user_profile p ON p.user_id = m.user_id
         WHERE m.group_id=? ORDER BY m.joined_at""",
         (me['group_id'],), fetchall=True)
     out = {
@@ -70,11 +71,15 @@ def get_my_group() -> dict | None:
         'my_consent': {f: bool(me[f]) for f in CONSENT_FIELDS},
         'my_alerts': bool(me['alert_missed_doses']),
         'my_receive_alerts': bool(me['receive_care_alerts']),
+        'my_allow_display': bool(me['allow_family_display']),
         'members': [{
             'user_id': m['user_id'], 'name': m['name'], 'email': m['email'],
             'role': m['role'], 'joined_at': m['joined_at'],
             'shares': {f: bool(m[f]) for f in CONSENT_FIELDS},
             'alerts_on': bool(m['alert_missed_doses']),
+            # Only surfaced so a caregiver can offer the toggle when allowed.
+            'allows_display': bool(m['allow_family_display']),
+            'ui_mode': m['ui_mode'] or 'standard',
         } for m in members],
     }
     if me['role'] == 'owner':
@@ -183,7 +188,8 @@ def update_consent(flags: dict) -> dict:
                              'family about missed doses')
 
     sets, params = [], []
-    for f in CONSENT_FIELDS + ['alert_missed_doses', 'receive_care_alerts']:
+    for f in CONSENT_FIELDS + ['alert_missed_doses', 'receive_care_alerts',
+                               'allow_family_display']:
         if f in flags:
             sets.append(f"{f}=?")
             params.append(1 if flags[f] else 0)
@@ -198,7 +204,58 @@ def update_consent(flags: dict) -> dict:
     out = {f: bool(me[f]) for f in CONSENT_FIELDS}
     out['alert_missed_doses'] = bool(me['alert_missed_doses'])
     out['receive_care_alerts'] = bool(me['receive_care_alerts'])
+    out['allow_family_display'] = bool(me['allow_family_display'])
     return out
+
+
+def set_member_ui_mode(target_uid: str, mode: str) -> dict:
+    """Let a caregiver switch a fellow member's Simple View — but only if that
+    member opted in via `allow_family_display`, and the member is always told.
+
+    This is the one place the app writes another user's data, so it is tightly
+    fenced: same group required, target must have consented, and ONLY the
+    ui_mode field is touched (never health data or any other setting).
+    """
+    me = my_membership()
+    target = _membership_of(target_uid)
+    if not me or not target or me['group_id'] != target['group_id']:
+        raise PermissionError('Not in your family group')
+    if target_uid == current_user_id():
+        raise ValueError('Use your own display toggle for yourself')
+    if not target['allow_family_display']:
+        raise PermissionError("This member hasn't allowed family to adjust their display")
+
+    mode = 'simple' if mode == 'simple' else 'standard'
+    # Ensure the target has a profile row, then write ONLY ui_mode.
+    row = execute("SELECT id FROM user_profile WHERE user_id=?", (target_uid,), fetchone=True)
+    if row:
+        execute("UPDATE user_profile SET ui_mode=?, updated_at=? WHERE user_id=?",
+                (mode, now_iso(), target_uid), commit=True)
+    else:
+        execute("""INSERT INTO user_profile (id, name, ui_mode, updated_at, user_id)
+                   VALUES (?, '', ?, ?, ?)""",
+                (new_id(), mode, now_iso(), target_uid), commit=True)
+
+    # Transparency: the member always learns their family changed this, with who.
+    who = execute("SELECT name FROM users WHERE id=?", (current_user_id(),), fetchone=True)
+    caregiver = (who['name'] if who and who['name'] else 'A family member')
+    if mode == 'simple':
+        title = f'{caregiver} turned on Simple View for you'
+        body = ('Text is now larger and the screen simpler. You can switch back '
+                'any time from the menu.')
+    else:
+        title = f'{caregiver} switched you to Standard View'
+        body = 'Your display is back to the standard size. Change it any time from the menu.'
+    execute("""INSERT INTO notification_log (id,type,title,body,source_id,read,created_at,user_id)
+               VALUES (?,?,?,?,?,0,?,?)""",
+            (new_id(), 'family_display', title, body, f'display:{current_user_id()}',
+             now_iso(), target_uid), commit=True)
+    try:
+        import push
+        push.push_to_user(target_uid, title, body, '/')
+    except Exception:
+        pass
+    return {'user_id': target_uid, 'ui_mode': mode}
 
 
 # ── Shared data (consent-gated) ───────────────────────────────────────────────

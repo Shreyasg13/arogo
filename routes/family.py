@@ -138,6 +138,20 @@ def member_summary(uid):
         return jsonify({'error': str(e)}), 403
 
 
+@bp.route('/api/family/member/<uid>/display', methods=['POST'])
+@require_auth
+def set_member_display(uid):
+    """Caregiver flips a consenting member's Simple View. Consent-gated in the
+    data layer; only the ui_mode field is writable cross-user."""
+    mode = (request.json or {}).get('ui_mode', 'simple')
+    try:
+        return jsonify({'success': True, 'result': family.set_member_ui_mode(uid, mode)})
+    except PermissionError as e:
+        return jsonify({'error': str(e)}), 403
+    except ValueError as e:
+        return _err(e)
+
+
 @bp.route('/api/family/care-status')
 @require_auth
 def care_status():
