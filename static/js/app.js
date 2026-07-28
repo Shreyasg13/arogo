@@ -4421,7 +4421,7 @@ const CAT_EMOJI = {
   'Global Mains':'🌍','Global Breakfast':'🌅','Global Snacks':'🍿','Cafe':'☕',
   'Korean':'🇰🇷','Vietnamese':'🇻🇳','Mexican':'🌮','European':'🥐',
   'Filipino':'🇵🇭','Indonesian':'🇮🇩','Caribbean':'🏝️','African':'🍲','Alcohol':'🍺',
-  'Condiments':'🧂','Cereals':'🥣','Jain':'🌿',
+  'Condiments':'🧂','Cereals':'🥣','Jain':'🌿','Baby Food':'🍼',
   'Fruits':'🍎','Vegetables':'🥦','Protein':'🥩','Dairy':'🥛',
   'Nuts & Seeds':'🌰','Dry Fruits':'🍇','Trail Mix':'🥜','Chocolates':'🍫',
   'Packaged Snacks':'📦','Supplements':'💪','Beverages':'🥤',
@@ -4435,7 +4435,7 @@ const CAT_GROUPS = {
   '🌏 South Asian':  ['Pakistani','Bangladeshi','Sri Lankan','Nepali','Afghan','South Asian Sweets','Street Food'],
   '🌍 World Cuisine':['Italian','European','Mediterranean','Thai','Japanese','Korean','Vietnamese','Mexican','Filipino','Indonesian','Caribbean','African','Global Mains','Global Breakfast','Global Snacks','Cafe'],
   '🍺 Bar':          ['Alcohol'],
-  '🥗 Healthy':      ['Protein','Dairy','Fruits','Vegetables','Salads','Rice & Grains','Breakfast','Cereals','Beverages'],
+  '🥗 Healthy':      ['Protein','Dairy','Fruits','Vegetables','Salads','Rice & Grains','Breakfast','Cereals','Baby Food','Beverages'],
   '🍿 Snacks':       ['Nuts & Seeds','Dry Fruits','Trail Mix','Chocolates','Packaged Snacks','Dips & Spreads','Condiments'],
   '💪 Fitness':      ['Supplements','Fats & Oils'],
 };
