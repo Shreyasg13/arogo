@@ -5038,3 +5038,21 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   background: transparent; color: var(--gray-500); border: 1px solid var(--gray-200);
   font-size: 15px; padding: 13px; border-radius: 12px; min-height: 48px; cursor: pointer;
 }
+
+/* ── Simple View on mobile: collapse the bottom bar + "More" sheet to the
+   essentials, and enlarge tap targets/labels. Only nav items carrying a
+   data-view are hidden — the More button and the Theme/Simple toggles have
+   none, so they always stay reachable. Scoped to the phone breakpoint where
+   these controls actually render. ── */
+@media (max-width: 768px) {
+  :root[data-mode="simple"] .mobile-tabbar .mtab[data-view]:not([data-essential]),
+  :root[data-mode="simple"] .mobile-more-panel .mmore[data-view]:not([data-essential]) {
+    display: none;
+  }
+  /* Bigger, easier-to-hit bottom tabs */
+  :root[data-mode="simple"] .mtab { min-height: 66px; font-size: 12.5px; }
+  :root[data-mode="simple"] .mtab svg { width: 26px; height: 26px; }
+  /* Bigger "More" sheet tiles */
+  :root[data-mode="simple"] .mmore { min-height: 84px; font-size: 13.5px; }
+  :root[data-mode="simple"] .mmore svg { width: 24px; height: 24px; }
+}

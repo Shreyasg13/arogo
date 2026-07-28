@@ -56,10 +56,14 @@ document.addEventListener('DOMContentLoaded', _syncSimpleToggleUI);
 
 function _syncSimpleToggleUI() {
   const on = document.documentElement.dataset.mode === 'simple';
-  const icon  = document.getElementById('simple-toggle-icon');
-  const label = document.getElementById('simple-toggle-label');
-  if (icon)  icon.textContent  = on ? '🔎' : '🔍';
-  if (label) label.textContent = on ? 'Standard view' : 'Simple view';
+  const icon   = document.getElementById('simple-toggle-icon');
+  const text   = on ? 'Standard view' : 'Simple view';
+  if (icon) icon.textContent = on ? '🔎' : '🔍';
+  // Both the sidebar toggle (desktop) and the "More"-menu toggle (mobile).
+  for (const id of ['simple-toggle-label', 'simple-toggle-label-m']) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
 }
 
 function applyUiMode(mode) {
