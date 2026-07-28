@@ -37,20 +37,6 @@ def _daily_sync():
     except Exception as e:
         print(f"[scheduler] Daily sync error: {e}")
 
-def _check_missed_doses():
-    try:
-        now = datetime.datetime.now().strftime('%H:%M')
-        users = execute("SELECT DISTINCT user_id FROM medicines WHERE active=1", fetchall=True)
-        total_missed = 0
-        for u in users:
-            with user_context(u['user_id']):
-                doses = get_today_doses()
-                total_missed += len([d for d in doses if not d['taken'] and d['time'] < now])
-        if total_missed:
-            print(f"[scheduler] {total_missed} missed dose(s) as of {now}")
-    except Exception as e:
-        print(f"[scheduler] Missed dose check error: {e}")
-
 # ── Server-sent push reminders (works with the browser tab closed) ───────────
 
 def _user_local_now(uid):
@@ -427,7 +413,6 @@ def _send_caregiver_digests():
 def _run_loop():
     import schedule
     schedule.every().day.at("05:00").do(_daily_sync)
-    schedule.every().hour.do(_check_missed_doses)
     schedule.every(5).minutes.do(_push_reminders)
     schedule.every(15).minutes.do(_caregiver_alerts)
     schedule.every().minute.do(_heartbeat)
@@ -458,8 +443,6 @@ def _run_loop_stdlib():
             if last_digest != day_key:
                 _send_weekly_digests()
                 last_digest = day_key
-        if now.minute == 0:
-            _check_missed_doses()
         if now.minute % 5 == 0:
             _push_reminders()
         if now.minute % 15 == 0:
