@@ -9,7 +9,11 @@
   --amber-50:#FBF3E6; --amber-100:#F5E4C8; --amber-500:#E0A34E; --amber-600:#B9803A;
   --red-50:#FBEDE9; --red-100:#F5D5CC; --red-500:#C15646; --red-600:#A6432F;
   --green-50:#EBF3ED; --green-500:#5A9E70; --green-600:#468A5B;
-  --gray-0:#FFFFFF; --gray-25:#FBF8F3; --gray-50:#F4EEE4; --gray-100:#E9E1D4; --gray-200:#D7CCBB; --gray-400:#A99D8B; --gray-500:#857A69; --gray-600:#6B6153; --gray-700:#524A3E; --gray-800:#3B342B; --gray-900:#241F18;
+  /* --gray-400 is the muted "helper text" token (155 of its 157 uses are `color:`).
+     Darkened from #A99D8B (~2.5:1, fails WCAG AA) to #736753 (≥4.5:1 on every light
+     surface) so caption/label text is legible for everyone, not just Simple View.
+     Dark theme keeps its own lighter --gray-400 below. */
+  --gray-0:#FFFFFF; --gray-25:#FBF8F3; --gray-50:#F4EEE4; --gray-100:#E9E1D4; --gray-200:#D7CCBB; --gray-400:#736753; --gray-500:#857A69; --gray-600:#6B6153; --gray-700:#524A3E; --gray-800:#3B342B; --gray-900:#241F18;
   --clay-500:#D07D4E; --clay-600:#B96539;
   --sidebar-w:232px; --r-sm:6px; --r-md:10px; --r-lg:14px; --r-xl:20px;
   --shadow-sm:0 1px 3px rgba(58,45,30,.09),0 1px 2px rgba(58,45,30,.06);
