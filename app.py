@@ -166,6 +166,42 @@ def create_app(config=Config):
         return send_from_directory(app.static_folder, 'sw.js',
                                    mimetype='application/javascript')
 
+    # ── Liveness / scheduler health ───────────────────────────────────────────
+    # The reminder + caregiver-escalation jobs run in a SEPARATE worker process
+    # (see run_scheduler.py). If that worker dies, reminders stop silently — the
+    # web service can't see the thread, but it can read the heartbeat the worker
+    # writes every minute. Surface it so an uptime check (or a human) can catch a
+    # dead scheduler instead of discovering it via a missed dose.
+    @app.route('/healthz')
+    def healthz():
+        import datetime as _dt
+        from flask import jsonify
+        from db.core import execute
+        # scheduler considered healthy if it wrote its heartbeat recently.
+        # Jobs tick at 5 min and the heartbeat at 1 min; 15 min is a generous
+        # "definitely stalled" threshold that won't flap on a slow tick.
+        STALE_AFTER_S = 15 * 60
+        last, age = None, None
+        try:
+            row = execute("SELECT value FROM app_config WHERE key='scheduler_last_run'",
+                          fetchone=True)
+            if row and row['value']:
+                last = row['value']
+                delta = _dt.datetime.now() - _dt.datetime.fromisoformat(last)
+                age = int(delta.total_seconds())
+        except Exception:
+            pass
+        sched_ok = age is not None and age <= STALE_AFTER_S
+        return jsonify({
+            'status': 'ok',                       # the web process answered
+            'scheduler': {
+                'ok': sched_ok,
+                'last_run': last,                 # None until the worker runs once
+                'age_seconds': age,
+                'stale_after_seconds': STALE_AFTER_S,
+            },
+        }), 200
+
     return app
 
 

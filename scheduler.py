@@ -12,6 +12,23 @@ from db import get_today_doses, log_sync, get_sync_history, execute, user_contex
 
 _scheduler_thread = None
 
+
+def _heartbeat():
+    """Write a liveness timestamp so a dead scheduler becomes visible.
+
+    The web service can't see the worker thread directly (it's a separate
+    process in production), but it can read this row. /healthz compares it to
+    now and reports the scheduler as down if it's stale. Without this, a
+    crashed scheduler means reminders silently stop with no signal anywhere."""
+    try:
+        from db.core import execute, now_iso
+        execute("DELETE FROM app_config WHERE key='scheduler_last_run'", commit=True)
+        execute("INSERT INTO app_config (key, value) VALUES ('scheduler_last_run', ?)",
+                (now_iso(),), commit=True)
+    except Exception as e:
+        print(f"[scheduler] heartbeat error: {e}")
+
+
 def _daily_sync():
     try:
         from fitness_sync import sync_all_connected
@@ -97,12 +114,17 @@ def _push_reminders_for_user(uid):
         if push.push_to_user(uid, title, body, '/', actions):
             _mark_pushed(uid, key, title, body)
 
-    # 1. Medicine doses that came due in the last 15 minutes and aren't taken
+    # 1. Medicine doses that came due recently and aren't taken.
+    #    The window is 30 min (not 5, the tick interval) so a missed tick —
+    #    a deploy, restart, or GC stall — still gets the reminder out late
+    #    rather than dropping it silently. The per-dose dedup below means the
+    #    wider window still sends at most once.
+    DOSE_REMINDER_WINDOW_MIN = 30
     for d in get_today_doses():
         if d.get('taken'):
             continue
         mins = _mins_since(d.get('time') or '', hhmm)
-        if mins is not None and 0 <= mins <= 15:
+        if mins is not None and 0 <= mins <= DOSE_REMINDER_WINDOW_MIN:
             # "✓ Taken" logs the dose straight from the notification — the core
             # adherence loop shouldn't cost an app open either.
             notify(f"med:{d['med_id']}:{d['time']}:{today}",
@@ -278,18 +300,27 @@ def _caregiver_alerts():
                     # Transparency: the member always learns when family is told.
                     # Log THIS honest message to the member's own feed (also the
                     # dedup record), not the third-person "X missed a dose".
-                    # If we reached nobody, say so — a member who believes
-                    # someone is now checking on them may decide not to act.
                     if reached:
                         tp_title = "We let your family know"
                         tp_body  = (f"{med} ({d['time']}) is still unlogged, so your family "
                                     f"was notified. Take it and this clears.")
+                        push.push_to_user(uid, tp_title, tp_body, '/')
+                        # Escalation succeeded for this dose today — stop retrying.
+                        _mark_pushed(uid, key, tp_title, tp_body)
                     else:
-                        tp_title = "Couldn't reach your family"
-                        tp_body  = (f"{med} ({d['time']}) is still unlogged and we couldn't "
-                                    f"reach anyone in your family. Please take it, or call them.")
-                    push.push_to_user(uid, tp_title, tp_body, '/')
-                    _mark_pushed(uid, key, tp_title, tp_body)
+                        # Reached NOBODY (nobody subscribed, SMTP down, no SMS
+                        # contacts). Do NOT write the escalation key — a transient
+                        # outage must not permanently burn the family alert; the
+                        # next tick retries until someone is actually reached.
+                        # But warn the member at most once per dose per day so a
+                        # persistent outage doesn't spam them.
+                        fail_key = f"caregiver_fail:{d['med_id']}:{d['time']}:{today}"
+                        if not _pushed_today(uid, fail_key, today):
+                            tp_title = "Couldn't reach your family"
+                            tp_body  = (f"{med} ({d['time']}) is still unlogged and we couldn't "
+                                        f"reach anyone in your family yet. Please take it, or call them.")
+                            push.push_to_user(uid, tp_title, tp_body, '/')
+                            _mark_pushed(uid, fail_key, tp_title, tp_body)
             except Exception as e:
                 print(f"[scheduler] caregiver alert for {uid[:8]}: {e}")
     except Exception as e:
@@ -399,10 +430,12 @@ def _run_loop():
     schedule.every().hour.do(_check_missed_doses)
     schedule.every(5).minutes.do(_push_reminders)
     schedule.every(15).minutes.do(_caregiver_alerts)
+    schedule.every().minute.do(_heartbeat)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     schedule.every().sunday.at("18:30").do(_send_caregiver_digests)
     # Also do an initial sync 30 s after startup
     schedule.every(30).seconds.do(lambda: (schedule.cancel_job(schedule.jobs[-1]), _daily_sync()))
+    _heartbeat()   # mark alive immediately on start
     while True:
         schedule.run_pending()
         time.sleep(30)
@@ -411,7 +444,9 @@ def _run_loop_stdlib():
     """Fallback scheduler using plain threading when 'schedule' isn't available."""
     last_daily = None
     last_digest = None
+    _heartbeat()   # mark alive immediately on start
     while True:
+        _heartbeat()
         now = datetime.datetime.now()
         if now.hour == 5 and now.minute == 0:
             day_key = now.date().isoformat()
@@ -432,14 +467,16 @@ def _run_loop_stdlib():
         time.sleep(60)
 
 def start_scheduler():
+    """Start the background job thread. Returns True if it started, False if
+    disabled via SCHEDULER_ENABLED=0 (so a dedicated worker can fail loudly)."""
     global _scheduler_thread
     # With multiple gunicorn workers, enable the scheduler in ONE process
     # only (SCHEDULER_ENABLED=0 on the rest) to avoid duplicate job runs
     if os.environ.get('SCHEDULER_ENABLED', '1') != '1':
         print('[scheduler] Disabled via SCHEDULER_ENABLED=0')
-        return
+        return False
     if _scheduler_thread and _scheduler_thread.is_alive():
-        return
+        return True
     try:
         import schedule
         runner = _run_loop
@@ -449,3 +486,4 @@ def start_scheduler():
     _scheduler_thread = threading.Thread(target=runner, daemon=True, name='medeasy-scheduler')
     _scheduler_thread.start()
     print("[scheduler] Started")
+    return True

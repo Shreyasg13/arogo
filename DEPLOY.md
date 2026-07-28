@@ -47,13 +47,27 @@ same env vars from the table above.
 ## Scheduler under gunicorn
 
 `gunicorn "app:create_app()"` does not run the `__main__` block, so the
-background jobs (push reminders, caregiver alerts, weekly digest, OAuth
-sync) don't start with the web service. Run them as ONE separate small
-process (a Render background worker, or locally):
+background jobs (push reminders, caregiver missed-dose escalation, weekly
+digest, OAuth sync) do **not** start with the web service. They run as ONE
+separate worker process — declared in the `Procfile`:
 
-```bash
-python -c "from db.core import init_db; from scheduler import start_scheduler; import time; init_db(); start_scheduler(); time.sleep(1e9)"
 ```
+web:    gunicorn -w 2 -b 0.0.0.0:$PORT "app:create_app()"
+worker: python run_scheduler.py
+```
+
+On Heroku the `worker` dyno must be scaled up (`heroku ps:scale worker=1`).
+On Render, add a **Background Worker** service with start command
+`python run_scheduler.py`. Locally, just run `python run_scheduler.py`
+alongside the web process. Keep `SCHEDULER_ENABLED=1` on the worker only
+(the web dynos never start it, so they need no change) — `run_scheduler.py`
+exits loudly if it's disabled, so a misconfigured worker can't sit there
+silently doing nothing.
+
+**Verify it's alive:** `GET /healthz` returns
+`{"scheduler": {"ok": true, "age_seconds": N}}` once the worker has run.
+`ok:false` (or `last_run:null`) means the worker is down and **no reminders
+are firing** — wire this into your uptime monitor.
 
 ## Post-deploy checklist
 
