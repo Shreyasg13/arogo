@@ -164,6 +164,12 @@ def create_app(config=Config):
     def index():
         return render_template('index.html')
 
+    # Public transparency page — readable before sign-up (no ads / no data sale /
+    # what every number means). Intentionally unauthenticated; carries no user data.
+    @app.route('/how-it-works')
+    def how_it_works():
+        return render_template('how_it_works.html')
+
     # NOTE: /uploads/<filename> is served by routes/reports.py with
     # authentication AND an ownership check — medical files are private.
     # Never add an unauthenticated file route here.
