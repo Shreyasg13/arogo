@@ -359,6 +359,97 @@ function showAuthScreen() {
   if (tabbar) tabbar.style.visibility = 'hidden';
 }
 
+// ── PWA install coaching ──────────────────────────────────────────
+// iOS web push only works once Arogo is on the home screen, so a nudge to
+// install is part of making reminders reliable — not just a growth trick.
+// Android/Chrome fires beforeinstallprompt (programmatic install); iOS needs
+// the manual Share → Add to Home Screen, so we coach it. Shown once, then never
+// again (localStorage me_install), and never when already installed.
+let _deferredInstallPrompt = null;
+let _installPromptScheduled = false;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();                 // suppress Chrome's mini-infobar; we pick the moment
+  _deferredInstallPrompt = e;
+});
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+  try { localStorage.setItem('me_install', 'installed'); } catch (e) {}
+  dismissInstallPrompt();
+});
+
+function _isStandalone() {
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+         window.navigator.standalone === true;
+}
+function _isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+}
+
+function scheduleInstallPrompt() {
+  if (_installPromptScheduled) return;
+  _installPromptScheduled = true;
+  // Give the dashboard a moment to land (and any first-run prompts to clear)
+  // before nudging — a nag on first paint would be hostile.
+  setTimeout(maybeShowInstallPrompt, 6000);
+}
+
+function maybeShowInstallPrompt() {
+  if (_isStandalone()) return;                       // already installed
+  let seen = null;
+  try { seen = localStorage.getItem('me_install'); } catch (e) {}
+  if (seen) return;                                  // installed or dismissed before
+  const android = !!_deferredInstallPrompt;
+  const ios = _isIOS();
+  if (!android && !ios) return;                      // desktop / unsupported → nothing to do
+  if (document.getElementById('install-banner')) return;
+  if (document.getElementById('simple-prompt')) {    // don't stack on the 60+ prompt
+    setTimeout(maybeShowInstallPrompt, 4000); return;
+  }
+
+  const steps = ios
+    ? 'Tap the Share button <b>&#x2191;</b> below, then <b>&ldquo;Add to Home Screen&rdquo;</b>.'
+    : 'One tap and Arogo lives on your home screen.';
+  const actionBtn = android
+    ? '<button class="install-yes" type="button">Add to Home Screen</button>' : '';
+
+  const card = document.createElement('div');
+  card.id = 'install-banner';
+  card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', 'Add Arogo to your home screen');
+  card.innerHTML =
+    '<div class="install-inner">' +
+      '<div class="install-ico">📲</div>' +
+      '<div class="install-body">' +
+        '<div class="install-title">Never miss a reminder</div>' +
+        '<div class="install-text">Add Arogo to your home screen so dose reminders reach you ' +
+          'even when the app is closed. ' + steps + '</div>' +
+        '<div class="install-actions">' + actionBtn +
+          '<button class="install-no" type="button">Not now</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(card);
+  card.querySelector('.install-no').addEventListener('click', () => { _markInstallSeen(); dismissInstallPrompt(); });
+  const yes = card.querySelector('.install-yes');
+  if (yes) yes.addEventListener('click', doInstall);
+}
+
+async function doInstall() {
+  if (!_deferredInstallPrompt) { _markInstallSeen(); dismissInstallPrompt(); return; }
+  _deferredInstallPrompt.prompt();
+  try { await _deferredInstallPrompt.userChoice; } catch (e) {}
+  _deferredInstallPrompt = null;
+  _markInstallSeen();
+  dismissInstallPrompt();
+}
+
+function _markInstallSeen() { try { localStorage.setItem('me_install', 'seen'); } catch (e) {} }
+function dismissInstallPrompt() {
+  const el = document.getElementById('install-banner');
+  if (el) el.remove();
+}
+
 function showApp() {
   const screen  = document.getElementById('auth-screen');
   const sidebar = document.getElementById('app-sidebar');
@@ -407,6 +498,7 @@ function showApp() {
   try { checkNotifPermission(); }    catch(e) {}
   try { setupPushSubscription(); }   catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
+  try { scheduleInstallPrompt(); }   catch(e) {}
 
   const tdp = document.getElementById('thoughts-date-picker');
   if (tdp) tdp.value = localToday();
@@ -11152,6 +11244,34 @@ function showOnboarding() {
 
 function hideOnboarding() {
   document.getElementById('onboarding-overlay').style.display = 'none';
+}
+
+// Defer the whole profile. None of these fields are needed to start the core
+// loop (add a medicine, get reminders) — timezone auto-syncs on every load, and
+// the food/body views prompt for what they need when you actually open them.
+// Anything already typed is still saved so a half-filled form isn't wasted.
+async function obSkip() {
+  const payload = { timezone: browserTimezone() };
+  const name = (document.getElementById('ob-name')?.value || '').trim();
+  const age  = parseInt(document.getElementById('ob-age')?.value);
+  const gender = document.getElementById('ob-gender')?.value;
+  if (name) payload.name = name;
+  if (Number.isFinite(age) && age >= 1 && age <= 120) payload.age = age;
+  if (gender) payload.gender = gender;
+  try {
+    await fetch('/api/food/profile', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin', body: JSON.stringify(payload),
+    });
+  } catch (e) {}
+  hideOnboarding();
+  showApp();
+  // Still honour the 60+ Simple View offer if they happened to enter an age.
+  if (Number.isFinite(age) && age >= 60) {
+    let decided = null;
+    try { decided = localStorage.getItem('me_ui_mode'); } catch (e) {}
+    if (!decided) setTimeout(offerSimpleMode, 400);
+  }
 }
 
 function obShowError(msg) {
