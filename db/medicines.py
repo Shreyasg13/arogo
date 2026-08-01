@@ -242,6 +242,38 @@ def get_adherence_stats(days=30):
     return {'total': total, 'taken': taken, 'pct': round(taken/total*100, 1) if total else 0}
 
 
+def get_dose_calendar(days: int = 35) -> list:
+    """Per-day scheduled-dose status for a heatmap, oldest→newest.
+
+    status: 'all' (every dose taken), 'partial', 'missed' (none taken), or
+    'none' (nothing scheduled that day). As-needed meds have no schedule, so
+    they never make a day count as missed."""
+    from datetime import date, timedelta
+    uid = current_user_id()
+    days = max(1, min(int(days or 35), 120))
+    meds = [m for m in list_medicines()
+            if m['active'] and m.get('frequency') != 'as_needed' and m.get('times')]
+    anchor = date.fromisoformat(user_today())
+    out = []
+    for i in range(days - 1, -1, -1):
+        d = (anchor - timedelta(days=i)).isoformat()
+        total = taken = 0
+        for m in meds:
+            if not _in_course(m, d):
+                continue
+            for t in m['times']:
+                total += 1
+                log = execute("""SELECT taken FROM dose_logs
+                                 WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?""",
+                              (m['id'], d, t, uid), fetchone=True)
+                if log and log['taken']:
+                    taken += 1
+        status = ('none' if total == 0 else 'all' if taken == total
+                  else 'missed' if taken == 0 else 'partial')
+        out.append({'date': d, 'total': total, 'taken': taken, 'status': status})
+    return out
+
+
 # ── Refill / stock ────────────────────────────────────────────────────────────
 
 def update_medicine_stock(mid: str, pill_count: int, pills_per_dose: int = 1,

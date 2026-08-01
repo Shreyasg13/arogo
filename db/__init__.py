@@ -9,7 +9,7 @@ from .core        import (execute, executemany, commit, init_db, jdump, jload,
                           to_num, to_int, valid_date)
 from .reports     import insert_report, list_reports, get_report, delete_report, report_stats
 from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_medicine, delete_medicine,
-                          log_dose, get_today_doses, get_adherence_stats,
+                          log_dose, get_today_doses, get_adherence_stats, get_dose_calendar,
                           update_medicine_stock, decrement_pill_count, get_low_stock_medicines,
                           mark_refill_ordered, set_pharmacy_note,
                           snooze_dose, get_due_snoozes, mark_snooze_notified,
@@ -46,7 +46,7 @@ __all__ = [
     "current_user_id", "user_context", "to_num", "to_int", "valid_date",
     "insert_report", "list_reports", "get_report", "delete_report", "report_stats",
     "insert_medicine", "list_medicines", "get_medicine", "toggle_medicine", "delete_medicine",
-    "log_dose", "get_today_doses", "get_adherence_stats",
+    "log_dose", "get_today_doses", "get_adherence_stats", "get_dose_calendar",
     "update_medicine_stock", "decrement_pill_count", "get_low_stock_medicines",
     "mark_refill_ordered", "set_pharmacy_note",
     "snooze_dose", "get_due_snoozes", "mark_snooze_notified", "log_prn_dose",

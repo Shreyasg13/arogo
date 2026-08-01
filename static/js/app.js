@@ -2584,6 +2584,43 @@ async function loadMedicines() {
   const mc = document.getElementById('med-count');
   if (mc) mc.textContent = `${meds.filter(m=>m.active).length} active`;
   loadMedAdherence();
+  loadDoseCalendar();
+}
+
+// ── Dose calendar (month heatmap of taken vs missed) ────────────────
+async function loadDoseCalendar() {
+  const el = document.getElementById('med-calendar-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/calendar?days=35', { credentials: 'same-origin' })
+    .then(r => r.json()).catch(() => ({ days: [] }));
+  const days = d.days || [];
+  // Nothing scheduled anywhere in the window → don't show an empty grid.
+  if (!days.length || days.every(x => x.status === 'none')) { el.innerHTML = ''; return; }
+  const COLOR = { all: 'var(--teal-500)', partial: '#F59E0B', missed: '#EF4444', none: 'var(--gray-100)' };
+  const LABEL = { all: 'All taken', partial: 'Some', missed: 'Missed', none: 'None due' };
+  const first = new Date(days[0].date + 'T00:00:00');
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push('<div class="cal-cell cal-cell--empty"></div>');
+  for (const day of days) {
+    const dt = new Date(day.date + 'T00:00:00');
+    const t = `${dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} — ${day.total ? `${day.taken}/${day.total} taken` : 'nothing scheduled'}`;
+    cells.push(`<div class="cal-cell" style="background:${COLOR[day.status]}" title="${t}" data-ev-click="showCalDay('${day.date}',${day.taken},${day.total})"></div>`);
+  }
+  el.innerHTML =
+    `<div class="panel" style="padding:18px 20px">
+       <div class="panel-header"><h2 class="panel-title">📅 Dose calendar</h2><span class="panel-badge">last 5 weeks</span></div>
+       <div class="cal-weekdays">${['S','M','T','W','T','F','S'].map(w => `<span>${w}</span>`).join('')}</div>
+       <div class="cal-grid">${cells.join('')}</div>
+       <div id="cal-day-detail" class="cal-detail"></div>
+       <div class="cal-legend">${Object.entries(LABEL).map(([k, l]) => `<span class="cal-leg"><i style="background:${COLOR[k]}"></i>${l}</span>`).join('')}</div>
+     </div>`;
+}
+
+function showCalDay(date, taken, total) {
+  const el = document.getElementById('cal-day-detail');
+  if (!el) return;
+  const dt = new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  el.textContent = total ? `${dt}: ${taken} of ${total} dose${total !== 1 ? 's' : ''} taken` : `${dt}: nothing scheduled`;
 }
 
 // ── Drug-name autocomplete on the add-medicine form ─────────────────────────

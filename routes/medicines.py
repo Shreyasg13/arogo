@@ -137,4 +137,10 @@ def adherence():
     days = to_int(request.args.get('days', 30), 30, lo=0, hi=3650)
     return jsonify(get_adherence_stats(days))
 
+@bp.route('/api/medicines/calendar')
+@require_auth
+def dose_calendar():
+    days = to_int(request.args.get('days', 35), 35, lo=1, hi=120)
+    return jsonify({'days': get_dose_calendar(days)})
+
 # ── Fitness ───────────────────────────────────────────────────────────────────

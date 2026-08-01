@@ -5149,3 +5149,15 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .mr-kind { font-size:13.5px; font-weight:600; color:var(--gray-800); flex:1; min-width:0; }
 .mr-time { font-size:13px; color:var(--gray-600); font-family:'JetBrains Mono',monospace; }
 .mr-toggle { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--gray-500); cursor:pointer; }
+
+/* ── Dose calendar heatmap ── */
+.cal-weekdays { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin:12px 0 5px; max-width:360px; }
+.cal-weekdays span { font-size:10px; font-weight:600; color:var(--gray-400); text-align:center; }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; max-width:360px; }
+.cal-cell { aspect-ratio:1; border-radius:5px; cursor:pointer; transition:transform .1s; }
+.cal-cell:hover:not(.cal-cell--empty) { transform:scale(1.12); }
+.cal-cell--empty { background:transparent; cursor:default; }
+.cal-detail { font-size:13px; color:var(--gray-700); min-height:20px; margin-top:12px; }
+.cal-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; }
+.cal-leg { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--gray-500); }
+.cal-leg i { width:12px; height:12px; border-radius:3px; display:inline-block; }
