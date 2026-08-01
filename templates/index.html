@@ -786,10 +786,16 @@
       <h1 class="page-title">Medicines</h1>
       <p class="page-subtitle">Daily doses &amp; reminders</p>
     </div>
-    <button class="btn-primary" data-ev-click="openMedModal()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Add Medicine
-    </button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-outline" data-ev-click="openRxImport()" title="Read medicines from a prescription">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Import prescription
+      </button>
+      <button class="btn-primary" data-ev-click="openMedModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Medicine
+      </button>
+    </div>
   </div>
 
   <!-- Focal: today's adherence ring + next dose (hidden until there are doses) -->
@@ -2019,6 +2025,40 @@
         <button type="submit" class="btn-primary" id="submit-btn">Upload & Save</button>
       </div>
     </form>
+  </div>
+</div>
+</div>
+
+<!-- Import prescription modal -->
+<div class="modal-overlay" id="rx-import-overlay" style="display:none">
+<div class="modal" style="max-width:520px">
+  <div class="modal-head">
+    <div>
+      <h2 class="modal-title">📄 Import from prescription</h2>
+      <p class="modal-subtitle" style="font-size:13px;color:var(--gray-400);margin-top:2px">
+        We'll suggest medicines — you confirm each before it's added.</p>
+    </div>
+    <button class="modal-close" data-ev-click="closeModal('rx-import-overlay')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div style="padding:4px 2px">
+    <!-- Upload step -->
+    <div id="rx-upload-step">
+      <label class="rx-drop" for="rx-file">
+        <div style="font-size:26px">📷</div>
+        <div style="font-weight:600;font-size:14px;margin-top:4px">Choose a prescription</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-top:2px">PDF or photo (JPG/PNG)</div>
+        <input type="file" id="rx-file" accept=".pdf,.jpg,.jpeg,.png,.txt" style="display:none"
+               data-ev-change="submitRxFile(this)">
+      </label>
+      <p style="font-size:11.5px;color:var(--gray-400);margin-top:10px;line-height:1.5">
+        🔒 The file is read on this server and not stored. Digital PDFs read best;
+        photos need OCR installed on the server.</p>
+      <div id="rx-status" style="font-size:13px;margin-top:10px"></div>
+    </div>
+    <!-- Review step (filled by JS) -->
+    <div id="rx-review-step" style="display:none"></div>
   </div>
 </div>
 </div>

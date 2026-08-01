@@ -2839,6 +2839,103 @@ async function orderRefill(id) {
   loadMedicines();
 }
 
+// ── Import from prescription ──────────────────────────────────────
+// Reads a prescription and PROPOSES medicines; the user confirms every row
+// before anything is saved (same safety stance as the lab-report parser).
+let _rxMeds = [];
+
+function openRxImport() {
+  document.getElementById('rx-upload-step').style.display = '';
+  const review = document.getElementById('rx-review-step');
+  review.style.display = 'none'; review.innerHTML = '';
+  document.getElementById('rx-status').innerHTML = '';
+  const f = document.getElementById('rx-file'); if (f) f.value = '';
+  document.getElementById('rx-import-overlay').style.display = 'flex';
+}
+
+async function submitRxFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const status = document.getElementById('rx-status');
+  status.style.color = 'var(--gray-500)';
+  status.textContent = '⏳ Reading your prescription…';
+  const fd = new FormData(); fd.append('file', file);
+  let d = {};
+  try {
+    d = await fetch('/api/medicines/parse-rx', { method: 'POST', credentials: 'same-origin', body: fd })
+      .then(r => r.json());
+  } catch (e) { d = { reason: 'Upload failed — check your connection.' }; }
+  _rxMeds = d.medicines || [];
+  if (!_rxMeds.length) {
+    status.style.color = 'var(--gray-600)';
+    status.innerHTML = escHtml(d.reason || "We couldn't find any medicines.") +
+      `<div style="margin-top:12px"><button class="btn-outline" data-ev-click="closeModal('rx-import-overlay');openMedModal()">Add manually instead</button></div>`;
+    return;
+  }
+  status.textContent = '';
+  renderRxReview();
+}
+
+function renderRxReview() {
+  document.getElementById('rx-upload-step').style.display = 'none';
+  const step = document.getElementById('rx-review-step');
+  step.style.display = '';
+  const FREQ = [['once_daily', 'Once daily'], ['twice_daily', 'Twice daily'],
+                ['thrice_daily', 'Thrice daily'], ['weekly', 'Weekly']];
+  step.innerHTML =
+    `<div style="font-size:13px;color:var(--gray-600);margin-bottom:12px">
+       Found ${_rxMeds.length}. Check each, fix anything, then add — nothing is saved until you tap Add.</div>` +
+    _rxMeds.map((m, i) => `
+      <div class="rx-row" data-i="${i}">
+        <input class="form-input rx-name" value="${escHtml(m.name)}" placeholder="Medicine" aria-label="Medicine name">
+        <input class="form-input rx-dose" value="${escHtml(m.dosage)}" placeholder="Dose" aria-label="Dose" style="max-width:76px">
+        <select class="form-input rx-unit" aria-label="Unit" style="max-width:74px">
+          ${['mg', 'mcg', 'g', 'ml', 'iu'].map(u => `<option ${u === m.unit ? 'selected' : ''}>${u}</option>`).join('')}
+        </select>
+        <select class="form-input rx-freq" aria-label="How often" style="max-width:128px">
+          ${FREQ.map(([v, l]) => `<option value="${v}" ${v === m.frequency ? 'selected' : ''}>${l}</option>`).join('')}
+        </select>
+        <button class="btn-icon" title="Remove" data-ev-click="rxRemoveRow(${i})">✕</button>
+      </div>`).join('') +
+    `<div style="display:flex;gap:8px;margin-top:16px">
+       <button class="btn-outline" data-ev-click="openRxImport()">Start over</button>
+       <button class="btn-primary" style="flex:1" data-ev-click="addRxMedicines()">Add these medicines</button>
+     </div>`;
+}
+
+function rxRemoveRow(i) {
+  const row = document.querySelector(`#rx-review-step .rx-row[data-i="${i}"]`);
+  if (row) row.remove();
+}
+
+function _defaultTimesFor(freq) {
+  return ({ once_daily: ['09:00'], twice_daily: ['09:00', '21:00'],
+            thrice_daily: ['08:00', '14:00', '20:00'], weekly: ['09:00'] })[freq] || ['09:00'];
+}
+
+async function addRxMedicines() {
+  const meds = [...document.querySelectorAll('#rx-review-step .rx-row')].map(r => ({
+    name: r.querySelector('.rx-name').value.trim(),
+    dosage: r.querySelector('.rx-dose').value.trim(),
+    unit: r.querySelector('.rx-unit').value,
+    frequency: r.querySelector('.rx-freq').value,
+  })).filter(m => m.name);
+  if (!meds.length) { showToast('Nothing to add', 'error'); return; }
+  let added = 0;
+  for (const m of meds) {
+    const r = await fetch('/api/medicines', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+      body: JSON.stringify({ name: m.name, dosage: m.dosage, unit: m.unit,
+                             frequency: m.frequency, times: _defaultTimesFor(m.frequency) })
+    }).then(r => r.json()).catch(() => null);
+    if (r?.success) added++;
+  }
+  closeModal('rx-import-overlay');
+  showToast(`Added ${added} medicine${added !== 1 ? 's' : ''} 💊`, 'success');
+  loadMedicines();
+  loadDashboard();
+}
+
 function deleteMed(id) {
   undoable('Removing medicine…', async () => {
     await fetch(`/api/medicines/${id}`, { method:'DELETE' });

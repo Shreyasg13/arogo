@@ -5120,3 +5120,12 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .dash-appt-title { font-size:14px; font-weight:600; color:var(--gray-900); }
 .dash-appt-sub { font-size:12.5px; color:var(--gray-600); margin-top:1px; }
 .dash-appt-rel { margin-left:auto; font-size:11.5px; font-weight:700; color:var(--teal-700); background:var(--teal-100); border-radius:999px; padding:3px 10px; flex-shrink:0; }
+
+/* ── Prescription import ── */
+.rx-drop { display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:26px 16px; border:2px dashed var(--gray-200); border-radius:14px;
+  background:var(--gray-25); cursor:pointer; transition:border-color .15s, background .15s; }
+.rx-drop:hover { border-color:var(--teal-400); background:var(--teal-50); }
+.rx-row { display:flex; gap:6px; align-items:center; margin-bottom:8px; }
+.rx-row .rx-name { flex:1; min-width:0; }
+.rx-row .form-input { font-size:13px; padding:8px 10px; }

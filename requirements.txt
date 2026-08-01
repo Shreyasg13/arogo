@@ -36,6 +36,13 @@ defusedxml
 # needs a system binary we don't ship, so they're out of scope either way)
 pypdf
 
+# Optional — OCR for prescription-photo import (rx_parse). Text PDFs work
+# without it; images light up only when BOTH these AND the system `tesseract`
+# binary are installed (e.g. `apt install tesseract-ocr` on a Raspberry Pi).
+# Everything degrades to an honest "add by hand" message when absent.
+pytesseract
+Pillow
+
 # Optional — PostgreSQL backend; activate by setting
 #   DATABASE_URL=postgresql://user:pass@host:5432/medeasy
 # (default backend is SQLite, no extra install needed)

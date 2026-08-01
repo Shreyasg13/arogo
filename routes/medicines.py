@@ -34,6 +34,38 @@ def drug_autocomplete():
     q = request.args.get('q', '')
     return jsonify({'drugs': search_drugs(q, limit=8)})
 
+@bp.route('/api/medicines/parse-rx', methods=['POST'])
+@require_auth
+def parse_rx():
+    """Read a prescription and PROPOSE medicines — never adds them. The user
+    confirms every row (see rx_parse). The file is parsed to a temp path and
+    deleted immediately; prescriptions aren't stored here."""
+    import uuid, rx_parse
+    from werkzeug.utils import secure_filename
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file'}), 400
+    f = request.files['file']
+    if not f.filename or '.' not in f.filename:
+        return jsonify({'error': 'File type not allowed'}), 400
+    ext = f.filename.rsplit('.', 1)[1].lower()
+    if ext not in Config.ALLOWED_EXTENSIONS:
+        return jsonify({'error': 'File type not allowed'}), 400
+    tmp = os.path.join(current_app.config['UPLOAD_FOLDER'],
+                       f"rx_{uuid.uuid4().hex}.{ext}")
+    f.save(tmp)
+    try:
+        text, reason = rx_parse.extract_text(tmp, ext)
+        meds = rx_parse.find_medicines(text) if text else []
+    finally:
+        try: os.remove(tmp)          # don't keep the prescription around
+        except OSError: pass
+    return jsonify({
+        'medicines': meds,
+        'ocr_available': rx_parse.ocr_available(),
+        'reason': reason if text is None else
+                  ('' if meds else "We read it but couldn't spot any medicines we recognise — add them by hand."),
+    })
+
 @bp.route('/api/medicines', methods=['POST'])
 @require_auth
 def add_medicine():
