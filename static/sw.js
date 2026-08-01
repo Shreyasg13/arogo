@@ -122,7 +122,27 @@ self.addEventListener('notificationclick', e => {
     return;
   }
 
-  if (act === 'snooze') return;   // dismissed; the next pace check will nudge again
+  // "snooze-<medId>-<HH:MM>" → a REAL snooze: ask the server to remind again
+  // shortly. Tapping it repeatedly just pushes the reminder further out.
+  const snz = act.match(/^snooze-([0-9a-f]{32})-(\d{1,2}:\d{2})$/);
+  if (snz) {
+    const [, medId, time] = snz;
+    e.waitUntil(
+      fetch(`/api/medicines/${medId}/snooze`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ time, minutes: 15 }),
+      })
+      .then(r => self.registration.showNotification(
+        r.ok ? '⏰ Snoozed' : "Couldn't snooze",
+        { body: r.ok ? "We'll remind you again in 15 minutes." : 'Open Arogo to take it.',
+          icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png', tag: 'snooze-ack' }))
+      .catch(() => {})
+    );
+    return;
+  }
+
+  if (act === 'snooze') return;   // generic (water/mood): dismissed; the next pace check nudges again
 
   const url = (e.notification.data && e.notification.data.url) || '/';
   e.waitUntil(

@@ -5129,3 +5129,8 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .rx-row { display:flex; gap:6px; align-items:center; margin-bottom:8px; }
 .rx-row .rx-name { flex:1; min-width:0; }
 .rx-row .form-input { font-size:13px; padding:8px 10px; }
+
+/* ── Medicine purpose ("why I take this") ── */
+.med-purpose { font-size:12px; font-weight:500; color:var(--teal-700);
+  background:var(--teal-50); border-radius:8px; padding:4px 10px;
+  display:inline-block; margin-bottom:8px; }

@@ -46,11 +46,12 @@ def insert_medicine(data: dict) -> dict:
     mid = new_id()
     execute("""
         INSERT INTO medicines
-          (id,name,dosage,unit,frequency,times,with_food,notes,color,icon,start_date,end_date,active,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+          (id,name,dosage,unit,frequency,times,with_food,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
           data.get('frequency','once_daily'), jdump(_clean_times(data.get('times', ['08:00']))),
           1 if data.get('with_food') else 0, data.get('notes',''),
+          str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), data.get('icon','💊'),
           data.get('start_date', today_iso()), data.get('end_date',''), now_iso(),
           current_user_id()),
@@ -126,6 +127,9 @@ def log_dose(medicine_id, date_key, time_key, taken=True):
         _restore_stock(medicine_id, _pills_applied(row_id, uid))
         execute("UPDATE dose_logs SET pills_applied=0 WHERE id=? AND user_id=?",
                 (row_id, uid), commit=True)
+    if new_taken:      # a taken dose shouldn't re-fire a snoozed reminder
+        execute("DELETE FROM dose_snoozes WHERE med_id=? AND date_key=? AND time_key=? AND user_id=?",
+                (medicine_id, date_key, time_key, uid), commit=True)
     return True
 
 
@@ -161,6 +165,7 @@ def get_today_doses():
                 'med_id': m['id'], 'med_name': m['name'], 'dosage': m['dosage'],
                 'unit': m['unit'], 'time': t, 'icon': m.get('icon', '💊'),
                 'color': m.get('color', 'teal'), 'with_food': m.get('with_food', False),
+                'purpose': m.get('purpose', ''),
                 'taken': bool(log and log.get('taken')),
                 'taken_at': log['taken_at'] if log else ''
             })
@@ -226,6 +231,55 @@ def set_pharmacy_note(mid: str, note: str) -> dict:
             ((note or '')[:200], mid, uid), commit=True)
     r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
     return _fmt_med(r) if r else {}
+
+
+# ── Dose snooze (a real "remind me later") ───────────────────────────────────
+
+def snooze_dose(med_id: str, time_key: str, minutes: int = 15) -> dict:
+    """Re-remind this dose after a short delay. A snooze is a RELATIVE delay, so
+    server time is used consistently on both ends — no per-user timezone needed."""
+    import datetime as dt
+    uid = current_user_id()
+    if not execute("SELECT id FROM medicines WHERE id=? AND user_id=?", (med_id, uid), fetchone=True):
+        return {}
+    try:
+        m = max(1, min(int(minutes), 180))
+    except (TypeError, ValueError):
+        m = 15
+    until = (dt.datetime.now() + dt.timedelta(minutes=m)).isoformat()
+    today = user_today()
+    execute("DELETE FROM dose_snoozes WHERE user_id=? AND med_id=? AND date_key=? AND time_key=?",
+            (uid, med_id, today, time_key), commit=True)
+    execute("""INSERT INTO dose_snoozes (id,user_id,med_id,date_key,time_key,snooze_until,notified,created_at)
+               VALUES (?,?,?,?,?,?,0,?)""",
+            (new_id(), uid, med_id, today, time_key, until, now_iso()), commit=True)
+    return {'snooze_until': until, 'minutes': m}
+
+
+def get_due_snoozes() -> list:
+    """Snoozes whose delay has elapsed, not yet re-notified, dose still untaken."""
+    import datetime as dt
+    uid = current_user_id()
+    now = dt.datetime.now().isoformat()
+    rows = execute("SELECT * FROM dose_snoozes WHERE user_id=? AND notified=0 AND snooze_until<=?",
+                   (uid, now), fetchall=True) or []
+    out = []
+    for r in rows:
+        log = execute("SELECT taken FROM dose_logs WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?",
+                      (r['med_id'], r['date_key'], r['time_key'], uid), fetchone=True)
+        med = execute("SELECT name, purpose FROM medicines WHERE id=? AND user_id=? AND active=1",
+                      (r['med_id'], uid), fetchone=True)
+        if (log and log['taken']) or not med:
+            execute("DELETE FROM dose_snoozes WHERE id=?", (r['id'],), commit=True)
+            continue
+        out.append({'id': r['id'], 'med_id': r['med_id'], 'time': r['time_key'],
+                    'med_name': med['name'], 'purpose': med['purpose'] or ''})
+    return out
+
+
+def mark_snooze_notified(sid: str):
+    execute("UPDATE dose_snoozes SET notified=1 WHERE id=? AND user_id=?",
+            (sid, current_user_id()), commit=True)
 
 def _pills_applied(dose_log_id: str, uid: str) -> int:
     r = execute("SELECT pills_applied FROM dose_logs WHERE id=? AND user_id=?",

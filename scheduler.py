@@ -129,9 +129,24 @@ def _push_reminders_for_user(uid):
             # adherence loop shouldn't cost an app open either.
             notify(f"med:{d['med_id']}:{d['time']}:{today}",
                    f"💊 Time for {d.get('med_name', 'your medicine')}",
-                   f"Scheduled at {d['time']}" + (' · take with food' if d.get('with_food') else ''),
+                   f"Scheduled at {d['time']}"
+                   + (f" · for {d['purpose']}" if d.get('purpose') else '')
+                   + (' · take with food' if d.get('with_food') else ''),
                    actions=[{'action': f"dose-{d['med_id']}-{d['time']}", 'title': '✓ Taken'},
-                            {'action': 'snooze', 'title': 'Later'}])
+                            {'action': f"snooze-{d['med_id']}-{d['time']}", 'title': 'Later'}])
+
+    # 1b. Snoozed doses whose "remind me later" delay has elapsed and are still
+    #     untaken. Each snooze fires once (marked notified); tapping Later again
+    #     writes a fresh snooze, so it can be pushed back repeatedly.
+    from db import get_due_snoozes, mark_snooze_notified
+    for s in get_due_snoozes():
+        title = f"💊 Still due: {s['med_name']}"
+        body = "Snoozed reminder — take it when you can." \
+               + (f" · for {s['purpose']}" if s.get('purpose') else '')
+        if push.push_to_user(uid, title, body, '/',
+                             [{'action': f"dose-{s['med_id']}-{s['time']}", 'title': '✓ Taken'},
+                              {'action': f"snooze-{s['med_id']}-{s['time']}", 'title': 'Later'}]):
+            mark_snooze_notified(s['id'])
 
     # 2. Water — only when enabled, inside the active window, and behind pace
     if rs.get('water_enabled'):
@@ -322,7 +337,7 @@ def _caregiver_alerts():
                     body = (f"It was due at {d['time']}. Take it now — if it stays "
                             f"unlogged, your family will get a heads-up soon.")
                     acts = [{'action': f"dose-{d['med_id']}-{d['time']}", 'title': '✓ Taken'},
-                            {'action': 'snooze', 'title': 'Later'}]
+                            {'action': f"snooze-{d['med_id']}-{d['time']}", 'title': 'Later'}]
                     if push.push_to_user(uid, title, body, '/', acts):
                         _mark_pushed(uid, key, title, body)
 

@@ -111,7 +111,8 @@ class TestReminderEngine:
         acts = pushes[0]["actions"]
         assert acts, "dose reminder must carry a quick-log action"
         assert acts[0]["action"] == f"dose-{mid}-{now_hhmm}"
-        assert any(a["action"] == "snooze" for a in acts)
+        # "Later" now carries the dose id so the SW can request a real snooze
+        assert any(a["action"] == f"snooze-{mid}-{now_hhmm}" for a in acts)
 
         # Re-running within the same window must not re-notify
         _push_reminders()

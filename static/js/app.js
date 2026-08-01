@@ -2787,6 +2787,7 @@ function renderMedicinesGrid(meds) {
         ${m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || ''}
         ${m.with_food ? '<span class="med-food-badge">🍽️ With food</span>' : ''}
       </div>
+      ${m.purpose ? `<div class="med-purpose">💡 For ${escHtml(m.purpose)}</div>` : ''}
       ${m.notes ? `<div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">${escHtml(m.notes)}</div>` : ''}
       ${pillSection}
       ${refillRow}
@@ -2956,6 +2957,7 @@ function setupMedForm() {
       times,
       with_food: document.getElementById('with-food-toggle')?.checked || false,
       notes: form.notes.value,
+      purpose: form.purpose?.value || '',
       start_date: form.start_date.value,
       end_date: form.end_date.value,
       icon: selectedIcon,

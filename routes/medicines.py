@@ -34,6 +34,17 @@ def drug_autocomplete():
     q = request.args.get('q', '')
     return jsonify({'drugs': search_drugs(q, limit=8)})
 
+@bp.route('/api/medicines/<mid>/snooze', methods=['POST'])
+@require_auth
+def snooze(mid):
+    """Snooze a dose reminder — the scheduler re-pushes when the delay elapses."""
+    d = request.json or {}
+    res = snooze_dose(mid, str(d.get('time', ''))[:5],
+                      to_int(d.get('minutes', 15), 15, lo=1, hi=180))
+    if not res:
+        return jsonify({'success': False, 'error': 'Unknown medicine'}), 404
+    return jsonify({'success': True, **res})
+
 @bp.route('/api/medicines/parse-rx', methods=['POST'])
 @require_auth
 def parse_rx():

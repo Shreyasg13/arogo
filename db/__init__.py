@@ -11,7 +11,8 @@ from .reports     import insert_report, list_reports, get_report, delete_report,
 from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_medicine, delete_medicine,
                           log_dose, get_today_doses, get_adherence_stats,
                           update_medicine_stock, decrement_pill_count, get_low_stock_medicines,
-                          mark_refill_ordered, set_pharmacy_note)
+                          mark_refill_ordered, set_pharmacy_note,
+                          snooze_dose, get_due_snoozes, mark_snooze_notified)
 from .fitness     import (insert_activity, list_activities, delete_activity, fitness_stats,
                           save_token, get_token, list_tokens, delete_token, update_last_sync,
                           log_sync, get_sync_history)
@@ -45,6 +46,7 @@ __all__ = [
     "log_dose", "get_today_doses", "get_adherence_stats",
     "update_medicine_stock", "decrement_pill_count", "get_low_stock_medicines",
     "mark_refill_ordered", "set_pharmacy_note",
+    "snooze_dose", "get_due_snoozes", "mark_snooze_notified",
     "insert_activity", "list_activities", "delete_activity", "fitness_stats",
     "save_token", "get_token", "list_tokens", "delete_token", "update_last_sync",
     "log_sync", "get_sync_history",

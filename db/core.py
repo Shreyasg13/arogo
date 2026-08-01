@@ -258,7 +258,8 @@ CREATE TABLE IF NOT EXISTS medicines (
     pill_count INTEGER DEFAULT NULL, pills_per_dose INTEGER DEFAULT 1,
     refill_threshold INTEGER DEFAULT 7,
     refill_status TEXT DEFAULT NULL, refill_ordered_at TEXT DEFAULT NULL,
-    pharmacy_note TEXT DEFAULT ''
+    pharmacy_note TEXT DEFAULT '',
+    purpose TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS dose_logs (
     id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL,
@@ -364,6 +365,12 @@ CREATE TABLE IF NOT EXISTS appointments (
     notes TEXT DEFAULT '',
     remind INTEGER DEFAULT 1,
     created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS dose_snoozes (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
+    med_id TEXT NOT NULL, date_key TEXT NOT NULL, time_key TEXT NOT NULL,
+    snooze_until TEXT NOT NULL,      -- server-time ISO (a snooze is a relative delay)
+    notified INTEGER DEFAULT 0, created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS vitals (
     id TEXT PRIMARY KEY, date_key TEXT NOT NULL, type TEXT NOT NULL,
@@ -565,11 +572,12 @@ def migrate_add_family_display():
 
 
 def migrate_add_refill_fields():
-    """Add refill-tracking columns to medicines if missing."""
+    """Add refill-tracking + purpose columns to medicines if missing."""
     for col, ddl in (
         ('refill_status',     "ALTER TABLE medicines ADD COLUMN refill_status TEXT DEFAULT NULL"),
         ('refill_ordered_at', "ALTER TABLE medicines ADD COLUMN refill_ordered_at TEXT DEFAULT NULL"),
         ('pharmacy_note',     "ALTER TABLE medicines ADD COLUMN pharmacy_note TEXT DEFAULT ''"),
+        ('purpose',           "ALTER TABLE medicines ADD COLUMN purpose TEXT DEFAULT ''"),
     ):
         try:
             execute(ddl)
@@ -741,7 +749,7 @@ DATA_TABLES = [
     'habits', 'habit_logs', 'symptoms', 'vitals',
     'emergency_info', 'notification_log', 'reminder_settings',
     'fitness_activities', 'medicines', 'dose_logs', 'reports',
-    'user_profile', 'oauth_tokens', 'sync_log', 'appointments',
+    'user_profile', 'oauth_tokens', 'sync_log', 'appointments', 'dose_snoozes',
 ]
 
 
