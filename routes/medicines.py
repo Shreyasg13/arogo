@@ -34,6 +34,15 @@ def drug_autocomplete():
     q = request.args.get('q', '')
     return jsonify({'drugs': search_drugs(q, limit=8)})
 
+@bp.route('/api/medicines/<mid>/take-now', methods=['POST'])
+@require_auth
+def take_now(mid):
+    """Log a one-off, unscheduled ('as needed') dose taken right now."""
+    res = log_prn_dose(mid)
+    if not res:
+        return jsonify({'success': False, 'error': 'Unknown medicine'}), 404
+    return jsonify({'success': True, **res})
+
 @bp.route('/api/medicines/<mid>/snooze', methods=['POST'])
 @require_auth
 def snooze(mid):

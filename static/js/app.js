@@ -2740,19 +2740,21 @@ function renderMedicinesGrid(meds) {
   meds.forEach(m => { _medsById[m.id] = m; });
   grid.innerHTML = meds.map(m => {
     // Pill count / refill section
+    const isPRN = m.frequency === 'as_needed';
     const hasPills = m.pill_count != null;
     const freqDoses = {once_daily:1,twice_daily:2,thrice_daily:3,weekly:1/7}[m.frequency] || 1;
-    const daysLeft = hasPills ? Math.floor(m.pill_count / Math.max(freqDoses * (m.pills_per_dose||1), 0.01)) : null;
+    // As-needed usage is unpredictable, so a "days left" estimate would be a lie.
+    const daysLeft = (hasPills && !isPRN) ? Math.floor(m.pill_count / Math.max(freqDoses * (m.pills_per_dose||1), 0.01)) : null;
     const maxDays  = m.refill_threshold ? m.refill_threshold * 4 : 28;
-    const fillPct  = hasPills ? Math.min(100, Math.round((daysLeft / maxDays) * 100)) : 0;
-    const isLow    = hasPills && daysLeft < (m.refill_threshold || 7);
-    const stockColor = isLow ? '#EF4444' : daysLeft < (m.refill_threshold||7)*2 ? '#F59E0B' : '#22C55E';
+    const fillPct  = (hasPills && daysLeft != null) ? Math.min(100, Math.round((daysLeft / maxDays) * 100)) : 0;
+    const isLow    = hasPills && daysLeft != null && daysLeft < (m.refill_threshold || 7);
+    const stockColor = isLow ? '#EF4444' : (daysLeft != null && daysLeft < (m.refill_threshold||7)*2) ? '#F59E0B' : '#22C55E';
 
     const pillSection = hasPills ? `
       <div class="med-pill-track">
         <div class="med-pill-track-row">
           <span class="med-pill-count-label" style="color:${stockColor}">
-            ${isLow ? '⚠️' : '💊'} ${m.pill_count} pills · ${daysLeft}d left
+            ${isLow ? '⚠️' : '💊'} ${m.pill_count} pills${daysLeft != null ? ` · ${daysLeft}d left` : ''}
           </span>
           <button class="med-restock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Restock</button>
         </div>
@@ -2784,9 +2786,15 @@ function renderMedicinesGrid(meds) {
         </div>
       </div>
       <div class="med-card-times">
-        ${m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || ''}
+        ${isPRN ? '<span class="time-chip">🕐 As needed</span>'
+                : (m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || '')}
         ${m.with_food ? '<span class="med-food-badge">🍽️ With food</span>' : ''}
       </div>
+      ${isPRN ? `
+      <div class="med-prn-row">
+        <button class="med-prn-btn" data-ev-click="takeNow('${m.id}','${escHtml(m.name)}')">＋ Log a dose now</button>
+        ${m.taken_today ? `<span class="med-prn-count">Taken ${m.taken_today}× today${m.last_taken ? ' · last ' + fmtTime(m.last_taken) : ''}</span>` : ''}
+      </div>` : ''}
       ${m.purpose ? `<div class="med-purpose">💡 For ${escHtml(m.purpose)}</div>` : ''}
       ${m.notes ? `<div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">${escHtml(m.notes)}</div>` : ''}
       ${pillSection}
@@ -2838,6 +2846,21 @@ async function orderRefill(id) {
   if (r?.success) showToast('Refill marked as ordered 🚚', 'success');
   else showToast("Couldn't update the refill — try again", 'error');
   loadMedicines();
+}
+
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }); }
+  catch (e) { return ''; }
+}
+
+// Log a one-off, unscheduled ("as needed") dose taken right now.
+async function takeNow(id, name) {
+  const r = await fetch(`/api/medicines/${id}/take-now`, { method: 'POST', credentials: 'same-origin' })
+    .then(r => r.json()).catch(() => null);
+  if (r?.success) showToast(`${name || 'Dose'} logged ✓${r.time ? ' at ' + r.time : ''}`, 'success');
+  else showToast("Couldn't log that dose — try again", 'error');
+  loadMedicines();
+  loadDashboard();
 }
 
 // ── Import from prescription ──────────────────────────────────────
@@ -3006,6 +3029,8 @@ function removeTimeSlot(btn) {
 }
 
 function resetTimeSlots() {
+  const g = document.getElementById('med-times-group');   // un-hide after an as-needed add
+  if (g) g.style.display = '';
   const slots = document.getElementById('time-slots');
   if (slots) slots.innerHTML = `<div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
 }
@@ -3013,6 +3038,13 @@ function resetTimeSlots() {
 function setupFreqPicker() {
   document.querySelectorAll('.freq-opt input').forEach(input => {
     input.addEventListener('change', () => {
+      // As-needed meds have no schedule → hide the reminder times entirely.
+      const timesGroup = document.getElementById('med-times-group');
+      if (input.value === 'as_needed') {
+        if (timesGroup) timesGroup.style.display = 'none';
+        return;
+      }
+      if (timesGroup) timesGroup.style.display = '';
       const counts = { once_daily:1, twice_daily:2, thrice_daily:3, weekly:1 };
       const count = counts[input.value] || 1;
       const slots = document.getElementById('time-slots');
@@ -3779,7 +3811,7 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 function fileIcon(ext) { return { pdf:'📄', png:'🖼️', jpg:'🖼️', jpeg:'🖼️', txt:'📝', csv:'📊' }[(ext||'').toLowerCase()] || '📄'; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 function fmtBytes(b) { if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
-function freqLabel(f) { return { once_daily:'Once daily', twice_daily:'Twice daily', thrice_daily:'3× daily', weekly:'Weekly' }[f] || f; }
+function freqLabel(f) { return { once_daily:'Once daily', twice_daily:'Twice daily', thrice_daily:'3× daily', weekly:'Weekly', as_needed:'As needed' }[f] || f; }
 function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
 let toastTimer;
 function showToast(msg, type='') { const el = document.getElementById('toast'); el.textContent = msg; el.className = `toast ${type}`; el.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200); }

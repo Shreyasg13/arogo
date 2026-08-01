@@ -49,7 +49,9 @@ def insert_medicine(data: dict) -> dict:
           (id,name,dosage,unit,frequency,times,with_food,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
-          data.get('frequency','once_daily'), jdump(_clean_times(data.get('times', ['08:00']))),
+          data.get('frequency','once_daily'),
+          jdump([] if data.get('frequency') == 'as_needed'
+                else _clean_times(data.get('times', ['08:00']))),
           1 if data.get('with_food') else 0, data.get('notes',''),
           str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), data.get('icon','💊'),
@@ -66,9 +68,56 @@ def get_medicine(mid):
 
 
 def list_medicines():
+    uid = current_user_id()
     rows = execute("SELECT * FROM medicines WHERE user_id=? ORDER BY created_at DESC",
-                   (current_user_id(),), fetchall=True)
-    return [_fmt_med(r) for r in rows]
+                   (uid,), fetchall=True)
+    # Today's taken count + last-taken time per medicine — lets the card show
+    # "Taken 2× today · last 2:37 PM", especially for as-needed meds.
+    today = user_today()
+    taken = {}
+    for r in (execute("""SELECT medicine_id, COUNT(*) c, MAX(taken_at) last
+                         FROM dose_logs WHERE user_id=? AND date_key=? AND taken=1
+                         GROUP BY medicine_id""", (uid, today), fetchall=True) or []):
+        taken[r['medicine_id']] = {'count': r['c'], 'last': r['last']}
+    out = []
+    for r in rows:
+        m = _fmt_med(r)
+        t = taken.get(m['id'], {})
+        m['taken_today'] = t.get('count', 0)
+        m['last_taken'] = t.get('last', '')
+        out.append(m)
+    return out
+
+
+def _user_now_hm():
+    """Current HH:MM:SS in the user's timezone (server fallback)."""
+    import datetime as dt
+    try:
+        from db.food import get_user_timezone
+        tz = get_user_timezone()
+        if tz:
+            import zoneinfo
+            return dt.datetime.now(zoneinfo.ZoneInfo(tz)).strftime('%H:%M:%S')
+    except Exception:
+        pass
+    return dt.datetime.now().strftime('%H:%M:%S')
+
+
+def log_prn_dose(med_id: str) -> dict:
+    """Log a one-off, unscheduled ('as needed') dose taken right now. The time_key
+    carries seconds so it never collides with a scheduled HH:MM slot — which also
+    keeps it out of the scheduled-adherence math (a rescue dose isn't a missed one)."""
+    uid = current_user_id()
+    if not execute("SELECT id FROM medicines WHERE id=? AND user_id=?", (med_id, uid), fetchone=True):
+        return {}
+    date_key, time_key = user_today(), _user_now_hm()
+    log_dose(med_id, date_key, time_key, taken=True)     # reuses stock decrement
+    row = execute("""SELECT COUNT(*) c, MAX(taken_at) last FROM dose_logs
+                     WHERE user_id=? AND medicine_id=? AND date_key=? AND taken=1""",
+                  (uid, med_id, date_key), fetchone=True)
+    return {'taken_today': row['c'] if row else 1,
+            'last_taken': row['last'] if row else now_iso(),
+            'time': time_key[:5]}
 
 
 def toggle_medicine(mid):
