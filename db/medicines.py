@@ -190,12 +190,42 @@ def get_adherence_stats(days=30):
 
 # ── Refill / stock ────────────────────────────────────────────────────────────
 
-def update_medicine_stock(mid: str, pill_count: int, pills_per_dose: int = 1, refill_threshold: int = 7) -> dict:
-    execute("UPDATE medicines SET pill_count=?,pills_per_dose=?,refill_threshold=? WHERE id=? AND user_id=?",
-            (pill_count, pills_per_dose, refill_threshold, mid, current_user_id()), commit=True)
-    r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?",
-                (mid, current_user_id()), fetchone=True)
-    return dict(r) if r else {}
+def update_medicine_stock(mid: str, pill_count: int, pills_per_dose: int = 1,
+                          refill_threshold: int = 7, pharmacy_note=None) -> dict:
+    uid = current_user_id()
+    prev = execute("SELECT pill_count FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    prev_count = prev['pill_count'] if prev and prev['pill_count'] is not None else 0
+    # Restocking (count went up) means the refill arrived — clear any pending
+    # "ordered" flag so it doesn't keep showing as on-the-way.
+    clear = pill_count > prev_count
+    sets = "pill_count=?, pills_per_dose=?, refill_threshold=?"
+    params = [pill_count, pills_per_dose, refill_threshold]
+    if pharmacy_note is not None:
+        sets += ", pharmacy_note=?"; params.append((pharmacy_note or '')[:200])
+    if clear:
+        sets += ", refill_status=NULL, refill_ordered_at=NULL"
+    params += [mid, uid]
+    execute(f"UPDATE medicines SET {sets} WHERE id=? AND user_id=?", tuple(params), commit=True)
+    r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    return _fmt_med(r) if r else {}
+
+
+def mark_refill_ordered(mid: str) -> dict:
+    """Mark a refill as ordered so it stops nagging until it arrives."""
+    uid = current_user_id()
+    execute("UPDATE medicines SET refill_status='ordered', refill_ordered_at=? WHERE id=? AND user_id=?",
+            (now_iso(), mid, uid), commit=True)
+    r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    return _fmt_med(r) if r else {}
+
+
+def set_pharmacy_note(mid: str, note: str) -> dict:
+    """Where/how you refill this one — a free-text reminder to yourself."""
+    uid = current_user_id()
+    execute("UPDATE medicines SET pharmacy_note=? WHERE id=? AND user_id=?",
+            ((note or '')[:200], mid, uid), commit=True)
+    r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    return _fmt_med(r) if r else {}
 
 def _pills_applied(dose_log_id: str, uid: str) -> int:
     r = execute("SELECT pills_applied FROM dose_logs WHERE id=? AND user_id=?",

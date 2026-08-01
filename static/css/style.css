@@ -5087,3 +5087,17 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   background: transparent; color: var(--gray-500); border: 1px solid var(--gray-200);
   cursor: pointer; font-size: 13.5px; padding: 9px 14px; border-radius: 9px; min-height: 40px;
 }
+
+/* ── Medicine refill row ── */
+.med-refill-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--gray-100);
+}
+.med-refill-btn {
+  font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--gray-200); background: var(--gray-0); color: var(--gray-700);
+}
+.med-refill-btn--order { border-color: var(--teal-400); color: var(--teal-700); background: var(--teal-50); }
+.med-refill-btn:hover { border-color: var(--teal-500); }
+.med-refill-ordered { font-size: 12px; font-weight: 600; color: var(--amber-600); }
+.med-pharmacy-note { font-size: 11.5px; color: var(--gray-500); flex-basis: 100%; }

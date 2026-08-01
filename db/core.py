@@ -256,7 +256,9 @@ CREATE TABLE IF NOT EXISTS medicines (
     start_date TEXT DEFAULT '', end_date TEXT DEFAULT '',
     active INTEGER DEFAULT 1, created_at TEXT NOT NULL,
     pill_count INTEGER DEFAULT NULL, pills_per_dose INTEGER DEFAULT 1,
-    refill_threshold INTEGER DEFAULT 7
+    refill_threshold INTEGER DEFAULT 7,
+    refill_status TEXT DEFAULT NULL, refill_ordered_at TEXT DEFAULT NULL,
+    pharmacy_note TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS dose_logs (
     id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL,
@@ -550,6 +552,19 @@ def migrate_add_family_display():
         pass  # already exists
 
 
+def migrate_add_refill_fields():
+    """Add refill-tracking columns to medicines if missing."""
+    for col, ddl in (
+        ('refill_status',     "ALTER TABLE medicines ADD COLUMN refill_status TEXT DEFAULT NULL"),
+        ('refill_ordered_at', "ALTER TABLE medicines ADD COLUMN refill_ordered_at TEXT DEFAULT NULL"),
+        ('pharmacy_note',     "ALTER TABLE medicines ADD COLUMN pharmacy_note TEXT DEFAULT ''"),
+    ):
+        try:
+            execute(ddl)
+        except Exception:
+            pass  # already exists
+
+
 def migrate_add_token_version():
     """users.token_version — bumped to revoke all of a user's sessions."""
     try:
@@ -751,6 +766,7 @@ def init_db():
     migrate_add_diet_pref()
     migrate_add_ui_mode()
     migrate_add_family_display()
+    migrate_add_refill_fields()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_digest_flag()

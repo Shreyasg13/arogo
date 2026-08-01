@@ -195,6 +195,42 @@ def _push_reminders():
         _report("push_reminders", e)
 
 
+# ── Refill reminders: nudge to reorder before running out ────────────────────
+
+def _refill_reminders():
+    """Push a reorder nudge for medicines running low, deduped per medicine per
+    day. Skips anything already marked ordered — so it stops once you've acted.
+    Running out of pills is a top cause of missed doses, so this closes the loop
+    that dose reminders start."""
+    try:
+        import push
+        if not push.PUSH_AVAILABLE:
+            return
+        from db import get_low_stock_medicines
+        users = execute("SELECT DISTINCT user_id FROM push_subscriptions", fetchall=True)
+        for u in users:
+            uid = u['user_id']
+            with user_context(uid):
+                try:
+                    today = _user_local_now(uid).strftime('%Y-%m-%d')
+                    for m in get_low_stock_medicines():
+                        if m.get('refill_status') == 'ordered':
+                            continue          # already handled — don't nag
+                        key = f"refill:{m['id']}:{today}"
+                        if _pushed_today(uid, key, today):
+                            continue
+                        days = max(0, int(round(m.get('days_left') or 0)))
+                        title = f"🔄 Refill {m.get('name', 'your medicine')}"
+                        body = (f"About {days} day{'s' if days != 1 else ''} of pills left."
+                                + (f" · {m['pharmacy_note']}" if m.get('pharmacy_note') else ''))
+                        if push.push_to_user(uid, title, body, '/'):
+                            _mark_pushed(uid, key, title, body)
+                except Exception as e:
+                    _report(f"refill_reminders:{uid[:8]}", e)
+    except Exception as e:
+        _report("refill_reminders", e)
+
+
 # ── Caregiver alerts: tell the family when a dose is 2h+ overdue ─────────────
 
 SELF_CORRECT_MIN = 60     # give the member a chance before family is told
@@ -429,6 +465,7 @@ def _run_loop():
     schedule.every().day.at("05:00").do(_daily_sync)
     schedule.every(5).minutes.do(_push_reminders)
     schedule.every(15).minutes.do(_caregiver_alerts)
+    schedule.every(6).hours.do(_refill_reminders)
     schedule.every().minute.do(_heartbeat)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     schedule.every().sunday.at("18:30").do(_send_caregiver_digests)
@@ -461,6 +498,8 @@ def _run_loop_stdlib():
             _push_reminders()
         if now.minute % 15 == 0:
             _caregiver_alerts()
+        if now.minute == 0 and now.hour % 6 == 0:
+            _refill_reminders()
         time.sleep(60)
 
 def start_scheduler():

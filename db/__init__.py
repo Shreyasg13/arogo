@@ -10,7 +10,8 @@ from .core        import (execute, executemany, commit, init_db, jdump, jload,
 from .reports     import insert_report, list_reports, get_report, delete_report, report_stats
 from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_medicine, delete_medicine,
                           log_dose, get_today_doses, get_adherence_stats,
-                          update_medicine_stock, decrement_pill_count, get_low_stock_medicines)
+                          update_medicine_stock, decrement_pill_count, get_low_stock_medicines,
+                          mark_refill_ordered, set_pharmacy_note)
 from .fitness     import (insert_activity, list_activities, delete_activity, fitness_stats,
                           save_token, get_token, list_tokens, delete_token, update_last_sync,
                           log_sync, get_sync_history)
@@ -41,6 +42,7 @@ __all__ = [
     "insert_medicine", "list_medicines", "get_medicine", "toggle_medicine", "delete_medicine",
     "log_dose", "get_today_doses", "get_adherence_stats",
     "update_medicine_stock", "decrement_pill_count", "get_low_stock_medicines",
+    "mark_refill_ordered", "set_pharmacy_note",
     "insert_activity", "list_activities", "delete_activity", "fitness_stats",
     "save_token", "get_token", "list_tokens", "delete_token", "update_last_sync",
     "log_sync", "get_sync_history",

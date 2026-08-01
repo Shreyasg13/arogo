@@ -12,10 +12,23 @@ bp = Blueprint("wellness", __name__)
 @require_auth
 def api_update_stock(mid):
     d = request.json or {}
+    note = d.get('pharmacy_note')
     m = update_medicine_stock(mid, to_int(d.get('pill_count', 0), 0, lo=0, hi=100000),
                               to_int(d.get('pills_per_dose', 1), 1, lo=1, hi=100),
-                              to_int(d.get('refill_threshold', 7), 7, lo=0, hi=365))
+                              to_int(d.get('refill_threshold', 7), 7, lo=0, hi=365),
+                              pharmacy_note=note if isinstance(note, str) else None)
     return jsonify({'success': True, 'medicine': m})
+
+@bp.route('/api/medicines/<mid>/refill/ordered', methods=['POST'])
+@require_auth
+def api_refill_ordered(mid):
+    return jsonify({'success': True, 'medicine': mark_refill_ordered(mid)})
+
+@bp.route('/api/medicines/<mid>/refill/note', methods=['POST'])
+@require_auth
+def api_refill_note(mid):
+    note = (request.json or {}).get('pharmacy_note', '')
+    return jsonify({'success': True, 'medicine': set_pharmacy_note(mid, note)})
 
 @bp.route('/api/medicines/low-stock')
 @require_auth

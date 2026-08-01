@@ -2726,6 +2726,8 @@ function renderTodayTimeline(doses) {
   }).join('');
 }
 
+let _medsById = {};   // last-rendered meds, so the restock modal can read a med's pharmacy note
+
 function renderMedicinesGrid(meds) {
   const grid = document.getElementById('medicines-grid');
   if (!grid) return;
@@ -2733,6 +2735,8 @@ function renderMedicinesGrid(meds) {
     grid.innerHTML = `<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-text">No medicines added</div><div class="empty-sub">Add your first medicine to track doses</div><button class="btn-primary" data-ev-click="openMedModal()">Add Medicine</button></div>`;
     return;
   }
+  _medsById = {};
+  meds.forEach(m => { _medsById[m.id] = m; });
   grid.innerHTML = meds.map(m => {
     // Pill count / refill section
     const hasPills = m.pill_count != null;
@@ -2759,6 +2763,17 @@ function renderMedicinesGrid(meds) {
         <button class="med-add-stock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',0,1,7)">+ Track pill count</button>
       </div>`;
 
+    // Refill row — appears when stock is low or a refill is on the way.
+    const ordered = m.refill_status === 'ordered';
+    const refillRow = (hasPills && (isLow || ordered)) ? `
+      <div class="med-refill-row">
+        ${ordered
+          ? `<span class="med-refill-ordered">🚚 Refill ordered</span>
+             <button class="med-refill-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Mark picked up</button>`
+          : `<button class="med-refill-btn med-refill-btn--order" data-ev-click="orderRefill('${m.id}')">🔄 Order refill</button>`}
+        ${m.pharmacy_note ? `<span class="med-pharmacy-note">🏥 ${escHtml(m.pharmacy_note)}</span>` : ''}
+      </div>` : '';
+
     return `<div class="med-card med-card--${m.color}${isLow?' med-card--low-stock':''}">
       <div class="med-card-header">
         <div class="med-card-icon">${m.icon}</div>
@@ -2773,6 +2788,7 @@ function renderMedicinesGrid(meds) {
       </div>
       ${m.notes ? `<div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">${escHtml(m.notes)}</div>` : ''}
       ${pillSection}
+      ${refillRow}
       <div class="med-card-footer">
         <span class="med-card-status ${m.active ? 'active' : ''}">● ${m.active ? 'Active' : 'Paused'}</span>
         <div class="med-card-actions">
@@ -2809,6 +2825,16 @@ async function markDoseTaken(medId, time, el) {
 
 async function toggleMed(id) {
   await fetch(`/api/medicines/${id}/toggle`, { method:'POST' });
+  loadMedicines();
+}
+
+// Mark a refill as ordered so it stops nudging until it arrives (restocking
+// clears it). Server-side is the source of truth; we just reflect it.
+async function orderRefill(id) {
+  const r = await fetch(`/api/medicines/${id}/refill/ordered`, { method:'POST' })
+    .then(r => r.json()).catch(() => null);
+  if (r?.success) showToast('Refill marked as ordered 🚚', 'success');
+  else showToast("Couldn't update the refill — try again", 'error');
   loadMedicines();
 }
 
@@ -8226,6 +8252,8 @@ function openRestockModal(id, name, pillCount, pillsPerDose, threshold) {
   document.getElementById('restock-pill-count').value    = pillCount;
   document.getElementById('restock-pills-per-dose').value = pillsPerDose;
   document.getElementById('restock-threshold').value      = threshold;
+  const noteEl = document.getElementById('restock-pharmacy');
+  if (noteEl) noteEl.value = (_medsById[id] && _medsById[id].pharmacy_note) || '';
   updateRestockPreview();
   document.getElementById('restock-modal-overlay').style.display = 'flex';
 }
@@ -8253,10 +8281,11 @@ async function saveRestock() {
   const pillCount = parseInt(document.getElementById('restock-pill-count')?.value) || 0;
   const ppd       = parseInt(document.getElementById('restock-pills-per-dose')?.value) || 1;
   const threshold = parseInt(document.getElementById('restock-threshold')?.value) || 7;
+  const pharmacy  = document.getElementById('restock-pharmacy')?.value || '';
   if (!id) return;
   const r = await fetch(`/api/medicines/${id}/stock`, {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ pill_count: pillCount, pills_per_dose: ppd, refill_threshold: threshold })
+    body: JSON.stringify({ pill_count: pillCount, pills_per_dose: ppd, refill_threshold: threshold, pharmacy_note: pharmacy })
   }).then(r => r.json()).catch(() => null);
   if (r?.success) {
     showToast(`Stock updated — ${Math.floor(pillCount/ppd)} days of supply`, 'success');
