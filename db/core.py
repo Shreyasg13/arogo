@@ -353,6 +353,18 @@ CREATE TABLE IF NOT EXISTS symptoms (
     date_key TEXT NOT NULL, time_of_day TEXT DEFAULT 'evening',
     notes TEXT DEFAULT '', logged_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS appointments (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    kind TEXT DEFAULT 'doctor',      -- doctor | lab | vaccine | other
+    date TEXT NOT NULL,              -- YYYY-MM-DD
+    time TEXT DEFAULT '',            -- HH:MM or ''
+    location TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    remind INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS vitals (
     id TEXT PRIMARY KEY, date_key TEXT NOT NULL, type TEXT NOT NULL,
     value1 REAL NOT NULL, value2 REAL DEFAULT NULL,
@@ -729,7 +741,7 @@ DATA_TABLES = [
     'habits', 'habit_logs', 'symptoms', 'vitals',
     'emergency_info', 'notification_log', 'reminder_settings',
     'fitness_activities', 'medicines', 'dose_logs', 'reports',
-    'user_profile', 'oauth_tokens', 'sync_log',
+    'user_profile', 'oauth_tokens', 'sync_log', 'appointments',
 ]
 
 

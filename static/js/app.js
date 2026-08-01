@@ -1748,6 +1748,7 @@ async function loadDashboard() {
   try { loadCarePanel(); }      catch (e) {}
   try { loadEncouragements(); } catch (e) {}
   try { loadLowStock(); }       catch (e) {}
+  try { loadNextAppointment(); } catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -6544,6 +6545,124 @@ function switchMedTab(tab) {
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
   if (tab === 'vitals')   { loadVitals(); renderVitalFields(); }
   if (tab === 'emergency') loadEmergencyCard();
+  if (tab === 'appointments') loadAppointments();
+}
+
+const APPT_KIND = { doctor: '🩺', lab: '🧪', vaccine: '💉', other: '📅' };
+
+async function loadAppointments() {
+  const list = document.getElementById('appointments-list');
+  if (!list) return;
+  const d = await fetch('/api/appointments', { credentials: 'same-origin' })
+    .then(r => r.json()).catch(() => ({ appointments: [] }));
+  renderAppointments(d.appointments || []);
+}
+
+function openAppointments() {
+  switchView('reports');
+  setTimeout(() => { try { switchMedTab('appointments'); } catch (e) {} }, 60);
+}
+
+// Compact "next appointment" card on the dashboard — only when one is within
+// two weeks, so it's a genuine heads-up rather than clutter.
+async function loadNextAppointment() {
+  const el = document.getElementById('dash-appt');
+  if (!el) return;
+  const d = await fetch('/api/appointments?upcoming=1', { credentials: 'same-origin' })
+    .then(r => r.json()).catch(() => ({}));
+  const a = d.next;
+  if (!a) { el.style.display = 'none'; return; }
+  const L = _apptDateLabel(a.date);
+  const days = Math.round((new Date(a.date + 'T00:00:00') - new Date(localToday() + 'T00:00:00')) / 86400000);
+  if (days > 14) { el.style.display = 'none'; return; }   // too far out to nag about
+  el.style.display = 'flex';
+  el.innerHTML =
+    `<div class="dash-appt-ico">${APPT_KIND[a.kind] || '📅'}</div>
+     <div style="min-width:0">
+       <div class="dash-appt-title">${escHtml(a.title)}</div>
+       <div class="dash-appt-sub">${L.nice}${a.time ? ' · ' + a.time : ''}${a.location ? ' · ' + escHtml(a.location) : ''}</div>
+     </div>
+     <span class="dash-appt-rel">${L.rel}</span>`;
+}
+
+function _apptDateLabel(dateStr) {
+  const today = localToday();
+  const d = new Date(dateStr + 'T00:00:00'), t = new Date(today + 'T00:00:00');
+  const days = Math.round((d - t) / 86400000);
+  const nice = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+  if (days < 0)  return { nice, rel: `${-days}d ago`, past: true };
+  if (days === 0) return { nice, rel: 'Today', soon: true };
+  if (days === 1) return { nice, rel: 'Tomorrow', soon: true };
+  return { nice, rel: `in ${days}d`, soon: days <= 7 };
+}
+
+function renderAppointments(appts) {
+  const list = document.getElementById('appointments-list');
+  if (!list) return;
+  if (!appts.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:24px 0">
+      <div class="empty-icon">📅</div><div class="empty-text">No appointments yet</div>
+      <div class="empty-sub">Add a doctor visit, lab test, or vaccination above</div></div>`;
+    return;
+  }
+  const now = localToday();
+  const upcoming = appts.filter(a => a.date >= now);
+  const past     = appts.filter(a => a.date < now);
+  const card = a => {
+    const L = _apptDateLabel(a.date);
+    return `<div class="appt-card${L.past ? ' appt-card--past' : ''}${L.soon ? ' appt-card--soon' : ''}">
+      <div class="appt-kind">${APPT_KIND[a.kind] || '📅'}</div>
+      <div class="appt-body">
+        <div class="appt-title">${escHtml(a.title)}</div>
+        <div class="appt-meta">${L.nice}${a.time ? ' · ' + a.time : ''}${a.location ? ' · ' + escHtml(a.location) : ''}
+          <span class="appt-rel${L.soon ? ' appt-rel--soon' : ''}">${L.rel}</span></div>
+        ${a.notes ? `<div class="appt-notes">${escHtml(a.notes)}</div>` : ''}
+        ${a.remind ? '' : '<div class="appt-notes" style="color:var(--gray-400)">🔕 Reminders off</div>'}
+      </div>
+      <button class="btn-icon" title="Delete" data-ev-click="deleteAppointment('${a.id}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+      </button>
+    </div>`;
+  };
+  list.innerHTML =
+    (upcoming.length ? `<div class="appt-group-label">Upcoming</div>${upcoming.map(card).join('')}` : '') +
+    (past.length ? `<div class="appt-group-label" style="margin-top:16px">Past</div>${past.map(card).join('')}` : '');
+}
+
+async function addAppointment() {
+  const title = document.getElementById('appt-title')?.value.trim();
+  const date  = document.getElementById('appt-date')?.value;
+  if (!title) { showToast('What is the appointment for?', 'error'); return; }
+  if (!date)  { showToast('Pick a date', 'error'); return; }
+  const r = await fetch('/api/appointments', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({
+      title, date,
+      kind: document.getElementById('appt-kind')?.value || 'doctor',
+      time: document.getElementById('appt-time')?.value || '',
+      location: document.getElementById('appt-location')?.value || '',
+      notes: document.getElementById('appt-notes')?.value || '',
+      remind: !!document.getElementById('appt-remind')?.checked,
+    })
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) {
+    showToast('Appointment added 📅', 'success');
+    ['appt-title', 'appt-time', 'appt-location', 'appt-notes'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    loadAppointments();
+    loadDashboard();
+  } else {
+    showToast(r?.error || 'Could not add the appointment', 'error');
+  }
+}
+
+function deleteAppointment(id) {
+  undoable('Removing appointment…', async () => {
+    await fetch(`/api/appointments/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+    loadAppointments();
+    loadDashboard();
+  });
 }
 
 async function logSymptom() {

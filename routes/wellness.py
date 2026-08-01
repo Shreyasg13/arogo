@@ -35,6 +35,28 @@ def api_refill_note(mid):
 def api_low_stock():
     return jsonify(get_low_stock_medicines())
 
+# ── Appointments ────────────────────────────────────────────────────────────
+@bp.route('/api/appointments')
+@require_auth
+def api_list_appointments():
+    upcoming = request.args.get('upcoming') in ('1', 'true', 'yes')
+    return jsonify({'appointments': list_appointments(upcoming_only=upcoming),
+                    'next': get_next_appointment()})
+
+@bp.route('/api/appointments', methods=['POST'])
+@require_auth
+def api_add_appointment():
+    try:
+        return jsonify({'success': True, 'appointment': create_appointment(request.json or {})})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/appointments/<aid>', methods=['DELETE'])
+@require_auth
+def api_delete_appointment(aid):
+    delete_appointment(aid)
+    return jsonify({'success': True})
+
 @bp.route('/api/medicines/adherence')
 @require_auth
 def api_med_adherence():

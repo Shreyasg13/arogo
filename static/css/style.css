@@ -5101,3 +5101,22 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .med-refill-btn:hover { border-color: var(--teal-500); }
 .med-refill-ordered { font-size: 12px; font-weight: 600; color: var(--amber-600); }
 .med-pharmacy-note { font-size: 11.5px; color: var(--gray-500); flex-basis: 100%; }
+
+/* ── Appointments ── */
+.appt-group-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--gray-400); margin-bottom:8px; }
+.appt-card { display:flex; align-items:flex-start; gap:12px; background:var(--gray-0); border:1px solid var(--gray-100); border-radius:12px; padding:14px 16px; margin-bottom:10px; }
+.appt-card--soon { border-color:var(--teal-300); background:var(--teal-50); }
+.appt-card--past { opacity:.6; }
+.appt-kind { font-size:22px; line-height:1.3; flex-shrink:0; }
+.appt-body { flex:1; min-width:0; }
+.appt-title { font-size:14.5px; font-weight:600; color:var(--gray-900); }
+.appt-meta { font-size:12.5px; color:var(--gray-600); margin-top:2px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.appt-rel { font-size:11px; font-weight:600; color:var(--gray-500); background:var(--gray-50); border-radius:999px; padding:1px 8px; }
+.appt-rel--soon { color:var(--teal-700); background:var(--teal-100); }
+.appt-notes { font-size:12px; color:var(--gray-500); margin-top:4px; }
+/* Dashboard next-appointment card */
+.dash-appt { display:flex; align-items:center; gap:12px; background:var(--gray-0); border:1px solid var(--teal-200); border-radius:14px; padding:14px 16px; margin-bottom:14px; }
+.dash-appt-ico { font-size:22px; }
+.dash-appt-title { font-size:14px; font-weight:600; color:var(--gray-900); }
+.dash-appt-sub { font-size:12.5px; color:var(--gray-600); margin-top:1px; }
+.dash-appt-rel { margin-left:auto; font-size:11.5px; font-weight:700; color:var(--teal-700); background:var(--teal-100); border-radius:999px; padding:3px 10px; flex-shrink:0; }

@@ -414,6 +414,9 @@
   <!-- Low medicine stock refill nudge (filled by loadLowStock) -->
   <div id="dash-lowstock" class="lowstock-nudge" style="display:none"></div>
 
+  <!-- Next appointment (filled by loadNextAppointment) -->
+  <div id="dash-appt" class="dash-appt" style="display:none" data-ev-click="openAppointments()"></div>
+
   <!-- Daily check-in nudge (user-initiated; filled by initDailyCheckin) -->
   <div id="dash-checkin-prompt" class="checkin-prompt" style="display:none"></div>
 
@@ -506,6 +509,57 @@
     <button class="wellness-tab" data-tab="symptoms" data-ev-click="switchMedTab('symptoms')">🩺 Symptoms</button>
     <button class="wellness-tab" data-tab="vitals" data-ev-click="switchMedTab('vitals')" data-simple="❤️ BP &amp; Sugar">❤️ Vitals</button>
     <button class="wellness-tab" data-tab="emergency" data-ev-click="switchMedTab('emergency')">🆘 Health Card</button>
+    <button class="wellness-tab" data-tab="appointments" data-ev-click="switchMedTab('appointments')">📅 Visits</button>
+  </div>
+
+  <!-- APPOINTMENTS -->
+  <div id="med-tab-appointments" class="wellness-tab-content" style="display:none;margin-top:16px">
+    <div class="panel">
+      <div class="panel-header"><h2 class="panel-title">📅 Add an appointment</h2></div>
+      <div style="display:grid;gap:12px;margin-top:8px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">What's it for?</label>
+          <input type="text" class="form-input" id="appt-title" maxlength="160"
+                 placeholder="e.g. Dr. Rao — cardiology follow-up">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Type</label>
+            <select class="form-input" id="appt-kind">
+              <option value="doctor">🩺 Doctor visit</option>
+              <option value="lab">🧪 Lab test</option>
+              <option value="vaccine">💉 Vaccination</option>
+              <option value="other">📅 Other</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-input" id="appt-date">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Time <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+            <input type="time" class="form-input" id="appt-time">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">Place <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+            <input type="text" class="form-input" id="appt-location" maxlength="200" placeholder="Clinic / hospital">
+          </div>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Notes <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+          <input type="text" class="form-input" id="appt-notes" maxlength="500"
+                 placeholder="e.g. fasting, bring old reports">
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="appt-remind" checked>
+          🔔 Remind me the evening before and the morning of
+        </label>
+        <button class="btn-primary" data-ev-click="addAppointment()">Add appointment</button>
+      </div>
+    </div>
+    <div id="appointments-list" style="margin-top:16px"></div>
   </div>
 
   <!-- SYMPTOMS -->

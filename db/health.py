@@ -230,3 +230,62 @@ def save_emergency_info(data: dict) -> dict:
              data.get('insurance_provider',''), data.get('insurance_number',''),
              now_iso(), e['id'], current_user_id()), commit=True)
     return get_emergency_info()
+
+
+# ── Appointments (doctor visits, lab tests, vaccinations) ────────────────────
+
+_APPT_KINDS = {'doctor', 'lab', 'vaccine', 'other'}
+
+
+def _valid_date(s):
+    import datetime as dt
+    try:
+        return dt.date.fromisoformat(str(s)[:10]).isoformat()
+    except Exception:
+        return None
+
+
+def create_appointment(data: dict) -> dict:
+    title = str(data.get('title', '')).strip()
+    if not title:
+        raise ValueError('An appointment title is required')
+    date = _valid_date(data.get('date'))
+    if not date:
+        raise ValueError('A valid date (YYYY-MM-DD) is required')
+    kind = data.get('kind', 'doctor')
+    if kind not in _APPT_KINDS:
+        kind = 'other'
+    time = str(data.get('time', '') or '')[:5]
+    aid = new_id()
+    execute("""INSERT INTO appointments
+                 (id,user_id,title,kind,date,time,location,notes,remind,created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (aid, current_user_id(), title[:160], kind, date, time,
+             str(data.get('location', ''))[:200], str(data.get('notes', ''))[:500],
+             0 if data.get('remind') is False else 1, now_iso()), commit=True)
+    return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?",
+                        (aid, current_user_id()), fetchone=True))
+
+
+def list_appointments(upcoming_only: bool = False) -> list:
+    uid = current_user_id()
+    if upcoming_only:
+        rows = execute("""SELECT * FROM appointments WHERE user_id=? AND date >= ?
+                          ORDER BY date, time""", (uid, today_iso()), fetchall=True)
+    else:
+        rows = execute("""SELECT * FROM appointments WHERE user_id=?
+                          ORDER BY date DESC, time""", (uid,), fetchall=True)
+    return [dict(r) for r in rows]
+
+
+def delete_appointment(aid: str):
+    execute("DELETE FROM appointments WHERE id=? AND user_id=?",
+            (aid, current_user_id()), commit=True)
+
+
+def get_next_appointment():
+    """The soonest upcoming appointment — for the dashboard. None if none."""
+    r = execute("""SELECT * FROM appointments WHERE user_id=? AND date >= ?
+                   ORDER BY date, time LIMIT 1""",
+                (current_user_id(), today_iso()), fetchone=True)
+    return dict(r) if r else None

@@ -231,6 +231,51 @@ def _refill_reminders():
         _report("refill_reminders", e)
 
 
+# ── Appointment reminders: the day before and the morning of ─────────────────
+
+def _appointment_reminders():
+    """Remind about upcoming appointments — a heads-up the day before and again
+    on the morning of. Deduped per appointment per phase."""
+    try:
+        import push
+        if not push.PUSH_AVAILABLE:
+            return
+        from db import list_appointments
+        import datetime as dt
+        users = execute("SELECT DISTINCT user_id FROM push_subscriptions", fetchall=True)
+        KIND = {'doctor': '🩺', 'lab': '🧪', 'vaccine': '💉', 'other': '📅'}
+        for u in users:
+            uid = u['user_id']
+            with user_context(uid):
+                try:
+                    now = _user_local_now(uid)
+                    today = now.strftime('%Y-%m-%d')
+                    tomorrow = (now.date() + dt.timedelta(days=1)).isoformat()
+                    for a in list_appointments(upcoming_only=True):
+                        if not a.get('remind'):
+                            continue
+                        when = a['date']
+                        if when == tomorrow:
+                            phase, lead = 'pre', 'Tomorrow'
+                        elif when == today:
+                            phase, lead = 'day', 'Today'
+                        else:
+                            continue
+                        key = f"appt:{a['id']}:{phase}"
+                        if _pushed_today(uid, key, today):
+                            continue
+                        at = f" at {a['time']}" if a.get('time') else ''
+                        where = f" · {a['location']}" if a.get('location') else ''
+                        title = f"{KIND.get(a.get('kind'), '📅')} {lead}: {a['title']}"
+                        body = f"{lead}{at}{where}".strip()
+                        if push.push_to_user(uid, title, body, '/'):
+                            _mark_pushed(uid, key, title, body)
+                except Exception as e:
+                    _report(f"appointment_reminders:{uid[:8]}", e)
+    except Exception as e:
+        _report("appointment_reminders", e)
+
+
 # ── Caregiver alerts: tell the family when a dose is 2h+ overdue ─────────────
 
 SELF_CORRECT_MIN = 60     # give the member a chance before family is told
@@ -466,6 +511,8 @@ def _run_loop():
     schedule.every(5).minutes.do(_push_reminders)
     schedule.every(15).minutes.do(_caregiver_alerts)
     schedule.every(6).hours.do(_refill_reminders)
+    schedule.every().day.at("19:00").do(_appointment_reminders)   # evening before
+    schedule.every().day.at("08:00").do(_appointment_reminders)   # morning of
     schedule.every().minute.do(_heartbeat)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     schedule.every().sunday.at("18:30").do(_send_caregiver_digests)
@@ -500,6 +547,8 @@ def _run_loop_stdlib():
             _caregiver_alerts()
         if now.minute == 0 and now.hour % 6 == 0:
             _refill_reminders()
+        if now.minute == 0 and now.hour in (8, 19):
+            _appointment_reminders()
         time.sleep(60)
 
 def start_scheduler():
