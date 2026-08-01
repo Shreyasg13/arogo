@@ -289,3 +289,46 @@ def get_next_appointment():
                    ORDER BY date, time LIMIT 1""",
                 (current_user_id(), today_iso()), fetchone=True)
     return dict(r) if r else None
+
+
+# ── Measurement reminders (check your BP / sugar / weight …) ─────────────────
+
+_MEASURE_KINDS = {'blood_pressure', 'blood_sugar', 'weight', 'spo2',
+                  'temperature', 'heart_rate'}
+
+
+def add_measurement_reminder(kind: str, time: str) -> dict:
+    if kind not in _MEASURE_KINDS:
+        raise ValueError('Pick a measurement to be reminded about')
+    t = str(time or '')[:5]
+    if len(t) != 5 or t[2] != ':':
+        raise ValueError('A valid time (HH:MM) is required')
+    rid = new_id()
+    execute("""INSERT INTO measurement_reminders (id,user_id,kind,time,enabled,created_at)
+               VALUES (?,?,?,?,1,?)""",
+            (rid, current_user_id(), kind, t, now_iso()), commit=True)
+    return dict(execute("SELECT * FROM measurement_reminders WHERE id=? AND user_id=?",
+                        (rid, current_user_id()), fetchone=True))
+
+
+def list_measurement_reminders() -> list:
+    rows = execute("""SELECT * FROM measurement_reminders WHERE user_id=?
+                      ORDER BY time""", (current_user_id(),), fetchall=True) or []
+    return [dict(r) for r in rows]
+
+
+def toggle_measurement_reminder(rid: str) -> dict:
+    uid = current_user_id()
+    r = execute("SELECT enabled FROM measurement_reminders WHERE id=? AND user_id=?",
+                (rid, uid), fetchone=True)
+    if not r:
+        return {}
+    execute("UPDATE measurement_reminders SET enabled=? WHERE id=? AND user_id=?",
+            (0 if r['enabled'] else 1, rid, uid), commit=True)
+    return dict(execute("SELECT * FROM measurement_reminders WHERE id=? AND user_id=?",
+                        (rid, uid), fetchone=True))
+
+
+def delete_measurement_reminder(rid: str):
+    execute("DELETE FROM measurement_reminders WHERE id=? AND user_id=?",
+            (rid, current_user_id()), commit=True)

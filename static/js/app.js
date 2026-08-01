@@ -6674,7 +6674,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -6793,6 +6793,56 @@ function deleteAppointment(id) {
     await fetch(`/api/appointments/${id}`, { method: 'DELETE', credentials: 'same-origin' });
     loadAppointments();
     loadDashboard();
+  });
+}
+
+// ── Measurement reminders (take a BP / sugar / weight reading) ──────
+const MEAS_LABEL = { blood_pressure: '❤️ Blood pressure', blood_sugar: '🩸 Blood sugar',
+  weight: '⚖️ Weight', spo2: '💨 SpO2', temperature: '🌡️ Temperature', heart_rate: '💓 Heart rate' };
+
+async function loadMeasurementReminders() {
+  const el = document.getElementById('measurement-reminders-list');
+  if (!el) return;
+  const d = await fetch('/api/measurement-reminders', { credentials: 'same-origin' })
+    .then(r => r.json()).catch(() => ({ reminders: [] }));
+  const list = d.reminders || [];
+  if (!list.length) {
+    el.innerHTML = `<div style="font-size:13px;color:var(--gray-400)">No reminders yet — add one above.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(r => `
+    <div class="mr-row${r.enabled ? '' : ' mr-row--off'}">
+      <span class="mr-kind">${MEAS_LABEL[r.kind] || r.kind}</span>
+      <span class="mr-time">🕐 ${r.time}</span>
+      <label class="mr-toggle"><input type="checkbox" ${r.enabled ? 'checked' : ''}
+        data-ev-change="toggleMeasurementReminder('${r.id}')"> on</label>
+      <button class="btn-icon" title="Delete" data-ev-click="deleteMeasurementReminder('${r.id}')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+async function addMeasurementReminder() {
+  const kind = document.getElementById('mr-kind')?.value;
+  const time = document.getElementById('mr-time')?.value;
+  if (!time) { showToast('Pick a time', 'error'); return; }
+  const r = await fetch('/api/measurement-reminders', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ kind, time })
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) { showToast('Reminder added ⏰', 'success'); loadMeasurementReminders(); }
+  else showToast(r?.error || 'Could not add the reminder', 'error');
+}
+
+async function toggleMeasurementReminder(id) {
+  await fetch(`/api/measurement-reminders/${id}/toggle`, { method: 'POST', credentials: 'same-origin' });
+  loadMeasurementReminders();
+}
+
+function deleteMeasurementReminder(id) {
+  undoable('Removing reminder…', async () => {
+    await fetch(`/api/measurement-reminders/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+    loadMeasurementReminders();
   });
 }
 

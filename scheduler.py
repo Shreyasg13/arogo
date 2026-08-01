@@ -193,6 +193,24 @@ def _push_reminders_for_user(uid):
             if mins is not None and 0 <= mins <= 15:
                 notify(f"{key}:{today}", title, body, acts)
 
+    # 4. Measurement check-ins (BP / sugar / weight …) at their configured times.
+    #    A reading needs a value, so tapping opens the app rather than logging
+    #    from the notification. Deduped per reminder per day.
+    MEAS = {
+        'blood_pressure': ('🩺 Check your blood pressure', 'Take a reading and log it in Arogo.'),
+        'blood_sugar':    ('🩸 Check your blood sugar', 'Time for your sugar reading.'),
+        'weight':         ('⚖️ Time to weigh in', 'Step on the scale and log your weight.'),
+        'spo2':           ('💨 Check your oxygen (SpO2)', 'Take a reading and log it.'),
+        'temperature':    ('🌡️ Check your temperature', 'Take a reading and log it.'),
+        'heart_rate':     ('💓 Check your heart rate', 'Take a reading and log it.'),
+    }
+    for r in (execute("SELECT * FROM measurement_reminders WHERE user_id=? AND enabled=1",
+                      (uid,), fetchall=True) or []):
+        mins = _mins_since(r['time'], hhmm)
+        if mins is not None and 0 <= mins <= 15:
+            title, body = MEAS.get(r['kind'], ('🩺 Health check-in', 'Take your reading and log it.'))
+            notify(f"meas:{r['id']}:{today}", title, body)
+
 
 def _push_reminders():
     try:

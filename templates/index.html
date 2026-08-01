@@ -696,6 +696,28 @@
         </div>
       </div>
     </div>
+
+    <!-- Measurement reminders -->
+    <div class="panel" style="margin-top:16px">
+      <div class="panel-header"><h2 class="panel-title">⏰ Reminders to take a reading</h2></div>
+      <div style="padding:16px">
+        <p style="font-size:12.5px;color:var(--gray-400);margin-bottom:12px">
+          Get a nudge to check your BP, sugar or weight at a set time each day.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+          <select class="form-input" id="mr-kind" style="max-width:190px">
+            <option value="blood_pressure">❤️ Blood pressure</option>
+            <option value="blood_sugar">🩸 Blood sugar</option>
+            <option value="weight">⚖️ Weight</option>
+            <option value="spo2">💨 SpO2</option>
+            <option value="temperature">🌡️ Temperature</option>
+            <option value="heart_rate">💓 Heart rate</option>
+          </select>
+          <input type="time" class="form-input" id="mr-time" value="08:00" style="max-width:130px">
+          <button class="btn-primary" data-ev-click="addMeasurementReminder()">Add reminder</button>
+        </div>
+        <div id="measurement-reminders-list"></div>
+      </div>
+    </div>
   </div>
 
   <!-- EMERGENCY CARD -->

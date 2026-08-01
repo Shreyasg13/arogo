@@ -57,6 +57,33 @@ def api_delete_appointment(aid):
     delete_appointment(aid)
     return jsonify({'success': True})
 
+# ── Measurement reminders ───────────────────────────────────────────────────
+@bp.route('/api/measurement-reminders')
+@require_auth
+def api_list_measurement_reminders():
+    return jsonify({'reminders': list_measurement_reminders()})
+
+@bp.route('/api/measurement-reminders', methods=['POST'])
+@require_auth
+def api_add_measurement_reminder():
+    d = request.json or {}
+    try:
+        return jsonify({'success': True,
+                        'reminder': add_measurement_reminder(d.get('kind', ''), d.get('time', ''))})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/measurement-reminders/<rid>/toggle', methods=['POST'])
+@require_auth
+def api_toggle_measurement_reminder(rid):
+    return jsonify({'success': True, 'reminder': toggle_measurement_reminder(rid)})
+
+@bp.route('/api/measurement-reminders/<rid>', methods=['DELETE'])
+@require_auth
+def api_delete_measurement_reminder(rid):
+    delete_measurement_reminder(rid)
+    return jsonify({'success': True})
+
 @bp.route('/api/medicines/adherence')
 @require_auth
 def api_med_adherence():

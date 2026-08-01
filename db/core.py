@@ -372,6 +372,12 @@ CREATE TABLE IF NOT EXISTS dose_snoozes (
     snooze_until TEXT NOT NULL,      -- server-time ISO (a snooze is a relative delay)
     notified INTEGER DEFAULT 0, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS measurement_reminders (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
+    kind TEXT NOT NULL,             -- blood_pressure | blood_sugar | weight | spo2 | temperature | heart_rate
+    time TEXT NOT NULL,             -- HH:MM
+    enabled INTEGER DEFAULT 1, created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS vitals (
     id TEXT PRIMARY KEY, date_key TEXT NOT NULL, type TEXT NOT NULL,
     value1 REAL NOT NULL, value2 REAL DEFAULT NULL,
@@ -750,6 +756,7 @@ DATA_TABLES = [
     'emergency_info', 'notification_log', 'reminder_settings',
     'fitness_activities', 'medicines', 'dose_logs', 'reports',
     'user_profile', 'oauth_tokens', 'sync_log', 'appointments', 'dose_snoozes',
+    'measurement_reminders',
 ]
 
 

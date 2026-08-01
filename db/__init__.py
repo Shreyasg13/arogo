@@ -34,7 +34,9 @@ from .health      import (list_habits, create_habit, delete_habit, toggle_habit_
                           log_vital, get_vitals, delete_vital,
                           get_emergency_info, save_emergency_info,
                           create_appointment, list_appointments, delete_appointment,
-                          get_next_appointment)
+                          get_next_appointment,
+                          add_measurement_reminder, list_measurement_reminders,
+                          toggle_measurement_reminder, delete_measurement_reminder)
 from .insights    import (add_notification, get_notifications, mark_notification_read,
                           mark_all_notifications_read, unread_notification_count,
                           generate_weekly_report, global_search, get_goal_progress)
@@ -68,6 +70,8 @@ __all__ = [
     "log_vital", "get_vitals", "delete_vital",
     "get_emergency_info", "save_emergency_info",
     "create_appointment", "list_appointments", "delete_appointment", "get_next_appointment",
+    "add_measurement_reminder", "list_measurement_reminders",
+    "toggle_measurement_reminder", "delete_measurement_reminder",
     "add_notification", "get_notifications", "mark_notification_read",
     "mark_all_notifications_read", "unread_notification_count",
     "generate_weekly_report", "global_search", "get_goal_progress",
