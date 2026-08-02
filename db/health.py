@@ -95,10 +95,25 @@ def get_habit_stats(days: int = 30) -> dict:
             dk = (today - dt.timedelta(days=i)).isoformat()
             cal28.append({'date': dk, 'done': dk in done_dates})
 
+        # Best streak: the longest run of consecutive days ever (all-time, so it
+        # survives outside the 30-day window). No grace here — a personal best is
+        # a genuine unbroken run.
+        all_dates = sorted({r['date_key'] for r in execute(
+            "SELECT date_key FROM habit_logs WHERE habit_id=? AND done=1 AND user_id=?",
+            (h['id'], uid), fetchall=True) or []})
+        best_streak = run = 0
+        prev = None
+        for dk in all_dates:
+            d = dt.date.fromisoformat(dk)
+            run = run + 1 if (prev is not None and (d - prev).days == 1) else 1
+            best_streak = max(best_streak, run)
+            prev = d
+
         result.append({**h,
                        'done_dates':  list(done_dates),
                        'done_today':  today_iso in done_dates,
                        'streak':      streak,
+                       'best_streak': best_streak,
                        'grace_used':  grace_used,
                        'completions': len(done_dates),
                        'week7':       week7,
