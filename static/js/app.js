@@ -6997,7 +6997,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -7418,6 +7418,7 @@ async function delVital(id) {
   try { loadVitals(); }      catch (e) {}
   try { loadVitalsView(); }  catch (e) {}
   try { loadVitalTrends(); } catch (e) {}
+  try { loadVitalSparks(); } catch (e) {}
 }
 
 // ════════════════════════════════════════════════════════════
@@ -9585,6 +9586,83 @@ async function loadVitalsView() {
         ${v.value1}${v.value2 ? '/' + v.value2 : ''} <span style="font-size:11px;font-weight:400">${v.unit}</span>
       </div>
     </div>`).join('');
+}
+
+// ── Vitals sparklines (compact, self-contained SVG — no Chart.js/CDN) ──
+const VITAL_ICON = { blood_pressure:'❤️', blood_sugar:'🩸', heart_rate:'💓', spo2:'💨', temperature:'🌡️' };
+
+async function loadVitalSparks() {
+  const el = document.getElementById('vital-sparks');
+  if (!el) return;
+  const data = await fetch('/api/vitals/trend?days=30', {cache:'no-store'})
+    .then(r => r.json()).catch(() => null);
+  el.innerHTML = data ? renderVitalSparks(data) : '';
+}
+
+function _sparkPoints(vals, w, h, pad) {
+  const n = vals.length;
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const span = (hi - lo) || 1;                       // flat series → a level line
+  return vals.map((v, i) => {
+    const x = n === 1 ? w / 2 : pad + (i / (n - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - lo) / span) * (h - 2 * pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+
+function renderVitalSparks(data) {
+  const esc = escHtml;
+  const groups = data.groups || {};
+  const ORDER = ['blood_pressure','blood_sugar','heart_rate','spo2','temperature'];
+  const W = 150, H = 40, P = 5;
+
+  const cards = ORDER.filter(t => (groups[t] || []).length).map(t => {
+    const meta = VITAL_META[t] || {label: t, unit: '', color: {}};
+    const entries = groups[t];                        // oldest → newest
+    const v1 = entries.map(e => Number(e.value1)).filter(v => !isNaN(v));
+    const latest = entries[entries.length - 1];
+    const latestVal = latest.value2 ? `${latest.value1}/${latest.value2}` : `${latest.value1}`;
+    const c1 = (meta.color && (meta.color.sys || meta.color.main)) || '#5A9E70';
+
+    let svg;
+    if (v1.length >= 2) {
+      const p1 = _sparkPoints(v1, W, H, P);
+      let extra = '';
+      if (meta.twoValues) {
+        const v2 = entries.map(e => Number(e.value2)).filter(v => !isNaN(v));
+        if (v2.length === v1.length)
+          extra = `<polyline points="${_sparkPoints(v2, W, H, P)}" fill="none" stroke="${meta.color.dia || '#9CC'}" stroke-width="2" opacity="0.7"/>`;
+      }
+      svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="none">
+        <polyline points="${p1}" fill="none" stroke="${c1}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${extra}
+      </svg>`;
+    } else {
+      svg = `<div class="vs-single">Just 1 reading — log another to see the trend</div>`;
+    }
+
+    // Direction is stated neutrally (vitals up/down isn't inherently good or bad).
+    let dir = '';
+    if (v1.length >= 2) {
+      const delta = v1[v1.length - 1] - v1[0];
+      const arrow = delta > 0 ? '↗' : delta < 0 ? '↘' : '→';
+      dir = `<span class="vs-dir" title="vs ${data.days} days ago">${arrow}</span>`;
+    }
+
+    return `<div class="vs-card">
+      <div class="vs-top">
+        <span class="vs-label">${esc(VITAL_ICON[t] || '📊')} ${esc(meta.label)}</span>
+        <span class="vs-latest">${esc(latestVal)} <span class="vs-unit">${esc(meta.unit || '')}</span> ${dir}</span>
+      </div>
+      <div class="vs-spark">${svg}</div>
+      <div class="vs-foot">${entries.length} reading${entries.length!==1?'s':''} · ${data.days}d</div>
+    </div>`;
+  }).join('');
+
+  if (!cards) return '';
+  return `<div class="panel" style="margin-bottom:16px">
+    <div class="panel-header"><h2 class="panel-title">📈 Trends at a glance</h2><span class="panel-badge">Last ${data.days} days</span></div>
+    <div class="vs-grid">${cards}</div>
+  </div>`;
 }
 
 // loadJournal = alias for the existing loadWellness but only shows thoughts tab
