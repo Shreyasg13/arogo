@@ -226,6 +226,43 @@ const I18N = {
     'Vitals': 'वाइटल्स',
     'Symptoms': 'लक्षण',
     'Emergency card': 'आपातकालीन कार्ड',
+    // Progress
+    'Lose weight fast 🔥': 'तेज़ी से वज़न घटाएँ 🔥',
+    'Lose weight 📉': 'वज़न घटाएँ 📉',
+    'Maintain weight ⚖️': 'वज़न बनाए रखें ⚖️',
+    'Gain muscle 📈': 'मांसपेशी बढ़ाएँ 📈',
+    'Build mass 💪': 'वज़न बढ़ाएँ 💪',
+    'Start logging to see your progress': 'प्रगति देखने के लिए दर्ज करना शुरू करें',
+    'On track! 🎯': 'ट्रैक पर! 🎯',
+    'Getting there 💪': 'पहुँच रहे हैं 💪',
+    'Needs focus 📋': 'ध्यान चाहिए 📋',
+    'score': 'स्कोर',
+    'Log body metrics to see trend': 'रुझान देखने के लिए शरीर माप दर्ज करें',
+    'No habits tracked — add habits on the Consistency page': 'कोई आदत ट्रैक नहीं — निरंतरता पेज पर आदतें जोड़ें',
+    'Log meals to see calorie data': 'कैलोरी डेटा देखने के लिए भोजन दर्ज करें',
+    '✅ On target': '✅ लक्ष्य पर',
+    '⚠️ Almost there': '⚠️ लगभग पहुँच गए',
+    '📋 Needs work': '📋 सुधार चाहिए',
+    '🎯 Current Goal': '🎯 वर्तमान लक्ष्य',
+    '⚖️ Weight Trend': '⚖️ वज़न रुझान',
+    '🏃 Workout Frequency': '🏃 कसरत आवृत्ति',
+    '🌙 Sleep Consistency': '🌙 नींद निरंतरता',
+    '🍽️ Calorie Adherence': '🍽️ कैलोरी पालन',
+    '⭐ Habit Completion': '⭐ आदत पूर्णता',
+    '💊 Medicine Refill Alerts': '💊 दवा रिफिल अलर्ट',
+    'Set your goal →': 'अपना लक्ष्य सेट करें →',
+    'Current weight:': 'वर्तमान वज़न:',
+    'BMI:': 'BMI:',
+    'active days · target 4/week': 'सक्रिय दिन · लक्ष्य 4/सप्ताह',
+    'h avg · target 7.5h': 'घं औसत · लक्ष्य 7.5घं',
+    '■ On target': '■ लक्ष्य पर',
+    '■ Over': '■ अधिक',
+    '■ Not logged': '■ दर्ज नहीं',
+    'of daily goal (%1 kcal)': 'दैनिक लक्ष्य का (%1 kcal)',
+    'overall · %1 habits · %2 total check-ins': 'कुल · %1 आदतें · %2 कुल चेक-इन',
+    '⚠️ Action needed': '⚠️ कार्रवाई चाहिए',
+    '%1 pills · %2 days remaining': '%1 गोलियाँ · %2 दिन शेष',
+    'Restock →': 'रीस्टॉक →',
     // Toasts (action feedback)
     'Action failed': 'कार्रवाई विफल',
     'Activity logged!': 'गतिविधि दर्ज हुई!',
@@ -9048,7 +9085,7 @@ function renderProgress(r) {
   if (!el) return;
 
   const p = _progressPeriod; // 'month' or 'week'
-  const GOAL_LABELS = {lose_fast:'Lose weight fast 🔥',lose:'Lose weight 📉',maintain:'Maintain weight ⚖️',gain:'Gain muscle 📈',gain_fast:'Build mass 💪'};
+  const GOAL_LABELS = {lose_fast:t('Lose weight fast 🔥'),lose:t('Lose weight 📉'),maintain:t('Maintain weight ⚖️'),gain:t('Gain muscle 📈'),gain_fast:t('Build mass 💪')};
 
   // ── Score calculations ──
   const workoutPct = p === 'month' ? (r.workouts?.frequency_pct||0) : Math.round((r.workouts?.daily?.slice(-7).filter(d=>d.cal>0).length||0)/7*100);
@@ -9061,7 +9098,7 @@ function renderProgress(r) {
   const overall    = hasData ? Math.round(scores.reduce((a,b)=>a+b)/scores.length) : 0;
   // No data yet → neutral, welcoming — never a red "Needs focus" on an empty week
   const overallColor = !hasData ? 'var(--gray-300)' : overall >= 75 ? '#22C55E' : overall >= 50 ? '#F59E0B' : '#EF4444';
-  const overallLabel = !hasData ? 'Start logging to see your progress' : overall >= 75 ? 'On track! 🎯' : overall >= 50 ? 'Getting there 💪' : 'Needs focus 📋';
+  const overallLabel = !hasData ? t('Start logging to see your progress') : overall >= 75 ? t('On track! 🎯') : overall >= 50 ? t('Getting there 💪') : t('Needs focus 📋');
 
   // Update score strip
   const strip = document.getElementById('prog-score-strip');
@@ -9077,7 +9114,7 @@ function renderProgress(r) {
         stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"
         stroke-linecap="round" transform="rotate(-90 28 28)"/>
     </svg>
-    <div class="prog-score-inner"><div class="prog-score-num">${overall}</div><div class="prog-score-sub">score</div></div>`;
+    <div class="prog-score-inner"><div class="prog-score-num">${overall}</div><div class="prog-score-sub">${t('score')}</div></div>`;
     setText('psi-sleep',    sleepAvg ? sleepAvg+'h' : '—');
     setText('psi-workouts', r.workouts?.this_month + (p==='month'?' days':''));
     setText('psi-habits',   habitPct+'%');
@@ -9121,7 +9158,7 @@ function renderProgress(r) {
       </svg>
     </div>`;
   } else {
-    weightSVG = `<div style="padding:24px 0;text-align:center;color:var(--gray-300);font-size:13px">Log body metrics to see trend</div>`;
+    weightSVG = `<div style="padding:24px 0;text-align:center;color:var(--gray-300);font-size:13px">${t('Log body metrics to see trend')}</div>`;
   }
 
   // Workout mini bars (30 days)
@@ -9161,7 +9198,7 @@ function renderProgress(r) {
     const label = targetCal ? `${d.date}: ${d.cal} kcal (${pct}% of goal)` : `${d.date}: ${d.cal} kcal`;
     return `<div class="prog-cal-bar ${targetCal && pct>115?'over':''}" style="height:${Math.max(pct,4)}%;background:${color}" title="${label}"></div>`;
   }).join('');
-  const noCalMsg = calDays.every(d=>d.cal===0) ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">Log meals to see calorie data</div>` : '';
+  const noCalMsg = calDays.every(d=>d.cal===0) ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">${t('Log meals to see calorie data')}</div>` : '';
 
   // Habit breakdown
   const habits = r.habits?.detail || [];
@@ -9175,7 +9212,7 @@ function renderProgress(r) {
       <div class="prog-habit-pct">${h.pct}%</div>
       <div class="prog-habit-streak">🔥${h.streak}</div>
     </div>`).join('');
-  const noHabitMsg = habits.length === 0 ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">No habits tracked — add habits on the Consistency page</div>` : '';
+  const noHabitMsg = habits.length === 0 ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">${t('No habits tracked — add habits on the Consistency page')}</div>` : '';
 
   // Status badge helper.
   //
@@ -9188,7 +9225,7 @@ function renderProgress(r) {
   const badge = (pct, good=70, warn=40, has=true) => {
     if (!has) return '';
     const cls = pct >= good ? 'good' : pct >= warn ? 'warn' : 'bad';
-    const txt = pct >= good ? '✅ On target' : pct >= warn ? '⚠️ Almost there' : '📋 Needs work';
+    const txt = pct >= good ? t('✅ On target') : pct >= warn ? t('⚠️ Almost there') : t('📋 Needs work');
     return `<span class="prog-status-badge ${cls}">${txt}</span>`;
   };
 
@@ -9200,7 +9237,7 @@ function renderProgress(r) {
     <!-- Goal header -->
     <div class="prog-section">
       <div class="prog-section-head">
-        <div class="prog-section-title">🎯 Current Goal</div>
+        <div class="prog-section-title">${t('🎯 Current Goal')}</div>
         <!-- Was "— kcal/day · —g protein" under a heading called "Current
              Goal": a section that states nothing and offers no way to set one.
              Show the targets only when they exist; otherwise the body below
@@ -9213,8 +9250,8 @@ function renderProgress(r) {
         ${r.profile?.goal
           ? `<div style="font-size:22px;font-weight:700;color:var(--gray-900)">${GOAL_LABELS[r.profile.goal]||''}</div>`
           : `<a href="#" data-ev-click="switchView('food');return false"
-                style="font-size:14px;font-weight:600;color:var(--teal-600)">Set your goal →</a>`}
-        ${latest ? `<div style="font-size:13px;color:var(--gray-500)">Current weight: <strong>${latest.weight}kg</strong> · BMI: <strong>${latest.bmi||'—'}</strong></div>` : ''}
+                style="font-size:14px;font-weight:600;color:var(--teal-600)">${t('Set your goal →')}</a>`}
+        ${latest ? `<div style="font-size:13px;color:var(--gray-500)">${t('Current weight:')} <strong>${latest.weight}kg</strong> · ${t('BMI:')} <strong>${latest.bmi||'—'}</strong></div>` : ''}
         <div style="margin-left:auto;font-size:13px;color:${overallColor};font-weight:700">${overallLabel}</div>
       </div>
     </div>
@@ -9224,7 +9261,7 @@ function renderProgress(r) {
 
       <div class="prog-section">
         <div class="prog-section-head">
-          <div class="prog-section-title">⚖️ Weight Trend</div>
+          <div class="prog-section-title">${t('⚖️ Weight Trend')}</div>
           ${latest ? badge(r.profile?.goal==='lose'||r.profile?.goal==='lose_fast' ? (weights.length>=2 && weights[0].weight > latest.weight ? 100 : 20) : 70) : ''}
         </div>
         <div class="prog-section-body">${weightSVG}</div>
@@ -9232,13 +9269,13 @@ function renderProgress(r) {
 
       <div class="prog-section">
         <div class="prog-section-head">
-          <div class="prog-section-title">🏃 Workout Frequency</div>
+          <div class="prog-section-title">${t('🏃 Workout Frequency')}</div>
           ${badge(workoutPct, 70, 40, !!(r.workouts?.this_month || r.workouts?.total))}
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
             <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${p==='month'?r.workouts?.this_month:workoutDays.filter(d=>d.cal>0).length}</span>
-            <span style="font-size:14px;color:var(--gray-400)">active days · target 4/week</span>
+            <span style="font-size:14px;color:var(--gray-400)">${t('active days · target 4/week')}</span>
           </div>
           <div style="display:flex;align-items:flex-end;gap:2px;height:50px">${workoutBars}</div>
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gray-300);margin-top:2px">
@@ -9253,13 +9290,13 @@ function renderProgress(r) {
 
       <div class="prog-section">
         <div class="prog-section-head">
-          <div class="prog-section-title">🌙 Sleep Consistency</div>
+          <div class="prog-section-title">${t('🌙 Sleep Consistency')}</div>
           ${badge(sleepPct, 90, 70, sleepDays.length > 0)}
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
             <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${sleepAvg||'—'}</span>
-            <span style="font-size:14px;color:var(--gray-400)">h avg · target 7.5h</span>
+            <span style="font-size:14px;color:var(--gray-400)">${t('h avg · target 7.5h')}</span>
           </div>
           ${noSleepMsg}
           ${sleepDays.length ? `<div style="display:flex;align-items:flex-end;gap:3px;height:60px">${sleepDots}</div>
@@ -9276,20 +9313,20 @@ function renderProgress(r) {
 
       <div class="prog-section">
         <div class="prog-section-head">
-          <div class="prog-section-title">🍽️ Calorie Adherence</div>
+          <div class="prog-section-title">${t('🍽️ Calorie Adherence')}</div>
           ${badge(calPct, 70, 40, !!targetCal && !noCalMsg)}
         </div>
         <div class="prog-section-body">
           <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:12px">
             <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${calPct}%</span>
-            <span style="font-size:14px;color:var(--gray-400)">of daily goal (${targetCal} kcal)</span>
+            <span style="font-size:14px;color:var(--gray-400)">${tformat('of daily goal (%1 kcal)', targetCal)}</span>
           </div>
           ${noCalMsg}
           ${!noCalMsg ? `<div style="position:relative">
             <div style="display:flex;align-items:flex-end;gap:2px;height:60px">${calBars}</div>
             <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gray-300);margin-top:2px">
               <span>${calDays[0]?.date?.slice(5)||''}</span>
-              <span style="display:flex;gap:8px"><span style="color:#22C55E">■ On target</span><span style="color:#EF4444">■ Over</span><span style="color:var(--gray-300)">■ Not logged</span></span>
+              <span style="display:flex;gap:8px"><span style="color:#22C55E">${t('■ On target')}</span><span style="color:#EF4444">${t('■ Over')}</span><span style="color:var(--gray-300)">${t('■ Not logged')}</span></span>
               <span>${calDays[calDays.length-1]?.date?.slice(5)||''}</span>
             </div>
           </div>` : ''}
@@ -9300,14 +9337,14 @@ function renderProgress(r) {
     <!-- Habit breakdown -->
     <div class="prog-section">
       <div class="prog-section-head">
-        <div class="prog-section-title">⭐ Habit Completion</div>
+        <div class="prog-section-title">${t('⭐ Habit Completion')}</div>
         ${badge(habitPct, 70, 40, habits.length > 0)}
       </div>
       <div class="prog-section-body">
         ${noHabitMsg}
         ${habits.length ? `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:16px">
           <span style="font-size:32px;font-weight:800;font-family:'EB Garamond',serif;color:var(--gray-900)">${habitPct}%</span>
-          <span style="font-size:14px;color:var(--gray-400)">overall · ${r.habits?.total||0} habits · ${r.habits?.done_count||0} total check-ins</span>
+          <span style="font-size:14px;color:var(--gray-400)">${tformat('overall · %1 habits · %2 total check-ins', r.habits?.total||0, r.habits?.done_count||0)}</span>
         </div>
         <div class="prog-habit-rows">${habitRows}</div>` : ''}
       </div>
@@ -9316,15 +9353,15 @@ function renderProgress(r) {
     ${r.refill_alerts?.length ? `
     <div class="prog-section" style="border-color:#F59E0B">
       <div class="prog-section-head">
-        <div class="prog-section-title">💊 Medicine Refill Alerts</div>
-        <span class="prog-status-badge bad">⚠️ Action needed</span>
+        <div class="prog-section-title">${t('💊 Medicine Refill Alerts')}</div>
+        <span class="prog-status-badge bad">${t('⚠️ Action needed')}</span>
       </div>
       <div class="prog-section-body">
         ${r.refill_alerts.map(m=>`
           <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--gray-50)">
             <span style="font-size:20px">${m.icon||'💊'}</span>
-            <div style="flex:1"><div style="font-size:14px;font-weight:600">${escHtml(m.name)}</div><div style="font-size:12px;color:var(--red-500)">${m.pill_count} pills · ${m.days_left} days remaining</div></div>
-            <button class="btn-outline" style="font-size:12px;padding:5px 12px" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Restock →</button>
+            <div style="flex:1"><div style="font-size:14px;font-weight:600">${escHtml(m.name)}</div><div style="font-size:12px;color:var(--red-500)">${tformat('%1 pills · %2 days remaining', m.pill_count, m.days_left)}</div></div>
+            <button class="btn-outline" style="font-size:12px;padding:5px 12px" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">${t('Restock →')}</button>
           </div>`).join('')}
       </div>
     </div>` : ''}
