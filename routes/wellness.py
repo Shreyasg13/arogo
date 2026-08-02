@@ -309,6 +309,37 @@ def api_sleep_trend():
     # Days with 7h+ (recommended)
     good_nights = sum(1 for d in durations if d >= 7)
 
+    # Bed/wake-time consistency — how much the clock times drift, stated
+    # neutrally (a regular schedule is easier on the body, but we don't grade it).
+    # Bedtimes are shifted across midnight so 11pm and 12:30am cluster instead of
+    # sitting a whole day apart.
+    def _tmin(hhmm, shift_early=False):
+        try:
+            h, m = int(hhmm[:2]), int(hhmm[3:5])
+        except (ValueError, TypeError, IndexError):
+            return None
+        v = h * 60 + m
+        if shift_early and h < 12:
+            v += 1440
+        return v
+
+    def _mean_std(vals):
+        vals = [v for v in vals if v is not None]
+        if len(vals) < 3:
+            return None, None
+        mean = sum(vals) / len(vals)
+        std = (sum((v - mean) ** 2 for v in vals) / len(vals)) ** 0.5
+        return mean, std
+
+    def _fmt_min(m):
+        if m is None:
+            return None
+        m = int(round(m)) % 1440
+        return f"{m // 60:02d}:{m % 60:02d}"
+
+    bed_mean, bed_std   = _mean_std([_tmin(r['bedtime'], shift_early=True) for r in sorted_rows])
+    wake_mean, wake_std = _mean_std([_tmin(r['wake_time']) for r in sorted_rows])
+
     # Week-over-week breakdown (last 4 weeks)
     today = dt.date.today()
     weekly = []
@@ -338,6 +369,10 @@ def api_sleep_trend():
             'good_pct':      round(good_nights / len(rows) * 100),
             'dur_trend':     dur_trend,
             'logged_nights': len(rows),
+            'avg_bedtime':      _fmt_min(bed_mean),
+            'avg_waketime':     _fmt_min(wake_mean),
+            'bedtime_spread':   None if bed_std  is None else int(round(bed_std)),
+            'waketime_spread':  None if wake_std is None else int(round(wake_std)),
         },
         'weekly': weekly,
     })

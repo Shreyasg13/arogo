@@ -1795,6 +1795,7 @@ async function loadDashboard() {
 
   // Single "what do I do right now" hero — meds first, then a gentle fallback
   renderNextAction(doses, null);
+  try { renderBriefing(doses); } catch (e) {}
   const medPanel  = document.getElementById('dash-medicines-panel');
   const medList   = document.getElementById('dash-medicine-list');
   if (medPanel) medPanel.style.display = hasMeds ? '' : 'none';
@@ -1848,6 +1849,35 @@ async function loadDashboard() {
 // The dashboard hero: surface the single most important next action.
 // Priority — an untaken dose (the app's core adherence loop) > "all caught up"
 // affirmation > a gentle "log your first meal" nudge on an otherwise-empty day.
+// A one-line, plain-language overview of the day's counts — a "briefing" that
+// complements (doesn't repeat) the single-action hero below it. Shows only what
+// there is to say, and nothing when there's nothing to do.
+async function renderBriefing(doses) {
+  const el = document.getElementById('dash-briefing');
+  if (!el) return;
+  const parts = [];
+  const list = Array.isArray(doses) ? doses : [];
+  const untaken = list.filter(d => !d.taken);
+  if (list.length) {
+    if (!untaken.length) {
+      parts.push('💊 all doses taken');
+    } else {
+      const now = new Date();
+      const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const times = untaken.map(d => d.time).filter(Boolean).sort();
+      const next = times.find(t => t >= hhmm) || times[0];
+      parts.push(`💊 ${untaken.length} dose${untaken.length > 1 ? 's' : ''} left today${next ? ` · next ${_mc12h(next)}` : ''}`);
+    }
+  }
+  const low = await fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []);
+  if (Array.isArray(low) && low.length) {
+    parts.push(`🔄 ${low.length} to refill`);
+  }
+  if (!parts.length) { el.style.display = 'none'; return; }
+  el.textContent = parts.join('   ·   ');
+  el.style.display = 'block';
+}
+
 function renderNextAction(doses, calorieState) {
   const el = document.getElementById('dash-next-action');
   if (!el) return;
@@ -6944,7 +6974,10 @@ async function loadHabits() {
       <div class="hc-bars">${bars}</div>
 
       <!-- 28-day heatmap -->
-      <div class="hc2-section-label" style="margin-top:10px">Last 28 days</div>
+      <div class="hc2-section-label" style="margin-top:10px;display:flex;justify-content:space-between;align-items:baseline">
+        <span>Last 28 days</span>
+        ${h.best_streak ? `<span class="hc2-best" title="Longest run ever">🏆 best ${h.best_streak}</span>` : ''}
+      </div>
       <div class="hc-heatmap">${heatmap}</div>
 
       <!-- Toggle button -->
@@ -11053,9 +11086,17 @@ async function loadSleepTrend(days) {
 
   const sub = document.getElementById('sleep-trend-sub');
   if (sub) {
-    sub.textContent = hasAnyData
-      ? `${logged} of ${d} nights logged · avg ${s?.avg_duration ?? '—'}h`
-      : 'No nights logged yet — start tracking to see your trend';
+    if (!hasAnyData) {
+      sub.textContent = 'No nights logged yet — start tracking to see your trend';
+    } else {
+      // Bed/wake consistency, stated as a neutral fact (no "you slept badly").
+      const spread = (s && s.bedtime_spread != null && s.waketime_spread != null)
+        ? Math.max(s.bedtime_spread, s.waketime_spread) : null;
+      const consistency = (spread != null && s.avg_bedtime)
+        ? `<br><span style="color:var(--gray-500)">🌙 Usually asleep around ${escHtml(_mc12h(s.avg_bedtime))}, up around ${escHtml(_mc12h(s.avg_waketime))} · bed/wake times vary by ±${spread} min</span>`
+        : '';
+      sub.innerHTML = `${logged} of ${d} nights logged · avg ${s?.avg_duration ?? '—'}h${consistency}`;
+    }
   }
 
   // Load Chart.js if needed
