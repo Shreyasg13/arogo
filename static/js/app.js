@@ -2181,8 +2181,70 @@ function renderPlanner(d) {
     return timeCell + cells;
   }).join('');
 
-  return `<div class="planner-scroll"><div class="planner-grid" style="grid-template-columns:88px repeat(${d.days.length},minmax(84px,1fr))">${head}${rows}</div></div>
+  return `<div class="planner-toolbar no-print">
+      <button class="btn-outline" data-ev-click="printPillPlanner()" title="Print or save this week as a PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print / Save as PDF
+      </button>
+    </div>
+    <div class="planner-scroll"><div class="planner-grid" style="grid-template-columns:88px repeat(${d.days.length},minmax(84px,1fr))">${head}${rows}</div></div>
     <div class="planner-note">Your upcoming plan. As-needed medicines aren't shown here — see the printable card for those.</div>`;
+}
+
+async function printPillPlanner() {
+  const d = await fetch('/api/medicines/planner?days=7').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_schedule) { showToast('Nothing scheduled to print', 'error'); return; }
+  const win = window.open('', '_blank', 'width=1000,height=760');
+  if (!win) { showToast('Allow pop-ups to print the planner', 'error'); return; }
+  win.document.write(buildPlannerPrintHtml(d));
+  win.document.close();
+  const btn = win.document.querySelector('.pp-print-btn');
+  if (btn) btn.addEventListener('click', () => win.print());
+}
+
+function buildPlannerPrintHtml(d) {
+  const esc = escapeHtml;
+  const head = `<th class="pp-corner"></th>` + d.days.map(day =>
+    `<th class="${day.is_today ? 'pp-today' : ''}"><div class="pp-wd">${day.is_today ? 'Today' : esc(day.weekday)}</div><div class="pp-dnum">${day.day}</div></th>`).join('');
+  const rows = d.rows.map(row => {
+    const cells = row.cells.map((meds, i) =>
+      `<td class="${d.days[i].is_today ? 'pp-today' : ''}">${meds.map(m => `<div class="pp-chip">${esc(m.icon)} ${esc(m.name)}${m.dose ? ` <span class="pp-dose">${esc(m.dose)}</span>` : ''}</div>`).join('') || '<span class="pp-dash">–</span>'}</td>`).join('');
+    return `<tr><th class="pp-time"><div class="pp-hour">${esc(_mc12h(row.time))}</div><div class="pp-lbl">${esc(row.label)}</div></th>${cells}</tr>`;
+  }).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>This week's medicines</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F4F1EA;color:#1f2a24;padding:24px}
+  .pp-sheet{max-width:960px;margin:0 auto;background:#fff;border-radius:14px;padding:28px 30px;box-shadow:0 2px 16px rgba(0,0,0,.06)}
+  .pp-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .pp-title{font-size:26px;font-weight:800}
+  .pp-sub{font-size:13px;color:#8a978f;margin-bottom:18px}
+  .pp-print-btn{background:#5A9E70;color:#fff;border:none;border-radius:99px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th,td{border:1px solid #ECE7DC;padding:8px 6px;vertical-align:top;text-align:center;font-size:12px}
+  thead th{background:#F7F5F0}
+  .pp-wd{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#3c4b42}
+  .pp-dnum{font-size:13px;color:#96a29a}
+  .pp-today{background:#EAF3EE!important}
+  .pp-time{text-align:left;width:104px}
+  .pp-hour{font-size:14px;font-weight:800;color:#20362D}
+  .pp-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#96a29a}
+  .pp-chip{font-size:12px;font-weight:600;color:#2b3a32;margin-bottom:4px;line-height:1.3}
+  .pp-dose{font-weight:500;color:#5A9E70}
+  .pp-dash{color:#c9d2cb}
+  .pp-foot{font-size:11.5px;color:#a4afa7;margin-top:18px;text-align:center}
+  @media print{ body{background:#fff;padding:0} .pp-sheet{box-shadow:none;border-radius:0;max-width:100%;padding:0} .pp-no-print{display:none!important} @page{size:A4 landscape;margin:12mm} }
+</style></head><body>
+<div class="pp-sheet">
+  <div class="pp-bar"><div class="pp-title">📅 This week's medicines</div>
+    <button class="pp-print-btn pp-no-print" type="button">🖨️ Print / Save as PDF</button></div>
+  <div class="pp-sub">The next ${d.days.length} days. As-needed medicines aren't shown here.</div>
+  <table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>
+  <div class="pp-foot">Made with Arogo from your own list. Not a prescription.</div>
+</div>
+</body></html>`;
 }
 
 function _mc12h(hhmm) {
