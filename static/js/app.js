@@ -85,6 +85,36 @@ const I18N = {
     'Once Daily': 'दिन में एक बार', 'Twice Daily': 'दिन में दो बार', '3× Daily': 'दिन में 3 बार',
     'Weekly': 'साप्ताहिक', 'As needed': 'ज़रूरत पड़ने पर',
     'Cancel': 'रद्द करें', '+ Add time': '+ समय जोड़ें',
+    'When to take it': 'कब लेनी है', 'Remind me before the dose': 'खुराक से पहले याद दिलाएँ',
+    'Monthly cost (₹)': 'मासिक लागत (₹)', "What's it for?": 'किसके लिए है?',
+    'Notes': 'नोट्स', '— optional': '— वैकल्पिक', '💊 Track remaining pills': '💊 बची गोलियाँ ट्रैक करें',
+    'No special timing': 'कोई विशेष समय नहीं', 'With food': 'भोजन के साथ',
+    'Before food': 'भोजन से पहले', 'After food': 'भोजन के बाद', 'On an empty stomach': 'खाली पेट',
+    'At bedtime': 'सोते समय', 'With plenty of water': 'खूब पानी के साथ',
+    'At the dose time': 'खुराक के समय', '5 minutes before': '5 मिनट पहले',
+    '10 minutes before': '10 मिनट पहले', '15 minutes before': '15 मिनट पहले',
+    '30 minutes before': '30 मिनट पहले', '1 hour before': '1 घंटा पहले',
+    'e.g. Metformin, Aspirin': 'जैसे मेटफॉर्मिन, एस्पिरिन',
+    'e.g. blood pressure, thyroid, cholesterol': 'जैसे रक्तचाप, थायरॉइड, कोलेस्ट्रॉल',
+    'e.g. avoid grapefruit': 'जैसे अंगूर से बचें', 'e.g. 250': 'जैसे 250', 'e.g. 30': 'जैसे 30',
+    '📅 Add an appointment': '📅 अपॉइंटमेंट जोड़ें', 'Type': 'प्रकार', 'Date': 'तारीख',
+    'Time': 'समय', 'Place': 'जगह', '🩺 Doctor visit': '🩺 डॉक्टर विज़िट',
+    '🧪 Lab test': '🧪 लैब टेस्ट', '💉 Vaccination': '💉 टीकाकरण', '📅 Other': '📅 अन्य',
+    '🔔 Remind me the evening before and the morning of': '🔔 एक शाम पहले व उसी सुबह याद दिलाएँ',
+    'Add appointment': 'अपॉइंटमेंट जोड़ें',
+    'e.g. Dr. Rao — cardiology follow-up': 'जैसे डॉ. राव — हृदय फ़ॉलो-अप',
+    'Clinic / hospital': 'क्लिनिक / अस्पताल',
+    'e.g. fasting, bring old reports': 'जैसे खाली पेट, पुरानी रिपोर्ट लाएँ',
+    '❓ Questions for your doctor': '❓ डॉक्टर के लिए सवाल',
+    'e.g. Should I keep taking the evening dose?': 'जैसे क्या मुझे शाम की खुराक जारी रखनी चाहिए?',
+    '+ Add': '+ जोड़ें',
+    'Unticked questions are added to your doctor-visit summary automatically.': 'बिना टिक किए सवाल आपके डॉक्टर-विज़िट सारांश में अपने-आप जुड़ जाते हैं।',
+    '🆘 Need help now?': '🆘 अभी मदद चाहिए?',
+    'Send an urgent alert to your caregivers with one tap.': 'एक टैप में अपने देखभालकर्ताओं को अत्यावश्यक सूचना भेजें।',
+    '🆘 Send an urgent alert?': '🆘 अत्यावश्यक सूचना भेजें?',
+    'This immediately notifies your caregivers that you need help now.': 'यह तुरंत आपके देखभालकर्ताओं को सूचित करता है कि आपको अभी मदद चाहिए।',
+    'Add a note — optional (e.g. chest pain)': 'नोट जोड़ें — वैकल्पिक (जैसे सीने में दर्द)',
+    'Send SOS': 'SOS भेजें',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
@@ -95,6 +125,10 @@ function applyLang() {
   try { document.documentElement.lang = lang; } catch (e) {}
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  // Input placeholders (tagged data-i18n-ph="English placeholder").
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph')));
   });
   const lbl = document.getElementById('lang-toggle-label');
   if (lbl) lbl.textContent = lang === 'hi' ? 'English' : 'हिन्दी';

@@ -517,63 +517,63 @@
   <!-- APPOINTMENTS -->
   <div id="med-tab-appointments" class="wellness-tab-content" style="display:none;margin-top:16px">
     <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">📅 Add an appointment</h2></div>
+      <div class="panel-header"><h2 class="panel-title" data-i18n="📅 Add an appointment">📅 Add an appointment</h2></div>
       <div style="display:grid;gap:12px;margin-top:8px">
         <div class="form-group" style="margin:0">
-          <label class="form-label">What's it for?</label>
+          <label class="form-label" data-i18n="What's it for?">What's it for?</label>
           <input type="text" class="form-input" id="appt-title" maxlength="160"
-                 placeholder="e.g. Dr. Rao — cardiology follow-up">
+                 placeholder="e.g. Dr. Rao — cardiology follow-up" data-i18n-ph="e.g. Dr. Rao — cardiology follow-up">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="form-group" style="margin:0">
-            <label class="form-label">Type</label>
+            <label class="form-label" data-i18n="Type">Type</label>
             <select class="form-input" id="appt-kind">
-              <option value="doctor">🩺 Doctor visit</option>
-              <option value="lab">🧪 Lab test</option>
-              <option value="vaccine">💉 Vaccination</option>
-              <option value="other">📅 Other</option>
+              <option value="doctor" data-i18n="🩺 Doctor visit">🩺 Doctor visit</option>
+              <option value="lab" data-i18n="🧪 Lab test">🧪 Lab test</option>
+              <option value="vaccine" data-i18n="💉 Vaccination">💉 Vaccination</option>
+              <option value="other" data-i18n="📅 Other">📅 Other</option>
             </select>
           </div>
           <div class="form-group" style="margin:0">
-            <label class="form-label">Date</label>
+            <label class="form-label" data-i18n="Date">Date</label>
             <input type="date" class="form-input" id="appt-date">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="form-group" style="margin:0">
-            <label class="form-label">Time <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+            <label class="form-label"><span data-i18n="Time">Time</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
             <input type="time" class="form-input" id="appt-time">
           </div>
           <div class="form-group" style="margin:0">
-            <label class="form-label">Place <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
-            <input type="text" class="form-input" id="appt-location" maxlength="200" placeholder="Clinic / hospital">
+            <label class="form-label"><span data-i18n="Place">Place</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
+            <input type="text" class="form-input" id="appt-location" maxlength="200" placeholder="Clinic / hospital" data-i18n-ph="Clinic / hospital">
           </div>
         </div>
         <div class="form-group" style="margin:0">
-          <label class="form-label">Notes <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+          <label class="form-label"><span data-i18n="Notes">Notes</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
           <input type="text" class="form-input" id="appt-notes" maxlength="500"
-                 placeholder="e.g. fasting, bring old reports">
+                 placeholder="e.g. fasting, bring old reports" data-i18n-ph="e.g. fasting, bring old reports">
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
           <input type="checkbox" id="appt-remind" checked>
-          🔔 Remind me the evening before and the morning of
+          <span data-i18n="🔔 Remind me the evening before and the morning of">🔔 Remind me the evening before and the morning of</span>
         </label>
-        <button class="btn-primary" data-ev-click="addAppointment()">Add appointment</button>
+        <button class="btn-primary" data-ev-click="addAppointment()" data-i18n="Add appointment">Add appointment</button>
       </div>
     </div>
     <div id="appointments-list" style="margin-top:16px"></div>
 
     <div class="panel" style="margin-top:16px">
-      <div class="panel-header"><h2 class="panel-title">❓ Questions for your doctor</h2></div>
+      <div class="panel-header"><h2 class="panel-title" data-i18n="❓ Questions for your doctor">❓ Questions for your doctor</h2></div>
       <div style="padding:14px 16px">
         <div style="display:flex;gap:8px">
           <input type="text" class="form-input" id="dq-input" maxlength="400"
-                 placeholder="e.g. Should I keep taking the evening dose?"
+                 placeholder="e.g. Should I keep taking the evening dose?" data-i18n-ph="e.g. Should I keep taking the evening dose?"
                  data-ev-keydown="if(event.key==='Enter')addDoctorQuestion()">
-          <button class="btn-outline" style="flex-shrink:0;padding:0 16px" data-ev-click="addDoctorQuestion()">+ Add</button>
+          <button class="btn-outline" style="flex-shrink:0;padding:0 16px" data-ev-click="addDoctorQuestion()" data-i18n="+ Add">+ Add</button>
         </div>
         <div id="dq-list" style="margin-top:12px"></div>
-        <p style="font-size:11.5px;color:var(--gray-500);margin-top:10px">Unticked questions are added to your doctor-visit summary automatically.</p>
+        <p style="font-size:11.5px;color:var(--gray-500);margin-top:10px"><span data-i18n="Unticked questions are added to your doctor-visit summary automatically.">Unticked questions are added to your doctor-visit summary automatically.</span></p>
       </div>
     </div>
   </div>
@@ -744,8 +744,8 @@
   <div id="med-tab-emergency" class="wellness-tab-content" style="display:none;margin-top:16px">
     <div class="sos-panel">
       <div class="sos-panel-text">
-        <div class="sos-panel-title">🆘 Need help now?</div>
-        <div class="sos-panel-sub">Send an urgent alert to your caregivers with one tap.</div>
+        <div class="sos-panel-title" data-i18n="🆘 Need help now?">🆘 Need help now?</div>
+        <div class="sos-panel-sub" data-i18n="Send an urgent alert to your caregivers with one tap.">Send an urgent alert to your caregivers with one tap.</div>
       </div>
       <button class="sos-btn" data-ev-click="openSos()">SOS</button>
     </div>
@@ -2252,7 +2252,7 @@
     <form id="med-form">
       <div class="form-group" style="position:relative">
         <label class="form-label" data-i18n="Medicine Name">Medicine Name</label>
-        <input type="text" class="form-input" id="med-name-input" name="name" placeholder="e.g. Metformin, Aspirin" required
+        <input type="text" class="form-input" id="med-name-input" name="name" placeholder="e.g. Metformin, Aspirin" data-i18n-ph="e.g. Metformin, Aspirin" required
                autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
                aria-controls="med-name-suggest" aria-label="Medicine name"
                data-ev-input="drugAutocomplete(this.value)" data-ev-keydown="drugAutocompleteKey(event)">
@@ -2304,47 +2304,47 @@
           </div>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">When to take it <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+      <div class="form-group"><label class="form-label"><span data-i18n="When to take it">When to take it</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
         <select class="form-input" name="timing" id="med-timing">
-          <option value="">No special timing</option>
-          <option value="with_food">With food</option>
-          <option value="before_food">Before food</option>
-          <option value="after_food">After food</option>
-          <option value="empty_stomach">On an empty stomach</option>
-          <option value="bedtime">At bedtime</option>
-          <option value="with_water">With plenty of water</option>
+          <option value="" data-i18n="No special timing">No special timing</option>
+          <option value="with_food" data-i18n="With food">With food</option>
+          <option value="before_food" data-i18n="Before food">Before food</option>
+          <option value="after_food" data-i18n="After food">After food</option>
+          <option value="empty_stomach" data-i18n="On an empty stomach">On an empty stomach</option>
+          <option value="bedtime" data-i18n="At bedtime">At bedtime</option>
+          <option value="with_water" data-i18n="With plenty of water">With plenty of water</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Remind me before the dose <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+      <div class="form-group"><label class="form-label"><span data-i18n="Remind me before the dose">Remind me before the dose</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
         <select class="form-input" name="reminder_lead_min" id="med-lead">
-          <option value="0">At the dose time</option>
-          <option value="5">5 minutes before</option>
-          <option value="10">10 minutes before</option>
-          <option value="15">15 minutes before</option>
-          <option value="30">30 minutes before</option>
-          <option value="60">1 hour before</option>
+          <option value="0" data-i18n="At the dose time">At the dose time</option>
+          <option value="5" data-i18n="5 minutes before">5 minutes before</option>
+          <option value="10" data-i18n="10 minutes before">10 minutes before</option>
+          <option value="15" data-i18n="15 minutes before">15 minutes before</option>
+          <option value="30" data-i18n="30 minutes before">30 minutes before</option>
+          <option value="60" data-i18n="1 hour before">1 hour before</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Monthly cost (₹) <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
-        <input type="number" class="form-input" name="cost" id="med-cost" min="0" step="0.01" placeholder="e.g. 250">
+      <div class="form-group"><label class="form-label"><span data-i18n="Monthly cost (₹)">Monthly cost (₹)</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
+        <input type="number" class="form-input" name="cost" id="med-cost" min="0" step="0.01" placeholder="e.g. 250" data-i18n-ph="e.g. 250">
       </div>
-      <div class="form-group"><label class="form-label">What's it for? <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
-        <input type="text" class="form-input" name="purpose" maxlength="120" placeholder="e.g. blood pressure, thyroid, cholesterol">
+      <div class="form-group"><label class="form-label"><span data-i18n="What's it for?">What's it for?</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
+        <input type="text" class="form-input" name="purpose" maxlength="120" placeholder="e.g. blood pressure, thyroid, cholesterol" data-i18n-ph="e.g. blood pressure, thyroid, cholesterol">
       </div>
       <div class="form-group"><label class="form-label">Notes <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
-        <input type="text" class="form-input" name="notes" placeholder="e.g. avoid grapefruit">
+        <input type="text" class="form-input" name="notes" placeholder="e.g. avoid grapefruit" data-i18n-ph="e.g. avoid grapefruit">
       </div>
       <!-- Refill tracking -->
       <div class="refill-section">
         <button type="button" class="refill-toggle-btn" data-ev-click="toggleRefillSection()">
-          💊 Track remaining pills <span id="refill-status-text" style="color:var(--gray-400);font-weight:400"></span>
+          <span data-i18n="💊 Track remaining pills">💊 Track remaining pills</span> <span id="refill-status-text" style="color:var(--gray-400);font-weight:400"></span>
           <svg id="refill-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-left:auto;transform:rotate(-90deg);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <div id="refill-fields" style="display:none;margin-top:12px">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" data-i18n="Current pill count">Current pill count</label>
-              <input type="number" class="form-input" id="med-pill-count" placeholder="e.g. 30" min="0">
+              <input type="number" class="form-input" id="med-pill-count" placeholder="e.g. 30" data-i18n-ph="e.g. 30" min="0">
             </div>
             <div class="form-group">
               <label class="form-label" data-i18n="Pills per dose">Pills per dose</label>
@@ -3188,18 +3188,18 @@
 <div class="modal-overlay" id="sos-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeSos')">
   <div class="modal" id="sos-sheet" style="max-width:420px">
     <div class="modal-head">
-      <div class="modal-title">🆘 Send an urgent alert?</div>
+      <div class="modal-title" data-i18n="🆘 Send an urgent alert?">🆘 Send an urgent alert?</div>
       <button class="modal-close" data-ev-click="closeSos()">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:12px">
-        This immediately notifies your caregivers that you need help now.</p>
+        <span data-i18n="This immediately notifies your caregivers that you need help now.">This immediately notifies your caregivers that you need help now.</span></p>
       <div id="sos-recipients" style="font-size:13px;color:var(--gray-500);margin-bottom:12px"></div>
       <input type="text" class="form-input" id="sos-note" maxlength="200"
-             placeholder="Add a note — optional (e.g. chest pain)">
+             placeholder="Add a note — optional (e.g. chest pain)" data-i18n-ph="Add a note — optional (e.g. chest pain)">
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button class="btn-outline" data-ev-click="closeSos()">Cancel</button>
-        <button class="sos-send-btn" id="sos-send" data-ev-click="sendSos()">Send SOS</button>
+        <button class="btn-outline" data-ev-click="closeSos()" data-i18n="Cancel">Cancel</button>
+        <button class="sos-send-btn" id="sos-send" data-ev-click="sendSos()" data-i18n="Send SOS">Send SOS</button>
       </div>
     </div>
   </div>
