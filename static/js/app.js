@@ -9787,12 +9787,26 @@ function renderVitalSparks(data) {
       dir = `<span class="vs-dir" title="vs ${data.days} days ago">${arrow}</span>`;
     }
 
+    // Time-in-range — a factual "% within the reference band", with the band
+    // shown so it's never a black box, and a low/in/high split bar.
+    const tir = (data.tir || {})[t];
+    let tirHtml = '';
+    if (tir) {
+      const seg = (n, cls) => n ? `<span class="vs-tir-seg ${cls}" style="flex:${n}" title="${n} reading${n!==1?'s':''}"></span>` : '';
+      tirHtml = `
+        <div class="vs-tir">
+          <div class="vs-tir-head"><span><b>${tir.pct}%</b> in range</span><span class="vs-tir-band" title="Reference band">${esc(tir.band)}</span></div>
+          <div class="vs-tir-bar">${seg(tir.low,'is-low')}${seg(tir.in,'is-in')}${seg(tir.high,'is-high')}</div>
+        </div>`;
+    }
+
     return `<div class="vs-card">
       <div class="vs-top">
         <span class="vs-label">${esc(VITAL_ICON[t] || '📊')} ${esc(meta.label)}</span>
         <span class="vs-latest">${esc(latestVal)} <span class="vs-unit">${esc(meta.unit || '')}</span> ${dir}</span>
       </div>
       <div class="vs-spark">${svg}</div>
+      ${tirHtml}
       <div class="vs-foot">${entries.length} reading${entries.length!==1?'s':''} · ${data.days}d</div>
     </div>`;
   }).join('');

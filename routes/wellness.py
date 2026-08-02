@@ -817,10 +817,54 @@ def api_vitals_trend():
         'temperature':    {'min':36.1,'max':37.2},
     }
 
+    # Human-readable band label, shown so "in range" is never a black box.
+    BANDS = {
+        'blood_pressure': '90–120 / 60–80 mmHg',
+        'heart_rate':     '60–100 bpm',
+        'blood_sugar':    '70–99 mg/dL',
+        'spo2':           '≥ 95%',
+        'temperature':    '36.1–37.2 °C',
+    }
+
+    def _classify(vtype, v1, v2):
+        """'in' / 'low' / 'high' against the reference band, or None if unknown."""
+        R = RANGES.get(vtype)
+        if R is None or v1 is None:
+            return None
+        if vtype == 'blood_pressure':
+            if v2 is None:
+                return None
+            if v1 > R['sys_max'] or v2 > R['dia_max']:
+                return 'high'
+            if v1 < R['sys_min'] or v2 < R['dia_min']:
+                return 'low'
+            return 'in'
+        if 'min' in R and 'max' in R:
+            return 'high' if v1 > R['max'] else 'low' if v1 < R['min'] else 'in'
+        if 'min' in R:                       # spo2: only a floor
+            return 'low' if v1 < R['min'] else 'in'
+        return None
+
+    # Time-in-range: what share of readings sat inside the reference band.
+    # Factual only — it reports counts against a stated band, never a verdict.
+    tir = {}
+    for vtype, entries in groups.items():
+        counts = {'in': 0, 'low': 0, 'high': 0}
+        for e in entries:
+            c = _classify(vtype, e.get('value1'), e.get('value2'))
+            if c:
+                counts[c] += 1
+        total = sum(counts.values())
+        if total >= 3:                       # too few readings to bother
+            tir[vtype] = {**counts, 'total': total,
+                          'pct': round(counts['in'] / total * 100),
+                          'band': BANDS.get(vtype, '')}
+
     return jsonify({
         'days':   days,
         'groups': dict(groups),
         'ranges': RANGES,
+        'tir':    tir,
         'total':  len(rows),
     })
 
