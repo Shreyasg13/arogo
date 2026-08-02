@@ -263,6 +263,43 @@ const I18N = {
     '⚠️ Action needed': '⚠️ कार्रवाई चाहिए',
     '%1 pills · %2 days remaining': '%1 गोलियाँ · %2 दिन शेष',
     'Restock →': 'रीस्टॉक →',
+    // Fitness
+    'Log food to see nutrition insights integrated with your workouts.': 'अपनी कसरत के साथ पोषण जानकारी देखने के लिए भोजन दर्ज करें।',
+    'No activities logged yet': 'अभी कोई गतिविधि दर्ज नहीं',
+    'No activities yet': 'अभी कोई गतिविधि नहीं',
+    'Log a workout or connect a fitness app': 'कसरत दर्ज करें या फिटनेस ऐप जोड़ें',
+    'duration': 'अवधि',
+    'distance': 'दूरी',
+    'bpm avg': 'bpm औसत',
+    'running': 'दौड़',
+    'cycling': 'साइक्लिंग',
+    'walking': 'पैदल',
+    'swimming': 'तैराकी',
+    'yoga': 'योग',
+    'gym': 'जिम',
+    'hiking': 'हाइकिंग',
+    'stretching': 'स्ट्रेचिंग',
+    'tennis': 'टेनिस',
+    'pickleball': 'पिकलबॉल',
+    'basketball': 'बास्केटबॉल',
+    'football': 'फुटबॉल',
+    'badminton': 'बैडमिंटन',
+    'volleyball': 'वॉलीबॉल',
+    'baseball': 'बेसबॉल',
+    'cricket': 'क्रिकेट',
+    'golf': 'गोल्फ',
+    'boxing': 'बॉक्सिंग',
+    'martial_arts': 'मार्शल आर्ट्स',
+    'dancing': 'नृत्य',
+    'rowing': 'रोइंग',
+    'climbing': 'चढ़ाई',
+    'skiing': 'स्कीइंग',
+    'snowboarding': 'स्नोबोर्डिंग',
+    'skating': 'स्केटिंग',
+    'cycling_indoor': 'इनडोर साइक्लिंग',
+    'pilates': 'पिलेट्स',
+    'crossfit': 'क्रॉसफिट',
+    'other': 'अन्य',
     // Toasts (action feedback)
     'Action failed': 'कार्रवाई विफल',
     'Activity logged!': 'गतिविधि दर्ज हुई!',
@@ -4213,7 +4250,7 @@ function renderFitnessNutritionStrip(foodDay, targets) {
   if (sugEl) {
     const sugs = foodDay?.suggestions || [];
     if (sugs.length === 0) {
-      sugEl.innerHTML = '<div style="color:var(--gray-400);font-size:12.5px">Log food to see nutrition insights integrated with your workouts.</div>';
+      sugEl.innerHTML = `<div style="color:var(--gray-400);font-size:12.5px">${t('Log food to see nutrition insights integrated with your workouts.')}</div>`;
     } else {
       sugEl.innerHTML = sugs.slice(0, 3).map(s => `
         <div class="fns-sug-row fns-sug-row--${s.type}">
@@ -4228,13 +4265,13 @@ function renderTypeChart(types) {
   const el = document.getElementById('activity-type-chart');
   if (!el) return;
   const entries = Object.entries(types).sort((a,b) => b[1]-a[1]);
-  if (entries.length === 0) { el.innerHTML = '<div style="color:var(--gray-400);font-size:13px">No activities logged yet</div>'; return; }
+  if (entries.length === 0) { el.innerHTML = `<div style="color:var(--gray-400);font-size:13px">${t('No activities logged yet')}</div>`; return; }
   const max = entries[0][1];
   const colors = { running:'#4F8D74', cycling:'#5E8299', walking:'#E0A34E', swimming:'#D07D4E', yoga:'#5A9E70', gym:'#DC2626', hiking:'#B9803A', stretching:'#059669', tennis:'#C15646', pickleball:'#C15646', basketball:'#EA580C', football:'#5A9E70', badminton:'#C15646', volleyball:'#EA580C', baseball:'#5E8299', cricket:'#5A9E70', golf:'#5A9E70', boxing:'#DC2626', martial_arts:'#DC2626', dancing:'#D07D4E', rowing:'#5E8299', climbing:'#B9803A', skiing:'#5E8299', snowboarding:'#5E8299', skating:'#5E8299', cycling_indoor:'#5E8299', pilates:'#D07D4E', crossfit:'#DC2626', other:'#9CA3AF' };
   const actIcons = { running:'🏃', cycling:'🚴', walking:'🚶', swimming:'🏊', yoga:'🧘', gym:'🏋️', hiking:'⛰️', stretching:'🤸', tennis:'🎾', pickleball:'🏓', basketball:'🏀', football:'⚽', badminton:'🏸', volleyball:'🏐', baseball:'⚾', cricket:'🏏', golf:'⛳', boxing:'🥊', martial_arts:'🥋', dancing:'💃', rowing:'🚣', climbing:'🧗', skiing:'⛷️', snowboarding:'🏂', skating:'⛸️', cycling_indoor:'🚲', pilates:'🤸', crossfit:'💪', other:'🏅' };
   el.innerHTML = entries.map(([type, count]) => `
     <div class="type-row">
-      <div class="type-label">${actIcons[type]||'🏅'} ${type}</div>
+      <div class="type-label">${actIcons[type]||'🏅'} ${t(type)}</div>
       <div class="type-bar-track"><div class="type-bar-fill" style="width:${(count/max*100).toFixed(0)}%;background:${colors[type]||'var(--teal-500)'}"></div></div>
       <div class="type-count-label">${count}</div>
     </div>
@@ -4245,7 +4282,7 @@ function renderActivityFeed(activities) {
   const el = document.getElementById('activity-feed');
   if (!el) return;
   if (activities.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-text">No activities yet</div><div class="empty-sub">Log a workout or connect a fitness app</div><button class="btn-primary" data-ev-click="openActivityModal()">Log Activity</button></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🏅</div><div class="empty-text">${t('No activities yet')}</div><div class="empty-sub">${t('Log a workout or connect a fitness app')}</div><button class="btn-primary" data-ev-click="openActivityModal()">${t('Log Activity')}</button></div>`;
     return;
   }
   const actColors = { running:'#ECF3EF', cycling:'#EDF2F5', walking:'#FFFBEB', swimming:'#F9EBE0', yoga:'#F0FDF4', gym:'#FFF0EF', hiking:'#FEF3C7', stretching:'#ECFDF5', tennis:'#FFF0F0', pickleball:'#FFF0F0', basketball:'#FFF3E0', football:'#F0FDF4', badminton:'#FFF0F0', volleyball:'#FFF3E0', baseball:'#F0F4FF', cricket:'#F0FDF4', golf:'#F0FDF4', boxing:'#FFF0EF', martial_arts:'#FFF0EF', dancing:'#FDF0FF', rowing:'#EDF2F5', climbing:'#FEF3C7', skiing:'#EDF2F5', snowboarding:'#EDF2F5', skating:'#EDF2F5', cycling_indoor:'#EDF2F5', pilates:'#F9EBE0', crossfit:'#FFF0EF', other:'#F3F4F6' };
@@ -4261,10 +4298,10 @@ function renderActivityFeed(activities) {
         </div>
       </div>
       <div class="act-stats">
-        ${a.duration ? `<div class="act-stat"><div class="act-stat-val">${a.duration}m</div><div class="act-stat-label">duration</div></div>` : ''}
+        ${a.duration ? `<div class="act-stat"><div class="act-stat-val">${a.duration}m</div><div class="act-stat-label">${t('duration')}</div></div>` : ''}
         ${a.calories ? `<div class="act-stat"><div class="act-stat-val">${a.calories}</div><div class="act-stat-label">kcal</div></div>` : ''}
-        ${a.distance ? `<div class="act-stat"><div class="act-stat-val">${a.distance}km</div><div class="act-stat-label">distance</div></div>` : ''}
-        ${a.heart_rate_avg ? `<div class="act-stat"><div class="act-stat-val">${a.heart_rate_avg}</div><div class="act-stat-label">bpm avg</div></div>` : ''}
+        ${a.distance ? `<div class="act-stat"><div class="act-stat-val">${a.distance}km</div><div class="act-stat-label">${t('distance')}</div></div>` : ''}
+        ${a.heart_rate_avg ? `<div class="act-stat"><div class="act-stat-val">${a.heart_rate_avg}</div><div class="act-stat-label">${t('bpm avg')}</div></div>` : ''}
       </div>
       <button class="btn-icon act-delete" data-ev-click="deleteActivity('${a.id}')">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
