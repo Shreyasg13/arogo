@@ -295,5 +295,17 @@ test('t(): translates the whole nav surface to Devanagari when lang=hi', () => {
   } finally { S.localStorage.getItem = orig; }
 });
 
+test('tformat: fills %1/%2 placeholders after translation', () => {
+  eq(S.tformat('%1 of %2 doses taken', 3, 5), '3 of 5 doses taken');   // English: key verbatim
+  const orig = S.localStorage.getItem;
+  S.localStorage.getItem = () => 'hi';
+  try {
+    const out = S.tformat('%1 of %2 doses taken', 3, 5);
+    if (!out.includes('3') || !out.includes('5')) throw new Error(out);   // numbers survive
+    if (/%\d/.test(out)) throw new Error('placeholder left unfilled: ' + out);
+    if (!/[ऀ-ॿ]/.test(out)) throw new Error('not translated: ' + out);
+  } finally { S.localStorage.getItem = orig; }
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

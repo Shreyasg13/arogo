@@ -153,10 +153,28 @@ const I18N = {
     "Today's Calorie Balance": 'आज का कैलोरी संतुलन', 'Health Profile': 'स्वास्थ्य प्रोफ़ाइल',
     'Add New Habit': 'नई आदत जोड़ें', 'Doctor visit summary': 'डॉक्टर विज़िट सारांश',
     '🕘 Medicine history': '🕘 दवा इतिहास', "📅 This week's plan": '📅 इस हफ़्ते की योजना',
+    'Time for your dose': 'खुराक का समय', 'Next dose': 'अगली खुराक', 'Take %1': '%1 लें',
+    '+%1 more today': '+%1 और आज', 'Mark taken': 'लिया चिह्नित करें', 'All caught up': 'सब पूरा',
+    'Every dose taken today': 'आज हर खुराक ली गई', 'Nice work staying on track.': 'बढ़िया, आप ट्रैक पर हैं।',
+    'No medicines added': 'कोई दवा नहीं जोड़ी', 'Add your first medicine to track doses': 'खुराक ट्रैक करने के लिए अपनी पहली दवा जोड़ें',
+    'all doses taken 🎉': 'सभी खुराक ली गईं 🎉', 'doses taken today': 'आज ली गई खुराक',
+    'All done for today': 'आज के लिए सब पूरा', 'nothing left to take': 'लेने को कुछ नहीं बचा',
+    '%1 doses overdue': '%1 खुराक बकाया', '%1 dose overdue': '%1 खुराक बकाया',
+    'No medicines scheduled today': 'आज कोई दवा निर्धारित नहीं', 'All doses taken ✓': 'सभी खुराक ली गईं ✓',
+    '%1 of %2 doses taken': '%2 में से %1 खुराक ली गईं', 'no meds today': 'आज कोई दवा नहीं',
+    'all doses taken ✓': 'सभी खुराक ली गईं ✓', 'doses today': 'आज की खुराक',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
 function t(s) { const d = I18N[_lang()]; return (d && d[s]) || s; }
+// Interpolating translate: the key carries %1, %2… placeholders that are
+// filled from the trailing arguments AFTER translation. In English mode t()
+// returns the key verbatim, so the English sentence renders too. Used for the
+// JS-generated strings that splice in live numbers ("3 of 5 doses taken").
+function tformat(s) {
+  const a = [].slice.call(arguments, 1);
+  return t(s).replace(/%(\d+)/g, (_, i) => (a[i - 1] !== undefined ? a[i - 1] : ''));
+}
 
 function applyLang() {
   const lang = _lang();
@@ -171,9 +189,17 @@ function applyLang() {
   const lbl = document.getElementById('lang-toggle-label');
   if (lbl) lbl.textContent = lang === 'hi' ? 'English' : 'हिन्दी';
 }
+function _activeViewName() {
+  const el = document.querySelector('.view.active');
+  return el ? el.id.replace(/^view-/, '') : null;
+}
 function toggleLanguage() {
   try { localStorage.setItem('arogo_lang', _lang() === 'hi' ? 'en' : 'hi'); } catch (e) {}
   applyLang();
+  // Static [data-i18n] nodes are swept by applyLang; JS-rendered content only
+  // re-localizes when its view re-renders, so re-run the active view's loader.
+  const v = _activeViewName();
+  if (v) { try { switchView(v); } catch (e) {} }
 }
 document.addEventListener('DOMContentLoaded', applyLang);
 
@@ -1932,8 +1958,8 @@ async function loadDashboard() {
   setText('dws-meds', totalToday ? `${takenToday} / ${totalToday}` : '—');
   const medsBar = document.getElementById('dws-meds-bar');
   if (medsBar) medsBar.style.width = totalToday ? Math.round(takenToday / totalToday * 100) + '%' : '0%';
-  setText('dws-meds-sub', !totalToday ? 'no meds today'
-    : takenToday === totalToday ? 'all doses taken ✓' : 'doses today');
+  setText('dws-meds-sub', !totalToday ? t('no meds today')
+    : takenToday === totalToday ? t('all doses taken ✓') : t('doses today'));
 
   // Single "what do I do right now" hero — meds first, then a gentle fallback
   renderNextAction(doses, null);
@@ -2102,11 +2128,11 @@ function renderNextAction(doses, calorieState) {
     el.innerHTML = `
       <div class="next-action-icon">${next.icon || '💊'}</div>
       <div class="next-action-body">
-        <div class="next-action-eyebrow">${overdue ? 'Time for your dose' : 'Next dose'}</div>
-        <div class="next-action-title">Take ${escHtml(next.med_name)}</div>
-        <div class="next-action-sub">${escHtml(next.dosage || '')} ${escHtml(next.unit || '')} · ${next.time}${medTimingText(next) ? ' · ' + escHtml(medTimingText(next)) : ''}${more > 0 ? ` · +${more} more today` : ''}</div>
+        <div class="next-action-eyebrow">${overdue ? t('Time for your dose') : t('Next dose')}</div>
+        <div class="next-action-title">${tformat('Take %1', escHtml(next.med_name))}</div>
+        <div class="next-action-sub">${escHtml(next.dosage || '')} ${escHtml(next.unit || '')} · ${next.time}${medTimingText(next) ? ' · ' + escHtml(medTimingText(next)) : ''}${more > 0 ? ' · ' + tformat('+%1 more today', more) : ''}</div>
       </div>
-      <button class="next-action-btn" data-ev-click="markDoseTaken('${next.med_id}','${next.time}')">Mark taken</button>`;
+      <button class="next-action-btn" data-ev-click="markDoseTaken('${next.med_id}','${next.time}')">${t('Mark taken')}</button>`;
     el.style.display = '';
     return;
   }
@@ -2117,9 +2143,9 @@ function renderNextAction(doses, calorieState) {
     el.innerHTML = `
       <div class="next-action-icon">✓</div>
       <div class="next-action-body">
-        <div class="next-action-eyebrow">All caught up</div>
-        <div class="next-action-title">Every dose taken today</div>
-        <div class="next-action-sub">Nice work staying on track.</div>
+        <div class="next-action-eyebrow">${t('All caught up')}</div>
+        <div class="next-action-title">${t('Every dose taken today')}</div>
+        <div class="next-action-sub">${t('Nice work staying on track.')}</div>
       </div>`;
     el.style.display = '';
     return;
@@ -2162,10 +2188,10 @@ async function loadCarePanel() {
     <div class="care-list">${members.map(m => {
       const overdue = m.overdue.length;
       const done    = m.total > 0 && m.taken >= m.total;
-      const status  = overdue ? `${overdue} dose${overdue > 1 ? 's' : ''} overdue`
-                    : m.total === 0 ? 'No medicines scheduled today'
-                    : done ? 'All doses taken ✓'
-                    : `${m.taken} of ${m.total} doses taken`;
+      const status  = overdue ? tformat(overdue > 1 ? '%1 doses overdue' : '%1 dose overdue', overdue)
+                    : m.total === 0 ? t('No medicines scheduled today')
+                    : done ? t('All doses taken ✓')
+                    : tformat('%1 of %2 doses taken', m.taken, m.total);
       const detail  = overdue ? m.overdue.map(o => `${escHtml(o.med_name || 'dose')} · ${o.time}`).join(', ')
                     : (m.last_ago_min != null ? `last dose ${ago(m.last_ago_min)}` : '');
       const low     = (m.low_stock && m.low_stock.length) ? m.low_stock[0] : null;
@@ -3349,7 +3375,7 @@ function renderTodayTimeline(doses) {
   const ring = document.getElementById('med-ring');
   if (ring) ring.setAttribute('stroke-dasharray', `${total ? (taken / total * 194.8).toFixed(1) : 0} 194.8`);
   setText('med-ring-val', `${taken}/${total}`);
-  setText('med-ring-label', (total && taken === total) ? 'all doses taken 🎉' : 'doses taken today');
+  setText('med-ring-label', (total && taken === total) ? t('all doses taken 🎉') : t('doses taken today'));
   const nextIcon = document.getElementById('med-next-icon');
   const upcoming = [...doses].filter(d => !d.taken)
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0];
@@ -3358,8 +3384,8 @@ function renderTodayTimeline(doses) {
     setText('med-next-key', `${upcoming.dosage} ${upcoming.unit}${medTimingText(upcoming) ? ' · ' + medTimingText(upcoming) : ''}`);
     if (nextIcon) nextIcon.textContent = upcoming.icon || '💊';
   } else if (total) {
-    setText('med-next-val', 'All done for today');
-    setText('med-next-key', 'nothing left to take');
+    setText('med-next-val', t('All done for today'));
+    setText('med-next-key', t('nothing left to take'));
     if (nextIcon) nextIcon.textContent = '✅';
   }
   if (doses.length === 0) {
@@ -3406,7 +3432,7 @@ function renderMedicinesGrid(meds) {
   const grid = document.getElementById('medicines-grid');
   if (!grid) return;
   if (meds.length === 0) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-text">No medicines added</div><div class="empty-sub">Add your first medicine to track doses</div><button class="btn-primary" data-ev-click="openMedModal()">Add Medicine</button></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-text">${t('No medicines added')}</div><div class="empty-sub">${t('Add your first medicine to track doses')}</div><button class="btn-primary" data-ev-click="openMedModal()">${t('Add Medicine')}</button></div>`;
     return;
   }
   _medsById = {};
