@@ -171,6 +171,12 @@ const I18N = {
     'Taken %1× today': 'आज %1× ली', 'last %1': 'अंतिम %1', '💡 For %1': '💡 %1 के लिए',
     'Active': 'सक्रिय', 'Paused': 'रुका हुआ', 'Pause': 'रोकें', 'Activate': 'चालू करें',
     'Delete': 'हटाएँ',
+    'Breakfast': 'नाश्ता', 'Lunch': 'दोपहर का खाना', 'Snack': 'स्नैक', 'Dinner': 'रात का खाना',
+    'Nothing logged': 'कुछ दर्ज नहीं', '%1g protein': '%1g प्रोटीन', '+ Add to %1': '%1 में जोड़ें',
+    'Viewing': 'देख रहे हैं',
+    'you can still add, edit, or delete items for this day.': 'आप अब भी इस दिन के आइटम जोड़, संपादित या हटा सकते हैं।',
+    'Edit quantity': 'मात्रा संपादित करें', 'Remove': 'हटाएँ',
+    'Log food to see micronutrients': 'सूक्ष्म पोषक देखने के लिए खाना दर्ज करें',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
@@ -5385,8 +5391,8 @@ function renderMealSections(byMeal) {
                 padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;
                 font-size:13px;color:var(--teal-800)">
       <span>📅</span>
-      <span>Viewing <strong>${new Date(foodDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</strong>
-       — you can still add, edit, or delete items for this day.</span>
+      <span>${t('Viewing')} <strong>${new Date(foodDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</strong>
+       — ${t('you can still add, edit, or delete items for this day.')}</span>
     </div>` : '';
 
   el.innerHTML = pastBanner + MEAL_ORDER.map(mtype => {
@@ -5410,7 +5416,7 @@ function renderMealSections(byMeal) {
           <span class="food-macro-chip fmc-fat">${Math.round(item.fat)}g F</span>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn-icon" title="Edit quantity"
+          <button class="btn-icon" title="${t('Edit quantity')}"
                   data-ev-click="editFoodQty('${item.id}',${item.quantity_g},'${escHtml(item.food_name)}')"
                   style="color:var(--gray-400);padding:4px">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -5419,7 +5425,7 @@ function renderMealSections(byMeal) {
               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          <button class="btn-icon" title="Remove"
+          <button class="btn-icon" title="${t('Remove')}"
                   data-ev-click="removeFoodLog('${item.id}')"
                   style="color:var(--gray-300);padding:4px">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -5431,12 +5437,12 @@ function renderMealSections(byMeal) {
       </div>`).join('');
 
     const headerRight = meal.items.length > 0
-      ? `<div class="meal-block-cal">${Math.round(meal.calories)} kcal · ${Math.round(meal.protein)}g protein</div>`
-      : `<div class="meal-block-cal meal-block-cal--empty">Nothing logged</div>`;
+      ? `<div class="meal-block-cal">${Math.round(meal.calories)} kcal · ${tformat('%1g protein', Math.round(meal.protein))}</div>`
+      : `<div class="meal-block-cal meal-block-cal--empty">${t('Nothing logged')}</div>`;
 
     return `<div class="meal-block">
       <div class="meal-block-header">
-        <div class="meal-block-title">${meta.icon} ${meta.label}</div>
+        <div class="meal-block-title">${meta.icon} ${t(meta.label)}</div>
         ${headerRight}
       </div>
       ${itemsHtml ? `<div class="meal-items">${itemsHtml}</div>` : ''}
@@ -5445,7 +5451,7 @@ function renderMealSections(byMeal) {
              stroke-width="2.5" stroke-linecap="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
-        + Add to ${meta.label}
+        ${tformat('+ Add to %1', t(meta.label))}
       </button>
     </div>`;
   }).join('');
@@ -5469,7 +5475,7 @@ function renderMicronutrients(totals, logCount) {
   ];
 
   if (logCount === 0) {
-    el.innerHTML = '<div style="color:var(--gray-400);font-size:12.5px;text-align:center;padding:12px 0">Log food to see micronutrients</div>';
+    el.innerHTML = `<div style="color:var(--gray-400);font-size:12.5px;text-align:center;padding:12px 0">${t('Log food to see micronutrients')}</div>`;
     return;
   }
 
