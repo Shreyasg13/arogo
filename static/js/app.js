@@ -403,6 +403,11 @@ const I18N = {
     'Weight': 'वज़न',
     '+ Add exercise': '+ व्यायाम जोड़ें',
     'e.g. Bench Press': 'जैसे बेंच प्रेस',
+    // Portion picker + vitals list
+    'Quantity': 'मात्रा', 'Your usual portion': 'आपका सामान्य हिस्सा', 'Meal': 'भोजन', 'Add to %1': '%1 में जोड़ें',
+    'Protein': 'प्रोटीन', 'Carbs': 'कार्ब्स', 'Fat': 'वसा', 'Fiber': 'फाइबर',
+    'No readings logged': 'कोई रीडिंग दर्ज नहीं',
+    'High': 'उच्च', 'Low': 'निम्न', 'Elevated': 'बढ़ा हुआ', 'Warn': 'चेतावनी', 'Normal': 'सामान्य',
     // Connected services + activity name placeholders
     '✓ Connected': '✓ जुड़ा हुआ',
     'Last sync: %1': 'अंतिम सिंक: %1',
@@ -6273,14 +6278,14 @@ function selectFoodItem(food) {
     // For gram-only foods: simple single input
     if (qtyMode === 'gram') {
       return `<div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">Quantity</label>
+        <label class="form-label">${t('Quantity')}</label>
         <div class="food-qty-single-row">
           <input type="number" class="form-input" id="food-qty-input"
                  value="${startG}" min="1" step="5"
                  data-ev-input="updateFoodPreview(this.value)">
           <span class="food-qty-unit-badge">g</span>
         </div>
-        ${usualG ? `<div class="food-qty-usual">Your usual portion</div>` : ''}
+        ${usualG ? `<div class="food-qty-usual">${t('Your usual portion')}</div>` : ''}
       </div>`;
     }
 
@@ -6313,7 +6318,7 @@ function selectFoodItem(food) {
 
     return '<div class="form-group" style="margin-bottom:12px">' +
       '<div class="food-qty-header">' +
-        '<label class="form-label" style="margin:0">Quantity</label>' +
+        '<label class="form-label" style="margin:0">' + t('Quantity') + '</label>' +
         '<div class="food-unit-toggle" id="food-unit-toggle">' +
           '<button class="fut-btn active" id="fut-btn-primary" data-ev-click="switchQtyUnit(\'primary\',' + basisG + ',\'' + qtyMode + '\')">' + unit1 + '</button>' +
           '<button class="fut-btn" id="fut-btn-secondary" data-ev-click="switchQtyUnit(\'secondary\',' + basisG + ',\'' + qtyMode + '\')">' + unit2 + '</button>' +
@@ -6326,13 +6331,13 @@ function selectFoodItem(food) {
         '<span class="food-qty-unit-badge" id="food-qty-unit-badge">' + unit1 + '</span>' +
       '</div>' +
       '<div class="food-qty-hint" id="food-qty-hint">' + hint + '</div>' +
-      (usualG ? '<div class="food-qty-usual">Your usual portion</div>' : '') +
+      (usualG ? '<div class="food-qty-usual">' + t('Your usual portion') + '</div>' : '') +
     '</div>';
   };
 
   const mealBtns = MEAL_TYPES.map(m => `
     <button type="button" class="meal-type-btn ${selectedMealType===m.id?'selected':''}"
-      data-ev-click="selectMealType('${m.id}')">${m.icon} ${m.label}</button>`).join('');
+      data-ev-click="selectMealType('${m.id}')">${m.icon} ${t(m.label)}</button>`).join('');
 
   col.innerHTML = `<div class="food-add-form">
     <div class="food-add-header">
@@ -6346,18 +6351,18 @@ function selectFoodItem(food) {
       <div style="font-size:20px;font-weight:700;font-family:'EB Garamond',serif;color:var(--gray-900);margin-bottom:10px" id="fp-cal-preview">${cal} kcal</div>
       ${macros.map(m => `
         <div class="nutprev-row">
-          <div class="nutprev-label">${m.label}</div>
+          <div class="nutprev-label">${t(m.label)}</div>
           <div class="nutprev-bar"><div class="nutprev-fill" id="fp-bar-${m.label.toLowerCase()}" style="width:${Math.min(m.val/m.max*100,100).toFixed(0)}%;background:${m.color}"></div></div>
           <div class="nutprev-val" id="fp-val-${m.label.toLowerCase()}">${m.val}g</div>
         </div>`).join('')}
     </div>
     ${buildQtyUI()}
     <div class="form-group" style="margin-bottom:14px">
-      <label class="form-label">Meal</label>
+      <label class="form-label">${t('Meal')}</label>
       <div class="meal-type-picker">${mealBtns}</div>
     </div>
     <button class="btn-primary" style="width:100%" data-ev-click="logSelectedFood()">
-      Add to ${MEAL_TYPES.find(m=>m.id===selectedMealType)?.label || 'Meal'}
+      ${tformat('Add to %1', t(MEAL_TYPES.find(m=>m.id===selectedMealType)?.label || 'Meal'))}
     </button>
   </div>`;
 
@@ -8345,7 +8350,7 @@ async function loadVitals() {
   const el = document.getElementById('vitals-list');
   if (!el) return;
   if (!r.length) {
-    el.innerHTML = '<div class="todo-empty"><div class="todo-empty-icon">❤️</div><div class="todo-empty-text">No readings logged</div></div>';
+    el.innerHTML = `<div class="todo-empty"><div class="todo-empty-icon">❤️</div><div class="todo-empty-text">${t('No readings logged')}</div></div>`;
     return;
   }
   el.innerHTML = r.map(v => {
@@ -8358,7 +8363,7 @@ async function loadVitals() {
         <div class="vital-reading">${display} <span style="font-size:12px;color:var(--gray-400)">${v.unit}</span></div>
         <div class="vital-meta">${v.date_key} ${v.notes ? '· '+escHtml(v.notes) : ''}</div>
       </div>
-      ${flagStr ? `<span class="vital-flag ${flagStr}">${flagStr.charAt(0).toUpperCase()+flagStr.slice(1)}</span>` : ''}
+      ${flagStr ? `<span class="vital-flag ${flagStr}">${t(flagStr.charAt(0).toUpperCase()+flagStr.slice(1))}</span>` : ''}
       <button class="todo-act-btn del" data-ev-click="delVital('${v.id}')">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
