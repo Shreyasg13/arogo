@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Arogo backup nightly
+
+[Timer]
+# Every day at 03:30 local time. Persistent=true runs a missed backup on next
+# boot (handy for a Pi that isn't on 24/7).
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

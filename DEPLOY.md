@@ -30,6 +30,94 @@ is all it takes to switch backends.
 For Railway/Fly, the `Procfile` covers the start command; supply the
 same env vars from the table above.
 
+## Raspberry Pi (self-hosting)
+
+Run Arogo at home on a Pi as the sole user. SQLite is the default and the right
+choice here — no database server to run. The ready-made units and scripts are in
+[`deploy/pi/`](deploy/pi/); the files assume user `pi` and app dir
+`/home/pi/arogo` (edit if yours differ).
+
+**Why Tailscale:** Web Push and the PWA service worker only work over HTTPS (a
+"secure context"). [Tailscale](https://tailscale.com) gives your Pi an HTTPS URL
+on your private tailnet with zero port-forwarding or certificates — reach it from
+your phone anywhere, and nobody else can.
+
+### 1. Get the code and dependencies
+
+```bash
+sudo apt update && sudo apt install -y python3-venv git
+git clone <your-repo-url> /home/pi/arogo
+cd /home/pi/arogo
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+### 2. Configure the environment
+
+```bash
+cp deploy/pi/arogo.env.example arogo.env
+python3 -c "import secrets; print(secrets.token_hex(32))"   # paste as SECRET_KEY
+nano arogo.env        # set SECRET_KEY and (after step 3) APP_BASE_URL
+chmod 600 arogo.env   # it holds your secret key
+```
+
+### 3. HTTPS with Tailscale
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+sudo tailscale serve --bg 8000          # proxy https://<pi>.<tailnet>.ts.net → :8000
+tailscale serve status                  # copy the https URL
+```
+
+Put that URL in `arogo.env` as `APP_BASE_URL`.
+
+### 4. Install the systemd services
+
+```bash
+sudo cp deploy/pi/arogo-web.service deploy/pi/arogo-scheduler.service /etc/systemd/system/
+chmod +x deploy/pi/arogo-backup.sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now arogo-web.service arogo-scheduler.service
+```
+
+The **web** unit runs gunicorn with `SCHEDULER_ENABLED=0`; the **scheduler** unit
+runs `run_scheduler.py` with `SCHEDULER_ENABLED=1`. Keep the scheduler on exactly
+one process so jobs never double-fire.
+
+### 5. Nightly backups
+
+```bash
+sudo cp deploy/pi/arogo-backup.service deploy/pi/arogo-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now arogo-backup.timer
+sudo systemctl start arogo-backup.service    # test it once now
+ls -lh /home/pi/arogo-backups                # gzipped snapshot appears
+```
+
+Snapshots are crash-consistent (SQLite online backup) and rotate after 14 days.
+Copy `arogo-backups/` off the Pi periodically — an SD card is a single point of
+failure. You can also pull a one-file backup any time from **Data → Backup &
+restore** in the app.
+
+### 6. Verify
+
+```bash
+curl -s http://127.0.0.1:8000/healthz          # {"status":"ok","scheduler":{"ok":true,...}}
+journalctl -u arogo-web -u arogo-scheduler -f  # live logs
+```
+
+Open the Tailscale HTTPS URL on your phone, add to home screen, grant
+notifications → a dose/water push should arrive with the app closed.
+
+### Updating
+
+```bash
+cd /home/pi/arogo && git pull
+.venv/bin/pip install -r requirements.txt
+sudo systemctl restart arogo-web arogo-scheduler
+```
+
 ## Security posture (current state)
 
 - Sessions: signed HttpOnly cookie, 7-day expiry, `Secure` + HSTS when `COOKIE_SECURE=1`

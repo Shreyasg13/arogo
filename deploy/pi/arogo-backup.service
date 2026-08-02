@@ -1,0 +1,9 @@
+[Unit]
+Description=Arogo nightly database backup
+After=arogo-web.service
+
+[Service]
+Type=oneshot
+User=pi
+WorkingDirectory=/home/pi/arogo
+ExecStart=/home/pi/arogo/deploy/pi/arogo-backup.sh
