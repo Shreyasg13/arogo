@@ -275,5 +275,25 @@ test('composeSpokenBriefing: mentions low stock and uses evening greeting', () =
   if (!txt.includes('2 medicines are running low.')) throw new Error(txt);
 });
 
+test('t(): identity in English (no stored pref) and for untranslated keys', () => {
+  eq(S.t('Home'), 'Home');                        // stub localStorage → 'en'
+  eq(S.t('Something never translated'), 'Something never translated');
+});
+test('t(): translates the whole nav surface to Devanagari when lang=hi', () => {
+  const orig = S.localStorage.getItem;
+  S.localStorage.getItem = () => 'hi';            // force Hindi
+  const dev = /[ऀ-ॿ]/;
+  try {
+    eq(S.t('Home'), 'होम');
+    for (const k of ['Home','Food','Meds','Sleep','More','Dashboard','Medicines',
+                     'Medical','Body & Vitals','Family','Fitness','Habits','Journal',
+                     'Tasks','Progress','Alerts','Food & Water','Notifications',
+                     'Care','Track']) {
+      const v = S.t(k);
+      if (v === k || !dev.test(v)) throw new Error(`"${k}" not translated → "${v}"`);
+    }
+  } finally { S.localStorage.getItem = orig; }
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

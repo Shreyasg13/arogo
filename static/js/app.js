@@ -39,6 +39,45 @@ document.addEventListener('DOMContentLoaded', _syncThemeToggleUI);
 document.addEventListener('DOMContentLoaded', _syncSimpleToggleUI);
 document.addEventListener('DOMContentLoaded', _applySimpleLabels);
 
+// ── Language (English / हिन्दी) ────────────────────────────────────
+// A lightweight i18n layer that mirrors how Simple View swaps labels: any
+// element tagged data-i18n="English text" has its textContent replaced with the
+// current language's translation (or left as the English key when untranslated).
+// The dictionary is keyed by the English source string, so tagging more elements
+// later is just adding an attribute — the map grows without renaming keys.
+const I18N = {
+  hi: {
+    // Mobile tab bar + navigation
+    'Home': 'होम', 'Food': 'खाना', 'Meds': 'दवाइयाँ', 'Sleep': 'नींद', 'More': 'और',
+    'Dashboard': 'डैशबोर्ड', 'Medicines': 'दवाइयाँ', 'Medical': 'मेडिकल',
+    'Body & Vitals': 'शरीर व वाइटल्स', 'Body': 'शरीर', 'Family': 'परिवार',
+    'Fitness': 'फ़िटनेस', 'Habits': 'आदतें', 'Journal': 'डायरी', 'Tasks': 'कार्य',
+    'Progress': 'प्रगति', 'Alerts': 'सूचनाएँ', 'Theme': 'थीम',
+    'Food & Water': 'खाना व पानी', 'Notifications': 'सूचनाएँ',
+    // Section headers in the side nav
+    'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
+    // The toggle itself
+    'Language': 'भाषा',
+  },
+};
+function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
+function t(s) { const d = I18N[_lang()]; return (d && d[s]) || s; }
+
+function applyLang() {
+  const lang = _lang();
+  try { document.documentElement.lang = lang; } catch (e) {}
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  const lbl = document.getElementById('lang-toggle-label');
+  if (lbl) lbl.textContent = lang === 'hi' ? 'English' : 'हिन्दी';
+}
+function toggleLanguage() {
+  try { localStorage.setItem('arogo_lang', _lang() === 'hi' ? 'en' : 'hi'); } catch (e) {}
+  applyLang();
+}
+document.addEventListener('DOMContentLoaded', applyLang);
+
 // ── Simple View (senior / large-type mode) ────────────────────────
 // A second display axis alongside dark/light. 'simple' enlarges text and
 // tap targets, raises contrast, and collapses the nav to the essentials.
@@ -499,6 +538,7 @@ function showApp() {
   try { setupPushSubscription(); }   catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
   try { scheduleInstallPrompt(); }   catch(e) {}
+  try { applyLang(); }               catch(e) {}
   // Replay anything that was logged while offline, and show a pending badge.
   try { _updateOutboxBadge(); flushOutbox(); } catch(e) {}
 
