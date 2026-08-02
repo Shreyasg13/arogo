@@ -403,6 +403,35 @@ const I18N = {
     'Weight': 'वज़न',
     '+ Add exercise': '+ व्यायाम जोड़ें',
     'e.g. Bench Press': 'जैसे बेंच प्रेस',
+    // Connected services + activity name placeholders
+    '✓ Connected': '✓ जुड़ा हुआ',
+    'Last sync: %1': 'अंतिम सिंक: %1',
+    'Connect': 'जोड़ें',
+    'Setup needed': 'सेटअप ज़रूरी',
+    '⚙ Add credentials to .env first': '⚙ पहले .env में क्रेडेंशियल जोड़ें',
+    'Connected ✓': 'जुड़ गया ✓',
+    'No apps connected yet. Click Connect to link a fitness app.': 'अभी कोई ऐप नहीं जुड़ा। फिटनेस ऐप जोड़ने के लिए जोड़ें पर क्लिक करें।',
+    'Never': 'कभी नहीं',
+    'Sync now': 'अभी सिंक करें',
+    'Disconnect': 'हटाएँ',
+    'Morning Run': 'सुबह की दौड़',
+    'Evening Ride': 'शाम की सवारी',
+    'Afternoon Walk': 'दोपहर की सैर',
+    'Lap Swimming': 'लैप तैराकी',
+    'Trail Hike': 'ट्रेल हाइक',
+    'Gym Session': 'जिम सत्र',
+    'Yoga Flow': 'योग फ़्लो',
+    'Tennis Match': 'टेनिस मैच',
+    'Pickleball Game': 'पिकलबॉल खेल',
+    'Basketball Game': 'बास्केटबॉल खेल',
+    'Football Match': 'फुटबॉल मैच',
+    'Spin Class': 'स्पिन क्लास',
+    'CrossFit WOD': 'क्रॉसफिट WOD',
+    'Boxing Session': 'बॉक्सिंग सत्र',
+    'Ski Run': 'स्की रन',
+    'Golf Round': 'गोल्फ राउंड',
+    'Workout': 'कसरत',
+    'Activity': 'गतिविधि',
     // Food modal
     'all foods': 'सभी खाद्य', 'No results': 'कोई परिणाम नहीं', '%1 items in %2': '%2 में %1 आइटम',
     'Nothing found': 'कुछ नहीं मिला', 'Try a different name or pick another category': 'कोई और नाम आज़माएँ या दूसरी श्रेणी चुनें',
@@ -4841,7 +4870,7 @@ function setupActivityTypePicker() {
           crossfit:'CrossFit WOD', boxing:'Boxing Session', skiing:'Ski Run',
           golf:'Golf Round', other:'Workout'
         };
-        nameInput.placeholder = placeholders[btn.dataset.type] || 'Activity';
+        nameInput.placeholder = t(placeholders[btn.dataset.type] || 'Activity');
       }
       renderActivityFields(btn.dataset.type);
     });
@@ -4933,7 +4962,7 @@ async function connectService(service) {
     showToast(tformat('✓ Imported %1 activities from %2', data.imported, service), 'success');
     // Mark as connected
     const row = document.querySelector(`.app-connect-row[data-service="${service}"] .btn-connect`);
-    if (row) { row.textContent = 'Connected ✓'; row.classList.add('connected'); }
+    if (row) { row.textContent = t('Connected ✓'); row.classList.add('connected'); }
     loadFitness();
     loadDashboard();
   } else showToast('Connection failed', 'error');
@@ -5000,13 +5029,13 @@ async function loadConnectedServices() {
     if (!btn) return;
     const svcStatus = status[svc] || {};
     if (svcStatus.connected) {
-      btn.textContent = '✓ Connected';
+      btn.textContent = t('✓ Connected');
       btn.classList.add('connected');
       btn.onclick = null;
       if (info && svcStatus.last_sync)
-        info.textContent = `Last sync: ${new Date(svcStatus.last_sync).toLocaleDateString()}`;
+        info.textContent = tformat('Last sync: %1', new Date(svcStatus.last_sync).toLocaleDateString());
     } else {
-      btn.textContent = svcStatus.configured ? 'Connect' : 'Setup needed';
+      btn.textContent = svcStatus.configured ? t('Connect') : t('Setup needed');
       btn.classList.remove('connected');
       btn.style.opacity = svcStatus.configured ? '1' : '0.6';
       btn.onclick = () => connectService(svc);
@@ -5021,12 +5050,12 @@ async function loadConnectedServices() {
     if (s.connected) {
       card.classList.add('connected');
       if (cardBtn) {
-        cardBtn.textContent = `✓ Connected${s.athlete_name ? ' — ' + s.athlete_name : ''}`;
+        cardBtn.textContent = t('✓ Connected') + (s.athlete_name ? ' — ' + s.athlete_name : '');
         cardBtn.style.background = 'var(--green-600)';
       }
     } else if (!s.configured && svc !== 'apple_health') {
       if (cardBtn) {
-        cardBtn.textContent = '⚙ Add credentials to .env first';
+        cardBtn.textContent = t('⚙ Add credentials to .env first');
         cardBtn.style.background = 'var(--gray-400)';
         cardBtn.style.cursor = 'default';
       }
@@ -5041,24 +5070,24 @@ function renderConnectedPanel(tokens, syncLog) {
   if (!el) return;
 
   if (tokens.length === 0) {
-    el.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:8px 0">No apps connected yet. Click Connect to link a fitness app.</div>';
+    el.innerHTML = `<div style="color:var(--gray-400);font-size:13px;padding:8px 0">${t('No apps connected yet. Click Connect to link a fitness app.')}</div>`;
     return;
   }
 
-  el.innerHTML = tokens.map(t => {
-    const recentSync = syncLog.find(s => s.service === t.service);
+  el.innerHTML = tokens.map(tk => {
+    const recentSync = syncLog.find(s => s.service === tk.service);
     const statusColor = recentSync?.status === 'error' ? 'var(--red-500)' : 'var(--green-500)';
-    const syncLabel = t.last_sync ? new Date(t.last_sync).toLocaleString() : 'Never';
+    const syncLabel = tk.last_sync ? new Date(tk.last_sync).toLocaleString() : t('Never');
     return `
       <div class="connected-service-row">
         <div class="cs-dot" style="background:${statusColor}"></div>
         <div class="cs-info">
-          <div class="cs-name">${SERVICE_LABELS[t.service] || t.service}</div>
-          <div class="cs-meta">${t.athlete_name ? escHtml(t.athlete_name) + ' · ' : ''}Last sync: ${syncLabel}</div>
+          <div class="cs-name">${SERVICE_LABELS[tk.service] || tk.service}</div>
+          <div class="cs-meta">${tk.athlete_name ? escHtml(tk.athlete_name) + ' · ' : ''}${tformat('Last sync: %1', syncLabel)}</div>
         </div>
         <div class="cs-actions">
-          <button class="btn-outline-sm" data-ev-click="triggerSync('${t.service}')">Sync now</button>
-          <button class="btn-icon" data-ev-click="disconnectService('${t.service}')" title="Disconnect" style="color:var(--red-400)">
+          <button class="btn-outline-sm" data-ev-click="triggerSync('${tk.service}')">${t('Sync now')}</button>
+          <button class="btn-icon" data-ev-click="disconnectService('${tk.service}')" title="${t('Disconnect')}" style="color:var(--red-400)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
