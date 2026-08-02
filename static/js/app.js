@@ -403,6 +403,11 @@ const I18N = {
     'Weight': 'वज़न',
     '+ Add exercise': '+ व्यायाम जोड़ें',
     'e.g. Bench Press': 'जैसे बेंच प्रेस',
+    // Food modal
+    'all foods': 'सभी खाद्य', 'No results': 'कोई परिणाम नहीं', '%1 items in %2': '%2 में %1 आइटम',
+    'Nothing found': 'कुछ नहीं मिला', 'Try a different name or pick another category': 'कोई और नाम आज़माएँ या दूसरी श्रेणी चुनें',
+    'My food': 'मेरा खाना', '⭐ My Foods': '⭐ मेरे खाद्य', 'serving': 'सर्विंग', '✕ remove': '✕ हटाएँ',
+    '+ Custom food': '+ कस्टम खाना', 'Saving…': 'सहेजा जा रहा है…', 'Save & Add to Meal': 'सहेजें व भोजन में जोड़ें',
     // Toasts (action feedback)
     'Action failed': 'कार्रवाई विफल',
     'Activity logged!': 'गतिविधि दर्ज हुई!',
@@ -5884,7 +5889,7 @@ function closeCustomFoodForm() {
   const form = document.getElementById('custom-food-form');
   const btn  = document.getElementById('custom-food-toggle-btn');
   if (form) form.style.display = 'none';
-  if (btn)  btn.textContent = '+ Custom food';
+  if (btn)  btn.textContent = t('+ Custom food');
 }
 
 async function saveCustomFood() {
@@ -5906,7 +5911,7 @@ async function saveCustomFood() {
     body: JSON.stringify({ name, calories, protein, carbs, fat, fiber: 0, serving_g: serving })
   }).then(r => r.json()).catch(() => null);
 
-  if (btn) { btn.disabled = false; btn.textContent = 'Save & Add to Meal'; }
+  if (btn) { btn.disabled = false; btn.textContent = t('Save & Add to Meal'); }
 
   if (r?.success) {
     showToast(`"${name}" saved to My Foods ✓`, 'success');
@@ -6136,13 +6141,13 @@ async function searchFoodDB(query) {
     const el = document.getElementById('food-search-results');
     const countEl = document.getElementById('food-results-count');
     if (!el) return;
-    const label = activeFoodCat || 'all foods';
-    if (countEl) countEl.textContent = all.length === 0 ? 'No results' : `${all.length} item${all.length !== 1 ? 's' : ''} in ${label}`;
+    const label = activeFoodCat || t('all foods');
+    if (countEl) countEl.textContent = all.length === 0 ? t('No results') : tformat('%1 items in %2', all.length, label);
     if (all.length === 0) {
       el.innerHTML = `<div class="food-empty-state" style="padding:28px 0;text-align:center">
         <div style="font-size:28px;margin-bottom:8px">🔍</div>
-        <div style="font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:4px">Nothing found</div>
-        <div style="font-size:12px;color:var(--gray-400)">Try a different name or pick another category</div>
+        <div style="font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:4px">${t('Nothing found')}</div>
+        <div style="font-size:12px;color:var(--gray-400)">${t('Try a different name or pick another category')}</div>
       </div>`;
       return;
     }
@@ -6153,17 +6158,17 @@ async function searchFoodDB(query) {
         <div class="food-result-info">
           <div class="food-result-name">
             ${escHtml(f.name)}
-            ${f.is_custom ? '<span class="food-custom-badge">My food</span>' : ''}
+            ${f.is_custom ? `<span class="food-custom-badge">${t('My food')}</span>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
-            <span class="food-result-category-tag">${f.is_custom ? '⭐ My Foods' : f.category}</span>
-            <span class="food-result-meta">${f.serving_g}${f.serving_unit||'g'} serving</span>
+            <span class="food-result-category-tag">${f.is_custom ? t('⭐ My Foods') : f.category}</span>
+            <span class="food-result-meta">${f.serving_g}${f.serving_unit||'g'} ${t('serving')}</span>
           </div>
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div class="food-result-cal">${Math.round(f.calories || f.cal || 0)} kcal</div>
           <div style="font-size:10.5px;color:var(--gray-400)">${f.protein}g P</div>
-          ${f.is_custom ? `<button style="font-size:10px;color:var(--red-400);background:none;border:none;cursor:pointer;margin-top:2px" data-ev-click="event.stopPropagation();deleteCustomFood('${f.id}')">✕ remove</button>` : ''}
+          ${f.is_custom ? `<button style="font-size:10px;color:var(--red-400);background:none;border:none;cursor:pointer;margin-top:2px" data-ev-click="event.stopPropagation();deleteCustomFood('${f.id}')">${t('✕ remove')}</button>` : ''}
         </div>
       </div>`;
     }).join('');
