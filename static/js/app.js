@@ -63,6 +63,14 @@ const I18N = {
     'This week': 'इस सप्ताह', 'History': 'इतिहास', 'Printable card': 'प्रिंट कार्ड',
     'Import prescription': 'पर्ची से जोड़ें', 'Add Medicine': 'दवा जोड़ें',
     "☀️ Today's schedule": '☀️ आज का शेड्यूल', 'Your Medicines': 'आपकी दवाइयाँ',
+    // Dashboard
+    'Good morning': 'सुप्रभात', 'Good afternoon': 'नमस्कार', 'Good evening': 'शुभ संध्या',
+    'Today': 'आज', 'Manage →': 'प्रबंधित करें →',
+    'hydration': 'पानी', 'active min · this week': 'सक्रिय मिनट · इस सप्ताह',
+    'symptoms today': 'आज के लक्षण', "Today's Medicines": 'आज की दवाइयाँ',
+    'Log Water': 'पानी दर्ज करें', 'Log Meal': 'भोजन दर्ज करें',
+    'Log Workout': 'वर्कआउट दर्ज करें', 'Add Thought': 'विचार जोड़ें', 'Add Task': 'कार्य जोड़ें',
+    'food tracker': 'भोजन ट्रैकर', 'fitness': 'फ़िटनेस', 'journal': 'डायरी', 'to-do list': 'कार्य सूची',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
@@ -1214,7 +1222,7 @@ function setGreeting() {
   const h = new Date().getHours();
   const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   const el = document.getElementById('greeting');
-  if (el) el.textContent = g;
+  if (el) el.textContent = t(g);
   const hd = document.getElementById('header-date');
   if (hd) hd.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
   const mt = document.getElementById('med-today-date');

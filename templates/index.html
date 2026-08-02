@@ -345,7 +345,7 @@
   <div class="page-header">
     <div>
       <div class="page-greeting" id="greeting">Good morning</div>
-      <h1 class="page-title" id="dash-title">Today</h1>
+      <h1 class="page-title" id="dash-title" data-i18n="Today">Today</h1>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="dash-icon-btn" data-ev-click="switchView('consistency')" title="Consistency" id="dash-consistency-btn">
@@ -382,7 +382,7 @@
       </div>
       <div class="tstat dash-clickable" data-ev-click="switchView('food')">
         <span class="tstat-icon">💧</span>
-        <div class="tstat-body"><div class="tstat-val" id="dws-hydration">— ml</div><div class="tstat-key">hydration</div>
+        <div class="tstat-body"><div class="tstat-val" id="dws-hydration">— ml</div><div class="tstat-key" data-i18n="hydration">hydration</div>
           <div class="tstat-bar"><div class="tstat-bar-fill" id="dws-hydration-bar"></div></div></div>
       </div>
       <div class="tstat dash-clickable" data-ev-click="switchView('sleep')">
@@ -391,7 +391,7 @@
       </div>
       <div class="tstat dash-clickable" data-ev-click="switchView('fitness')">
         <span class="tstat-icon">🏃</span>
-        <div class="tstat-body"><div class="tstat-val" id="dash-active-min">—</div><div class="tstat-key">active min · this week</div></div>
+        <div class="tstat-body"><div class="tstat-val" id="dash-active-min">—</div><div class="tstat-key" data-i18n="active min · this week">active min · this week</div></div>
       </div>
       <div class="tstat dash-clickable" data-ev-click="switchView('habits')">
         <span class="tstat-icon">⭐</span>
@@ -399,18 +399,18 @@
       </div>
       <div class="tstat dash-clickable" data-ev-click="switchView('reports')">
         <span class="tstat-icon">🩺</span>
-        <div class="tstat-body"><div class="tstat-val" id="dws-symptoms">None</div><div class="tstat-key">symptoms today</div></div>
+        <div class="tstat-body"><div class="tstat-val" id="dws-symptoms">None</div><div class="tstat-key" data-i18n="symptoms today">symptoms today</div></div>
       </div>
     </div>
   </div>
 
   <!-- Quick-log actions -->
   <div class="quick-log-bar">
-    <button class="ql-btn" data-ev-click="quickAddWater()"><span class="ql-icon">💧</span><span class="ql-label">Log Water</span><span class="ql-hint" id="ql-water-hint">250ml</span></button>
-    <button class="ql-btn" data-ev-click="quickAdd('food')"><span class="ql-icon">🍽️</span><span class="ql-label">Log Meal</span><span class="ql-hint">food tracker</span></button>
-    <button class="ql-btn" data-ev-click="quickAdd('fitness')"><span class="ql-icon">🏃</span><span class="ql-label">Log Workout</span><span class="ql-hint">fitness</span></button>
-    <button class="ql-btn" data-ev-click="switchView('thoughts')"><span class="ql-icon">💭</span><span class="ql-label">Add Thought</span><span class="ql-hint">journal</span></button>
-    <button class="ql-btn" data-ev-click="quickAdd('todos')"><span class="ql-icon">✅</span><span class="ql-label">Add Task</span><span class="ql-hint">to-do list</span></button>
+    <button class="ql-btn" data-ev-click="quickAddWater()"><span class="ql-icon">💧</span><span class="ql-label" data-i18n="Log Water">Log Water</span><span class="ql-hint" id="ql-water-hint">250ml</span></button>
+    <button class="ql-btn" data-ev-click="quickAdd('food')"><span class="ql-icon">🍽️</span><span class="ql-label" data-i18n="Log Meal">Log Meal</span><span class="ql-hint" data-i18n="food tracker">food tracker</span></button>
+    <button class="ql-btn" data-ev-click="quickAdd('fitness')"><span class="ql-icon">🏃</span><span class="ql-label" data-i18n="Log Workout">Log Workout</span><span class="ql-hint" data-i18n="fitness">fitness</span></button>
+    <button class="ql-btn" data-ev-click="switchView('thoughts')"><span class="ql-icon">💭</span><span class="ql-label" data-i18n="Add Thought">Add Thought</span><span class="ql-hint" data-i18n="journal">journal</span></button>
+    <button class="ql-btn" data-ev-click="quickAdd('todos')"><span class="ql-icon">✅</span><span class="ql-label" data-i18n="Add Task">Add Task</span><span class="ql-hint" data-i18n="to-do list">to-do list</span></button>
   </div>
 
   <!-- Low medicine stock refill nudge (filled by loadLowStock) -->
@@ -435,15 +435,15 @@
   <div class="dash-body-grid" id="dash-agenda-grid" style="display:none">
     <div class="panel" id="dash-medicines-panel" style="display:none">
       <div class="panel-header">
-        <h2 class="panel-title">Today's Medicines</h2>
-        <a href="#" class="panel-link" data-ev-click="switchView('medicines');return false">Manage →</a>
+        <h2 class="panel-title" data-i18n="Today's Medicines">Today's Medicines</h2>
+        <a href="#" class="panel-link" data-ev-click="switchView('medicines');return false" data-i18n="Manage →">Manage →</a>
       </div>
       <div id="dash-medicine-list" class="dash-dose-list"></div>
     </div>
     <div class="panel" id="dash-tasks-panel" style="display:none">
       <div class="panel-header">
-        <h2 class="panel-title">Tasks</h2>
-        <a href="#" class="panel-link" data-ev-click="switchView('todos');return false">Manage →</a>
+        <h2 class="panel-title" data-i18n="Tasks">Tasks</h2>
+        <a href="#" class="panel-link" data-ev-click="switchView('todos');return false" data-i18n="Manage →">Manage →</a>
       </div>
       <div class="dash-todo-add">
         <input type="text" id="dash-todo-input" placeholder="Add a task…" autocomplete="off"
