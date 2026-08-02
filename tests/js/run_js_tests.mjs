@@ -254,5 +254,26 @@ test('count round-trip lands on the calories the DB would scale', () => {
   eq(Math.round(579 * grams / 100), 7);
 });
 
+test('composeSpokenBriefing: greets by hour and names the next dose', () => {
+  const doses = [
+    { med_name: 'Metformin', time: '09:00', taken: true },
+    { med_name: 'Aspirin',   time: '21:00', taken: false, timing_text: 'with food' },
+  ];
+  const txt = S.composeSpokenBriefing(doses, [], 8);
+  if (!txt.startsWith('Good morning.')) throw new Error(`greeting: ${txt}`);
+  if (!txt.includes('1 dose left today')) throw new Error(`count: ${txt}`);
+  if (!txt.includes('Your next is Aspirin at 9:00 PM, with food.')) throw new Error(`next: ${txt}`);
+});
+test('composeSpokenBriefing: praises when all doses are taken', () => {
+  const txt = S.composeSpokenBriefing([{ time: '09:00', taken: true }], [], 14);
+  eq(txt, 'Good afternoon. You have taken all your doses today. Well done.');
+});
+test('composeSpokenBriefing: mentions low stock and uses evening greeting', () => {
+  const txt = S.composeSpokenBriefing([], [{ name: 'X' }, { name: 'Y' }], 20);
+  if (!txt.startsWith('Good evening.')) throw new Error(txt);
+  if (!txt.includes('no medicines scheduled today')) throw new Error(txt);
+  if (!txt.includes('2 medicines are running low.')) throw new Error(txt);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

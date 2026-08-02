@@ -5208,7 +5208,13 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 
 .hc2-best { font-size:11px; font-weight:700; color:var(--gray-500); }
 .dash-briefing { font-size:13.5px; font-weight:600; color:var(--gray-600);
-  background:var(--gray-50,#F7F5F0); border-radius:10px; padding:10px 14px; margin-bottom:14px; }
+  background:var(--gray-50,#F7F5F0); border-radius:10px; padding:10px 14px; margin-bottom:14px;
+  align-items:center; gap:10px; }
+.dash-briefing .briefing-text { flex:1; min-width:0; }
+.briefing-read { flex-shrink:0; background:var(--surface,#fff); border:1px solid var(--gray-200,#E7E3DA);
+  border-radius:99px; padding:5px 12px; font-size:12.5px; font-weight:600; color:var(--teal-700,#2E6A4E);
+  cursor:pointer; white-space:nowrap; }
+.briefing-read:hover { background:var(--teal-50,#EAF3EE); }
 
 /* Backup & restore */
 .restore-warn { background:#FBECEC; border:1px solid #F0D2D2; border-radius:10px; padding:12px 14px;

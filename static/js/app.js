@@ -1204,6 +1204,7 @@ function closeMobileMore() {
 }
 
 function switchView(view) {
+  try { stopSpeaking(); } catch (e) {}      // don't keep talking after leaving
   // Redirect removed/merged views
   const REDIRECT = {
     'consistency': 'habits',
@@ -1874,8 +1875,71 @@ async function renderBriefing(doses) {
     parts.push(`🔄 ${low.length} to refill`);
   }
   if (!parts.length) { el.style.display = 'none'; return; }
-  el.textContent = parts.join('   ·   ');
-  el.style.display = 'block';
+  const readBtn = _canSpeak()
+    ? `<button class="briefing-read" data-ev-click="readDailyBriefing()" title="Read my day aloud"><span id="read-aloud-icon">🔊</span> <span id="read-aloud-label">Read aloud</span></button>`
+    : '';
+  el.innerHTML = `<span class="briefing-text">${parts.map(escHtml).join('   ·   ')}</span>${readBtn}`;
+  el.style.display = 'flex';
+}
+
+// ── Read-aloud (Web Speech API) — spoken day summary for the senior audience ──
+function _canSpeak() { return typeof window !== 'undefined' && 'speechSynthesis' in window; }
+let _speaking = false;
+
+function _updateReadBtn() {
+  const icon = document.getElementById('read-aloud-icon');
+  const label = document.getElementById('read-aloud-label');
+  if (icon)  icon.textContent  = _speaking ? '⏹' : '🔊';
+  if (label) label.textContent = _speaking ? 'Stop' : 'Read aloud';
+}
+
+function stopSpeaking() {
+  if (_canSpeak()) speechSynthesis.cancel();
+  _speaking = false;
+  _updateReadBtn();
+}
+
+function speakText(text) {
+  if (!_canSpeak() || !text) return;
+  speechSynthesis.cancel();                    // never stack utterances
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95; u.pitch = 1; u.lang = 'en-US';   // a touch slow, easier to follow
+  u.onend = u.onerror = () => { _speaking = false; _updateReadBtn(); };
+  _speaking = true; _updateReadBtn();
+  speechSynthesis.speak(u);
+}
+
+// Compose a natural spoken sentence — kept pure so it's easy to reason about.
+function composeSpokenBriefing(doses, low, hour) {
+  const parts = [];
+  parts.push(hour < 12 ? 'Good morning.' : hour < 18 ? 'Good afternoon.' : 'Good evening.');
+  const list = Array.isArray(doses) ? doses : [];
+  const untaken = list.filter(d => !d.taken);
+  if (!list.length) {
+    parts.push('You have no medicines scheduled today.');
+  } else if (!untaken.length) {
+    parts.push('You have taken all your doses today. Well done.');
+  } else {
+    parts.push(`You have ${untaken.length} dose${untaken.length > 1 ? 's' : ''} left today.`);
+    const hhmm = `${String(hour).padStart(2, '0')}:00`;
+    const sorted = untaken.filter(d => d.time).sort((a, b) => a.time.localeCompare(b.time));
+    const next = sorted.find(d => d.time >= hhmm) || sorted[0];
+    if (next) parts.push(`Your next is ${next.med_name} at ${_mc12h(next.time)}${next.timing_text ? ', ' + next.timing_text : ''}.`);
+  }
+  if (Array.isArray(low) && low.length) {
+    parts.push(`${low.length} medicine${low.length > 1 ? 's are' : ' is'} running low.`);
+  }
+  return parts.join(' ');
+}
+
+async function readDailyBriefing() {
+  if (!_canSpeak()) { showToast("Read-aloud isn't supported on this device", 'error'); return; }
+  if (_speaking) { stopSpeaking(); return; }                 // tapping again stops
+  const [doses, low] = await Promise.all([
+    fetch('/api/medicines/today').then(r => r.json()).catch(() => []),
+    fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []),
+  ]);
+  speakText(composeSpokenBriefing(doses, low, new Date().getHours()));
 }
 
 function renderNextAction(doses, calorieState) {
