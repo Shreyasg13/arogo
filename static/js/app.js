@@ -177,6 +177,101 @@ const I18N = {
     'you can still add, edit, or delete items for this day.': 'आप अब भी इस दिन के आइटम जोड़, संपादित या हटा सकते हैं।',
     'Edit quantity': 'मात्रा संपादित करें', 'Remove': 'हटाएँ',
     'Log food to see micronutrients': 'सूक्ष्म पोषक देखने के लिए खाना दर्ज करें',
+    '💧 +%1ml logged': '💧 +%1ml दर्ज', '⚖️ %1kg saved': '⚖️ %1kg सहेजा',
+    'Added %1 medicine(s) 💊': '%1 दवा जोड़ीं 💊', '%1 symptom(s) logged': '%1 लक्षण दर्ज',
+    // Toasts (action feedback)
+    'Action failed': 'कार्रवाई विफल',
+    'Activity logged!': 'गतिविधि दर्ज हुई!',
+    'Add a medicine first': 'पहले एक दवा जोड़ें',
+    'Allow pop-ups to open the printable card': 'प्रिंट करने योग्य कार्ड खोलने के लिए पॉप-अप की अनुमति दें',
+    'Allow pop-ups to print': 'प्रिंट के लिए पॉप-अप की अनुमति दें',
+    'Allow pop-ups to print the planner': 'प्लानर प्रिंट करने के लिए पॉप-अप की अनुमति दें',
+    'Appointment added 📅': 'अपॉइंटमेंट जोड़ा गया 📅',
+    'Checking connection…': 'कनेक्शन जाँचा जा रहा है…',
+    'Click "Generate Report" first': 'पहले "रिपोर्ट बनाएँ" पर क्लिक करें',
+    'Connection cancelled or failed': 'कनेक्शन रद्द या विफल',
+    'Connection failed': 'कनेक्शन विफल',
+    'Could not add that question': 'वह सवाल नहीं जोड़ा जा सका',
+    'Could not build the backup — try again': 'बैकअप नहीं बना — फिर कोशिश करें',
+    'Could not build the card': 'कार्ड नहीं बन सका',
+    'Could not log that — try again': 'वह दर्ज नहीं हुआ — फिर कोशिश करें',
+    'Could not log water': 'पानी दर्ज नहीं हुआ',
+    'Could not prepare your data — try again': 'आपका डेटा तैयार नहीं हो सका — फिर कोशिश करें',
+    'Could not save weight': 'वज़न सहेजा नहीं जा सका',
+    'Could not send test': 'परीक्षण नहीं भेजा जा सका',
+    'Could not send the SOS — check your connection and try again': 'SOS नहीं भेजा जा सका — अपना कनेक्शन जाँचें और फिर कोशिश करें',
+    'Could not update habit': 'आदत अपडेट नहीं हुई',
+    'Custom food removed': 'कस्टम खाना हटाया गया',
+    'Dose marked as taken ✓': 'खुराक ली गई चिह्नित ✓',
+    'Enter a food name': 'खाने का नाम दर्ज करें',
+    'Enter a habit name': 'आदत का नाम दर्ज करें',
+    'Enter a name and phone number': 'नाम और फ़ोन नंबर दर्ज करें',
+    'Enter a reading': 'एक रीडिंग दर्ज करें',
+    'Enter a symptom': 'एक लक्षण दर्ज करें',
+    'Enter a valid 8–14 digit barcode': 'मान्य 8–14 अंकों का बारकोड दर्ज करें',
+    'Enter a value': 'एक मान दर्ज करें',
+    'Enter a weight in kg': 'किग्रा में वज़न दर्ज करें',
+    'Enter an email address': 'एक ईमेल पता दर्ज करें',
+    'Enter at least one measurement': 'कम से कम एक माप दर्ज करें',
+    'Enter calories': 'कैलोरी दर्ज करें',
+    'Enter your password to confirm': 'पुष्टि के लिए अपना पासवर्ड दर्ज करें',
+    'Entry removed': 'प्रविष्टि हटाई गई',
+    'Failed to add medicine': 'दवा जोड़ने में विफल',
+    'Failed to log activity': 'गतिविधि दर्ज करने में विफल',
+    'Failed to log food': 'खाना दर्ज करने में विफल',
+    'Failed to log water': 'पानी दर्ज करने में विफल',
+    'Failed to save': 'सहेजने में विफल',
+    'Failed to save custom food': 'कस्टम खाना सहेजने में विफल',
+    'Failed to save stock': 'स्टॉक सहेजने में विफल',
+    'Failed to save task': 'कार्य सहेजने में विफल',
+    'Failed to update': 'अपडेट करने में विफल',
+    'Give the food a name': 'खाने को एक नाम दें',
+    'Habit created!': 'आदत बनाई गई!',
+    'Health card saved!': 'हेल्थ कार्ड सहेजा गया!',
+    'Invalid quantity': 'अमान्य मात्रा',
+    'Logged ✓': 'दर्ज हुआ ✓',
+    'Microphone permission denied': 'माइक्रोफ़ोन अनुमति अस्वीकृत',
+    'Mood logged 😊': 'मूड दर्ज हुआ 😊',
+    'Network error': 'नेटवर्क त्रुटि',
+    'Nothing checked to add': 'जोड़ने के लिए कुछ चुना नहीं',
+    'Nothing scheduled to print': 'प्रिंट के लिए कुछ निर्धारित नहीं',
+    'Nothing to add': 'जोड़ने को कुछ नहीं',
+    'Nothing to print': 'प्रिंट करने को कुछ नहीं',
+    'Notifications enabled! 🔔': 'सूचनाएँ चालू! 🔔',
+    'Pick a date': 'एक तारीख चुनें',
+    'Pick a time': 'एक समय चुनें',
+    'Please enter a title': 'कृपया एक शीर्षक दर्ज करें',
+    'Please select a file': 'कृपया एक फ़ाइल चुनें',
+    'Preparing your data…': 'आपका डेटा तैयार किया जा रहा है…',
+    'Profile saved! Calorie targets updated.': 'प्रोफ़ाइल सहेजी गई! कैलोरी लक्ष्य अपडेट हुए।',
+    'Refill marked as ordered 🚚': 'रिफिल ऑर्डर चिह्नित 🚚',
+    'Reminder added ⏰': 'रिमाइंडर जोड़ा गया ⏰',
+    'Reminder settings saved': 'रिमाइंडर सेटिंग्स सहेजी गईं',
+    'Report uploaded!': 'रिपोर्ट अपलोड हुई!',
+    'Restoring…': 'पुनर्स्थापित किया जा रहा है…',
+    'Saved ✓': 'सहेजा गया ✓',
+    'Select a file first': 'पहले एक फ़ाइल चुनें',
+    'Select a vital type': 'एक वाइटल प्रकार चुनें',
+    'Select at least one section': 'कम से कम एक अनुभाग चुनें',
+    'Sent, but no caregiver could be reached — add a caregiver in Family': 'भेजा गया, पर कोई देखभालकर्ता संपर्क में नहीं आया — परिवार में एक देखभालकर्ता जोड़ें',
+    'Service not supported yet': 'यह सेवा अभी समर्थित नहीं',
+    'Set both bedtime and wake time': 'सोने और जागने दोनों का समय सेट करें',
+    'Set how long you slept': 'आप कितना सोए यह सेट करें',
+    'Simulated — no SMS provider is set up yet': 'सिम्युलेटेड — अभी कोई SMS प्रदाता सेट नहीं है',
+    'Sleep logged ✓': 'नींद दर्ज हुई ✓',
+    'Some items failed to log': 'कुछ आइटम दर्ज नहीं हो सके',
+    'Some symptoms failed to save': 'कुछ लक्षण सहेजे नहीं जा सके',
+    'Thought updated': 'विचार अपडेट हुआ',
+    'Upload error': 'अपलोड त्रुटि',
+    'Voice input isn’t available on this browser': 'इस ब्राउज़र पर वॉइस इनपुट उपलब्ध नहीं',
+    'Weight is required': 'वज़न आवश्यक है',
+    'What is the appointment for?': 'अपॉइंटमेंट किसलिए है?',
+    'You joined the family group 🎉': 'आप परिवार समूह में शामिल हुए 🎉',
+    'Your account and data have been deleted': 'आपका खाता और डेटा हटा दिया गया है',
+    '✓ Backup downloaded': '✓ बैकअप डाउनलोड हुआ',
+    '✓ Downloaded all your data': '✓ आपका सारा डेटा डाउनलोड हुआ',
+    '✓ Test message sent': '✓ परीक्षण संदेश भेजा गया',
+    '🎉 You’re all set up!': '🎉 सब तैयार है!',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
@@ -1163,7 +1258,7 @@ async function quickWater(ml) {
   }).then(r => r.json()).catch(() => null);
   if (r?.success === false) { showToast('Could not log water', 'error'); return; }
   closeQuickLog();
-  showToast(`💧 +${ml}ml logged`);
+  showToast(tformat('💧 +%1ml logged', ml));
   try { loadWellnessStrip(); } catch (e) {}
 }
 
@@ -1189,7 +1284,7 @@ async function quickWeight() {
   if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
   document.getElementById('qlg-weight').value = '';
   closeQuickLog();
-  showToast(`⚖️ ${val}kg saved`);
+  showToast(tformat('⚖️ %1kg saved', val));
 }
 
 async function quickToggleHabit(id) {
@@ -3766,7 +3861,7 @@ async function addRxMedicines() {
     if (r?.success) added++;
   }
   closeModal('rx-import-overlay');
-  showToast(`Added ${added} medicine${added !== 1 ? 's' : ''} 💊`, 'success');
+  showToast(tformat('Added %1 medicine(s) 💊', added), 'success');
   loadMedicines();
   loadDashboard();
 }
@@ -4627,7 +4722,7 @@ function fmtBytes(b) { if (b<1024) return b+' B'; if (b<1048576) return (b/1024)
 function freqLabel(f) { return { once_daily:t('Once daily'), twice_daily:t('Twice daily'), thrice_daily:t('3× daily'), weekly:t('Weekly'), as_needed:t('As needed') }[f] || f; }
 function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
 let toastTimer;
-function showToast(msg, type='') { const el = document.getElementById('toast'); el.textContent = msg; el.className = `toast ${type}`; el.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200); }
+function showToast(msg, type='') { const el = document.getElementById('toast'); el.textContent = t(msg); el.className = `toast ${type}`; el.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200); }
 
 // ── Real OAuth connect ──────────────────────────────────────────────────────
 
@@ -7463,7 +7558,7 @@ async function logSymptoms() {
 
   if (ok) {
     const count = selectedSymptoms.size;
-    showToast(`${count} symptom${count>1?'s':''} logged`, 'success');
+    showToast(tformat('%1 symptom(s) logged', count), 'success');
     // Reset
     selectedSymptoms.clear();
     document.querySelectorAll('.sym-toggle-btn').forEach(b => b.classList.remove('selected'));
@@ -8132,7 +8227,7 @@ async function quickAddWater(ml) {
 
   // Reload the full hydration panel (updates bottle + log list + strip)
   await loadHydration(today);
-  showToast(`💧 +${ml}ml logged`, 'success');
+  showToast(tformat('💧 +%1ml logged', ml), 'success');
 }
 
 async function delHydration(id) {
@@ -8474,7 +8569,7 @@ async function quickLogWeight(kg) {
     body: JSON.stringify({date_key: localToday(), weight_kg: kg}),
   }).then(r => r.json()).catch(() => null);
   if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
-  showToast(`⚖️ ${kg}kg saved`);
+  showToast(tformat('⚖️ %1kg saved', kg));
 }
 
 // One text box logs a vital: "bp 120/80", "sugar 110", "hr 72".
