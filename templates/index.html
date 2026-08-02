@@ -457,7 +457,7 @@
   <!-- Weekly activity — hidden until there is activity -->
   <div class="panel panel--wide" id="dash-weekly-panel" style="display:none;margin-top:18px">
     <div class="panel-header">
-      <h2 class="panel-title">Weekly Activity</h2>
+      <h2 class="panel-title" data-i18n="Weekly Activity">Weekly Activity</h2>
       <div class="chart-legend">
         <span class="legend-dot" style="background:var(--teal-500)"></span>Calories
         <span class="legend-dot" style="background:var(--blue-500);margin-left:12px"></span>Minutes
@@ -1073,7 +1073,7 @@
     <!-- AI Suggestions -->
     <div class="panel">
       <div class="panel-header">
-        <h2 class="panel-title">Smart Suggestions</h2>
+        <h2 class="panel-title" data-i18n="Smart Suggestions">Smart Suggestions</h2>
         <span class="panel-badge panel-badge--ai">✦ AI</span>
       </div>
       <div id="fitness-suggestions" class="suggestions-list"></div>
@@ -1081,13 +1081,13 @@
 
     <!-- Type breakdown -->
     <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">Activity Types</h2></div>
+      <div class="panel-header"><h2 class="panel-title" data-i18n="Activity Types">Activity Types</h2></div>
       <div id="activity-type-chart" class="type-donut-wrap"></div>
     </div>
 
     <!-- Connected apps -->
     <div class="panel">
-      <div class="panel-header"><h2 class="panel-title">Connected Apps</h2></div>
+      <div class="panel-header"><h2 class="panel-title" data-i18n="Connected Apps">Connected Apps</h2></div>
       <div class="connected-apps-list" id="connected-apps">
         <div class="app-connect-row" data-service="garmin">
           <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Garmin_logo.svg/200px-Garmin_logo.svg.png" class="app-logo" alt="Garmin" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
@@ -1119,7 +1119,7 @@
 
   <div class="panel" style="margin-top:0px">
     <div class="panel-header">
-      <h2 class="panel-title">Activity Log</h2>
+      <h2 class="panel-title" data-i18n="Activity Log">Activity Log</h2>
       <span class="section-count" id="activity-count"></span>
     </div>
     <div id="activity-feed" class="activity-feed"></div>
@@ -1245,7 +1245,7 @@
 
       <div class="panel">
         <div class="panel-header">
-          <h2 class="panel-title">Monthly Breakdown</h2>
+          <h2 class="panel-title" data-i18n="Monthly Breakdown">Monthly Breakdown</h2>
           <span class="panel-badge">Last 12 months</span>
         </div>
         <div class="monthly-chart" id="monthly-chart"></div>
@@ -1262,7 +1262,7 @@
   <!-- ── ACTIVITY HISTORY — BOTTOM ↓ ── -->
   <div class="panel" style="margin-top:20px">
     <div class="panel-header">
-      <h2 class="panel-title">Activity History</h2>
+      <h2 class="panel-title" data-i18n="Activity History">Activity History</h2>
       <span class="section-count" id="history-total-label"></span>
     </div>
     <div style="display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap">
@@ -1432,7 +1432,7 @@
       <!-- Quick add recent meals -->
       <div class="panel" id="quick-meals-panel">
         <div class="panel-header">
-          <h2 class="panel-title">Quick add</h2>
+          <h2 class="panel-title" data-i18n="Quick add">Quick add</h2>
           <span class="panel-badge" id="quick-meals-badge">Recent</span>
         </div>
         <div id="quick-meals-content" style="padding:10px 14px 14px">
@@ -1469,7 +1469,7 @@
       <!-- AI Nutrition Insights -->
       <div class="panel">
         <div class="panel-header">
-          <h2 class="panel-title">Nutrition Insights</h2>
+          <h2 class="panel-title" data-i18n="Nutrition Insights">Nutrition Insights</h2>
           <span class="panel-badge panel-badge--ai">✦ AI</span>
         </div>
         <div id="food-suggestions" class="suggestions-list">
@@ -1480,7 +1480,7 @@
       <!-- Micronutrients -->
       <div class="panel">
         <div class="panel-header panel-header--clickable" data-ev-click="toggleMicroPanel()" style="cursor:pointer">
-          <h2 class="panel-title">Micronutrients</h2>
+          <h2 class="panel-title" data-i18n="Micronutrients">Micronutrients</h2>
           <div style="display:flex;align-items:center;gap:8px">
             <span class="panel-badge">Daily</span>
             <svg id="micro-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="transform:rotate(-90deg);transition:transform .2s;color:var(--gray-400)"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1496,7 +1496,7 @@
   <!-- 7-Day Calorie Trend — BOTTOM ↓ -->
   <div class="panel" style="margin-top:20px">
     <div class="panel-header">
-      <h2 class="panel-title">7-Day Calorie Trend</h2>
+      <h2 class="panel-title" data-i18n="7-Day Calorie Trend">7-Day Calorie Trend</h2>
       <span class="panel-badge" id="food-weekly-target-badge">Goal: —</span>
     </div>
     <div id="food-weekly-chart" class="food-weekly-chart" style="padding:14px 20px 16px"></div>
@@ -1773,7 +1773,7 @@
   <div id="reminder-settings-panel" style="display:none;margin-bottom:20px">
     <div class="panel" style="padding:18px 20px">
       <div class="panel-header" style="margin-bottom:14px">
-        <h2 class="panel-title">Smart reminder settings</h2>
+        <h2 class="panel-title" data-i18n="Smart reminder settings">Smart reminder settings</h2>
         <span class="panel-badge" id="notif-permission-badge">Loading…</span>
       </div>
 
@@ -1782,7 +1782,7 @@
         <div class="rs-section-head">
           <div class="rs-section-icon">💧</div>
           <div class="rs-section-info">
-            <div class="rs-section-title">Water reminders</div>
+            <div class="rs-section-title" data-i18n="Water reminders">Water reminders</div>
             <div class="rs-section-sub">Smart nudges based on your hydration progress</div>
           </div>
           <label class="rs-toggle">
@@ -1818,7 +1818,7 @@
         <div class="rs-section-head">
           <div class="rs-section-icon">⭐</div>
           <div class="rs-section-info">
-            <div class="rs-section-title">Evening habit check</div>
+            <div class="rs-section-title" data-i18n="Evening habit check">Evening habit check</div>
             <div class="rs-section-sub">Reminds you to tick off habits before bed</div>
           </div>
           <label class="rs-toggle">
@@ -1840,7 +1840,7 @@
         <div class="rs-section-head">
           <div class="rs-section-icon">🌙</div>
           <div class="rs-section-info">
-            <div class="rs-section-title">Sleep log reminder</div>
+            <div class="rs-section-title" data-i18n="Sleep log reminder">Sleep log reminder</div>
             <div class="rs-section-sub">Nudge to log last night's sleep if you haven't</div>
           </div>
           <label class="rs-toggle">
@@ -1861,7 +1861,7 @@
         <div class="rs-section-head">
           <div class="rs-section-icon">📬</div>
           <div class="rs-section-info">
-            <div class="rs-section-title">Weekly digest email</div>
+            <div class="rs-section-title" data-i18n="Weekly digest email">Weekly digest email</div>
             <div class="rs-section-sub">Your week's wins and watch-outs, every Sunday evening</div>
           </div>
           <label class="rs-toggle">
@@ -1876,7 +1876,7 @@
         <div class="rs-section-head">
           <div class="rs-section-icon">👪</div>
           <div class="rs-section-info">
-            <div class="rs-section-title">Family care digest</div>
+            <div class="rs-section-title" data-i18n="Family care digest">Family care digest</div>
             <div class="rs-section-sub">A weekly summary of how the family members who share with you are doing</div>
           </div>
           <label class="rs-toggle">
@@ -1891,7 +1891,7 @@
         <div class="rs-section-head">
           <div class="rs-section-icon">🌙</div>
           <div class="rs-section-info">
-            <div class="rs-section-title">Quiet hours</div>
+            <div class="rs-section-title" data-i18n="Quiet hours">Quiet hours</div>
             <div class="rs-section-sub">Hold all reminders during a do-not-disturb window</div>
           </div>
           <label class="rs-toggle">
@@ -1915,7 +1915,7 @@
         <div class="rs-section-head">
           <div class="rs-section-icon">😊</div>
           <div class="rs-section-info">
-            <div class="rs-section-title">Daily journal reminder</div>
+            <div class="rs-section-title" data-i18n="Daily journal reminder">Daily journal reminder</div>
             <div class="rs-section-sub">Prompt to log your mood if you haven't today</div>
           </div>
           <label class="rs-toggle">
@@ -2044,7 +2044,7 @@
 
   <!-- Complete export (everything we hold) -->
   <div class="panel" style="padding:18px 20px;margin-top:20px">
-    <h2 class="panel-title" style="margin-bottom:4px">Download everything</h2>
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Download everything">Download everything</h2>
     <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
       A single file with <b>every record</b> Arogo holds about you, across all
       features — not just the range above. This is your data; take it anytime.</p>
@@ -2053,7 +2053,7 @@
 
   <!-- Backup & restore (for self-hosting) -->
   <div class="panel" style="padding:18px 20px;margin-top:20px">
-    <h2 class="panel-title" style="margin-bottom:4px">💾 Backup &amp; restore</h2>
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="💾 Backup &amp; restore">💾 Backup &amp; restore</h2>
     <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
       Save a one-file backup of your health data, and restore it later — handy if
       you run Arogo on your own server. Restoring <b>replaces</b> your current data
@@ -2071,7 +2071,7 @@
 
   <!-- Danger zone: account deletion -->
   <div class="panel" id="delete-account-panel" style="padding:18px 20px;margin-top:20px;border:1px solid #f3c2c2">
-    <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C">Delete my account</h2>
+    <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C" data-i18n="Delete my account">Delete my account</h2>
     <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
       Permanently deletes your account and <b>all</b> your data — medicines, logs,
       family links, everything. This cannot be undone. Consider downloading your

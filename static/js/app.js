@@ -135,6 +135,17 @@ const I18N = {
     'My Health Information': 'मेरी स्वास्थ्य जानकारी',
     'Consistency Tracker': 'निरंतरता ट्रैकर', 'Weekly Health Report': 'साप्ताहिक स्वास्थ्य रिपोर्ट',
     'Body & Vitals': 'शरीर व वाइटल्स', 'Export Your Data': 'अपना डेटा निर्यात करें',
+    'Weekly Activity': 'साप्ताहिक गतिविधि', 'Smart Suggestions': 'स्मार्ट सुझाव',
+    'Activity Types': 'गतिविधि के प्रकार', 'Connected Apps': 'जुड़े हुए ऐप्स',
+    'Activity Log': 'गतिविधि लॉग', 'Monthly Breakdown': 'मासिक विवरण',
+    'Activity History': 'गतिविधि इतिहास', 'Quick add': 'त्वरित जोड़', 'Nutrition Insights': 'पोषण जानकारी',
+    'Micronutrients': 'सूक्ष्म पोषक तत्व', '7-Day Calorie Trend': '7-दिन कैलोरी रुझान',
+    'Smart reminder settings': 'स्मार्ट रिमाइंडर सेटिंग्स', 'Water reminders': 'पानी के रिमाइंडर',
+    'Evening habit check': 'शाम की आदत जाँच', 'Sleep log reminder': 'नींद लॉग रिमाइंडर',
+    'Weekly digest email': 'साप्ताहिक सारांश ईमेल', 'Family care digest': 'परिवार देखभाल सारांश',
+    'Quiet hours': 'शांत घंटे', 'Daily journal reminder': 'दैनिक डायरी रिमाइंडर',
+    'Download everything': 'सब कुछ डाउनलोड करें', '💾 Backup & restore': '💾 बैकअप व पुनर्स्थापना',
+    'Delete my account': 'मेरा खाता हटाएँ',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
