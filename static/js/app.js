@@ -2147,6 +2147,45 @@ function medTimingText(m) {
   return m.timing_text || (m.with_food ? 'with food' : '');
 }
 
+// ── Medicine history (a dated record of what changed) ──
+const MED_EVENT_META = {
+  started:   { icon: '➕', label: 'Started',   color: 'var(--teal-600,#4F8D74)' },
+  stopped:   { icon: '⏸️', label: 'Paused',    color: '#B4443A' },
+  resumed:   { icon: '▶️', label: 'Resumed',   color: 'var(--teal-600,#4F8D74)' },
+  deleted:   { icon: '🗑️', label: 'Removed',   color: 'var(--gray-500,#888)' },
+  restocked: { icon: '🔄', label: 'Restocked', color: '#B4843A' },
+};
+
+async function openMedHistory() {
+  const el = document.getElementById('medhistory-content');
+  const modal = document.getElementById('medhistory-modal');
+  if (!el || !modal) return;
+  el.innerHTML = '<div style="padding:28px;text-align:center;color:var(--gray-400)">Loading…</div>';
+  modal.style.display = 'flex';
+  const d = await fetch('/api/medicines/history?days=365').then(r => r.json()).catch(() => null);
+  el.innerHTML = d ? renderMedHistory(d.events || []) : '<div style="padding:20px;color:#DC2626">Could not load history.</div>';
+}
+function closeMedHistory() { const m = document.getElementById('medhistory-modal'); if (m) m.style.display = 'none'; }
+
+function renderMedHistory(events) {
+  const esc = escHtml;
+  if (!events.length) {
+    return `<div class="mh-empty">No changes yet. Adding, pausing, or restocking a medicine will show up here.</div>`;
+  }
+  const fmt = at => { try { return new Date(at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); } catch(e){ return (at||'').slice(0,10); } };
+  const rows = events.map(e => {
+    const m = MED_EVENT_META[e.kind] || { icon:'•', label:e.kind, color:'var(--gray-500)' };
+    return `<div class="mh-row">
+      <span class="mh-icon" style="color:${m.color}">${m.icon}</span>
+      <div class="mh-body">
+        <div class="mh-line"><b>${esc(e.med_name || 'A medicine')}</b> — ${esc(m.label)}${e.detail ? ` <span class="mh-detail">${esc(e.detail)}</span>` : ''}</div>
+        <div class="mh-date">${esc(fmt(e.at))}</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="mh-list">${rows}</div>`;
+}
+
 // ── Weekly pill planner (days×times grid of the upcoming plan) ──
 async function openPillPlanner() {
   const el = document.getElementById('planner-content');
@@ -10574,6 +10613,13 @@ function renderSymptomTimeline(d) {
       <div class="stl-med-flag" style="top:${(i % 3) * 22}px">${esc(m.icon)} ${esc(m.name)}</div>
     </div>`).join('');
 
+  // Real change events (stopped / deleted) as distinct flags near the axis.
+  const changeFlags = (d.changes || []).map((c, i) => `
+    <div class="stl-med stl-med--stop" style="left:${pct(c.date)}%" title="${esc(c.name)} ${esc(c.kind)} ${esc(fmt(c.date))}">
+      <div class="stl-med-line stl-med-line--stop"></div>
+      <div class="stl-med-flag stl-med-flag--stop" style="top:${(i % 2) * 22}px">⏹ ${esc(c.name)}</div>
+    </div>`).join('');
+
   // Symptom dots on the baseline, coloured by severity.
   const symDots = d.symptoms.map(s => `
     <div class="stl-sym" style="left:${pct(s.date)}%;background:${sevColor(s.severity||0)}"
@@ -10592,6 +10638,7 @@ function renderSymptomTimeline(d) {
       ${ongoingChips}
       <div class="stl-band">
         ${medFlags}
+        ${changeFlags}
         <div class="stl-axis"></div>
         <div class="stl-dots">${symDots}</div>
       </div>

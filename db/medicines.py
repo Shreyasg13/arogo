@@ -56,6 +56,36 @@ def _clean_times(raw):
     return uniq[:24] or ['08:00']
 
 
+# ── Medicine history (a dated record of what changed) ────────────────────────
+_EVENT_KINDS = {'started', 'stopped', 'resumed', 'deleted', 'restocked'}
+
+
+def log_medicine_event(medicine_id, kind, med_name='', detail=''):
+    """Record a change to a medicine so the user (and a doctor) can see what
+    changed and when. Best-effort — a history-logging failure must never break
+    the underlying action."""
+    if kind not in _EVENT_KINDS:
+        return
+    try:
+        execute("""INSERT INTO medicine_events (id,medicine_id,med_name,kind,detail,at,user_id)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (new_id(), medicine_id, (med_name or '')[:120], kind,
+                 str(detail or '')[:200], now_iso(), current_user_id()), commit=True)
+    except Exception:
+        pass
+
+
+def get_medicine_events(days: int = 365, limit: int = 100) -> list:
+    uid = current_user_id()
+    from datetime import date, timedelta
+    days = max(1, min(int(days or 365), 3650))
+    limit = max(1, min(int(limit or 100), 500))
+    since = (date.today() - timedelta(days=days)).isoformat()
+    rows = execute("""SELECT * FROM medicine_events WHERE user_id=? AND at>=?
+                      ORDER BY at DESC LIMIT ?""", (uid, since, limit), fetchall=True) or []
+    return [dict(r) for r in rows]
+
+
 def insert_medicine(data: dict) -> dict:
     name = str(data.get('name', '')).strip()
     if not name:
@@ -83,6 +113,7 @@ def insert_medicine(data: dict) -> dict:
           data.get('start_date', today_iso()), data.get('end_date',''), now_iso(),
           current_user_id()),
         commit=True)
+    log_medicine_event(mid, 'started', name)
     return get_medicine(mid)
 
 
@@ -146,13 +177,21 @@ def log_prn_dose(med_id: str) -> dict:
 
 
 def toggle_medicine(mid):
+    uid = current_user_id()
+    prev = execute("SELECT name, active FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
     execute("UPDATE medicines SET active = CASE WHEN active=1 THEN 0 ELSE 1 END WHERE id=? AND user_id=?",
-            (mid, current_user_id()), commit=True)
+            (mid, uid), commit=True)
+    if prev:
+        # 'stopped' if it was active before the flip, else 'resumed'.
+        log_medicine_event(mid, 'stopped' if prev['active'] else 'resumed', prev['name'])
 
 
 def delete_medicine(mid):
-    execute("DELETE FROM medicines WHERE id=? AND user_id=?",
-            (mid, current_user_id()), commit=True)
+    uid = current_user_id()
+    prev = execute("SELECT name FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    execute("DELETE FROM medicines WHERE id=? AND user_id=?", (mid, uid), commit=True)
+    if prev:
+        log_medicine_event(mid, 'deleted', prev['name'])
 
 
 def _fmt_med(r):
@@ -463,6 +502,8 @@ def update_medicine_stock(mid: str, pill_count: int, pills_per_dose: int = 1,
     params += [mid, uid]
     execute(f"UPDATE medicines SET {sets} WHERE id=? AND user_id=?", tuple(params), commit=True)
     r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    if r and clear:            # count went up → the refill arrived
+        log_medicine_event(mid, 'restocked', r['name'], f'{pill_count} left')
     return _fmt_med(r) if r else {}
 
 

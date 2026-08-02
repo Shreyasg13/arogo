@@ -267,6 +267,11 @@ CREATE TABLE IF NOT EXISTS dose_logs (
     date_key TEXT NOT NULL, time_key TEXT NOT NULL,
     taken INTEGER DEFAULT 0, taken_at TEXT DEFAULT NULL
 );
+CREATE TABLE IF NOT EXISTS medicine_events (
+    id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL, med_name TEXT DEFAULT '',
+    kind TEXT NOT NULL, detail TEXT DEFAULT '', at TEXT NOT NULL,
+    user_id TEXT DEFAULT NULL
+);
 CREATE TABLE IF NOT EXISTS fitness_activities (
     id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT DEFAULT '',
     date TEXT NOT NULL, duration INTEGER DEFAULT 0, distance REAL DEFAULT 0,
@@ -592,6 +597,17 @@ def migrate_add_refill_fields():
             pass  # already exists
 
 
+def migrate_add_medicine_events():
+    """Create the medicine-events (history) table on existing databases."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS medicine_events (
+            id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL, med_name TEXT DEFAULT '',
+            kind TEXT NOT NULL, detail TEXT DEFAULT '', at TEXT NOT NULL,
+            user_id TEXT DEFAULT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_dose_timing():
     """Add the per-dose timing instruction column, and seed it from the older
     with_food flag so existing 'with food' meds keep their instruction."""
@@ -771,7 +787,7 @@ DATA_TABLES = [
     'emergency_info', 'notification_log', 'reminder_settings',
     'fitness_activities', 'medicines', 'dose_logs', 'reports',
     'user_profile', 'oauth_tokens', 'sync_log', 'appointments', 'dose_snoozes',
-    'measurement_reminders',
+    'measurement_reminders', 'medicine_events',
 ]
 
 
@@ -810,6 +826,7 @@ def init_db():
     migrate_add_family_display()
     migrate_add_refill_fields()
     migrate_add_dose_timing()
+    migrate_add_medicine_events()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_digest_flag()

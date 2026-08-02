@@ -162,9 +162,18 @@ def get_symptom_med_timeline(days: int = 90) -> dict:
             for s in get_symptoms(days)]
     syms.sort(key=lambda x: x['date'])
 
+    # Real change events (a med stopped or deleted) also mark the timeline, so a
+    # symptom that eases after stopping something is visible too — not just starts.
+    from db.medicines import get_medicine_events
+    changes = [{'name': e['med_name'], 'kind': e['kind'], 'date': (e['at'] or '')[:10]}
+               for e in get_medicine_events(days)
+               if e['kind'] in ('stopped', 'deleted') and (e['at'] or '')[:10] >= start.isoformat()]
+    changes.sort(key=lambda x: x['date'])
+
     return {
         'range': {'from': start.isoformat(), 'to': today.isoformat(), 'days': days},
         'meds': meds,
+        'changes': changes,
         'symptoms': syms,
         'has_data': bool(syms),
     }

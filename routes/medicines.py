@@ -143,6 +143,13 @@ def dose_calendar():
     days = to_int(request.args.get('days', 35), 35, lo=1, hi=120)
     return jsonify({'days': get_dose_calendar(days)})
 
+@bp.route('/api/medicines/history')
+@require_auth
+def medicine_history():
+    """A dated record of medicine changes — started, stopped, resumed, etc."""
+    days = to_int(request.args.get('days', 365), 365, lo=1, hi=3650)
+    return jsonify({'events': get_medicine_events(days)})
+
 @bp.route('/api/medicines/adherence-breakdown')
 @require_auth
 def adherence_breakdown():

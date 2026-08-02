@@ -5185,6 +5185,17 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .planner-empty { padding:30px 20px; text-align:center; color:var(--gray-400); font-size:14px; }
 .planner-toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
 
+/* Medicine history */
+.mh-list { display:flex; flex-direction:column; }
+.mh-row { display:flex; gap:12px; padding:11px 2px; border-bottom:1px solid var(--gray-50,#F0EDE6); }
+.mh-row:last-child { border-bottom:none; }
+.mh-icon { font-size:17px; line-height:1.4; flex-shrink:0; }
+.mh-body { flex:1; min-width:0; }
+.mh-line { font-size:14px; color:var(--gray-700); }
+.mh-detail { color:var(--gray-400); font-size:12.5px; }
+.mh-date { font-size:12px; color:var(--gray-400); margin-top:2px; }
+.mh-empty { padding:30px 20px; text-align:center; color:var(--gray-400); font-size:14px; line-height:1.6; }
+
 /* Symptom ↔ medicine timeline */
 .stl-ongoing { font-size:12px; color:var(--gray-500); margin-bottom:14px; }
 .stl-chip { display:inline-block; font-size:11.5px; font-weight:600; color:var(--gray-700);
@@ -5196,6 +5207,8 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .stl-med-flag { position:absolute; top:0; left:50%; transform:translateX(-50%); white-space:nowrap;
   font-size:11px; font-weight:700; color:var(--teal-700, #2E6A4E); background:var(--teal-50, #EAF3EE);
   border:1px solid var(--teal-200, #C7E0D2); border-radius:6px; padding:2px 7px; }
+.stl-med-line--stop { background:#C77; opacity:.5; }
+.stl-med-flag--stop { color:#9A4A44; background:#FBECEC; border-color:#F0D2D2; }
 .stl-dots { position:absolute; left:0; right:0; bottom:20px; height:16px; }
 .stl-sym { position:absolute; bottom:0; width:12px; height:12px; border-radius:50%;
   transform:translateX(-50%); border:2px solid var(--surface, #fff); box-shadow:0 0 0 1px rgba(0,0,0,.06); cursor:default; }
