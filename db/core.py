@@ -191,6 +191,24 @@ def current_user_id() -> str:
     return 'default'
 
 
+def table_columns(t: str) -> set:
+    """Column names for a table — the one place PRAGMA lives. Uses SQLite's
+    PRAGMA, falling back to information_schema on PostgreSQL; empty set if
+    unknown (callers treat that as 'don't filter')."""
+    try:
+        rows = execute(f"PRAGMA table_info({t})", fetchall=True) or []
+        if rows:
+            return {r["name"] for r in rows}
+    except Exception:
+        pass
+    try:
+        rows = execute("SELECT column_name FROM information_schema.columns WHERE table_name=?",
+                       (t,), fetchall=True) or []
+        return {r["column_name"] for r in rows}
+    except Exception:
+        return set()
+
+
 def now_iso():   return datetime.datetime.now().isoformat()
 def today_iso(tz: str = None) -> str:
     """Return today's date in YYYY-MM-DD format, respecting timezone."""

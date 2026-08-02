@@ -7,7 +7,7 @@ data for good. Both operate strictly on the calling user's own rows.
 """
 from __future__ import annotations
 
-from .core import execute, DATA_TABLES
+from .core import execute, DATA_TABLES, table_columns
 
 # User-owned tables that aren't in DATA_TABLES, with the column that owns them.
 _EXTRA_OWNED = [
@@ -48,6 +48,55 @@ def export_all_data(uid: str) -> dict:
         (uid,), fetchone=True)
     out["account"] = dict(u) if u else {}
     return out
+
+
+def looks_like_backup(data) -> bool:
+    """A permissive sanity check so a random JSON file can't be mistaken for one
+    of ours: it must be an object carrying at least one known data table."""
+    return isinstance(data, dict) and any(
+        isinstance(data.get(t), list) for t in DATA_TABLES)
+
+
+def import_all_data(uid: str, data: dict) -> dict:
+    """Restore a backup into THIS user's rows, replacing what's there.
+
+    Safety: only the health-data tables are restored (never another user's
+    account, tokens, push keys, or family links); every inserted row's owner is
+    forced to `uid` so a snapshot can't write to someone else; columns not in the
+    current schema are dropped (version drift) and redacted secrets are skipped.
+    Returns {table: rows_restored}. Caller is responsible for confirming intent —
+    this overwrites existing data.
+    """
+    if not looks_like_backup(data):
+        raise ValueError("This doesn't look like an Arogo backup file.")
+    summary = {}
+    for t in DATA_TABLES:
+        rows = data.get(t)
+        if not isinstance(rows, list):
+            continue
+        cols = table_columns(t)
+        if cols and "user_id" not in cols:
+            continue                          # not a user-owned table on this schema
+        execute(f"DELETE FROM {t} WHERE user_id=?", (uid,), commit=True)
+        n = 0
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            clean = {k: v for k, v in row.items()
+                     if (not cols or k in cols) and v != "[redacted]"}
+            clean["user_id"] = uid            # never trust the snapshot's owner
+            keys = [k for k in clean if not cols or k in cols]
+            if not keys:
+                continue
+            ph = ",".join("?" * len(keys))
+            try:
+                execute(f"INSERT INTO {t} ({','.join(keys)}) VALUES ({ph})",
+                        tuple(clean[k] for k in keys), commit=True)
+                n += 1
+            except Exception:
+                pass                          # skip a malformed row, keep going
+        summary[t] = n
+    return summary
 
 
 def delete_account(uid: str) -> None:

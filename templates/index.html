@@ -2027,6 +2027,24 @@
     <button class="btn-outline" data-ev-click="downloadAllData()">Download all my data (JSON)</button>
   </div>
 
+  <!-- Backup & restore (for self-hosting) -->
+  <div class="panel" style="padding:18px 20px;margin-top:20px">
+    <h2 class="panel-title" style="margin-bottom:4px">💾 Backup &amp; restore</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+      Save a one-file backup of your health data, and restore it later — handy if
+      you run Arogo on your own server. Restoring <b>replaces</b> your current data
+      with the backup's, so you'll get to review it first.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="btn-primary" data-ev-click="downloadBackup()">⬇️ Download backup</button>
+      <label class="btn-outline" style="cursor:pointer;margin:0">
+        ⬆️ Restore from backup
+        <input type="file" id="restore-file" accept="application/json,.json"
+               style="display:none" data-ev-change="onRestoreFile(this)">
+      </label>
+    </div>
+    <div id="restore-preview" style="display:none;margin-top:14px"></div>
+  </div>
+
   <!-- Danger zone: account deletion -->
   <div class="panel" id="delete-account-panel" style="padding:18px 20px;margin-top:20px;border:1px solid #f3c2c2">
     <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C">Delete my account</h2>

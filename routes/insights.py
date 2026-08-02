@@ -587,6 +587,39 @@ def api_export_counts():
     }
     return jsonify(counts)
 
+@bp.route('/api/backup')
+@require_auth
+def api_backup():
+    """One-file full snapshot for self-hosted backup — every table this user
+    owns, secrets redacted. Downloads as an Arogo backup .json."""
+    import json as _json, datetime as dt_mod
+    from flask import Response
+    from db.account import export_all_data
+    from db.core import current_user_id
+    data = export_all_data(current_user_id())
+    data['_backup'] = {'app': 'arogo', 'version': 1}
+    body = _json.dumps(data, indent=2, default=str)
+    stamp = today_iso(get_user_timezone())
+    return Response(body, mimetype='application/json', headers={
+        'Content-Disposition': f'attachment; filename="arogo-backup-{stamp}.json"'})
+
+
+@bp.route('/api/import', methods=['POST'])
+@require_auth
+def api_import():
+    """Restore a backup into this user's own data (replaces it). The client
+    previews the row counts and confirms before this is called."""
+    from db.account import import_all_data
+    from db.core import current_user_id
+    data = request.get_json(silent=True)
+    try:
+        summary = import_all_data(current_user_id(), data or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    return jsonify({'success': True, 'restored': summary,
+                    'total': sum(summary.values())})
+
+
 @bp.route('/api/export')
 @require_auth
 def api_export():

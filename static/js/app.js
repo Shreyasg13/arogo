@@ -9916,6 +9916,86 @@ async function downloadAllData() {
   } catch { showToast('Could not prepare your data — try again', 'error'); }
 }
 
+// ── Backup & restore (self-hosting data safety) ─────────────────────────────
+const RESTORE_TABLE_NAMES = {
+  medicines:'Medicines', dose_logs:'Dose history', medicine_events:'Medicine history',
+  appointments:'Appointments', dose_snoozes:'Snoozes', measurement_reminders:'Measurement reminders',
+  vitals:'Vitals', symptoms:'Symptoms', body_metrics:'Body metrics', habits:'Habits',
+  habit_logs:'Habit history', sleep_logs:'Sleep', hydration_logs:'Hydration',
+  food_logs:'Food logs', custom_foods:'Custom foods', fitness_activities:'Workouts',
+  thoughts:'Journal', todos:'Tasks', reports:'Medical reports', emergency_info:'Emergency card',
+  user_profile:'Profile', reminder_settings:'Reminder settings',
+};
+function _prettyTable(k) { return RESTORE_TABLE_NAMES[k] || k.replace(/_/g, ' '); }
+
+let _restoreData = null;
+
+async function downloadBackup() {
+  try {
+    const r = await fetch('/api/backup', {credentials: 'same-origin'});
+    if (!r.ok) throw new Error('backup failed');
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="([^"]+)"/);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = m ? m[1] : 'arogo-backup.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ Backup downloaded', 'success');
+  } catch { showToast('Could not build the backup — try again', 'error'); }
+}
+
+function onRestoreFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try { data = JSON.parse(reader.result); }
+    catch { showToast("That file isn't valid JSON", 'error'); return; }
+    _restoreData = data;
+    renderRestorePreview(data);
+  };
+  reader.readAsText(f);
+  input.value = '';                    // allow re-selecting the same file later
+}
+
+function renderRestorePreview(data) {
+  const el = document.getElementById('restore-preview');
+  if (!el) return;
+  const entries = Object.entries(data || {})
+    .filter(([k, v]) => Array.isArray(v) && v.length && RESTORE_TABLE_NAMES[k]);
+  el.style.display = 'block';
+  if (!entries.length) {
+    el.innerHTML = `<div class="restore-warn">No restorable health records were found in that file.</div>`;
+    _restoreData = null;
+    return;
+  }
+  const rows = entries.map(([k, v]) =>
+    `<div class="restore-row"><span>${escHtml(_prettyTable(k))}</span><b>${v.length}</b></div>`).join('');
+  el.innerHTML = `
+    <div class="restore-warn">⚠️ This <b>replaces</b> your current data with the backup below. Your existing records in these areas are removed first — this can't be undone, so download a backup now if you're unsure.</div>
+    <div class="restore-list">${rows}</div>
+    <button class="btn-primary" style="margin-top:12px" data-ev-click="confirmRestore()">Replace my data with this backup</button>`;
+}
+
+async function confirmRestore() {
+  if (!_restoreData) return;
+  showToast('Restoring…', 'info');
+  const r = await fetch('/api/import', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(_restoreData),
+  }).then(r => r.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(`✓ Restored ${r.total} records — reloading`, 'success');
+    _restoreData = null;
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    showToast((r && r.error) || 'Restore failed', 'error');
+  }
+}
+
 function openDeleteAccount() {
   const panel = document.getElementById('delete-account-panel');
   if (!panel) return;
