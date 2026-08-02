@@ -403,6 +403,15 @@ const I18N = {
     'Weight': 'वज़न',
     '+ Add exercise': '+ व्यायाम जोड़ें',
     'e.g. Bench Press': 'जैसे बेंच प्रेस',
+    // Dynamic buttons
+    'Log vital': 'वाइटल दर्ज करें', 'Permanently delete': 'स्थायी रूप से हटाएँ', 'Start': 'शुरू करें',
+    'Continue': 'जारी रखें', 'Back': 'वापस', 'Done': 'पूर्ण', 'Go to dashboard': 'डैशबोर्ड पर जाएँ',
+    'Monthly': 'मासिक', 'Copy all': 'सभी कॉपी करें', 'Add manually': 'मैन्युअल जोड़ें',
+    'Save to my foods': 'मेरे खाद्य में सहेजें', 'Test': 'परीक्षण', 'Log a meal': 'भोजन दर्ज करें',
+    'Review': 'समीक्षा', 'Download': 'डाउनलोड', 'Add checked to vitals': 'चुने हुए वाइटल्स में जोड़ें',
+    'Add manually instead': 'बजाय मैन्युअल जोड़ें', 'Start over': 'फिर से शुरू करें',
+    'Add these medicines': 'ये दवाइयाँ जोड़ें', 'Turn on Simple View': 'सरल दृश्य चालू करें',
+    'No thanks': 'नहीं धन्यवाद', 'Add to Home Screen': 'होम स्क्रीन में जोड़ें', 'Not now': 'अभी नहीं',
     // Misc empty states
     'No reports found': 'कोई रिपोर्ट नहीं मिली', 'Upload your first medical report': 'अपनी पहली मेडिकल रिपोर्ट अपलोड करें',
     'Upload Report': 'रिपोर्ट अपलोड करें', 'No activities found': 'कोई गतिविधि नहीं मिली', 'Try changing your filters': 'अपने फ़िल्टर बदलकर देखें',
@@ -689,8 +698,8 @@ function offerSimpleMode() {
       '<div class="simple-prompt-body">Simple View makes text larger, buttons easier to tap, ' +
         'and keeps just the essentials on screen. You can switch back any time in Settings.</div>' +
       '<div class="simple-prompt-actions">' +
-        '<button class="simple-prompt-yes" type="button">Turn on Simple View</button>' +
-        '<button class="simple-prompt-no" type="button">No thanks</button>' +
+        '<button class="simple-prompt-yes" type="button">' + t('Turn on Simple View') + '</button>' +
+        '<button class="simple-prompt-no" type="button">' + t('No thanks') + '</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(card);
@@ -977,7 +986,7 @@ function maybeShowInstallPrompt() {
     ? 'Tap the Share button <b>&#x2191;</b> below, then <b>&ldquo;Add to Home Screen&rdquo;</b>.'
     : 'One tap and Arogo lives on your home screen.';
   const actionBtn = android
-    ? '<button class="install-yes" type="button">Add to Home Screen</button>' : '';
+    ? '<button class="install-yes" type="button">' + t('Add to Home Screen') + '</button>' : '';
 
   const card = document.createElement('div');
   card.id = 'install-banner';
@@ -991,7 +1000,7 @@ function maybeShowInstallPrompt() {
         '<div class="install-text">Add Arogo to your home screen so dose reminders reach you ' +
           'even when the app is closed. ' + steps + '</div>' +
         '<div class="install-actions">' + actionBtn +
-          '<button class="install-no" type="button">Not now</button>' +
+          '<button class="install-no" type="button">' + t('Not now') + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -1448,7 +1457,7 @@ async function lookupBarcode(code) {
     box.innerHTML = `
       <div style="font-size:13px;color:var(--gray-600);margin-bottom:8px">
         ${escapeHtml(d.error || 'Not found.')}</div>
-      <button class="qlg-chip" data-ev-click="renderScanForm({&quot;barcode&quot;:&quot;${escapeHtml(code)}&quot;,&quot;name&quot;:&quot;&quot;,&quot;serving_g&quot;:100})">Add manually</button>`;
+      <button class="qlg-chip" data-ev-click="renderScanForm({&quot;barcode&quot;:&quot;${escapeHtml(code)}&quot;,&quot;name&quot;:&quot;&quot;,&quot;serving_g&quot;:100})">${t('Add manually')}</button>`;
     return;
   }
   renderScanForm(d.food, d.food.source);
@@ -1477,7 +1486,7 @@ function renderScanForm(food, source) {
         <div><label>Sugar (g)</label><input type="number" class="form-input" id="bc-sugar" value="${f('sugar')}"></div>
         <div><label>Sodium (mg)</label><input type="number" class="form-input" id="bc-sodium" value="${f('sodium')}"></div>
       </div>
-      <button class="btn-primary" style="width:100%" data-ev-click="saveScannedFood()">Save to my foods</button>
+      <button class="btn-primary" style="width:100%" data-ev-click="saveScannedFood()">${t('Save to my foods')}</button>
     </div>`;
 }
 
@@ -1856,8 +1865,8 @@ async function loadAlertContacts() {
           <input type="checkbox" ${c.alerts_enabled ? 'checked' : ''}
                  data-ev-change="toggleAlertContact('${c.id}', this.checked)"> on
         </label>
-        <button class="btn-outline" style="font-size:11px" data-ev-click="testAlertContact('${c.id}')">Test</button>
-        <button class="btn-outline" style="font-size:11px;color:#DC2626" data-ev-click="deleteAlertContact('${c.id}')">Remove</button>
+        <button class="btn-outline" style="font-size:11px" data-ev-click="testAlertContact('${c.id}')">${t('Test')}</button>
+        <button class="btn-outline" style="font-size:11px;color:#DC2626" data-ev-click="deleteAlertContact('${c.id}')">${t('Remove')}</button>
       </div>`;
   }).join('');
 }
@@ -2560,7 +2569,7 @@ function renderNextAction(doses, calorieState) {
         <div class="next-action-title">Log your first meal</div>
         <div class="next-action-sub">A quick log keeps your nutrition picture accurate.</div>
       </div>
-      <button class="next-action-btn" data-ev-click="quickAdd('food')">Log a meal</button>`;
+      <button class="next-action-btn" data-ev-click="quickAdd('food')">${t('Log a meal')}</button>`;
     el.style.display = '';
     return;
   }
@@ -2722,7 +2731,7 @@ async function loadLowStock() {
       <div class="lowstock-title">${title} — time to refill</div>
       <div class="lowstock-sub">${detail}</div>
     </div>
-    <button class="lowstock-btn" data-ev-click="switchView('medicines')">Review</button>`;
+    <button class="lowstock-btn" data-ev-click="switchView('medicines')">${t('Review')}</button>`;
   el.style.display = 'flex';
 }
 
@@ -3358,8 +3367,8 @@ function openReportDetail(r) {
     ${r.analysis_notes?`<div style="margin-bottom:18px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-400);margin-bottom:8px">Analysis Notes</div><div style="font-size:13.5px;line-height:1.7;color:var(--gray-700);background:var(--gray-25);border:1px solid var(--gray-100);border-radius:var(--r-md);padding:12px">${escHtml(r.analysis_notes)}</div></div>`:''}
     <div id="rdetail-readings" style="margin-bottom:18px"></div>
     <div class="form-actions" style="margin-top:16px;padding-top:16px">
-      <button class="btn-primary" data-ev-click="downloadFile('/uploads/${r.filename}','${r.original_name}')">Download</button>
-      <button class="btn-danger" data-ev-click="deleteReport('${r.id}');closeModal('report-detail-overlay')">Delete</button>
+      <button class="btn-primary" data-ev-click="downloadFile('/uploads/${r.filename}','${r.original_name}')">${t('Download')}</button>
+      <button class="btn-danger" data-ev-click="deleteReport('${r.id}');closeModal('report-detail-overlay')">${t('Delete')}</button>
     </div>
   `;
   document.getElementById('report-detail-overlay').style.display = 'flex';
@@ -3423,7 +3432,7 @@ async function loadReportReadings(rid) {
         </label>`).join('')}
     </div>
     <button class="btn-secondary" style="margin-top:10px" data-ev-click="addReportReadings('${rid}')"
-            id="rdetail-add-readings">Add checked to vitals</button>
+            id="rdetail-add-readings">${t('Add checked to vitals')}</button>
   `;
 }
 
@@ -4088,7 +4097,7 @@ async function submitRxFile(input) {
   if (!_rxMeds.length) {
     status.style.color = 'var(--gray-600)';
     status.innerHTML = escHtml(d.reason || "We couldn't find any medicines.") +
-      `<div style="margin-top:12px"><button class="btn-outline" data-ev-click="closeModal('rx-import-overlay');openMedModal()">Add manually instead</button></div>`;
+      `<div style="margin-top:12px"><button class="btn-outline" data-ev-click="closeModal('rx-import-overlay');openMedModal()">${t('Add manually instead')}</button></div>`;
     return;
   }
   status.textContent = '';
@@ -4117,8 +4126,8 @@ function renderRxReview() {
         <button class="btn-icon" title="Remove" data-ev-click="rxRemoveRow(${i})">✕</button>
       </div>`).join('') +
     `<div style="display:flex;gap:8px;margin-top:16px">
-       <button class="btn-outline" data-ev-click="openRxImport()">Start over</button>
-       <button class="btn-primary" style="flex:1" data-ev-click="addRxMedicines()">Add these medicines</button>
+       <button class="btn-outline" data-ev-click="openRxImport()">${t('Start over')}</button>
+       <button class="btn-primary" style="flex:1" data-ev-click="addRxMedicines()">${t('Add these medicines')}</button>
      </div>`;
 }
 
@@ -10420,7 +10429,7 @@ async function loadBodyView() {
               <input type="date" class="form-input" id="bv-date" value="${localToday()}">
             </div>
           </div>
-          <button class="btn-primary" style="width:100%;margin-top:4px" data-ev-click="saveBodyMetricFromView()">Save</button>
+          <button class="btn-primary" style="width:100%;margin-top:4px" data-ev-click="saveBodyMetricFromView()">${t('Save')}</button>
         </div>
         <div id="bv-metric-history" style="padding:0 20px 16px"></div>
       </div>
@@ -10454,7 +10463,7 @@ async function loadBodyView() {
                 <input type="number" class="form-input" id="bv-v2" step="0.1">
               </div>
             </div>
-            <button class="btn-primary" style="width:100%;margin-top:4px" data-ev-click="saveVitalFromView()">Log vital</button>
+            <button class="btn-primary" style="width:100%;margin-top:4px" data-ev-click="saveVitalFromView()">${t('Log vital')}</button>
           </div>
         </div>
         <div id="bv-vital-history" style="padding:0 20px 16px"></div>
@@ -10890,9 +10899,9 @@ function openDeleteAccount() {
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <input type="password" class="form-input" id="delete-account-pw" placeholder="Your password"
              aria-label="Confirm password" style="max-width:220px" autocomplete="current-password">
-      <button class="btn-outline" data-ev-click="resetDeleteAccount()">Cancel</button>
+      <button class="btn-outline" data-ev-click="resetDeleteAccount()">${t('Cancel')}</button>
       <button class="btn-outline" style="color:#fff;background:#B91C1C;border-color:#B91C1C"
-              data-ev-click="confirmDeleteAccount()">Permanently delete</button>
+              data-ev-click="confirmDeleteAccount()">${t('Permanently delete')}</button>
     </div>`;
 }
 
@@ -11019,7 +11028,7 @@ async function initDailyCheckin() {
       <div class="checkin-prompt-title">Daily check-in</div>
       <div class="checkin-prompt-sub">A quick 30 seconds — ${parts.join(', ')}.</div>
     </div>
-    <button class="checkin-prompt-start" data-ev-click="startDailyCheckin()">Start</button>
+    <button class="checkin-prompt-start" data-ev-click="startDailyCheckin()">${t('Start')}</button>
     <button class="checkin-prompt-dismiss" data-ev-click="dismissCheckinPrompt()" title="Not now" aria-label="Dismiss">✕</button>`;
   prompt.style.display = 'flex';
 }
@@ -11091,7 +11100,7 @@ function renderCheckin() {
                   data-ev-input="ciSetNote(this.value)">${escHtml(ciSel.note || '')}</textarea>` : ''}`;
     footer.innerHTML = `
       <button class="ci-btn-primary" data-ev-click="ciNext()"
-              ${ciSel.mood === null ? 'disabled' : ''}>Continue</button>`;
+              ${ciSel.mood === null ? 'disabled' : ''}>${t('Continue')}</button>`;
   }
 
   // ── Step: Sleep ─────────────────────────────────────────────
@@ -11108,9 +11117,9 @@ function renderCheckin() {
           </button>`).join('')}
       </div>`;
     footer.innerHTML = `
-      <button class="ci-btn-secondary" data-ev-click="ciBack()">Back</button>
+      <button class="ci-btn-secondary" data-ev-click="ciBack()">${t('Back')}</button>
       <button class="ci-btn-primary" data-ev-click="ciNext()"
-              ${ciSel.sleep === null ? 'disabled' : ''}>Continue</button>`;
+              ${ciSel.sleep === null ? 'disabled' : ''}>${t('Continue')}</button>`;
   }
 
   // ── Step: Symptoms ──────────────────────────────────────────
@@ -11127,8 +11136,8 @@ function renderCheckin() {
       </div>`;
     const isFirst = ciStep === 0;
     footer.innerHTML = `
-      ${!isFirst ? '<button class="ci-btn-secondary" data-ev-click="ciBack()">Back</button>' : ''}
-      <button class="ci-btn-primary" data-ev-click="ciNext()">Continue</button>`;
+      ${!isFirst ? `<button class="ci-btn-secondary" data-ev-click="ciBack()">${t('Back')}</button>` : ''}
+      <button class="ci-btn-primary" data-ev-click="ciNext()">${t('Continue')}</button>`;
   }
 
   // ── Step: Hydration ─────────────────────────────────────────
@@ -11144,8 +11153,8 @@ function renderCheckin() {
           </button>`).join('')}
       </div>`;
     footer.innerHTML = `
-      <button class="ci-btn-secondary" data-ev-click="ciBack()">Back</button>
-      <button class="ci-btn-primary" data-ev-click="ciSubmit()">Done</button>`;
+      <button class="ci-btn-secondary" data-ev-click="ciBack()">${t('Back')}</button>
+      <button class="ci-btn-primary" data-ev-click="ciSubmit()">${t('Done')}</button>`;
   }
 }
 
@@ -11306,7 +11315,7 @@ function ciShowSummary() {
     </div>`;
 
   footer.innerHTML = `
-    <button class="ci-btn-primary" data-ev-click="closeCheckin()">Go to dashboard</button>`;
+    <button class="ci-btn-primary" data-ev-click="closeCheckin()">${t('Go to dashboard')}</button>`;
 
   setTimeout(closeCheckin, 3000);
 }
@@ -11410,8 +11419,8 @@ async function loadVitalTrends(days) {
 
   const toggleHTML = `
     <div class="trend-toggle">
-      <button class="trend-toggle-btn${d===7?' active':''}"  data-ev-click="loadVitalTrends(7)">Weekly</button>
-      <button class="trend-toggle-btn${d===30?' active':''}" data-ev-click="loadVitalTrends(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===7?' active':''}"  data-ev-click="loadVitalTrends(7)">${t('Weekly')}</button>
+      <button class="trend-toggle-btn${d===30?' active':''}" data-ev-click="loadVitalTrends(30)">${t('Monthly')}</button>
       <button class="trend-toggle-btn${d===90?' active':''}" data-ev-click="loadVitalTrends(90)">3 months</button>
     </div>`;
 
@@ -11903,9 +11912,9 @@ async function loadSleepTrend(days) {
   if (badge) {
     badge.innerHTML = `
       <div class="trend-toggle">
-        <button class="trend-toggle-btn${d===7?' active':''}"  data-ev-click="loadSleepTrend(7)">Weekly</button>
+        <button class="trend-toggle-btn${d===7?' active':''}"  data-ev-click="loadSleepTrend(7)">${t('Weekly')}</button>
         <button class="trend-toggle-btn${d===14?' active':''}" data-ev-click="loadSleepTrend(14)">Bi-weekly</button>
-        <button class="trend-toggle-btn${d===30?' active':''}" data-ev-click="loadSleepTrend(30)">Monthly</button>
+        <button class="trend-toggle-btn${d===30?' active':''}" data-ev-click="loadSleepTrend(30)">${t('Monthly')}</button>
       </div>`;
   }
 
@@ -12315,7 +12324,7 @@ async function loadMoodSleepCorrelation(days) {
 
   const mscToggle = `
     <div class="trend-toggle">
-      <button class="trend-toggle-btn${d===30?' active':''}"  data-ev-click="loadMoodSleepCorrelation(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===30?' active':''}"  data-ev-click="loadMoodSleepCorrelation(30)">${t('Monthly')}</button>
       <button class="trend-toggle-btn${d===90?' active':''}"  data-ev-click="loadMoodSleepCorrelation(90)">3 months</button>
     </div>`;
 
@@ -12755,7 +12764,7 @@ async function loadWeightProgressChart(days) {
 
   const toggleHTML = `
     <div class="trend-toggle">
-      <button class="trend-toggle-btn${d===30?' active':''}"  data-ev-click="loadWeightProgressChart(30)">Monthly</button>
+      <button class="trend-toggle-btn${d===30?' active':''}"  data-ev-click="loadWeightProgressChart(30)">${t('Monthly')}</button>
       <button class="trend-toggle-btn${d===90?' active':''}"  data-ev-click="loadWeightProgressChart(90)">3 months</button>
       <button class="trend-toggle-btn${d===180?' active':''}" data-ev-click="loadWeightProgressChart(180)">6 months</button>
     </div>`;
@@ -13016,7 +13025,7 @@ async function loadQuickMeals() {
           <div class="qm-yday-title">📋 Same as yesterday</div>
           <div class="qm-yday-sub">${Math.round(yesterday_total_cal)} kcal total</div>
         </div>
-        <button class="qm-yday-btn" data-ev-click="copyYesterdayMeals()">Copy all</button>
+        <button class="qm-yday-btn" data-ev-click="copyYesterdayMeals()">${t('Copy all')}</button>
        </div>`
     : '';
 
