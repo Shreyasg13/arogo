@@ -5185,6 +5185,27 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .planner-empty { padding:30px 20px; text-align:center; color:var(--gray-400); font-size:14px; }
 .planner-toolbar { display:flex; justify-content:flex-end; margin-bottom:12px; }
 
+/* Refill shopping list */
+.lsab-btn { margin-left:auto; align-self:center; background:var(--surface,#fff); border:1px solid var(--gray-200,#E7E3DA);
+  border-radius:99px; padding:7px 14px; font-size:13px; font-weight:600; color:var(--gray-700); cursor:pointer; white-space:nowrap; }
+.lsab-btn:hover { background:var(--gray-50,#F7F5F0); }
+.rf-list { display:flex; flex-direction:column; }
+.rf-row { display:flex; align-items:flex-start; gap:11px; padding:11px 2px; border-bottom:1px solid var(--gray-50,#F0EDE6); cursor:pointer; }
+.rf-row:last-child { border-bottom:none; }
+.rf-check { margin-top:3px; width:18px; height:18px; flex-shrink:0; accent-color:var(--teal-600,#4F8D74); }
+.rf-check:checked ~ .rf-body .rf-name { text-decoration:line-through; color:var(--gray-400); }
+.rf-icon { font-size:18px; line-height:1.3; }
+.rf-body { flex:1; min-width:0; }
+.rf-name { font-size:15px; font-weight:600; color:var(--gray-800); }
+.rf-dose { font-weight:500; color:var(--gray-500); font-size:13px; }
+.rf-note { font-size:12px; color:var(--gray-500); margin-top:2px; }
+.rf-tag { font-size:11px; font-weight:700; border-radius:99px; padding:2px 8px; margin-left:6px; white-space:nowrap; }
+.rf-tag--out { background:#FBECEC; color:#B4443A; }
+.rf-tag--low { background:#FCF2E2; color:#946A3D; }
+.rf-tag--ordered { background:var(--gray-100,#F0EDE6); color:var(--gray-500); }
+.rf-hint { font-size:11.5px; color:var(--gray-500); margin-top:12px; }
+.rf-empty { padding:30px 20px; text-align:center; color:var(--gray-500); font-size:14px; line-height:1.6; }
+
 /* Medicine history */
 .mh-list { display:flex; flex-direction:column; }
 .mh-row { display:flex; gap:12px; padding:11px 2px; border-bottom:1px solid var(--gray-50,#F0EDE6); }

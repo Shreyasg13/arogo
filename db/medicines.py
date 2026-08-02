@@ -627,6 +627,48 @@ def decrement_pill_count(mid: str):
     """Call after a dose is taken to reduce stock (one dose's worth)."""
     _apply_stock_delta(mid, -1)
 
+_FREQ_DOSES = {
+    'once_daily': 1, 'twice_daily': 2, 'thrice_daily': 3, 'weekly': 1/7,
+    'once': 1, 'twice': 2, 'three_times': 3,   # legacy keys
+}
+
+
+def _days_of_supply(m):
+    """Days of stock left for a medicine, or None if it isn't tracking pills."""
+    pc = m.get('pill_count')
+    if pc is None:
+        return None
+    per_day = _FREQ_DOSES.get(m.get('frequency', 'once_daily'), 1) * (m.get('pills_per_dose') or 1)
+    return round(pc / max(per_day, 0.01), 1)
+
+
+def get_refill_list():
+    """Every active medicine that needs attention on a pharmacy run: running low,
+    out of stock, or already marked ordered (on the way). Worst first."""
+    out = []
+    for m in list_medicines():
+        if not m['active']:
+            continue
+        pc = m.get('pill_count')
+        ordered = m.get('refill_status') == 'ordered'
+        days_left = _days_of_supply(m)
+        low = days_left is not None and days_left < (m.get('refill_threshold') or 7)
+        if not (low or ordered):
+            continue
+        dosage = (m.get('dosage') or '').strip()
+        out.append({
+            'id': m['id'], 'name': m['name'], 'icon': m.get('icon') or '💊',
+            'dose': (dosage + ' ' + (m.get('unit') or '')).strip() if dosage else '',
+            'pill_count': pc, 'days_left': days_left,
+            'out': pc == 0, 'ordered': ordered,
+            'pharmacy_note': m.get('pharmacy_note') or '',
+        })
+    # Ordered items sink to the bottom; otherwise out-of-stock first, then fewest days.
+    out.sort(key=lambda x: (x['ordered'], not x['out'],
+                            x['days_left'] if x['days_left'] is not None else 999))
+    return out
+
+
 def get_low_stock_medicines():
     """Return medicines where days remaining < refill_threshold."""
     meds = list_medicines()

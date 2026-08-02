@@ -143,6 +143,12 @@ def dose_calendar():
     days = to_int(request.args.get('days', 35), 35, lo=1, hi=120)
     return jsonify({'days': get_dose_calendar(days)})
 
+@bp.route('/api/medicines/refill-list')
+@require_auth
+def refill_list():
+    """Everything to pick up on a pharmacy run — low, out, or on the way."""
+    return jsonify({'items': get_refill_list()})
+
 @bp.route('/api/medicines/history')
 @require_auth
 def medicine_history():

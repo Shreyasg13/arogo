@@ -2147,6 +2147,66 @@ function medTimingText(m) {
   return m.timing_text || (m.with_food ? 'with food' : '');
 }
 
+// ── Refill shopping list (everything to pick up on a pharmacy run) ──
+async function openRefillList() {
+  const el = document.getElementById('refill-content');
+  const modal = document.getElementById('refill-modal');
+  if (!el || !modal) return;
+  el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gray-400)">Loading…</div>';
+  modal.style.display = 'flex';
+  const d = await fetch('/api/medicines/refill-list').then(r => r.json()).catch(() => null);
+  el.innerHTML = d ? renderRefillList(d.items || []) : '<div style="padding:20px;color:#DC2626">Could not load the list.</div>';
+}
+function closeRefillList() { const m = document.getElementById('refill-modal'); if (m) m.style.display = 'none'; }
+
+function _refillStatusLabel(it) {
+  if (it.ordered) return '<span class="rf-tag rf-tag--ordered">on the way</span>';
+  if (it.out) return '<span class="rf-tag rf-tag--out">out of stock</span>';
+  if (it.days_left != null) return `<span class="rf-tag rf-tag--low">~${it.days_left}d left</span>`;
+  return '';
+}
+
+function renderRefillList(items) {
+  const esc = escHtml;
+  if (!items.length) {
+    return `<div class="rf-empty">✅ Nothing to refill — every tracked medicine has enough on hand.</div>`;
+  }
+  const rows = items.map((it, i) => `
+    <label class="rf-row">
+      <input type="checkbox" class="rf-check" data-i="${i}">
+      <span class="rf-icon">${esc(it.icon)}</span>
+      <div class="rf-body">
+        <div class="rf-name">${esc(it.name)}${it.dose ? ` <span class="rf-dose">${esc(it.dose)}</span>` : ''} ${_refillStatusLabel(it)}</div>
+        ${it.pharmacy_note ? `<div class="rf-note">📍 ${esc(it.pharmacy_note)}</div>` : ''}
+      </div>
+    </label>`).join('');
+  return `<div class="rf-list">${rows}</div>
+    <p class="rf-hint">Tick items as you go. Ordered ones sit at the bottom.</p>`;
+}
+
+function printRefillList() {
+  const list = document.getElementById('refill-content');
+  if (!list || !list.querySelector('.rf-row')) { showToast('Nothing to print', 'error'); return; }
+  const names = [...list.querySelectorAll('.rf-row')].map(r => r.querySelector('.rf-name').textContent.trim());
+  const win = window.open('', '_blank', 'width=620,height=800');
+  if (!win) { showToast('Allow pop-ups to print', 'error'); return; }
+  const items = names.map(n => `<li>${escHtml(n)}</li>`).join('');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Refill shopping list</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2a24;padding:28px;max-width:560px;margin:0 auto}
+h1{font-size:24px;margin-bottom:4px}.sub{font-size:13px;color:#8a978f;margin-bottom:20px}
+ul{list-style:none}li{font-size:17px;padding:12px 4px 12px 34px;border-bottom:1px solid #ECE7DC;position:relative}
+li:before{content:'';position:absolute;left:2px;top:12px;width:18px;height:18px;border:2px solid #B9C2BB;border-radius:4px}
+.foot{font-size:11.5px;color:#a4afa7;margin-top:20px;text-align:center}
+.pp-print-btn{background:#5A9E70;color:#fff;border:none;border-radius:99px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:16px}
+@media print{body{padding:0}.no-print{display:none!important}@page{margin:16mm}}</style></head><body>
+<button class="pp-print-btn no-print" type="button">🖨️ Print / Save as PDF</button>
+<h1>🛒 Refill shopping list</h1><div class="sub">Arogo · from your own medicine list</div>
+<ul>${items}</ul><div class="foot">Not a prescription.</div></body></html>`);
+  win.document.close();
+  const btn = win.document.querySelector('.pp-print-btn');
+  if (btn) btn.addEventListener('click', () => win.print());
+}
+
 // ── Medicine history (a dated record of what changed) ──
 const MED_EVENT_META = {
   started:   { icon: '➕', label: 'Started',   color: 'var(--teal-600,#4F8D74)' },

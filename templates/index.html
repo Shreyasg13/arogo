@@ -805,6 +805,22 @@
       <div class="lsab-title">Refill needed</div>
       <div class="lsab-items" id="lsab-items"></div>
     </div>
+    <button class="lsab-btn" data-ev-click="openRefillList()" title="See everything to pick up, as a checklist">🛒 Shopping list</button>
+  </div>
+
+  <div class="modal-overlay" id="refill-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeRefillList')">
+    <div class="modal" id="refill-sheet">
+      <div class="modal-head no-print">
+        <div class="modal-title">🛒 Refill shopping list</div>
+        <button class="modal-close" data-ev-click="closeRefillList()">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="refill-content"></div>
+        <div class="no-print" style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+          <button class="btn-outline" data-ev-click="printRefillList()">Print / Save as PDF</button>
+        </div>
+      </div>
+    </div>
   </div>
   <div class="page-header">
     <div>
