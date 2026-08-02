@@ -408,6 +408,29 @@ const I18N = {
     'Nothing found': 'कुछ नहीं मिला', 'Try a different name or pick another category': 'कोई और नाम आज़माएँ या दूसरी श्रेणी चुनें',
     'My food': 'मेरा खाना', '⭐ My Foods': '⭐ मेरे खाद्य', 'serving': 'सर्विंग', '✕ remove': '✕ हटाएँ',
     '+ Custom food': '+ कस्टम खाना', 'Saving…': 'सहेजा जा रहा है…', 'Save & Add to Meal': 'सहेजें व भोजन में जोड़ें',
+    // Interpolated toasts
+    '📷 %1 saved to your foods': '📷 %1 आपके खाद्य में सहेजा गया',
+    '🍽️ %1 item(s) copied from yesterday': '🍽️ कल से %1 आइटम कॉपी हुए',
+    '✓ Synced %1 offline entries': '✓ %1 ऑफ़लाइन प्रविष्टियाँ सिंक हुईं',
+    'Connecting to %1…': '%1 से कनेक्ट हो रहा है…',
+    '✓ Imported %1 activities from %2': '✓ %2 से %1 गतिविधियाँ आयात हुईं',
+    'Syncing %1…': '%1 सिंक हो रहा है…',
+    '✓ %1: %2 new activities': '✓ %1: %2 नई गतिविधियाँ',
+    '✓ %1 connected!': '✓ %1 जुड़ गया!',
+    '✓ Imported %1 of %2 workouts': '✓ %2 में से %1 कसरतें आयात हुईं',
+    'Updated to %1g': '%1g में अपडेट हुआ',
+    'Thought saved %1': 'विचार सहेजा गया %1',
+    'Sleep logged — %1h': 'नींद दर्ज — %1घं',
+    'Metrics saved — BMI: %1': 'माप सहेजे — BMI: %1',
+    '✓ Alerted %1 caregiver(s)%2': '✓ %1 देखभालकर्ता को सूचित किया%2',
+    '✓ Logged %1 %2': '✓ %1 %2 दर्ज',
+    '✓ Logged %1 item(s) to %2': '✓ %2 में %1 आइटम दर्ज',
+    'Stock updated — %1 days of supply': 'स्टॉक अपडेट — %1 दिन की आपूर्ति',
+    'Downloading %1 export…': '%1 निर्यात डाउनलोड हो रहा…',
+    '✓ Restored %1 records — reloading': '✓ %1 रिकॉर्ड पुनर्स्थापित — पुनः लोड हो रहा',
+    'Target weight set: %1 kg': 'लक्ष्य वज़न सेट: %1 किग्रा',
+    '✓ %1 added (%2 kcal)': '✓ %1 जोड़ा (%2 kcal)',
+    '✓ Copied %1 item(s) from yesterday': '✓ कल से %1 आइटम कॉपी हुए',
     // Toasts (action feedback)
     'Action failed': 'कार्रवाई विफल',
     'Activity logged!': 'गतिविधि दर्ज हुई!',
@@ -1434,7 +1457,7 @@ async function saveScannedFood() {
   const d = await r.json().catch(() => ({}));
   if (!r.ok || !d.success) { showToast(d.error || 'Could not save', 'error'); return; }
   closeBarcodeScanner();
-  showToast(`📷 ${name} saved to your foods`);
+  showToast(tformat('📷 %1 saved to your foods', name));
   try { if (document.getElementById('view-food')?.classList.contains('active')) loadFoodTracker(); } catch (e) {}
 }
 
@@ -1542,7 +1565,7 @@ async function quickCopyYesterday() {
     }),
   }).catch(() => {})));
   closeQuickLog();
-  showToast(`🍽️ ${items.length} item(s) copied from yesterday`);
+  showToast(tformat('🍽️ %1 item(s) copied from yesterday', items.length));
   try { if (document.getElementById('view-food').classList.contains('active')) loadFoodTracker(); } catch (e) {}
 }
 
@@ -3928,7 +3951,7 @@ async function flushOutbox() {
   } finally { _flushing = false; }
   _updateOutboxBadge();
   if (synced > 0) {
-    showToast(`✓ Synced ${synced} offline ${synced > 1 ? 'entries' : 'entry'}`, 'success');
+    showToast(tformat('✓ Synced %1 offline entries', synced), 'success');
     try { loadMedicines(); loadDashboard(); } catch (e) {}
   }
   return synced;
@@ -4903,11 +4926,11 @@ function setupActivityForm() {
 
 async function connectService(service) {
   closeModal('connect-modal-overlay');
-  showToast(`Connecting to ${service}…`);
+  showToast(tformat('Connecting to %1…', service));
   const res = await fetch('/api/fitness/connect', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ service }) });
   const data = await res.json();
   if (data.success) {
-    showToast(`✓ Imported ${data.imported} activities from ${service}`, 'success');
+    showToast(tformat('✓ Imported %1 activities from %2', data.imported, service), 'success');
     // Mark as connected
     const row = document.querySelector(`.app-connect-row[data-service="${service}"] .btn-connect`);
     if (row) { row.textContent = 'Connected ✓'; row.classList.add('connected'); }
@@ -5045,7 +5068,7 @@ function renderConnectedPanel(tokens, syncLog) {
 }
 
 async function triggerSync(service) {
-  showToast(`Syncing ${SERVICE_LABELS[service] || service}…`);
+  showToast(tformat('Syncing %1…', SERVICE_LABELS[service] || service));
   try {
     const res = await fetch('/api/fitness/sync', {
       method: 'POST', headers: {'Content-Type':'application/json'},
@@ -5054,7 +5077,7 @@ async function triggerSync(service) {
     const data = await res.json();
     if (data.success) {
       const r = data.results[service];
-      showToast(`✓ ${SERVICE_LABELS[service]}: ${r.count ?? 0} new activities`, 'success');
+      showToast(tformat('✓ %1: %2 new activities', SERVICE_LABELS[service], r.count ?? 0), 'success');
       loadFitness();
       loadDashboard();
       loadConnectedServices();
@@ -5122,7 +5145,7 @@ connectService = function(service) {
         const tokens = await fetch('/api/fitness/connected').then(r => r.json()).catch(() => []);
         const connected = tokens.find(t => t.service === service);
         if (connected) {
-          showToast(`✓ ${SERVICE_LABELS[service]} connected!`, 'success');
+          showToast(tformat('✓ %1 connected!', SERVICE_LABELS[service]), 'success');
         } else {
           showToast('Connection cancelled or failed', 'error');
           if (btn) { btn.textContent = 'Connect'; btn.disabled = false; }
@@ -5163,7 +5186,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = await fetch('/api/fitness/apple/import', { method:'POST', body:fd });
         const data = await res.json();
         if (data.success) {
-          showToast(`✓ Imported ${data.imported} of ${data.total} workouts`, 'success');
+          showToast(tformat('✓ Imported %1 of %2 workouts', data.imported, data.total), 'success');
           closeModal('apple-modal-overlay');
           loadFitness(); loadDashboard();
         } else showToast(data.error || 'Import failed', 'error');
@@ -6487,7 +6510,7 @@ async function editFoodQty(id, currentQty, foodName) {
   }).then(r => r.json()).catch(() => null);
 
   if (r?.success) {
-    showToast(`Updated to ${qty}g`, 'success');
+    showToast(tformat('Updated to %1g', qty), 'success');
     loadFoodTracker();
   } else {
     showToast('Failed to update', 'error');
@@ -6900,7 +6923,7 @@ async function submitThought() {
   if (r?.success) {
     ta.value = '';
     updateThoughtCounter(ta);
-    showToast(`Thought saved ${moodEmoji(selectedMood)}`, 'success');
+    showToast(tformat('Thought saved %1', moodEmoji(selectedMood)), 'success');
     loadThoughts();
   } else {
     showToast(r?.error || 'Failed to save', 'error');
@@ -7358,7 +7381,7 @@ async function saveSleepLog() {
                            notes: document.getElementById('sleep-notes')?.value || '' })
   }).then(r => r.json());
   if (r.success) {
-    showToast(`Sleep logged — ${r.sleep.duration_h}h`, 'success');
+    showToast(tformat('Sleep logged — %1h', r.sleep.duration_h), 'success');
     loadSleepData();
     loadWellnessStrip();
   } else showToast(r.error || 'Failed', 'error');
@@ -7423,7 +7446,7 @@ async function saveBodyMetric() {
     })
   }).then(r => r.json());
   if (r.success) {
-    showToast(`Metrics saved — BMI: ${r.metric.bmi || '—'}`, 'success');
+    showToast(tformat('Metrics saved — BMI: %1', r.metric.bmi || '—'), 'success');
     loadBodyMetrics();
     loadDashboard();
   }
@@ -7866,7 +7889,7 @@ async function sendSos() {
   closeSos();
   if (r && r.success && r.reached > 0) {
     const who = (r.who || []).length ? ` — ${r.who.join(', ')}` : '';
-    showToast(`✓ Alerted ${r.reached} caregiver${r.reached !== 1 ? 's' : ''}${who}`, 'success');
+    showToast(tformat('✓ Alerted %1 caregiver(s)%2', r.reached, who), 'success');
   } else if (r && r.success) {
     // Honest: an emergency button must never pretend it reached someone.
     showToast('Sent, but no caregiver could be reached — add a caregiver in Family', 'error');
@@ -8810,7 +8833,7 @@ async function quickLogVital(type, value1, value2, unit) {
   // Surfaces the server's plausibility message ("that reading looks off")
   if (!r?.success) { showToast(r?.error || 'Could not log that reading', 'error'); return; }
   const shown = value2 ? `${value1}/${value2}` : value1;
-  showToast(`✓ Logged ${shown} ${unit || ''}`.trim(), 'success');
+  showToast(tformat('✓ Logged %1 %2', shown, unit || '').trim(), 'success');
   try { loadVitals(); } catch (e) {}
   try { loadVitalsView(); } catch (e) {}
 }
@@ -8924,7 +8947,7 @@ async function confirmFoodLog() {
   _pendingFoodLog = null;
   closeGlobalSearch();
   const mealLabel = (MEAL_TYPES.find(m => m.id === p.meal) || {}).label || p.meal;
-  if (ok) showToast(`✓ Logged ${ok} item${ok > 1 ? 's' : ''} to ${mealLabel}`, 'success');
+  if (ok) showToast(tformat('✓ Logged %1 item(s) to %2', ok, mealLabel), 'success');
   else    showToast('Could not log that — try again', 'error');
   // refresh the food view if it's showing today
   if (ok && typeof loadFoodDay === 'function' && foodDate === date) loadFoodDay(date);
@@ -9818,7 +9841,7 @@ async function saveRestock() {
     body: JSON.stringify({ pill_count: pillCount, pills_per_dose: ppd, refill_threshold: threshold, pharmacy_note: pharmacy })
   }).then(r => r.json()).catch(() => null);
   if (r?.success) {
-    showToast(`Stock updated — ${Math.floor(pillCount/ppd)} days of supply`, 'success');
+    showToast(tformat('Stock updated — %1 days of supply', Math.floor(pillCount/ppd)), 'success');
     closeModal('restock-modal-overlay');
     loadMedicines();
   } else {
@@ -10715,7 +10738,7 @@ async function doExport() {
   a.href = url; a.download = '';
   document.body.appendChild(a); a.click();
   document.body.removeChild(a);
-  showToast(`Downloading ${_exportFmt.toUpperCase()} export…`, 'success');
+  showToast(tformat('Downloading %1 export…', _exportFmt.toUpperCase()), 'success');
 }
 
 // ── Complete data export + account deletion (DPDP/GDPR) ─────────────────────
@@ -10806,7 +10829,7 @@ async function confirmRestore() {
     body: JSON.stringify(_restoreData),
   }).then(r => r.json()).catch(() => null);
   if (r && r.success) {
-    showToast(`✓ Restored ${r.total} records — reloading`, 'success');
+    showToast(tformat('✓ Restored %1 records — reloading', r.total), 'success');
     _restoreData = null;
     setTimeout(() => location.reload(), 1000);
   } else {
@@ -12912,7 +12935,7 @@ async function saveTargetWeight(val) {
     body: JSON.stringify({ target_weight_kg: kg }),
   }).then(r => r.json()).catch(() => null);
   if (r?.success) {
-    showToast(`Target weight set: ${kg} kg`, 'success');
+    showToast(tformat('Target weight set: %1 kg', kg), 'success');
     loadWeightProgressChart();
   }
 }
@@ -13011,7 +13034,7 @@ async function repeatMealCombo(idx) {
 
   if (ok) {
     const MEAL_LABELS = {breakfast:'Breakfast',lunch:'Lunch',snack:'Snack',dinner:'Dinner'};
-    showToast(`✓ ${MEAL_LABELS[combo.meal_type] || combo.meal_type} added (${Math.round(combo.total_cal)} kcal)`, 'success');
+    showToast(tformat('✓ %1 added (%2 kcal)', MEAL_LABELS[combo.meal_type] || combo.meal_type, Math.round(combo.total_cal)), 'success');
     loadFoodTracker();
   } else {
     showToast('Some items failed to log', 'error');
@@ -13045,7 +13068,7 @@ async function copyYesterdayMeals() {
 
   const results = await Promise.all(promises);
   const ok = results.filter(r => r?.success).length;
-  showToast(`✓ Copied ${ok} item${ok !== 1 ? 's' : ''} from yesterday`, 'success');
+  showToast(tformat('✓ Copied %1 item(s) from yesterday', ok), 'success');
   loadFoodTracker();
 }
 
