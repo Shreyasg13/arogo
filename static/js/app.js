@@ -146,6 +146,13 @@ const I18N = {
     'Quiet hours': 'शांत घंटे', 'Daily journal reminder': 'दैनिक डायरी रिमाइंडर',
     'Download everything': 'सब कुछ डाउनलोड करें', '💾 Backup & restore': '💾 बैकअप व पुनर्स्थापना',
     'Delete my account': 'मेरा खाता हटाएँ',
+    '🛒 Refill shopping list': '🛒 रिफिल खरीद सूची', 'Upload Medical Report': 'मेडिकल रिपोर्ट अपलोड करें',
+    '📄 Import from prescription': '📄 पर्ची से आयात करें', 'Update Pill Stock': 'गोली स्टॉक अपडेट करें',
+    'Log Activity': 'गतिविधि दर्ज करें', 'Connect Fitness App': 'फिटनेस ऐप जोड़ें',
+    'Import Apple Health': 'Apple Health आयात करें', 'Add Food': 'खाना जोड़ें',
+    "Today's Calorie Balance": 'आज का कैलोरी संतुलन', 'Health Profile': 'स्वास्थ्य प्रोफ़ाइल',
+    'Add New Habit': 'नई आदत जोड़ें', 'Doctor visit summary': 'डॉक्टर विज़िट सारांश',
+    '🕘 Medicine history': '🕘 दवा इतिहास', "📅 This week's plan": '📅 इस हफ़्ते की योजना',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
