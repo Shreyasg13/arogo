@@ -179,6 +179,18 @@ const I18N = {
     'Log food to see micronutrients': 'सूक्ष्म पोषक देखने के लिए खाना दर्ज करें',
     '💧 +%1ml logged': '💧 +%1ml दर्ज', '⚖️ %1kg saved': '⚖️ %1kg सहेजा',
     'Added %1 medicine(s) 💊': '%1 दवा जोड़ीं 💊', '%1 symptom(s) logged': '%1 लक्षण दर्ज',
+    'done': 'पूर्ण', '🔥 %1 day streak': '🔥 %1 दिन स्ट्रीक', 'Start your streak today': 'आज अपनी स्ट्रीक शुरू करें',
+    '✓ Done': '✓ पूर्ण', 'Tap to check off': 'पूरा करने के लिए टैप करें', 'Add first habit': 'पहली आदत जोड़ें',
+    'Current streak': 'वर्तमान स्ट्रीक', 'Remove habit': 'आदत हटाएँ', 'Last 7 days': 'पिछले 7 दिन',
+    'Last 28 days': 'पिछले 28 दिन', '🏆 best %1': '🏆 सर्वश्रेष्ठ %1',
+    'Done today — tap to undo': 'आज पूर्ण — पूर्ववत करने के लिए टैप करें', 'Mark done today': 'आज पूर्ण चिह्नित करें',
+    'New habit': 'नई आदत',
+    'last night': 'बीती रात', '7-day average': '7-दिन औसत', 'No sleep logged yet': 'अभी कोई नींद दर्ज नहीं',
+    'Best night': 'सर्वश्रेष्ठ रात', 'No sleep data — log from Thoughts page': 'कोई नींद डेटा नहीं — विचार पेज से दर्ज करें',
+    'Sleep quality': 'नींद की गुणवत्ता',
+    'No nights logged yet — start tracking to see your trend': 'अभी कोई रात दर्ज नहीं — रुझान देखने के लिए ट्रैक करना शुरू करें',
+    '%1 of %2 nights logged': '%2 में से %1 रातें दर्ज', 'avg %1h': 'औसत %1घं',
+    '🌙 Usually asleep around %1, up around %2 · bed/wake times vary by ±%3 min': '🌙 आमतौर पर %1 के आसपास सोते, %2 के आसपास उठते · सोने/जागने का समय ±%3 मिनट बदलता है',
     // Toasts (action feedback)
     'Action failed': 'कार्रवाई विफल',
     'Activity logged!': 'गतिविधि दर्ज हुई!',
@@ -7146,7 +7158,7 @@ async function loadSleepData() {
   if (!listEl) return;
   initSleepDefaults();
   if (!r.length) {
-    listEl.innerHTML = '<div class="todo-empty"><div class="todo-empty-icon">🌙</div><div class="todo-empty-text">No sleep logged yet</div></div>';
+    listEl.innerHTML = `<div class="todo-empty"><div class="todo-empty-icon">🌙</div><div class="todo-empty-text">${t('No sleep logged yet')}</div></div>`;
     return;
   }
   const avg  = (r.reduce((s,l) => s+l.duration_h, 0) / r.length).toFixed(1);
@@ -7157,7 +7169,7 @@ async function loadSleepData() {
     statsEl.innerHTML = `
       <div class="sleep-chip"><div class="sleep-chip-val">${avg}h</div><div class="sleep-chip-label">Avg sleep</div></div>
       <div class="sleep-chip-sep"></div>
-      <div class="sleep-chip"><div class="sleep-chip-val">${best}h</div><div class="sleep-chip-label">Best night</div></div>
+      <div class="sleep-chip"><div class="sleep-chip-val">${best}h</div><div class="sleep-chip-label">${t('Best night')}</div></div>
       <div class="sleep-chip-sep"></div>
       <div class="sleep-chip"><div class="sleep-chip-val">${r.length}</div><div class="sleep-chip-label">Entries</div></div>`;
   }
@@ -7350,7 +7362,7 @@ async function loadHabits() {
         const color = pct === 100 ? '#22C55E' : pct >= 60 ? '#F59E0B' : 'var(--gray-400)';
         scoreEl.innerHTML = `
           <span style="color:${color};font-weight:700;font-size:14px">${done}/${total}</span>
-          <span style="color:var(--gray-400);font-size:12px;margin-left:4px">done</span>
+          <span style="color:var(--gray-400);font-size:12px;margin-left:4px">${t('done')}</span>
           <div class="hts-progress-bar"><div class="hts-progress-fill" style="width:${pct}%;background:${color}"></div></div>`;
       }
 
@@ -7368,14 +7380,14 @@ async function loadHabits() {
           <div class="hcr-emoji">${h.emoji}</div>
           <div class="hcr-info">
             <div class="hcr-name">${escHtml(h.name)}</div>
-            <div class="hcr-meta">${h.streak > 0 ? `🔥 ${h.streak} day streak` : 'Start your streak today'}</div>
+            <div class="hcr-meta">${h.streak > 0 ? tformat('🔥 %1 day streak', h.streak) : t('Start your streak today')}</div>
           </div>
 
           <!-- Done label -->
           <div class="hcr-status">
             ${h.done_today
-              ? `<span class="hcr-done-label">✓ Done</span>`
-              : `<span class="hcr-todo-label">Tap to check off</span>`}
+              ? `<span class="hcr-done-label">${t('✓ Done')}</span>`
+              : `<span class="hcr-todo-label">${t('Tap to check off')}</span>`}
           </div>
         </div>`).join('');
     }
@@ -7390,7 +7402,7 @@ async function loadHabits() {
       <!-- "+" add card only when no habits -->
       <div class="habit-add-card" data-ev-click="openHabitModal()">
         <div class="habit-add-icon">+</div>
-        <div class="habit-add-label">Add first habit</div>
+        <div class="habit-add-label">${t('Add first habit')}</div>
       </div>`;
     return;
   }
@@ -7415,8 +7427,8 @@ async function loadHabits() {
       <div class="hc2-top">
         <div class="hc2-emoji">${h.emoji}</div>
         <div class="hc2-name">${escHtml(h.name)}</div>
-        <div class="hc2-streak" title="Current streak">🔥 ${h.streak}</div>
-        <button class="hc2-delete" data-ev-click="event.stopPropagation();deleteHabit('${h.id}')" title="Remove habit">
+        <div class="hc2-streak" title="${t('Current streak')}">🔥 ${h.streak}</div>
+        <button class="hc2-delete" data-ev-click="event.stopPropagation();deleteHabit('${h.id}')" title="${t('Remove habit')}">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -7425,13 +7437,13 @@ async function loadHabits() {
       <div class="hc2-color-bar" style="background:${h.color}"></div>
 
       <!-- 7-day bars -->
-      <div class="hc2-section-label">Last 7 days</div>
+      <div class="hc2-section-label">${t('Last 7 days')}</div>
       <div class="hc-bars">${bars}</div>
 
       <!-- 28-day heatmap -->
       <div class="hc2-section-label" style="margin-top:10px;display:flex;justify-content:space-between;align-items:baseline">
-        <span>Last 28 days</span>
-        ${h.best_streak ? `<span class="hc2-best" title="Longest run ever">🏆 best ${h.best_streak}</span>` : ''}
+        <span>${t('Last 28 days')}</span>
+        ${h.best_streak ? `<span class="hc2-best" title="Longest run ever">${tformat('🏆 best %1', h.best_streak)}</span>` : ''}
       </div>
       <div class="hc-heatmap">${heatmap}</div>
 
@@ -7440,15 +7452,15 @@ async function loadHabits() {
               data-ev-click="toggleHabit('${h.id}','${today}')"
               style="--habit-color:${h.color}">
         ${h.done_today
-          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Done today — tap to undo`
-          : `Mark done today`}
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> ${t('Done today — tap to undo')}`
+          : t('Mark done today')}
       </button>
     </div>`;
   }).join('') +
   // "+" add card at the end
   `<div class="habit-add-card" data-ev-click="openHabitModal()">
     <div class="habit-add-icon">+</div>
-    <div class="habit-add-label">New habit</div>
+    <div class="habit-add-label">${t('New habit')}</div>
   </div>`;
 }
 
@@ -9101,7 +9113,7 @@ function renderProgress(r) {
     const h = Math.min(s.h/9, 1) * 100;
     return `<div class="prog-sleep-dot" style="height:${Math.max(h,8)}%;background:${SLEEP_COLORS[s.q]||'#D1D5DB'}" title="${s.date}: ${s.h}h · Quality ${s.q}/5"></div>`;
   }).join('');
-  const noSleepMsg = sleepDays.length === 0 ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">No sleep data — log from Thoughts page</div>` : '';
+  const noSleepMsg = sleepDays.length === 0 ? `<div style="padding:20px 0;text-align:center;color:var(--gray-300);font-size:13px">${t('No sleep data — log from Thoughts page')}</div>` : '';
 
   // Calorie adherence bars
   const calDays = daysSlice(r.nutrition?.daily) || [];
@@ -9801,7 +9813,7 @@ async function loadSleepView() {
 
           <!-- Quality -->
           <div style="margin:16px 0 10px">
-            <div class="stp-section-label">Sleep quality</div>
+            <div class="stp-section-label">${t('Sleep quality')}</div>
             <div class="sdial-quality-row" id="sleep-q-sv">
               ${[
                 {q:1,emoji:'😩',label:'Terrible'},
@@ -9879,7 +9891,7 @@ async function renderSleepFocal() {
   // claimed a days-old entry was last night's. Fall back to its date.
   const _y = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
   const lastLabel = (last.date_key === localToday() || last.date_key === _y)
-    ? 'last night'
+    ? t('last night')
     : new Date(last.date_key + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
   const byDate = {}; logs.forEach(l => { byDate[l.date_key] = l.duration_h; });
   const days = [];
@@ -9899,7 +9911,7 @@ async function renderSleepFocal() {
     </div>
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 4px">
-        <span style="font-size:12px;color:var(--gray-500)">7-day average</span>
+        <span style="font-size:12px;color:var(--gray-500)">${t('7-day average')}</span>
         <span style="font-size:16px;font-weight:700;color:var(--gray-800)">${fmtDur(avg)}</span>
       </div>
       <div style="display:flex;align-items:flex-end;gap:5px;height:52px;padding:0 4px">${bars}</div>
@@ -11552,7 +11564,7 @@ async function loadSleepTrend(days) {
   const s = data.stats;
 
   if (!data.total || !s.avg_duration) {
-    if (strip) strip.innerHTML = '<div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">No sleep logged yet</div>';
+    if (strip) strip.innerHTML = `<div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">${t('No sleep logged yet')}</div>`;
   } else {
     // 'insufficient' → a calm dash, not a red verdict. A trend needs a week of
     // nights (see the API); until then we say so plainly instead of alarming
@@ -11569,7 +11581,7 @@ async function loadSleepTrend(days) {
           </div>
           <div class="sleep-stat-card">
             <div class="sleep-stat-val">${s.best_night}h</div>
-            <div class="sleep-stat-lab">Best night</div>
+            <div class="sleep-stat-lab">${t('Best night')}</div>
           </div>
           <div class="sleep-stat-card">
             <div class="sleep-stat-val">${s.good_pct}%</div>
@@ -11648,15 +11660,15 @@ async function loadSleepTrend(days) {
   const sub = document.getElementById('sleep-trend-sub');
   if (sub) {
     if (!hasAnyData) {
-      sub.textContent = 'No nights logged yet — start tracking to see your trend';
+      sub.textContent = t('No nights logged yet — start tracking to see your trend');
     } else {
       // Bed/wake consistency, stated as a neutral fact (no "you slept badly").
       const spread = (s && s.bedtime_spread != null && s.waketime_spread != null)
         ? Math.max(s.bedtime_spread, s.waketime_spread) : null;
       const consistency = (spread != null && s.avg_bedtime)
-        ? `<br><span style="color:var(--gray-500)">🌙 Usually asleep around ${escHtml(_mc12h(s.avg_bedtime))}, up around ${escHtml(_mc12h(s.avg_waketime))} · bed/wake times vary by ±${spread} min</span>`
+        ? `<br><span style="color:var(--gray-500)">${tformat('🌙 Usually asleep around %1, up around %2 · bed/wake times vary by ±%3 min', escHtml(_mc12h(s.avg_bedtime)), escHtml(_mc12h(s.avg_waketime)), spread)}</span>`
         : '';
-      sub.innerHTML = `${logged} of ${d} nights logged · avg ${s?.avg_duration ?? '—'}h${consistency}`;
+      sub.innerHTML = `${tformat('%1 of %2 nights logged', logged, d)} · ${tformat('avg %1h', s?.avg_duration ?? '—')}${consistency}`;
     }
   }
 
