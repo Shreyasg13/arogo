@@ -2147,6 +2147,44 @@ function medTimingText(m) {
   return m.timing_text || (m.with_food ? 'with food' : '');
 }
 
+// ── Weekly pill planner (days×times grid of the upcoming plan) ──
+async function openPillPlanner() {
+  const el = document.getElementById('planner-content');
+  const modal = document.getElementById('planner-modal');
+  if (!el || !modal) return;
+  el.innerHTML = '<div style="padding:28px;text-align:center;color:var(--gray-400)">Building your week…</div>';
+  modal.style.display = 'flex';
+  const d = await fetch('/api/medicines/planner?days=7').then(r => r.json()).catch(() => null);
+  el.innerHTML = d ? renderPlanner(d)
+    : '<div style="padding:20px;color:#DC2626">Could not build the planner.</div>';
+}
+function closePlanner() { const m = document.getElementById('planner-modal'); if (m) m.style.display = 'none'; }
+
+function renderPlanner(d) {
+  const esc = escapeHtml;
+  if (!d.has_schedule) {
+    return `<div class="planner-empty">No scheduled medicines yet. Add one with set times and it'll show up here.</div>`;
+  }
+  const head = `<div class="planner-cell planner-cell--corner"></div>` +
+    d.days.map(day => `<div class="planner-col-head${day.is_today ? ' is-today' : ''}">
+        <span class="planner-wd">${day.is_today ? 'Today' : esc(day.weekday)}</span>
+        <span class="planner-dnum">${day.day}</span>
+      </div>`).join('');
+
+  const rows = d.rows.map(row => {
+    const timeCell = `<div class="planner-time"><span class="planner-hour">${esc(_mc12h(row.time))}</span><span class="planner-slotlbl">${esc(row.label)}</span></div>`;
+    const cells = row.cells.map((meds, i) => {
+      const today = d.days[i].is_today;
+      const chips = meds.map(m => `<span class="planner-chip" title="${esc(m.name)}${m.dose ? ' · ' + esc(m.dose) : ''}${m.timing_text ? ' · ' + esc(m.timing_text) : ''}"><span class="planner-chip-icon">${esc(m.icon)}</span>${esc(m.name)}</span>`).join('');
+      return `<div class="planner-cell${today ? ' is-today' : ''}">${chips || '<span class="planner-dash">–</span>'}</div>`;
+    }).join('');
+    return timeCell + cells;
+  }).join('');
+
+  return `<div class="planner-scroll"><div class="planner-grid" style="grid-template-columns:88px repeat(${d.days.length},minmax(84px,1fr))">${head}${rows}</div></div>
+    <div class="planner-note">Your upcoming plan. As-needed medicines aren't shown here — see the printable card for those.</div>`;
+}
+
 function _mc12h(hhmm) {
   const parts = String(hhmm).split(':');
   let h = parseInt(parts[0], 10);

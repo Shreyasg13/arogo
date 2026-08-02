@@ -5161,3 +5161,25 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .cal-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; }
 .cal-leg { display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--gray-500); }
 .cal-leg i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+
+/* Weekly pill planner */
+.planner-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.planner-grid { display:grid; gap:6px; min-width:520px; }
+.planner-col-head { text-align:center; padding:6px 2px; border-radius:8px; }
+.planner-col-head.is-today { background:var(--teal-50, #EAF3EE); }
+.planner-wd { display:block; font-size:12px; font-weight:700; color:var(--gray-600); text-transform:uppercase; letter-spacing:.04em; }
+.planner-col-head.is-today .planner-wd { color:var(--teal-700, #2E6A4E); }
+.planner-dnum { display:block; font-size:15px; font-weight:600; color:var(--gray-400); }
+.planner-time { display:flex; flex-direction:column; justify-content:center; padding-right:6px; }
+.planner-hour { font-size:14px; font-weight:800; color:var(--gray-800); }
+.planner-slotlbl { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:var(--gray-400); }
+.planner-cell { background:var(--gray-50, #F7F5F0); border-radius:8px; padding:6px; display:flex; flex-direction:column; gap:4px; min-height:44px; }
+.planner-cell.is-today { background:var(--teal-50, #EAF3EE); }
+.planner-cell--corner { background:transparent; min-height:0; }
+.planner-chip { display:flex; align-items:center; gap:4px; font-size:11.5px; font-weight:600;
+  color:var(--gray-700); background:var(--surface, #fff); border:1px solid var(--gray-200, #E7E3DA);
+  border-radius:6px; padding:2px 6px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.planner-chip-icon { font-size:12px; }
+.planner-dash { color:var(--gray-300); font-size:13px; text-align:center; }
+.planner-note { font-size:12px; color:var(--gray-500); margin-top:14px; line-height:1.6; }
+.planner-empty { padding:30px 20px; text-align:center; color:var(--gray-400); font-size:14px; }

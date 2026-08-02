@@ -143,6 +143,13 @@ def dose_calendar():
     days = to_int(request.args.get('days', 35), 35, lo=1, hi=120)
     return jsonify({'days': get_dose_calendar(days)})
 
+@bp.route('/api/medicines/planner')
+@require_auth
+def pill_planner():
+    """Upcoming days×times grid for the weekly pill planner."""
+    days = to_int(request.args.get('days', 7), 7, lo=1, hi=14)
+    return jsonify(get_pill_planner(days))
+
 @bp.route('/api/medicines/card')
 @require_auth
 def medication_card():

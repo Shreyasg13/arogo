@@ -302,6 +302,41 @@ def get_dose_calendar(days: int = 35) -> list:
     return out
 
 
+def get_pill_planner(days: int = 7) -> dict:
+    """A days×times grid of the UPCOMING plan — what to take in each slot over
+    the next N days. Rows are the union of scheduled dose times; each cell lists
+    the meds due then that day, respecting each med's course window. As-needed
+    meds have no fixed slot, so they're excluded (they live on the card instead)."""
+    from datetime import date, timedelta
+    days = max(1, min(int(days or 7), 14))
+    meds = [m for m in list_medicines()
+            if m['active'] and m.get('frequency') != 'as_needed' and m.get('times')]
+    anchor = date.fromisoformat(user_today())
+
+    daylist = []
+    for i in range(days):
+        d = anchor + timedelta(days=i)
+        daylist.append({'date': d.isoformat(), 'weekday': d.strftime('%a'),
+                        'day': d.day, 'is_today': i == 0})
+
+    times = sorted({t for m in meds for t in m['times']})
+    rows = []
+    for t in times:
+        cells = []
+        for dinfo in daylist:
+            due = []
+            for m in meds:
+                if t in m['times'] and _in_course(m, dinfo['date']):
+                    dosage = (m.get('dosage') or '').strip()
+                    dose = (dosage + ' ' + (m.get('unit') or '')).strip() if dosage else ''
+                    due.append({'name': m['name'], 'icon': m.get('icon') or '💊',
+                                'dose': dose, 'timing_text': m.get('timing_text') or ''})
+            cells.append(due)
+        rows.append({'time': t, 'label': _slot_label(t), 'cells': cells})
+
+    return {'days': daylist, 'rows': rows, 'has_schedule': bool(rows)}
+
+
 def _slot_label(hhmm: str) -> str:
     """Bucket a HH:MM dose time into a plain time-of-day label."""
     try:
