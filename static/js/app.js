@@ -163,6 +163,14 @@ const I18N = {
     'No medicines scheduled today': 'आज कोई दवा निर्धारित नहीं', 'All doses taken ✓': 'सभी खुराक ली गईं ✓',
     '%1 of %2 doses taken': '%2 में से %1 खुराक ली गईं', 'no meds today': 'आज कोई दवा नहीं',
     'all doses taken ✓': 'सभी खुराक ली गईं ✓', 'doses today': 'आज की खुराक',
+    'Once daily': 'रोज़ एक बार', 'Twice daily': 'रोज़ दो बार', '3× daily': 'रोज़ 3 बार',
+    '%1 pills': '%1 गोलियाँ', '%1d left': '%1 दिन बचे', 'Restock': 'रीस्टॉक',
+    '+ Track pill count': '+ गोली गिनती ट्रैक करें', '🚚 Refill ordered': '🚚 रिफिल ऑर्डर हुआ',
+    'Mark picked up': 'उठा लिया चिह्नित करें', '🔄 Order refill': '🔄 रिफिल ऑर्डर करें',
+    '🕐 As needed': '🕐 ज़रूरत पर', '＋ Log a dose now': '＋ अभी खुराक दर्ज करें',
+    'Taken %1× today': 'आज %1× ली', 'last %1': 'अंतिम %1', '💡 For %1': '💡 %1 के लिए',
+    'Active': 'सक्रिय', 'Paused': 'रुका हुआ', 'Pause': 'रोकें', 'Activate': 'चालू करें',
+    'Delete': 'हटाएँ',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
@@ -3453,16 +3461,16 @@ function renderMedicinesGrid(meds) {
       <div class="med-pill-track">
         <div class="med-pill-track-row">
           <span class="med-pill-count-label" style="color:${stockColor}">
-            ${isLow ? '⚠️' : '💊'} ${m.pill_count} pills${daysLeft != null ? ` · ${daysLeft}d left` : ''}
+            ${isLow ? '⚠️' : '💊'} ${tformat('%1 pills', m.pill_count)}${daysLeft != null ? ' · ' + tformat('%1d left', daysLeft) : ''}
           </span>
-          <button class="med-restock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Restock</button>
+          <button class="med-restock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">${t('Restock')}</button>
         </div>
         <div class="med-pill-bar-track">
           <div class="med-pill-bar-fill" style="width:${fillPct}%;background:${stockColor}"></div>
         </div>
       </div>` : `
       <div class="med-pill-track med-pill-track--empty">
-        <button class="med-add-stock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',0,1,7)">+ Track pill count</button>
+        <button class="med-add-stock-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',0,1,7)">${t('+ Track pill count')}</button>
       </div>`;
 
     // Refill row — appears when stock is low or a refill is on the way.
@@ -3470,9 +3478,9 @@ function renderMedicinesGrid(meds) {
     const refillRow = (hasPills && (isLow || ordered)) ? `
       <div class="med-refill-row">
         ${ordered
-          ? `<span class="med-refill-ordered">🚚 Refill ordered</span>
-             <button class="med-refill-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">Mark picked up</button>`
-          : `<button class="med-refill-btn med-refill-btn--order" data-ev-click="orderRefill('${m.id}')">🔄 Order refill</button>`}
+          ? `<span class="med-refill-ordered">${t('🚚 Refill ordered')}</span>
+             <button class="med-refill-btn" data-ev-click="openRestockModal('${m.id}','${escHtml(m.name)}',${m.pill_count},${m.pills_per_dose||1},${m.refill_threshold||7})">${t('Mark picked up')}</button>`
+          : `<button class="med-refill-btn med-refill-btn--order" data-ev-click="orderRefill('${m.id}')">${t('🔄 Order refill')}</button>`}
         ${m.pharmacy_note ? `<span class="med-pharmacy-note">🏥 ${escHtml(m.pharmacy_note)}</span>` : ''}
       </div>` : '';
 
@@ -3485,27 +3493,27 @@ function renderMedicinesGrid(meds) {
         </div>
       </div>
       <div class="med-card-times">
-        ${isPRN ? '<span class="time-chip">🕐 As needed</span>'
+        ${isPRN ? `<span class="time-chip">${t('🕐 As needed')}</span>`
                 : (m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || '')}
         ${medTimingText(m) ? `<span class="med-food-badge">${m.timing === 'bedtime' ? '🌙' : m.timing === 'with_water' ? '💧' : m.timing === 'empty_stomach' ? '⏳' : '🍽️'} ${escHtml(medTimingText(m))}</span>` : ''}
         ${m.cost != null ? `<span class="med-cost-badge">₹${(Math.round(m.cost * 100) / 100).toLocaleString('en-IN')}/mo</span>` : ''}
       </div>
       ${isPRN ? `
       <div class="med-prn-row">
-        <button class="med-prn-btn" data-ev-click="takeNow('${m.id}','${escHtml(m.name)}')">＋ Log a dose now</button>
-        ${m.taken_today ? `<span class="med-prn-count">Taken ${m.taken_today}× today${m.last_taken ? ' · last ' + fmtTime(m.last_taken) : ''}</span>` : ''}
+        <button class="med-prn-btn" data-ev-click="takeNow('${m.id}','${escHtml(m.name)}')">${t('＋ Log a dose now')}</button>
+        ${m.taken_today ? `<span class="med-prn-count">${tformat('Taken %1× today', m.taken_today)}${m.last_taken ? ' · ' + tformat('last %1', fmtTime(m.last_taken)) : ''}</span>` : ''}
       </div>` : ''}
-      ${m.purpose ? `<div class="med-purpose">💡 For ${escHtml(m.purpose)}</div>` : ''}
+      ${m.purpose ? `<div class="med-purpose">${tformat('💡 For %1', escHtml(m.purpose))}</div>` : ''}
       ${m.notes ? `<div style="font-size:12px;color:var(--gray-400);margin-bottom:8px">${escHtml(m.notes)}</div>` : ''}
       ${pillSection}
       ${refillRow}
       <div class="med-card-footer">
-        <span class="med-card-status ${m.active ? 'active' : ''}">● ${m.active ? 'Active' : 'Paused'}</span>
+        <span class="med-card-status ${m.active ? 'active' : ''}">● ${m.active ? t('Active') : t('Paused')}</span>
         <div class="med-card-actions">
-          <button class="btn-icon" title="${m.active ? 'Pause' : 'Activate'}" data-ev-click="toggleMed('${m.id}')">
+          <button class="btn-icon" title="${m.active ? t('Pause') : t('Activate')}" data-ev-click="toggleMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${m.active ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}</svg>
           </button>
-          <button class="btn-icon" title="Delete" data-ev-click="deleteMed('${m.id}')">
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
           </button>
         </div>
@@ -4610,7 +4618,7 @@ function setText(id, val) { const el = document.getElementById(id); if (el) el.t
 function fileIcon(ext) { return { pdf:'📄', png:'🖼️', jpg:'🖼️', jpeg:'🖼️', txt:'📝', csv:'📊' }[(ext||'').toLowerCase()] || '📄'; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 function fmtBytes(b) { if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
-function freqLabel(f) { return { once_daily:'Once daily', twice_daily:'Twice daily', thrice_daily:'3× daily', weekly:'Weekly', as_needed:'As needed' }[f] || f; }
+function freqLabel(f) { return { once_daily:t('Once daily'), twice_daily:t('Twice daily'), thrice_daily:t('3× daily'), weekly:t('Weekly'), as_needed:t('As needed') }[f] || f; }
 function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
 let toastTimer;
 function showToast(msg, type='') { const el = document.getElementById('toast'); el.textContent = msg; el.className = `toast ${type}`; el.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200); }
