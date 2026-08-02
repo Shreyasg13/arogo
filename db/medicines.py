@@ -274,6 +274,71 @@ def get_dose_calendar(days: int = 35) -> list:
     return out
 
 
+def _slot_label(hhmm: str) -> str:
+    """Bucket a HH:MM dose time into a plain time-of-day label."""
+    try:
+        h = int(hhmm.split(':')[0])
+    except (ValueError, AttributeError, IndexError):
+        return 'Anytime'
+    if h < 12:  return 'Morning'
+    if h < 17:  return 'Afternoon'
+    if h < 21:  return 'Evening'
+    return 'Night'
+
+
+def get_medication_card() -> dict:
+    """The data behind the printable medication card — a fridge/wallet reference
+    of what to take when, plus emergency contacts. Read-only aggregation of the
+    user's own active medicines and emergency info (nothing fabricated)."""
+    from db.health import get_emergency_info
+
+    active = [m for m in list_medicines() if m['active']]
+    scheduled = [m for m in active
+                 if m.get('frequency') != 'as_needed' and m.get('times')]
+    as_needed = [m for m in active
+                 if m.get('frequency') == 'as_needed' or not m.get('times')]
+
+    def _row(m):
+        # Only show a dose when there's an actual amount — the unit defaults to
+        # 'mg', so a med with no dosage would otherwise render a bare "mg".
+        dosage = (m.get('dosage') or '').strip()
+        dose = (dosage + ' ' + (m.get('unit') or '')).strip() if dosage else ''
+        return {
+            'name': m['name'],
+            'dose': dose,
+            'purpose': m.get('purpose') or '',
+            'with_food': bool(m.get('with_food')),
+            'icon': m.get('icon') or '💊',
+        }
+
+    # Group scheduled meds by dose time so the card reads "at 9:00 AM, take …".
+    slots = {}
+    for m in scheduled:
+        for t in m['times']:
+            slots.setdefault(t, []).append(_row(m))
+    schedule = [{'time': t, 'label': _slot_label(t), 'meds': slots[t]}
+                for t in sorted(slots)]
+
+    emg = get_emergency_info() or {}
+    contacts = []
+    for n, p in ((emg.get('contact1_name'), emg.get('contact1_phone')),
+                 (emg.get('contact2_name'), emg.get('contact2_phone'))):
+        if (n or '').strip() or (p or '').strip():
+            contacts.append({'name': (n or '').strip(), 'phone': (p or '').strip()})
+
+    return {
+        'schedule': schedule,
+        'as_needed': [_row(m) for m in as_needed],
+        'count': len(active),
+        'emergency': {
+            'blood_type': (emg.get('blood_type') or '').strip(),
+            'allergies': (emg.get('allergies') or '').strip(),
+            'conditions': (emg.get('conditions') or '').strip(),
+            'contacts': contacts,
+        },
+    }
+
+
 # ── Refill / stock ────────────────────────────────────────────────────────────
 
 def update_medicine_stock(mid: str, pill_count: int, pills_per_dose: int = 1,

@@ -143,4 +143,18 @@ def dose_calendar():
     days = to_int(request.args.get('days', 35), 35, lo=1, hi=120)
     return jsonify({'days': get_dose_calendar(days)})
 
+@bp.route('/api/medicines/card')
+@require_auth
+def medication_card():
+    """Data for the printable medication card — schedule grouped by time of day
+    plus emergency contacts. Read-only; nothing here is fabricated."""
+    import datetime as dt
+    from db.core import execute, current_user_id
+    card = get_medication_card()
+    urow = execute("SELECT name, email FROM users WHERE id=?",
+                   (current_user_id(),), fetchone=True)
+    card['person'] = {'name': (urow['name'] if urow else '') or (urow['email'] if urow else '')}
+    card['generated'] = dt.date.today().isoformat()
+    return jsonify(card)
+
 # ── Fitness ───────────────────────────────────────────────────────────────────

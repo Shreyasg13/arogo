@@ -2125,6 +2125,141 @@ function renderDoctorSummary(d) {
     </div>`;
 }
 
+// ── Printable medication card (fridge / wallet reference) ──
+async function openMedCard() {
+  const d = await fetch('/api/medicines/card').then(r => r.json()).catch(() => null);
+  if (!d) { showToast('Could not build the card', 'error'); return; }
+  if (!d.count) { showToast('Add a medicine first', 'error'); return; }
+  const win = window.open('', '_blank', 'width=760,height=900');
+  if (!win) { showToast('Allow pop-ups to open the printable card', 'error'); return; }
+  win.document.write(buildMedCardHtml(d));
+  win.document.close();
+  // Wire the print button from here — a blank window can inherit the opener's
+  // CSP, which would block an inline onclick in the written document.
+  const btn = win.document.querySelector('.mc-print-btn');
+  if (btn) btn.addEventListener('click', () => win.print());
+}
+
+function _mc12h(hhmm) {
+  const parts = String(hhmm).split(':');
+  let h = parseInt(parts[0], 10);
+  const m = parts[1] || '00';
+  if (isNaN(h)) return hhmm;
+  const ap = h < 12 ? 'AM' : 'PM';
+  h = h % 12; if (h === 0) h = 12;
+  return `${h}:${m} ${ap}`;
+}
+
+function buildMedCardHtml(d) {
+  const esc = escapeHtml;
+  const p = d.person || {};
+  const emg = d.emergency || {};
+  let gen = d.generated || '';
+  try { gen = new Date(d.generated + 'T12:00:00').toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}); } catch (e) {}
+
+  const medLine = m => `
+    <div class="mc-med">
+      <span class="mc-med-icon">${esc(m.icon || '💊')}</span>
+      <div class="mc-med-body">
+        <div class="mc-med-name">${esc(m.name)}${m.dose ? ` <span class="mc-dose">${esc(m.dose)}</span>` : ''}</div>
+        ${m.purpose ? `<div class="mc-med-purpose">for ${esc(m.purpose)}</div>` : ''}
+      </div>
+      ${m.with_food ? '<span class="mc-tag">🍽️ with food</span>' : ''}
+    </div>`;
+
+  const schedule = (d.schedule || []).length
+    ? d.schedule.map(s => `
+        <div class="mc-slot">
+          <div class="mc-slot-time"><span class="mc-slot-hour">${esc(_mc12h(s.time))}</span><span class="mc-slot-label">${esc(s.label)}</span></div>
+          <div class="mc-slot-meds">${s.meds.map(medLine).join('')}</div>
+        </div>`).join('')
+    : '<p class="mc-empty">No scheduled medicines.</p>';
+
+  const prn = (d.as_needed || []).length
+    ? `<div class="mc-section">
+         <h2 class="mc-h2">As needed</h2>
+         <div class="mc-slot-meds">${d.as_needed.map(medLine).join('')}</div>
+       </div>`
+    : '';
+
+  const contacts = (emg.contacts || []).length
+    ? emg.contacts.map(c => `<div class="mc-contact"><b>${esc(c.name || 'Contact')}</b>${c.phone ? ` — ${esc(c.phone)}` : ''}</div>`).join('')
+    : '';
+  const emgRows = [
+    emg.blood_type ? `<div><span class="mc-emg-key">Blood type</span> ${esc(emg.blood_type)}</div>` : '',
+    emg.allergies ? `<div><span class="mc-emg-key">Allergies</span> ${esc(emg.allergies)}</div>` : '',
+    emg.conditions ? `<div><span class="mc-emg-key">Conditions</span> ${esc(emg.conditions)}</div>` : '',
+  ].filter(Boolean).join('');
+  const emergency = (emgRows || contacts)
+    ? `<div class="mc-emg">
+         <h2 class="mc-h2">In an emergency</h2>
+         ${emgRows}
+         ${contacts ? `<div class="mc-contacts">${contacts}</div>` : ''}
+       </div>`
+    : '';
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>My medication card</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:#F4F1EA;color:#1f2a24;padding:24px;line-height:1.5}
+  .mc-sheet{max-width:680px;margin:0 auto;background:#fff;border-radius:16px;
+    padding:32px 36px;box-shadow:0 2px 16px rgba(0,0,0,.06)}
+  .mc-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .mc-print-btn{background:#5A9E70;color:#fff;border:none;border-radius:99px;
+    padding:10px 20px;font-size:15px;font-weight:600;cursor:pointer}
+  .mc-title{font-size:30px;font-weight:800;letter-spacing:-.02em}
+  .mc-person{font-size:19px;color:#3c4b42;margin-top:4px;font-weight:600}
+  .mc-gen{font-size:13px;color:#8a978f;margin-top:2px;margin-bottom:22px}
+  .mc-slot{display:flex;gap:18px;padding:14px 0;border-top:1px solid #ECE7DC}
+  .mc-slot-time{flex:0 0 120px}
+  .mc-slot-hour{display:block;font-size:20px;font-weight:800;color:#20362D}
+  .mc-slot-label{display:block;font-size:12px;text-transform:uppercase;
+    letter-spacing:.06em;color:#96a29a;margin-top:1px}
+  .mc-slot-meds{flex:1;display:flex;flex-direction:column;gap:10px}
+  .mc-med{display:flex;align-items:flex-start;gap:10px}
+  .mc-med-icon{font-size:20px;line-height:1.3}
+  .mc-med-body{flex:1}
+  .mc-med-name{font-size:18px;font-weight:700}
+  .mc-dose{font-weight:600;color:#5A9E70}
+  .mc-med-purpose{font-size:14px;color:#6b7970;margin-top:1px}
+  .mc-tag{font-size:13px;color:#946a3d;background:#F6ECDD;border-radius:99px;
+    padding:3px 10px;white-space:nowrap;align-self:center}
+  .mc-section{margin-top:8px;padding-top:8px;border-top:2px solid #ECE7DC}
+  .mc-h2{font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+    color:#8a978f;margin:16px 0 10px}
+  .mc-emg{margin-top:20px;background:#FBECEC;border:1px solid #F3D6D6;border-radius:12px;
+    padding:16px 20px}
+  .mc-emg .mc-h2{color:#B4443A;margin-top:0}
+  .mc-emg>div{font-size:16px;margin-bottom:5px}
+  .mc-emg-key{font-weight:700;color:#8a4a44;margin-right:6px}
+  .mc-contacts{margin-top:8px}
+  .mc-contact{font-size:16px;margin-bottom:3px}
+  .mc-empty{color:#96a29a;font-size:15px;padding:12px 0}
+  .mc-foot{font-size:12px;color:#a4afa7;margin-top:22px;text-align:center;line-height:1.6}
+  @media print{
+    body{background:#fff;padding:0}
+    .mc-sheet{box-shadow:none;border-radius:0;max-width:100%;padding:0}
+    .mc-no-print{display:none!important}
+    @page{size:A4;margin:16mm}
+  }
+</style></head><body>
+<div class="mc-sheet">
+  <div class="mc-bar">
+    <div class="mc-title">💊 My medicines</div>
+    <button class="mc-print-btn mc-no-print" type="button">🖨️ Print / Save as PDF</button>
+  </div>
+  ${p.name ? `<div class="mc-person">${esc(p.name)}</div>` : ''}
+  <div class="mc-gen">Updated ${esc(gen)}</div>
+  ${schedule}
+  ${prn}
+  ${emergency}
+  <div class="mc-foot">Keep this where you'll see it — the fridge, a wallet, a bedside drawer.<br>Made with Arogo from your own list. Not a prescription.</div>
+</div>
+</body></html>`;
+}
+
 async function openCalorieBreakdown() {
   const cb = await fetch('/api/calorie-balance').then(r => r.json()).catch(() => null);
   if (!cb) return;
