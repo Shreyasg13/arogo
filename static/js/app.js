@@ -403,6 +403,13 @@ const I18N = {
     'Weight': 'वज़न',
     '+ Add exercise': '+ व्यायाम जोड़ें',
     'e.g. Bench Press': 'जैसे बेंच प्रेस',
+    // Misc empty states
+    'No reports found': 'कोई रिपोर्ट नहीं मिली', 'Upload your first medical report': 'अपनी पहली मेडिकल रिपोर्ट अपलोड करें',
+    'Upload Report': 'रिपोर्ट अपलोड करें', 'No activities found': 'कोई गतिविधि नहीं मिली', 'Try changing your filters': 'अपने फ़िल्टर बदलकर देखें',
+    'No metrics logged yet': 'अभी कोई माप दर्ज नहीं', 'Log thoughts to see mood analytics': 'मूड विश्लेषण देखने के लिए विचार दर्ज करें',
+    'No appointments yet': 'अभी कोई अपॉइंटमेंट नहीं', 'Add a doctor visit, lab test, or vaccination above': 'ऊपर डॉक्टर विज़िट, लैब टेस्ट या टीकाकरण जोड़ें',
+    'No results for "%1"': '"%1" के लिए कोई परिणाम नहीं', 'Try different keywords or a date range like "last week"': 'अलग कीवर्ड या "पिछला सप्ताह" जैसी तारीख सीमा आज़माएँ',
+    'No data yet': 'अभी कोई डेटा नहीं', 'No entries yet': 'अभी कोई प्रविष्टि नहीं',
     // Portion picker + vitals list
     'Quantity': 'मात्रा', 'Your usual portion': 'आपका सामान्य हिस्सा', 'Meal': 'भोजन', 'Add to %1': '%1 में जोड़ें',
     'Protein': 'प्रोटीन', 'Carbs': 'कार्ब्स', 'Fat': 'वसा', 'Fiber': 'फाइबर',
@@ -3304,7 +3311,7 @@ async function loadReports() {
   const grid = document.getElementById('reports-grid');
   if (!grid) return;
   if (reports.length === 0) {
-    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No reports found</div><div class="empty-sub">Upload your first medical report</div><button class="btn-primary" data-ev-click="openUploadModal()">Upload Report</button></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">${t('No reports found')}</div><div class="empty-sub">${t('Upload your first medical report')}</div><button class="btn-primary" data-ev-click="openUploadModal()">${t('Upload Report')}</button></div>`;
     return;
   }
   grid.innerHTML = reports.map(r => `
@@ -5539,7 +5546,7 @@ function renderHistoryFeed() {
   }
 
   if (filtered.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">No activities found</div><div class="empty-sub">Try changing your filters</div></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">${t('No activities found')}</div><div class="empty-sub">${t('Try changing your filters')}</div></div>`;
     if (loadMore) loadMore.style.display = 'none';
     return;
   }
@@ -7494,7 +7501,7 @@ async function loadBodyMetrics() {
   if (di && !di.value) di.value = localToday();
   if (!el) return;
   if (!r.length) {
-    el.innerHTML = '<div class="todo-empty"><div class="todo-empty-icon">📊</div><div class="todo-empty-text">No metrics logged yet</div></div>';
+    el.innerHTML = `<div class="todo-empty"><div class="todo-empty-icon">📊</div><div class="todo-empty-text">${t('No metrics logged yet')}</div></div>`;
     return;
   }
   el.innerHTML = r.slice().reverse().map(m => `
@@ -7518,7 +7525,7 @@ async function loadMoodAnalytics() {
   const el = document.getElementById('mood-analytics-content');
   if (!el) return;
   if (!r.length) {
-    el.innerHTML = '<div class="todo-empty" style="padding:60px 0"><div class="todo-empty-icon">🎭</div><div class="todo-empty-text">Log thoughts to see mood analytics</div></div>';
+    el.innerHTML = `<div class="todo-empty" style="padding:60px 0"><div class="todo-empty-icon">🎭</div><div class="todo-empty-text">${t('Log thoughts to see mood analytics')}</div></div>`;
     return;
   }
   // Count moods
@@ -8017,8 +8024,8 @@ function renderAppointments(appts) {
   if (!list) return;
   if (!appts.length) {
     list.innerHTML = `<div class="empty-state" style="padding:24px 0">
-      <div class="empty-icon">📅</div><div class="empty-text">No appointments yet</div>
-      <div class="empty-sub">Add a doctor visit, lab test, or vaccination above</div></div>`;
+      <div class="empty-icon">📅</div><div class="empty-text">${t('No appointments yet')}</div>
+      <div class="empty-sub">${t('Add a doctor visit, lab test, or vaccination above')}</div></div>`;
     return;
   }
   const now = localToday();
@@ -9063,8 +9070,8 @@ async function runGlobalSearch(q) {
     if (r.total === 0) {
       res.innerHTML = dateTag + `<div class="gs-empty">
         <div class="gs-empty-icon">🔍</div>
-        <div class="gs-empty-text">No results for "${escHtml(q)}"</div>
-        <div class="gs-empty-sub">Try different keywords or a date range like "last week"</div>
+        <div class="gs-empty-text">${tformat('No results for "%1"', escHtml(q))}</div>
+        <div class="gs-empty-sub">${t('Try different keywords or a date range like "last week"')}</div>
       </div>`;
       return;
     }
@@ -10120,7 +10127,7 @@ async function loadSleepView() {
           <h2 class="panel-title">Last 30 nights</h2>
         </div>
         <div id="sleep-summary-strip" style="padding:14px 20px 4px">
-          <div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">No data yet</div>
+          <div style="color:var(--gray-400);font-size:13px;text-align:center;padding:20px 0">${t('No data yet')}</div>
         </div>
         <div id="sleep-history-sv" style="padding:0 20px 16px"></div>
       </div>
@@ -10525,7 +10532,7 @@ async function loadBodyMetricsView() {
   if (!el) return;
   const r = await fetch('/api/body-metrics').then(r => r.json()).catch(() => []);
   const rows = (Array.isArray(r) ? r : []).slice(0,5);
-  if (!rows.length) { el.innerHTML = '<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:12px 0">No entries yet</p>'; return; }
+  if (!rows.length) { el.innerHTML = `<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:12px 0">${t('No entries yet')}</p>`; return; }
   el.innerHTML = rows.map(m => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-50)">
       <div style="font-size:12px;color:var(--gray-400)">${m.date_key}</div>
