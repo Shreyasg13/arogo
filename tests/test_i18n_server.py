@@ -102,6 +102,29 @@ def test_get_user_language_defaults_en_for_unknown_user():
     assert get_user_language('nobody-xyz') == 'en'
 
 
+def test_transactional_emails_localize(monkeypatch):
+    import mailer
+    cap = {}
+    monkeypatch.setattr(mailer, 'send_email',
+                        lambda to, subj, text: (cap.update(to=to, subj=subj, text=text), True)[1])
+
+    # Hindi: subject in Devanagari, link preserved.
+    mailer.send_verification_email('u@x.test', 'tok123', lang='hi')
+    assert 'tok123' in cap['text']
+    assert any('ऀ' <= c <= 'ॿ' for c in cap['subj'])
+
+    mailer.send_password_reset_email('u@x.test', 'rtok', lang='hi')
+    assert 'rtok' in cap['text']
+    assert any('ऀ' <= c <= 'ॿ' for c in cap['text'])
+
+    # English default is byte-identical to the pre-catalog text.
+    mailer.send_verification_email('u@x.test', 't', lang='en')
+    assert cap['subj'] == 'Verify your Arogo email'
+    mailer.send_password_reset_email('u@x.test', 't', lang='en')
+    assert cap['subj'] == 'Reset your Arogo password'
+    assert cap['text'].startswith('Someone requested a password reset')
+
+
 def test_scheduler_push_localizes_to_hindi(app, monkeypatch):
     """End-to-end: a Hindi user's dose-snooze push comes out in Devanagari,
     while the default (English) path is unchanged (asserted elsewhere)."""

@@ -212,7 +212,9 @@ def resend_verification():
         return jsonify({'error': 'User not found'}), 404
     if row['verified']:
         return jsonify({'success': True, 'message': 'Your email is already verified'})
-    mailer.send_verification_email(row['email'], make_verify_token(g.user_id))
+    from db import get_user_language
+    mailer.send_verification_email(row['email'], make_verify_token(g.user_id),
+                                   lang=get_user_language(g.user_id))
     return jsonify({'success': True, 'message': f"Verification email sent to {row['email']}"})
 
 
@@ -229,7 +231,9 @@ def forgot_password():
     # Always report success — never reveal whether the email is registered
     row = execute('SELECT id FROM users WHERE email = ?', (email,), fetchone=True)
     if row:
-        mailer.send_password_reset_email(email, make_reset_token(row['id']))
+        from db import get_user_language
+        mailer.send_password_reset_email(email, make_reset_token(row['id']),
+                                         lang=get_user_language(row['id']))
 
     return jsonify({'success': True,
                     'message': 'If that email is registered, a reset link is on its way.'})

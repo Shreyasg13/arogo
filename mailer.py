@@ -62,16 +62,11 @@ def send_email(to: str, subject: str, text: str) -> bool:
         return False
 
 
-def send_verification_email(to: str, token: str) -> bool:
+def send_verification_email(to: str, token: str, lang: str = 'en') -> bool:
+    from i18n_server import tr
     link = f'{APP_BASE_URL}/auth/verify/{token}'
-    return send_email(
-        to,
-        'Verify your Arogo email',
-        'Welcome to Arogo!\n\n'
-        'Confirm your email address by opening this link (valid for 24 hours):\n\n'
-        f'    {link}\n\n'
-        "If you didn't create an Arogo account, you can ignore this email.\n",
-    )
+    return send_email(to, tr(lang, 'email.verify_subject'),
+                      tr(lang, 'email.verify_body', link=link))
 
 
 def send_weekly_digest_email(to: str, name: str, digest: dict, unsub_url: str) -> bool:
@@ -145,27 +140,15 @@ def send_caregiver_digest_email(to: str, name: str, digest: dict, unsub_url: str
                       '\n'.join(lines) + '\n')
 
 
-def send_family_invite_email(to: str, token: str, inviter: str, group: str) -> bool:
+def send_family_invite_email(to: str, token: str, inviter: str, group: str, lang: str = 'en') -> bool:
+    from i18n_server import tr
     link = f'{APP_BASE_URL}/?family_invite={token}'
-    return send_email(
-        to,
-        f'{inviter} invited you to their Arogo family group',
-        f'{inviter} invited you to join the family group "{group}" on Arogo.\n\n'
-        'Family members choose exactly which health categories they share —\n'
-        'nothing is visible unless you turn it on.\n\n'
-        'Open this link to join (valid for 72 hours):\n\n'
-        f'    {link}\n\n'
-        "If you don't want to join, just ignore this email.\n",
-    )
+    return send_email(to, tr(lang, 'email.invite_subject', inviter=inviter),
+                      tr(lang, 'email.invite_body', inviter=inviter, group=group, link=link))
 
 
-def send_password_reset_email(to: str, token: str) -> bool:
+def send_password_reset_email(to: str, token: str, lang: str = 'en') -> bool:
+    from i18n_server import tr
     link = f'{APP_BASE_URL}/?reset={token}'
-    return send_email(
-        to,
-        'Reset your Arogo password',
-        'Someone requested a password reset for your Arogo account.\n\n'
-        'Open this link to choose a new password (valid for 1 hour):\n\n'
-        f'    {link}\n\n'
-        "If this wasn't you, ignore this email — your password is unchanged.\n",
-    )
+    return send_email(to, tr(lang, 'email.reset_subject'),
+                      tr(lang, 'email.reset_body', link=link))
