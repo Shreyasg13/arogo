@@ -57,6 +57,32 @@ def api_delete_appointment(aid):
     delete_appointment(aid)
     return jsonify({'success': True})
 
+# ── Doctor-visit prep questions ──────────────────────────────────────────────
+@bp.route('/api/doctor-questions')
+@require_auth
+def api_list_doctor_questions():
+    return jsonify({'questions': list_doctor_questions()})
+
+@bp.route('/api/doctor-questions', methods=['POST'])
+@require_auth
+def api_add_doctor_question():
+    try:
+        return jsonify({'success': True, 'question': add_doctor_question((request.json or {}).get('question', ''))})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/doctor-questions/<qid>/toggle', methods=['POST'])
+@require_auth
+def api_toggle_doctor_question(qid):
+    toggle_doctor_question(qid)
+    return jsonify({'success': True})
+
+@bp.route('/api/doctor-questions/<qid>', methods=['DELETE'])
+@require_auth
+def api_delete_doctor_question(qid):
+    delete_doctor_question(qid)
+    return jsonify({'success': True})
+
 # ── Measurement reminders ───────────────────────────────────────────────────
 @bp.route('/api/measurement-reminders')
 @require_auth

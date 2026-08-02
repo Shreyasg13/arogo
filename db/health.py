@@ -353,6 +353,37 @@ def get_next_appointment():
     return dict(r) if r else None
 
 
+# ── Doctor-visit prep questions ──────────────────────────────────────────────
+
+def add_doctor_question(text: str) -> dict:
+    q = str(text or '').strip()
+    if not q:
+        raise ValueError('A question is required')
+    qid = new_id()
+    execute("""INSERT INTO doctor_questions (id,user_id,question,asked,created_at)
+               VALUES (?,?,?,0,?)""",
+            (qid, current_user_id(), q[:400], now_iso()), commit=True)
+    return dict(execute("SELECT * FROM doctor_questions WHERE id=? AND user_id=?",
+                        (qid, current_user_id()), fetchone=True))
+
+
+def list_doctor_questions() -> list:
+    rows = execute("""SELECT * FROM doctor_questions WHERE user_id=?
+                      ORDER BY asked, created_at""", (current_user_id(),), fetchall=True)
+    return [dict(r) for r in rows]
+
+
+def toggle_doctor_question(qid: str):
+    """Flip 'asked' — only touches the caller's own row."""
+    execute("""UPDATE doctor_questions SET asked = CASE WHEN asked=1 THEN 0 ELSE 1 END
+               WHERE id=? AND user_id=?""", (qid, current_user_id()), commit=True)
+
+
+def delete_doctor_question(qid: str):
+    execute("DELETE FROM doctor_questions WHERE id=? AND user_id=?",
+            (qid, current_user_id()), commit=True)
+
+
 # ── Measurement reminders (check your BP / sugar / weight …) ─────────────────
 
 _MEASURE_KINDS = {'blood_pressure', 'blood_sugar', 'weight', 'spo2',

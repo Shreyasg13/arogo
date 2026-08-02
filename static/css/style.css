@@ -5216,6 +5216,15 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   cursor:pointer; white-space:nowrap; }
 .briefing-read:hover { background:var(--teal-50,#EAF3EE); }
 
+/* Doctor-visit prep questions */
+.dq-row { display:flex; align-items:flex-start; gap:10px; padding:9px 2px; border-bottom:1px solid var(--gray-50,#F0EDE6); cursor:pointer; }
+.dq-row:last-child { border-bottom:none; }
+.dq-check { margin-top:2px; width:17px; height:17px; flex-shrink:0; accent-color:var(--teal-600,#4F8D74); }
+.dq-text { flex:1; font-size:14px; color:var(--gray-700); line-height:1.4; }
+.dq-row.is-asked .dq-text { text-decoration:line-through; color:var(--gray-400); }
+.dq-del { flex-shrink:0; background:none; border:none; color:var(--gray-300); cursor:pointer; padding:2px; }
+.dq-del:hover { color:#B4443A; }
+
 /* Offline write-queue badge */
 .offline-badge { position:fixed; left:50%; bottom:78px; transform:translateX(-50%);
   z-index:1200; background:#3c4b42; color:#fff; font-size:12.5px; font-weight:600;

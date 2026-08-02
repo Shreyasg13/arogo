@@ -391,6 +391,13 @@ CREATE TABLE IF NOT EXISTS appointments (
     remind INTEGER DEFAULT 1,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS doctor_questions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    question TEXT NOT NULL,
+    asked INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dose_snoozes (
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL,
     med_id TEXT NOT NULL, date_key TEXT NOT NULL, time_key TEXT NOT NULL,
@@ -640,6 +647,16 @@ def migrate_add_reminder_lead():
         pass
 
 
+def migrate_add_doctor_questions():
+    """Create the doctor-visit questions table on existing databases."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS doctor_questions (
+            id TEXT PRIMARY KEY, user_id TEXT NOT NULL, question TEXT NOT NULL,
+            asked INTEGER DEFAULT 0, created_at TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_medicine_events():
     """Create the medicine-events (history) table on existing databases."""
     try:
@@ -830,7 +847,7 @@ DATA_TABLES = [
     'emergency_info', 'notification_log', 'reminder_settings',
     'fitness_activities', 'medicines', 'dose_logs', 'reports',
     'user_profile', 'oauth_tokens', 'sync_log', 'appointments', 'dose_snoozes',
-    'measurement_reminders', 'medicine_events',
+    'measurement_reminders', 'medicine_events', 'doctor_questions',
 ]
 
 
@@ -871,6 +888,7 @@ def init_db():
     migrate_add_dose_timing()
     migrate_add_quiet_hours()
     migrate_add_reminder_lead()
+    migrate_add_doctor_questions()
     migrate_add_medicine_events()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()

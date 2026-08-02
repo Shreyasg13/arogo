@@ -42,6 +42,9 @@ def api_doctor_summary():
     symptoms = [{'name': s['name'], 'severity': s.get('severity'), 'date': s.get('date_key')}
                 for s in get_symptoms(30)[:25]]
 
+    from db import list_doctor_questions
+    questions = [q['question'] for q in list_doctor_questions() if not q.get('asked')]
+
     return jsonify({
         'generated': dt.date.today().isoformat(),
         'person': {
@@ -54,6 +57,7 @@ def api_doctor_summary():
         'medications': meds,
         'vitals': latest,
         'symptoms': symptoms,
+        'questions': questions,
         'adherence_30d': get_adherence_stats(30),
     })
 
