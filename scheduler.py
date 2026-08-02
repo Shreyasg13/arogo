@@ -76,6 +76,32 @@ def _mins_since(hhmm, now_hhmm):
         return None
 
 
+def in_quiet_hours(start, end, hhmm):
+    """Is hhmm inside the do-not-disturb window? Handles a window that wraps past
+    midnight (e.g. 22:00→07:00). A zero-length window (start==end) is 'off'."""
+    try:
+        s = int(start[:2]) * 60 + int(start[3:5])
+        e = int(end[:2]) * 60 + int(end[3:5])
+        n = int(hhmm[:2]) * 60 + int(hhmm[3:5])
+    except (ValueError, TypeError, IndexError):
+        return False
+    if s == e:
+        return False
+    if s < e:
+        return s <= n < e                 # same-day window
+    return n >= s or n < e                # wraps past midnight
+
+
+def reminder_offset_min(dose_time, lead_min, now_hhmm):
+    """Minutes since a dose's reminder became due, where the reminder fires
+    `lead_min` minutes BEFORE the dose time. Negative = not due yet; None if
+    unparsable. A 09:00 dose with a 15-min lead is 'due' from 08:45."""
+    base = _mins_since(dose_time, now_hhmm)
+    if base is None:
+        return None
+    return base + max(0, int(lead_min or 0))
+
+
 def _pushed_today(uid, key, today):
     return execute(
         "SELECT 1 FROM notification_log WHERE user_id=? AND source_id=? AND created_at>=? LIMIT 1",
@@ -108,6 +134,14 @@ def _push_reminders_for_user(uid):
     rs = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1",
                  (uid,), fetchone=True) or {}
 
+    # Do-not-disturb: while inside the quiet window, hold ALL time-of-day nudges
+    # (doses, snoozes, water, habit/sleep/mood, measurements). Nothing is marked
+    # notified, so a snoozed dose simply fires once the window ends. A dose whose
+    # 30-min window overlaps the end of quiet hours still gets sent then.
+    if rs.get('quiet_enabled') and in_quiet_hours(
+            rs.get('quiet_start') or '22:00', rs.get('quiet_end') or '07:00', hhmm):
+        return
+
     def notify(key, title, body, actions=None):
         if _pushed_today(uid, key, today):
             return
@@ -123,13 +157,18 @@ def _push_reminders_for_user(uid):
     for d in get_today_doses():
         if d.get('taken'):
             continue
-        mins = _mins_since(d.get('time') or '', hhmm)
+        # A per-medicine lead time fires the reminder that many minutes early.
+        lead = d.get('reminder_lead_min') or 0
+        mins = reminder_offset_min(d.get('time') or '', lead, hhmm)
         if mins is not None and 0 <= mins <= DOSE_REMINDER_WINDOW_MIN:
+            early = lead and mins < lead      # reminding ahead of the dose time
+            when = (f"Due at {d['time']} · in ~{lead - mins} min" if early
+                    else f"Scheduled at {d['time']}")
             # "✓ Taken" logs the dose straight from the notification — the core
             # adherence loop shouldn't cost an app open either.
             notify(f"med:{d['med_id']}:{d['time']}:{today}",
                    f"💊 Time for {d.get('med_name', 'your medicine')}",
-                   f"Scheduled at {d['time']}"
+                   when
                    + (f" · for {d['purpose']}" if d.get('purpose') else '')
                    + (' · take with food' if d.get('with_food') else ''),
                    actions=[{'action': f"dose-{d['med_id']}-{d['time']}", 'title': '✓ Taken'},

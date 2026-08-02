@@ -260,7 +260,8 @@ CREATE TABLE IF NOT EXISTS medicines (
     refill_status TEXT DEFAULT NULL, refill_ordered_at TEXT DEFAULT NULL,
     pharmacy_note TEXT DEFAULT '',
     purpose TEXT DEFAULT '',
-    timing TEXT DEFAULT ''
+    timing TEXT DEFAULT '',
+    reminder_lead_min INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS dose_logs (
     id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL,
@@ -484,6 +485,9 @@ CREATE TABLE IF NOT EXISTS reminder_settings (
     mood_reminder_time TEXT DEFAULT '18:00',
     weekly_digest_enabled INTEGER NOT NULL DEFAULT 1,
     caregiver_digest_enabled INTEGER NOT NULL DEFAULT 1,
+    quiet_enabled INTEGER DEFAULT 0,
+    quiet_start TEXT DEFAULT '22:00',
+    quiet_end TEXT DEFAULT '07:00',
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS caregiver_contacts (
@@ -595,6 +599,27 @@ def migrate_add_refill_fields():
             execute(ddl)
         except Exception:
             pass  # already exists
+
+
+def migrate_add_quiet_hours():
+    """Add do-not-disturb columns to reminder_settings."""
+    for ddl in (
+        "ALTER TABLE reminder_settings ADD COLUMN quiet_enabled INTEGER DEFAULT 0",
+        "ALTER TABLE reminder_settings ADD COLUMN quiet_start TEXT DEFAULT '22:00'",
+        "ALTER TABLE reminder_settings ADD COLUMN quiet_end TEXT DEFAULT '07:00'",
+    ):
+        try:
+            execute(ddl)
+        except Exception:
+            pass
+
+
+def migrate_add_reminder_lead():
+    """Add the per-medicine reminder lead-time column."""
+    try:
+        execute("ALTER TABLE medicines ADD COLUMN reminder_lead_min INTEGER DEFAULT 0")
+    except Exception:
+        pass
 
 
 def migrate_add_medicine_events():
@@ -826,6 +851,8 @@ def init_db():
     migrate_add_family_display()
     migrate_add_refill_fields()
     migrate_add_dose_timing()
+    migrate_add_quiet_hours()
+    migrate_add_reminder_lead()
     migrate_add_medicine_events()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()

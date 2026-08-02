@@ -1862,6 +1862,30 @@
         </div>
       </div>
 
+      <!-- Quiet hours (do not disturb) -->
+      <div class="rs-section">
+        <div class="rs-section-head">
+          <div class="rs-section-icon">🌙</div>
+          <div class="rs-section-info">
+            <div class="rs-section-title">Quiet hours</div>
+            <div class="rs-section-sub">Hold all reminders during a do-not-disturb window</div>
+          </div>
+          <label class="rs-toggle">
+            <input type="checkbox" id="rs-quiet-enabled" data-ev-change="saveReminderSettings()">
+            <span class="rs-toggle-track"></span>
+          </label>
+        </div>
+        <div class="rs-section-body" id="rs-quiet-body">
+          <div class="rs-row">
+            <label class="rs-label">From</label>
+            <input type="time" class="form-input rs-time" id="rs-quiet-start" value="22:00" data-ev-change="saveReminderSettings()">
+            <label class="rs-label" style="margin-left:8px">to</label>
+            <input type="time" class="form-input rs-time" id="rs-quiet-end" value="07:00" data-ev-change="saveReminderSettings()">
+          </div>
+          <div class="rs-section-sub" style="margin-top:6px">Reminders that fall inside this window wait until it ends.</div>
+        </div>
+      </div>
+
       <!-- Mood reminder -->
       <div class="rs-section" style="border-bottom:none">
         <div class="rs-section-head">
@@ -2247,6 +2271,16 @@
           <option value="empty_stomach">On an empty stomach</option>
           <option value="bedtime">At bedtime</option>
           <option value="with_water">With plenty of water</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Remind me before the dose <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+        <select class="form-input" name="reminder_lead_min" id="med-lead">
+          <option value="0">At the dose time</option>
+          <option value="5">5 minutes before</option>
+          <option value="10">10 minutes before</option>
+          <option value="15">15 minutes before</option>
+          <option value="30">30 minutes before</option>
+          <option value="60">1 hour before</option>
         </select>
       </div>
       <div class="form-group"><label class="form-label">What's it for? <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>

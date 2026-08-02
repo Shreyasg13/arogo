@@ -871,6 +871,9 @@ def api_save_reminder_settings():
     sleep_time      = _time('sleep_reminder_time', '22:00')
     mood_enabled    = _bool('mood_reminder_enabled')
     mood_time       = _time('mood_reminder_time', '18:00')
+    quiet_enabled   = _bool('quiet_enabled', 0)
+    quiet_start     = _time('quiet_start', '22:00')
+    quiet_end       = _time('quiet_end', '07:00')
 
     row = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     if row:
@@ -888,12 +891,14 @@ def api_save_reminder_settings():
             water_goal_ml=?, habit_reminder_enabled=?, habit_reminder_time=?,
             sleep_reminder_enabled=?, sleep_reminder_time=?,
             mood_reminder_enabled=?, mood_reminder_time=?,
+            quiet_enabled=?, quiet_start=?, quiet_end=?,
             weekly_digest_enabled=?, caregiver_digest_enabled=?, updated_at=?
             WHERE id=?""",
             (water_enabled, water_interval, water_start, water_end,
              water_goal_ml, habit_enabled, habit_time,
              sleep_enabled, sleep_time,
              mood_enabled, mood_time,
+             quiet_enabled, quiet_start, quiet_end,
              digest_flag, cg_digest_flag,
              now_iso(), row['id']), commit=True)
     else:
@@ -902,13 +907,15 @@ def api_save_reminder_settings():
             (id,water_enabled,water_interval_h,water_start,water_end,water_goal_ml,
              habit_reminder_enabled,habit_reminder_time,
              sleep_reminder_enabled,sleep_reminder_time,
-             mood_reminder_enabled,mood_reminder_time,updated_at,user_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+             mood_reminder_enabled,mood_reminder_time,
+             quiet_enabled,quiet_start,quiet_end,updated_at,user_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (rid, water_enabled, water_interval,
              water_start, water_end, water_goal_ml,
              habit_enabled, habit_time,
              sleep_enabled, sleep_time,
              mood_enabled, mood_time,
+             quiet_enabled, quiet_start, quiet_end,
              now_iso(), uid), commit=True)
     updated = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     return jsonify({'success': True, 'settings': dict(updated)})

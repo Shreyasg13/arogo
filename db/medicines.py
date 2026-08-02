@@ -99,15 +99,19 @@ def insert_medicine(data: dict) -> dict:
     if not timing and data.get('with_food'):
         timing = 'with_food'
     with_food = 1 if timing == 'with_food' else 0
+    try:
+        lead = max(0, min(int(data.get('reminder_lead_min') or 0), 120))
+    except (TypeError, ValueError):
+        lead = 0
     execute("""
         INSERT INTO medicines
-          (id,name,dosage,unit,frequency,times,with_food,timing,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
           data.get('frequency','once_daily'),
           jdump([] if data.get('frequency') == 'as_needed'
                 else _clean_times(data.get('times', ['08:00']))),
-          with_food, timing, data.get('notes',''),
+          with_food, timing, lead, data.get('notes',''),
           str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), data.get('icon','💊'),
           data.get('start_date', today_iso()), data.get('end_date',''), now_iso(),
@@ -281,6 +285,7 @@ def get_today_doses():
                 'unit': m['unit'], 'time': t, 'icon': m.get('icon', '💊'),
                 'color': m.get('color', 'teal'), 'with_food': m.get('with_food', False),
                 'timing': m.get('timing', ''), 'timing_text': m.get('timing_text', ''),
+                'reminder_lead_min': m.get('reminder_lead_min') or 0,
                 'purpose': m.get('purpose', ''),
                 'taken': bool(log and log.get('taken')),
                 'taken_at': log['taken_at'] if log else ''

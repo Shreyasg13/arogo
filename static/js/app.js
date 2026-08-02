@@ -3401,6 +3401,7 @@ function setupMedForm() {
       frequency: form.querySelector('input[name="frequency"]:checked')?.value || 'once_daily',
       times,
       timing: document.getElementById('med-timing')?.value || '',
+      reminder_lead_min: parseInt(document.getElementById('med-lead')?.value) || 0,
       notes: form.notes.value,
       purpose: form.purpose?.value || '',
       start_date: form.start_date.value,
@@ -9108,9 +9109,12 @@ async function loadReminderSettingsUI() {
   set('rs-mood-time',       s.mood_reminder_time);
   set('rs-digest-enabled',  s.weekly_digest_enabled ?? 1);
   set('rs-caregiver-digest-enabled', s.caregiver_digest_enabled ?? 1);
+  set('rs-quiet-enabled',   s.quiet_enabled);
+  set('rs-quiet-start',     s.quiet_start || '22:00');
+  set('rs-quiet-end',       s.quiet_end || '07:00');
 
   // Show/hide section bodies based on toggle state
-  ['water','habit','sleep','mood'].forEach(key => {
+  ['water','habit','sleep','mood','quiet'].forEach(key => {
     const enabled = document.getElementById(`rs-${key}-enabled`)?.checked;
     const body    = document.getElementById(`rs-${key}-body`);
     if (body) body.style.display = enabled ? 'block' : 'none';
@@ -9137,6 +9141,9 @@ async function saveReminderSettings() {
     mood_reminder_time:      get('rs-mood-time'),
     weekly_digest_enabled:   get('rs-digest-enabled'),
     caregiver_digest_enabled: get('rs-caregiver-digest-enabled'),
+    quiet_enabled:           get('rs-quiet-enabled'),
+    quiet_start:             get('rs-quiet-start'),
+    quiet_end:               get('rs-quiet-end'),
   };
 
   const r = await fetch('/api/reminders/settings', {
@@ -9149,7 +9156,7 @@ async function saveReminderSettings() {
     _remSettings = r.settings;
     showToast('Reminder settings saved', 'success');
     // Show/hide section bodies
-    ['water','habit','sleep','mood'].forEach(key => {
+    ['water','habit','sleep','mood','quiet'].forEach(key => {
       const enabled = document.getElementById(`rs-${key}-enabled`)?.checked;
       const body    = document.getElementById(`rs-${key}-body`);
       if (body) body.style.display = enabled ? 'block' : 'none';
