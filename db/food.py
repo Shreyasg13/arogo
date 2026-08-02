@@ -22,6 +22,19 @@ def get_profile() -> dict:
     r = execute("SELECT * FROM user_profile WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     return dict(r) if r else {}
 
+
+def get_user_language(user_id: str) -> str:
+    """The stored UI language ('hi'/'en') for any user_id, for the headless
+    mailer and scheduler which act on behalf of a user without a request context.
+    Defaults to 'en' for unknown users, no profile, or NULL. Never raises."""
+    try:
+        r = execute("SELECT language FROM user_profile WHERE user_id=? LIMIT 1",
+                    (user_id,), fetchone=True)
+        lang = (dict(r).get('language') if r else None)
+        return 'hi' if lang == 'hi' else 'en'
+    except Exception:
+        return 'en'
+
 def update_profile(data: dict) -> dict:
     p = get_profile()
     existing_target = p.get('target_weight_kg')
@@ -59,9 +72,18 @@ def update_profile(data: dict) -> dict:
     elif ui_mode not in (None, 'simple', 'standard'):
         ui_mode = p.get('ui_mode')  # ignore garbage, keep existing
 
+    # Chosen UI language — 'hi'/'en'/None. Stored so the headless mailer and
+    # scheduler (no browser) can localize emails and push. Anything unknown is
+    # ignored so garbage can't silently switch someone's reminders to gibberish.
+    language = data.get('language', p.get('language'))
+    if language in ('', 'none', 'default'):
+        language = None
+    elif language not in (None, 'en', 'hi'):
+        language = p.get('language')  # ignore garbage, keep existing
+
     execute("""UPDATE user_profile SET
         name=?, weight_kg=?, height_cm=?, age=?, gender=?,
-        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, ui_mode=?, updated_at=?
+        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, ui_mode=?, language=?, updated_at=?
         WHERE id=? AND user_id=?""",
         (data.get('name', p.get('name')) or '',
          _float('weight_kg', p.get('weight_kg')),
@@ -74,6 +96,7 @@ def update_profile(data: dict) -> dict:
          data.get('timezone', p.get('timezone')),
          diet_pref,
          ui_mode,
+         language,
          now_iso(), p['id'], current_user_id()), commit=True)
     return get_profile()
 

@@ -21,7 +21,7 @@ from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_
 from .fitness     import (insert_activity, list_activities, delete_activity, fitness_stats,
                           save_token, get_token, list_tokens, delete_token, update_last_sync,
                           log_sync, get_sync_history)
-from .food        import (get_profile, update_profile, calc_tdee,
+from .food        import (get_profile, update_profile, calc_tdee, get_user_language,
                           log_food, update_food_log, get_food_logs, delete_food_log,
                           get_nutrition_summary, get_weekly_nutrition,
                           usual_portions,
@@ -63,7 +63,7 @@ __all__ = [
     "insert_activity", "list_activities", "delete_activity", "fitness_stats",
     "save_token", "get_token", "list_tokens", "delete_token", "update_last_sync",
     "log_sync", "get_sync_history",
-    "get_profile", "update_profile", "calc_tdee", "log_food", "update_food_log",
+    "get_profile", "update_profile", "calc_tdee", "get_user_language", "log_food", "update_food_log",
     "get_food_logs", "delete_food_log",
     "usual_portions",
     "get_nutrition_summary", "get_weekly_nutrition", "save_custom_food", "list_custom_foods",

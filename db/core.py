@@ -321,6 +321,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
     timezone TEXT DEFAULT NULL,
     diet_pref TEXT DEFAULT NULL,
     ui_mode TEXT DEFAULT NULL,
+    language TEXT DEFAULT NULL,
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS food_logs (
@@ -600,6 +601,16 @@ def migrate_add_ui_mode():
     """Add ui_mode column to user_profile if missing (simple = senior/large UI)."""
     try:
         execute("ALTER TABLE user_profile ADD COLUMN ui_mode TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
+def migrate_add_language():
+    """Add language column to user_profile if missing. Stores the user's chosen
+    UI language ('hi'/'en'/NULL) so the headless mailer and scheduler — which have
+    no browser or localStorage — can localize emails and push notifications."""
+    try:
+        execute("ALTER TABLE user_profile ADD COLUMN language TEXT DEFAULT NULL")
     except Exception:
         pass  # already exists
 
@@ -892,6 +903,7 @@ def init_db():
     migrate_add_timezone()
     migrate_add_diet_pref()
     migrate_add_ui_mode()
+    migrate_add_language()
     migrate_add_family_display()
     migrate_add_refill_fields()
     migrate_add_dose_timing()

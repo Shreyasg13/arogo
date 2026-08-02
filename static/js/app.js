@@ -675,12 +675,22 @@ function _activeViewName() {
   return el ? el.id.replace(/^view-/, '') : null;
 }
 function toggleLanguage() {
-  try { localStorage.setItem('arogo_lang', _lang() === 'hi' ? 'en' : 'hi'); } catch (e) {}
+  const next = _lang() === 'hi' ? 'en' : 'hi';
+  try { localStorage.setItem('arogo_lang', next); } catch (e) {}
   applyLang();
   // Static [data-i18n] nodes are swept by applyLang; JS-rendered content only
   // re-localizes when its view re-renders, so re-run the active view's loader.
   const v = _activeViewName();
   if (v) { try { switchView(v); } catch (e) {} }
+  // Mirror the choice to the server profile so the headless mailer + scheduler
+  // (emails, push reminders) can localize too — they have no localStorage.
+  // Fire-and-forget; the localStorage value above already drives the UI.
+  try {
+    fetch('/api/food/profile', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin', body: JSON.stringify({ language: next }),
+    }).catch(() => {});
+  } catch (e) {}
 }
 document.addEventListener('DOMContentLoaded', applyLang);
 
@@ -798,6 +808,22 @@ function reconcileUiMode(profile) {
   const decided = local || server;          // any explicit choice, anywhere
   const age = parseInt(profile.age, 10);
   if (!decided && Number.isFinite(age) && age >= 60) offerSimpleMode();
+}
+
+// Adopt a language chosen on another device when this one hasn't decided, so the
+// choice follows the account. Mirrors reconcileUiMode; localStorage stays the
+// per-device source of truth for a no-flash first paint.
+function reconcileLanguage(profile) {
+  if (!profile) return;
+  let local = null;
+  try { local = localStorage.getItem('arogo_lang'); } catch (e) {}
+  const server = profile.language || null;   // 'hi' | 'en' | null
+  if (!local && server && server !== _lang()) {
+    try { localStorage.setItem('arogo_lang', server); } catch (e) {}
+    applyLang();
+    const v = _activeViewName();
+    if (v) { try { switchView(v); } catch (e) {} }
+  }
 }
 
 // ── CSP-safe event dispatch ───────────────────────────────────────
@@ -1123,7 +1149,7 @@ function showApp() {
     credentials: 'same-origin',
     body: JSON.stringify({ timezone: browserTimezone() }),
   }).then(r => r.ok ? r.json() : null)
-    .then(d => { if (d && d.profile) reconcileUiMode(d.profile); })
+    .then(d => { if (d && d.profile) { reconcileUiMode(d.profile); reconcileLanguage(d.profile); } })
     .catch(() => {});
 
   // Run all setup functions that DOMContentLoaded used to run
