@@ -142,6 +142,12 @@ def _push_reminders_for_user(uid):
             rs.get('quiet_start') or '22:00', rs.get('quiet_end') or '07:00', hhmm):
         return
 
+    # The recipient's chosen UI language, so push text matches the app they see.
+    # Defaults to 'en'; tr() falls back to English for any missing translation.
+    from i18n_server import tr
+    from db import get_user_language
+    lang = get_user_language(uid)
+
     def notify(key, title, body, actions=None):
         if _pushed_today(uid, key, today):
             return
@@ -162,29 +168,29 @@ def _push_reminders_for_user(uid):
         mins = reminder_offset_min(d.get('time') or '', lead, hhmm)
         if mins is not None and 0 <= mins <= DOSE_REMINDER_WINDOW_MIN:
             early = lead and mins < lead      # reminding ahead of the dose time
-            when = (f"Due at {d['time']} · in ~{lead - mins} min" if early
-                    else f"Scheduled at {d['time']}")
+            when = (tr(lang, 'push.dose_when_early', time=d['time'], min=lead - mins) if early
+                    else tr(lang, 'push.dose_when_sched', time=d['time']))
             # "✓ Taken" logs the dose straight from the notification — the core
             # adherence loop shouldn't cost an app open either.
             notify(f"med:{d['med_id']}:{d['time']}:{today}",
-                   f"💊 Time for {d.get('med_name', 'your medicine')}",
+                   tr(lang, 'push.dose_title', med=d.get('med_name', 'your medicine')),
                    when
-                   + (f" · for {d['purpose']}" if d.get('purpose') else '')
-                   + (' · take with food' if d.get('with_food') else ''),
-                   actions=[{'action': f"dose-{d['med_id']}-{d['time']}", 'title': '✓ Taken'},
-                            {'action': f"snooze-{d['med_id']}-{d['time']}", 'title': 'Later'}])
+                   + (tr(lang, 'push.dose_for', purpose=d['purpose']) if d.get('purpose') else '')
+                   + (tr(lang, 'push.dose_with_food') if d.get('with_food') else ''),
+                   actions=[{'action': f"dose-{d['med_id']}-{d['time']}", 'title': tr(lang, 'push.act_taken')},
+                            {'action': f"snooze-{d['med_id']}-{d['time']}", 'title': tr(lang, 'push.act_later')}])
 
     # 1b. Snoozed doses whose "remind me later" delay has elapsed and are still
     #     untaken. Each snooze fires once (marked notified); tapping Later again
     #     writes a fresh snooze, so it can be pushed back repeatedly.
     from db import get_due_snoozes, mark_snooze_notified
     for s in get_due_snoozes():
-        title = f"💊 Still due: {s['med_name']}"
-        body = "Snoozed reminder — take it when you can." \
-               + (f" · for {s['purpose']}" if s.get('purpose') else '')
+        title = tr(lang, 'push.snooze_title', med=s['med_name'])
+        body = tr(lang, 'push.snooze_body') \
+               + (tr(lang, 'push.dose_for', purpose=s['purpose']) if s.get('purpose') else '')
         if push.push_to_user(uid, title, body, '/',
-                             [{'action': f"dose-{s['med_id']}-{s['time']}", 'title': '✓ Taken'},
-                              {'action': f"snooze-{s['med_id']}-{s['time']}", 'title': 'Later'}]):
+                             [{'action': f"dose-{s['med_id']}-{s['time']}", 'title': tr(lang, 'push.act_taken')},
+                              {'action': f"snooze-{s['med_id']}-{s['time']}", 'title': tr(lang, 'push.act_later')}]):
             mark_snooze_notified(s['id'])
 
     # 2. Water — only when enabled, inside the active window, and behind pace
@@ -207,48 +213,47 @@ def _push_reminders_for_user(uid):
                 # pour (see _usual_sip_ml), not a fabricated 250.
                 sip = _usual_sip_ml(uid)
                 notify(f"water:{today}:{bucket}",
-                       '💧 Hydration check',
-                       f"You're behind on water — about {remaining}ml to go today.",
-                       actions=[{'action': f'water-{sip}', 'title': f'💧 {sip}ml'},
-                                {'action': 'snooze',       'title': 'Later'}])
+                       tr(lang, 'push.water_title'),
+                       tr(lang, 'push.water_body', ml=remaining),
+                       actions=[{'action': f'water-{sip}', 'title': tr(lang, 'push.water_act', ml=sip)},
+                                {'action': 'snooze',       'title': tr(lang, 'push.act_later')}])
 
     # 3. Evening habit / sleep / mood nudges at their configured times.
     #    The mood nudge answers itself: browsers render 2 buttons, so we offer
     #    the split that matters — fine vs not-fine ("not great" is the signal
     #    worth catching). Anything more nuanced is one tap away in the app.
-    MOOD_ACTIONS = [{'action': 'mood-happy', 'title': '😊 Good'},
-                    {'action': 'mood-sad',   'title': '😕 Not great'}]
-    for flag, tkey, key, title, body, acts in [
+    MOOD_ACTIONS = [{'action': 'mood-happy', 'title': tr(lang, 'push.mood_good')},
+                    {'action': 'mood-sad',   'title': tr(lang, 'push.mood_notgreat')}]
+    for flag, tkey, key, title_key, body_key, acts in [
         ('habit_reminder_enabled', 'habit_reminder_time', 'habit',
-         '⭐ Evening habit check', 'Tick off what you completed today.', None),
+         'push.habit_title', 'push.habit_body', None),
         ('sleep_reminder_enabled', 'sleep_reminder_time', 'sleep',
-         '🌙 Wind-down time', "Log last night's sleep and get ready for bed.", None),
+         'push.sleep_title', 'push.sleep_body', None),
         ('mood_reminder_enabled', 'mood_reminder_time', 'mood',
-         '😊 How was your day?', 'A one-line journal entry keeps the streak alive.',
-         MOOD_ACTIONS),
+         'push.mood_title', 'push.mood_body', MOOD_ACTIONS),
     ]:
         if rs.get(flag):
             mins = _mins_since(rs.get(tkey) or '', hhmm)
             if mins is not None and 0 <= mins <= 15:
-                notify(f"{key}:{today}", title, body, acts)
+                notify(f"{key}:{today}", tr(lang, title_key), tr(lang, body_key), acts)
 
     # 4. Measurement check-ins (BP / sugar / weight …) at their configured times.
     #    A reading needs a value, so tapping opens the app rather than logging
     #    from the notification. Deduped per reminder per day.
     MEAS = {
-        'blood_pressure': ('🩺 Check your blood pressure', 'Take a reading and log it in Arogo.'),
-        'blood_sugar':    ('🩸 Check your blood sugar', 'Time for your sugar reading.'),
-        'weight':         ('⚖️ Time to weigh in', 'Step on the scale and log your weight.'),
-        'spo2':           ('💨 Check your oxygen (SpO2)', 'Take a reading and log it.'),
-        'temperature':    ('🌡️ Check your temperature', 'Take a reading and log it.'),
-        'heart_rate':     ('💓 Check your heart rate', 'Take a reading and log it.'),
+        'blood_pressure': ('push.meas_bp_title', 'push.meas_bp_body'),
+        'blood_sugar':    ('push.meas_sugar_title', 'push.meas_sugar_body'),
+        'weight':         ('push.meas_weight_title', 'push.meas_weight_body'),
+        'spo2':           ('push.meas_spo2_title', 'push.meas_spo2_body'),
+        'temperature':    ('push.meas_temp_title', 'push.meas_temp_body'),
+        'heart_rate':     ('push.meas_hr_title', 'push.meas_hr_body'),
     }
     for r in (execute("SELECT * FROM measurement_reminders WHERE user_id=? AND enabled=1",
                       (uid,), fetchall=True) or []):
         mins = _mins_since(r['time'], hhmm)
         if mins is not None and 0 <= mins <= 15:
-            title, body = MEAS.get(r['kind'], ('🩺 Health check-in', 'Take your reading and log it.'))
-            notify(f"meas:{r['id']}:{today}", title, body)
+            tk, bk = MEAS.get(r['kind'], ('push.meas_generic_title', 'push.meas_generic_body'))
+            notify(f"meas:{r['id']}:{today}", tr(lang, tk), tr(lang, bk))
 
 
 def _push_reminders():
@@ -278,12 +283,14 @@ def _refill_reminders():
         import push
         if not push.PUSH_AVAILABLE:
             return
-        from db import get_low_stock_medicines
+        from db import get_low_stock_medicines, get_user_language
+        from i18n_server import tr
         users = execute("SELECT DISTINCT user_id FROM push_subscriptions", fetchall=True)
         for u in users:
             uid = u['user_id']
             with user_context(uid):
                 try:
+                    lang = get_user_language(uid)
                     today = _user_local_now(uid).strftime('%Y-%m-%d')
                     for m in get_low_stock_medicines():
                         if m.get('refill_status') == 'ordered':
@@ -292,8 +299,8 @@ def _refill_reminders():
                         if _pushed_today(uid, key, today):
                             continue
                         days = max(0, int(round(m.get('days_left') or 0)))
-                        title = f"🔄 Refill {m.get('name', 'your medicine')}"
-                        body = (f"About {days} day{'s' if days != 1 else ''} of pills left."
+                        title = tr(lang, 'push.refill_title', med=m.get('name', 'your medicine'))
+                        body = (tr(lang, 'push.refill_body', days=days, s=('' if days == 1 else 's'))
                                 + (f" · {m['pharmacy_note']}" if m.get('pharmacy_note') else ''))
                         if push.push_to_user(uid, title, body, '/'):
                             _mark_pushed(uid, key, title, body)
@@ -312,7 +319,8 @@ def _appointment_reminders():
         import push
         if not push.PUSH_AVAILABLE:
             return
-        from db import list_appointments
+        from db import list_appointments, get_user_language
+        from i18n_server import tr
         import datetime as dt
         users = execute("SELECT DISTINCT user_id FROM push_subscriptions", fetchall=True)
         KIND = {'doctor': '🩺', 'lab': '🧪', 'vaccine': '💉', 'other': '📅'}
@@ -320,6 +328,7 @@ def _appointment_reminders():
             uid = u['user_id']
             with user_context(uid):
                 try:
+                    lang = get_user_language(uid)
                     now = _user_local_now(uid)
                     today = now.strftime('%Y-%m-%d')
                     tomorrow = (now.date() + dt.timedelta(days=1)).isoformat()
@@ -328,15 +337,15 @@ def _appointment_reminders():
                             continue
                         when = a['date']
                         if when == tomorrow:
-                            phase, lead = 'pre', 'Tomorrow'
+                            phase, lead = 'pre', tr(lang, 'push.appt_tomorrow')
                         elif when == today:
-                            phase, lead = 'day', 'Today'
+                            phase, lead = 'day', tr(lang, 'push.appt_today')
                         else:
                             continue
                         key = f"appt:{a['id']}:{phase}"
                         if _pushed_today(uid, key, today):
                             continue
-                        at = f" at {a['time']}" if a.get('time') else ''
+                        at = tr(lang, 'push.appt_at', time=a['time']) if a.get('time') else ''
                         where = f" · {a['location']}" if a.get('location') else ''
                         title = f"{KIND.get(a.get('kind'), '📅')} {lead}: {a['title']}"
                         body = f"{lead}{at}{where}".strip()

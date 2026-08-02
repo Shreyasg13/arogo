@@ -100,3 +100,38 @@ def test_language_absent_defaults_en_and_is_untouched_by_other_saves(app):
 def test_get_user_language_defaults_en_for_unknown_user():
     from db import get_user_language
     assert get_user_language('nobody-xyz') == 'en'
+
+
+def test_scheduler_push_localizes_to_hindi(app, monkeypatch):
+    """End-to-end: a Hindi user's dose-snooze push comes out in Devanagari,
+    while the default (English) path is unchanged (asserted elsewhere)."""
+    import scheduler
+    import push
+    from db.core import execute
+
+    email = "hindipush@medeasy.test"
+    c = _reg(app, email)
+    uid = _uid_for(email)
+    c.post('/api/food/profile', json={'language': 'hi'})   # choose Hindi
+
+    m = c.post("/api/medicines", json={
+        "name": "Amlodipine", "dosage": "5", "unit": "mg",
+        "frequency": "once_daily", "times": ["09:00"]}).get_json()["medicine"]
+    execute("DELETE FROM push_subscriptions WHERE user_id=?", (uid,), commit=True)
+    execute("INSERT INTO push_subscriptions (id,endpoint,user_id,sub_json,created_at) "
+            "VALUES (?,?,?,?,?)", ("s-hi", "https://push.test/hi", uid, "{}", "2026-01-01"),
+            commit=True)
+    c.post(f"/api/medicines/{m['id']}/snooze", json={"time": "09:00"})
+    execute("UPDATE dose_snoozes SET snooze_until=? WHERE med_id=? AND user_id=?",
+            ("2000-01-01T00:00:00", m["id"], uid), commit=True)
+
+    sent = []
+    monkeypatch.setattr(push, "PUSH_AVAILABLE", True)
+    monkeypatch.setattr(push, "push_to_user",
+                        lambda u, t, b, *a, **k: (sent.append((u, t)) or 1))
+    scheduler._push_reminders()
+
+    mine = [t for (u, t) in sent if u == uid]
+    assert mine, "no push captured for the Hindi user"
+    assert any("अब भी देय" in t for t in mine)     # Hindi snooze title
+    assert not any("Still due" in t for t in mine)  # never the English string
