@@ -196,6 +196,36 @@ const I18N = {
     'All clear!': 'सब साफ़!', 'No pending tasks. Great work!': 'कोई लंबित कार्य नहीं। बढ़िया काम!',
     'Nothing completed yet': 'अभी कुछ पूरा नहीं', '🔴 High': '🔴 उच्च', '🟡 Medium': '🟡 मध्यम', '🟢 Low': '🟢 निम्न',
     'Due today': 'आज देय', 'Overdue (%1)': 'अतिदेय (%1)', 'Due %1': 'देय %1',
+    // Family
+    'Create your family group': 'अपना परिवार समूह बनाएँ',
+    'Invite family members by email. Everyone chooses exactly which categories they share — nothing is visible unless they turn it on.': 'ईमेल से परिवार के सदस्यों को आमंत्रित करें। हर कोई तय करता है कि कौन-सी श्रेणियाँ साझा करनी हैं — जब तक वे चालू न करें कुछ भी दिखाई नहीं देता।',
+    'Group name (e.g. The Guptas)': 'समूह का नाम (जैसे गुप्ता परिवार)',
+    'Create group': 'समूह बनाएँ',
+    'Shares nothing yet': 'अभी कुछ साझा नहीं',
+    '🚨 dose alerts': '🚨 खुराक अलर्ट',
+    'View shared data': 'साझा डेटा देखें',
+    '🔎 Simple View: on': '🔎 सरल दृश्य: चालू',
+    '🔍 Turn on Simple View': '🔍 सरल दृश्य चालू करें',
+    'OWNER': 'मालिक',
+    'YOU': 'आप',
+    '🚨 Alert my family if I miss a dose by 2+ hours': '🚨 यदि मैं 2+ घंटे खुराक चूकूँ तो परिवार को सूचित करें',
+    '🔔 Notify me when a family member misses a dose': '🔔 जब परिवार का कोई सदस्य खुराक चूके तो मुझे सूचित करें',
+    '👁️ Let my family turn Simple View on or off for me': '👁️ मेरे परिवार को मेरे लिए सरल दृश्य चालू/बंद करने दें',
+    'Invite someone': 'किसी को आमंत्रित करें',
+    'Send invite': 'निमंत्रण भेजें',
+    'Pending invites': 'लंबित निमंत्रण',
+    'Revoke': 'रद्द करें',
+    '📱 Text a loved one if I miss a dose': '📱 खुराक चूकने पर किसी अपने को संदेश भेजें',
+    'Add a phone number and they\'ll get an SMS or WhatsApp if one of my doses is 2+ hours overdue — no app or account needed on their end. This works once': 'एक फ़ोन नंबर जोड़ें और मेरी कोई खुराक 2+ घंटे अतिदेय होने पर उन्हें SMS या WhatsApp मिलेगा — उनके पास कोई ऐप या खाता नहीं चाहिए। यह तब काम करता है जब',
+    'is on above. I can remove anyone anytime.': 'ऊपर चालू हो। मैं किसी को भी कभी हटा सकता/सकती हूँ।',
+    'Add': 'जोड़ें',
+    'Delete group': 'समूह हटाएँ',
+    'Leave group': 'समूह छोड़ें',
+    'You share only what you switch on below. Changes apply immediately.': 'आप केवल वही साझा करते हैं जो आप नीचे चालू करते हैं। बदलाव तुरंत लागू होते हैं।',
+    'Name (e.g. Mom)': 'नाम (जैसे माँ)',
+    'Vitals': 'वाइटल्स',
+    'Symptoms': 'लक्षण',
+    'Emergency card': 'आपातकालीन कार्ड',
     // Toasts (action feedback)
     'Action failed': 'कार्रवाई विफल',
     'Activity logged!': 'गतिविधि दर्ज हुई!',
@@ -1643,15 +1673,13 @@ function renderFamilyEmpty() {
   return `
     <div class="panel" style="padding:32px;text-align:center;max-width:480px">
       <div style="font-size:34px;margin-bottom:10px">👨‍👩‍👧</div>
-      <h2 style="font-size:17px;font-weight:700;margin-bottom:6px">Create your family group</h2>
+      <h2 style="font-size:17px;font-weight:700;margin-bottom:6px">${t('Create your family group')}</h2>
       <p style="font-size:13px;color:var(--gray-400);margin-bottom:18px;line-height:1.6">
-        Invite family members by email. Everyone chooses exactly which
-        categories they share — nothing is visible unless they turn it on.
-      </p>
+${t('Invite family members by email. Everyone chooses exactly which categories they share — nothing is visible unless they turn it on.')}</p>
       <div style="display:flex;gap:8px;justify-content:center">
-        <input type="text" class="form-input" id="family-group-name" placeholder="Group name (e.g. The Guptas)"
+        <input type="text" class="form-input" id="family-group-name" placeholder="${t('Group name (e.g. The Guptas)')}"
                style="max-width:220px">
-        <button class="btn-primary" data-ev-click="createFamilyGroup()">Create group</button>
+        <button class="btn-primary" data-ev-click="createFamilyGroup()">${t('Create group')}</button>
       </div>
       <div style="margin-top:18px;text-align:left">${familyExplainer()}</div>
     </div>`;
@@ -1664,28 +1692,28 @@ function renderFamilyGroup(g) {
     const shared = FAMILY_CATEGORIES.filter(([f]) => m.shares[f]);
     let badges = shared.length
       ? shared.map(([, icon, label]) =>
-          `<span style="font-size:11px;background:var(--gray-50);border-radius:6px;padding:2px 8px">${icon} ${label}</span>`).join(' ')
-      : '<span style="font-size:11px;color:var(--gray-400)">Shares nothing yet</span>';
+          `<span style="font-size:11px;background:var(--gray-50);border-radius:6px;padding:2px 8px">${icon} ${t(label)}</span>`).join(' ')
+      : `<span style="font-size:11px;color:var(--gray-400)">${t('Shares nothing yet')}</span>`;
     const isMe = _currentUser && m.user_id === _currentUser.id;
     if (m.alerts_on)
-      badges += ' <span style="font-size:11px;background:var(--amber-50);border-radius:6px;padding:2px 8px">🚨 dose alerts</span>';
+      badges += ` <span style="font-size:11px;background:var(--amber-50);border-radius:6px;padding:2px 8px">${t('🚨 dose alerts')}</span>`;
     const actions = [];
     if (!isMe && shared.length)
-      actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="toggleFamilySummary('${m.user_id}')">View shared data</button>`);
+      actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="toggleFamilySummary('${m.user_id}')">${t('View shared data')}</button>`);
     // Simple View control — only when this member opted in (allows_display).
     if (!isMe && m.allows_display) {
       const on = m.ui_mode === 'simple';
-      actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="setMemberDisplay('${m.user_id}','${on ? 'standard' : 'simple'}')">${on ? '🔎 Simple View: on' : '🔍 Turn on Simple View'}</button>`);
+      actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="setMemberDisplay('${m.user_id}','${on ? 'standard' : 'simple'}')">${on ? t('🔎 Simple View: on') : t('🔍 Turn on Simple View')}</button>`);
     }
     if (isOwner && !isMe)
-      actions.push(`<button class="btn-outline" style="font-size:12px;color:#DC2626" data-ev-click="removeFamilyMember('${m.user_id}')">Remove</button>`);
+      actions.push(`<button class="btn-outline" style="font-size:12px;color:#DC2626" data-ev-click="removeFamilyMember('${m.user_id}')">${t('Remove')}</button>`);
     return `
       <div class="panel" style="padding:16px 18px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div style="flex:1;min-width:180px">
             <div style="font-size:14px;font-weight:600">${escapeHtml(m.name || m.email)}
-              ${m.role === 'owner' ? '<span style="font-size:10px;color:var(--gray-400);margin-left:6px">OWNER</span>' : ''}
-              ${isMe ? '<span style="font-size:10px;color:#3E7862;margin-left:6px">YOU</span>' : ''}
+              ${m.role === 'owner' ? `<span style="font-size:10px;color:var(--gray-400);margin-left:6px">${t('OWNER')}</span>` : ''}
+              ${isMe ? `<span style="font-size:10px;color:#3E7862;margin-left:6px">${t('YOU')}</span>` : ''}
             </div>
             <div style="font-size:12px;color:var(--gray-400)">${escapeHtml(m.email)}</div>
           </div>
@@ -1700,7 +1728,7 @@ function renderFamilyGroup(g) {
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
       <input type="checkbox" ${g.my_consent[f] ? 'checked' : ''}
              data-ev-change="saveFamilyConsent('${f}', this.checked)">
-      ${icon} ${label}
+      ${icon} ${t(label)}
     </label>`).join('');
 
   // Caregiver alerts — only offered while medicines are shared
@@ -1710,7 +1738,7 @@ function renderFamilyGroup(g) {
                   border-radius:10px;background:var(--amber-50)">
       <input type="checkbox" ${g.my_alerts ? 'checked' : ''}
              data-ev-change="saveFamilyConsent('alert_missed_doses', this.checked)">
-      🚨 Alert my family if I miss a dose by 2+ hours
+      ${t('🚨 Alert my family if I miss a dose by 2+ hours')}
     </label>` : '';
 
   // Caregiver role: primary (gets alerts) vs viewer (sees status, no pings)
@@ -1719,7 +1747,7 @@ function renderFamilyGroup(g) {
                   margin-top:10px;padding:10px 12px;border:1px solid var(--gray-100);border-radius:10px">
       <input type="checkbox" ${g.my_receive_alerts ? 'checked' : ''}
              data-ev-change="saveFamilyConsent('receive_care_alerts', this.checked)">
-      🔔 Notify me when a family member misses a dose
+      ${t('🔔 Notify me when a family member misses a dose')}
     </label>`;
 
   // Opt-in so a family member can switch Simple View on your account for you
@@ -1729,24 +1757,24 @@ function renderFamilyGroup(g) {
                   margin-top:10px;padding:10px 12px;border:1px solid var(--gray-100);border-radius:10px">
       <input type="checkbox" ${g.my_allow_display ? 'checked' : ''}
              data-ev-change="saveFamilyConsent('allow_family_display', this.checked)">
-      👁️ Let my family turn Simple View on or off for me
+      ${t('👁️ Let my family turn Simple View on or off for me')}
     </label>`;
 
   const inviteSection = isOwner ? `
     <div class="panel" style="padding:18px 20px;margin-bottom:16px">
-      <h2 class="panel-title" style="margin-bottom:12px">Invite someone</h2>
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Invite someone')}</h2>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <input type="email" class="form-input" id="family-invite-email"
                placeholder="their-email@example.com" style="max-width:260px">
-        <button class="btn-primary" data-ev-click="sendFamilyInvite()">Send invite</button>
+        <button class="btn-primary" data-ev-click="sendFamilyInvite()">${t('Send invite')}</button>
       </div>
       ${(g.pending_invites || []).length ? `
         <div style="margin-top:14px">
-          <div style="font-size:12px;color:var(--gray-400);margin-bottom:6px">Pending invites</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-bottom:6px">${t('Pending invites')}</div>
           ${g.pending_invites.map(i => `
             <div style="display:flex;align-items:center;gap:10px;font-size:13px;padding:4px 0">
               <span style="flex:1">${escapeHtml(i.email)}</span>
-              <button class="btn-outline" style="font-size:11px" data-ev-click="revokeFamilyInvite('${i.id}')">Revoke</button>
+              <button class="btn-outline" style="font-size:11px" data-ev-click="revokeFamilyInvite('${i.id}')">${t('Revoke')}</button>
             </div>`).join('')}
         </div>` : ''}
     </div>` : '';
@@ -1755,14 +1783,12 @@ function renderFamilyGroup(g) {
   // no app needed on their end. Filled in by loadAlertContacts().
   const alertContactsSection = `
     <div class="panel" style="padding:18px 20px;margin-bottom:16px">
-      <h2 class="panel-title" style="margin-bottom:4px">📱 Text a loved one if I miss a dose</h2>
+      <h2 class="panel-title" style="margin-bottom:4px">${t('📱 Text a loved one if I miss a dose')}</h2>
       <p style="font-size:12px;color:var(--gray-400);margin-bottom:12px">
-        Add a phone number and they'll get an SMS or WhatsApp if one of my doses is 2+ hours
-        overdue — no app or account needed on their end. This works once
-        <b>🚨 Alert my family if I miss a dose</b> is on above. I can remove anyone anytime.</p>
+${t("Add a phone number and they'll get an SMS or WhatsApp if one of my doses is 2+ hours overdue — no app or account needed on their end. This works once")} <b>${t('🚨 Alert my family if I miss a dose')}</b> ${t('is on above. I can remove anyone anytime.')}</p>
       <div id="alert-contacts-list" style="margin-bottom:12px"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <input type="text" class="form-input" id="ac-name" placeholder="Name (e.g. Mom)"
+        <input type="text" class="form-input" id="ac-name" placeholder="${t('Name (e.g. Mom)')}"
                aria-label="Contact name" style="max-width:150px">
         <input type="tel" class="form-input" id="ac-phone" placeholder="+9198XXXXXXXX"
                aria-label="Phone with country code" style="max-width:175px">
@@ -1770,13 +1796,13 @@ function renderFamilyGroup(g) {
           <option value="sms">SMS</option>
           <option value="whatsapp">WhatsApp</option>
         </select>
-        <button class="btn-primary" data-ev-click="addAlertContact()">Add</button>
+        <button class="btn-primary" data-ev-click="addAlertContact()">${t('Add')}</button>
       </div>
     </div>`;
 
   const dangerBtn = isOwner
-    ? `<button class="btn-outline" style="color:#DC2626" data-ev-click="deleteFamilyGroup()">Delete group</button>`
-    : `<button class="btn-outline" style="color:#DC2626" data-ev-click="leaveFamilyGroup()">Leave group</button>`;
+    ? `<button class="btn-outline" style="color:#DC2626" data-ev-click="deleteFamilyGroup()">${t('Delete group')}</button>`
+    : `<button class="btn-outline" style="color:#DC2626" data-ev-click="leaveFamilyGroup()">${t('Leave group')}</button>`;
 
   return `
     <div class="panel" style="padding:18px 20px;margin-bottom:16px">
@@ -1784,7 +1810,7 @@ function renderFamilyGroup(g) {
         <h2 class="panel-title" style="flex:1">${escapeHtml(g.name)}</h2>
         ${dangerBtn}
       </div>
-      <p style="font-size:12px;color:var(--gray-400)">You share only what you switch on below. Changes apply immediately.</p>
+      <p style="font-size:12px;color:var(--gray-400)">${t('You share only what you switch on below. Changes apply immediately.')}</p>
       ${familyExplainer()}
       <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:12px">${consentToggles}</div>
       ${alertToggle}
