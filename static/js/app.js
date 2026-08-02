@@ -2764,7 +2764,51 @@ async function loadMedicines() {
   const mc = document.getElementById('med-count');
   if (mc) mc.textContent = `${meds.filter(m=>m.active).length} active`;
   loadMedAdherence();
+  loadMissedDoses();
   loadDoseCalendar();
+}
+
+// ── Which doses you miss most (per-slot adherence, worst first) ──
+async function loadMissedDoses() {
+  const el = document.getElementById('med-missed-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/adherence-breakdown?days=30')
+    .then(r => r.json()).catch(() => null);
+  el.innerHTML = d ? renderMissedDoses(d) : '';
+}
+
+function renderMissedDoses(d) {
+  const esc = escHtml;
+  // Nothing worth showing until there's a slot with real misses.
+  if (!d.has_data || !d.worst) { return ''; }
+  const barColor = p => p >= 90 ? 'var(--teal-500,#5A9E70)' : p >= 70 ? '#F59E0B' : '#EF4444';
+  const t12 = _mc12h;
+
+  // Show the weakest few slots (those with any misses), best-effort up to 5.
+  const missed = d.slots.filter(s => s.missed > 0).slice(0, 5);
+  const w = d.worst;
+
+  const rows = missed.map(s => `
+    <div class="miss-row">
+      <div class="miss-slot">
+        <span class="miss-time">${esc(t12(s.time))}</span>
+        <span class="miss-name">${esc(s.icon)} ${esc(s.med_name)}</span>
+      </div>
+      <div class="miss-bar-wrap"><div class="miss-bar" style="width:${s.pct}%;background:${barColor(s.pct)}"></div></div>
+      <div class="miss-stat">${s.pct}%<span class="miss-sub">${s.taken}/${s.total}</span></div>
+    </div>`).join('');
+
+  return `<div class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">🎯 Doses you miss most</h2>
+      <span class="panel-badge">Last ${d.days} days</span>
+    </div>
+    <div style="padding:14px 16px">
+      <div class="miss-headline">Your <b>${esc(t12(w.time))} ${esc(w.med_name)}</b> dose is the easiest to forget — taken ${w.pct}% of the time (${w.missed} missed). ${w.timing_text ? 'Take it ' + esc(w.timing_text) + '.' : ''}</div>
+      <div class="miss-list">${rows}</div>
+      <p class="miss-note">Tip: if a slot keeps slipping, try moving its time or turning on a reminder for it.</p>
+    </div>
+  </div>`;
 }
 
 // ── Dose calendar (month heatmap of taken vs missed) ────────────────

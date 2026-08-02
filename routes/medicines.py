@@ -143,6 +143,13 @@ def dose_calendar():
     days = to_int(request.args.get('days', 35), 35, lo=1, hi=120)
     return jsonify({'days': get_dose_calendar(days)})
 
+@bp.route('/api/medicines/adherence-breakdown')
+@require_auth
+def adherence_breakdown():
+    """Per-slot adherence, worst first — 'which doses do I miss most?'."""
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=365)
+    return jsonify(get_adherence_breakdown(days))
+
 @bp.route('/api/medicines/planner')
 @require_auth
 def pill_planner():

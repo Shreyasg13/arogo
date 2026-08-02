@@ -5200,3 +5200,16 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   transform:translateX(-50%); border:2px solid var(--surface, #fff); box-shadow:0 0 0 1px rgba(0,0,0,.06); cursor:default; }
 .stl-axis-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--gray-400); margin-top:2px; }
 .stl-caveat { font-size:11.5px; color:var(--gray-500); line-height:1.6; margin-top:12px; }
+
+/* Doses you miss most */
+.miss-headline { font-size:14px; color:var(--gray-700); line-height:1.6; margin-bottom:14px; }
+.miss-list { display:flex; flex-direction:column; gap:10px; }
+.miss-row { display:grid; grid-template-columns:minmax(120px,1.3fr) 2fr auto; align-items:center; gap:12px; }
+.miss-slot { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.miss-time { font-size:13px; font-weight:700; color:var(--gray-800); }
+.miss-name { font-size:12px; color:var(--gray-500); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.miss-bar-wrap { height:8px; background:var(--gray-100,#F0EDE6); border-radius:99px; overflow:hidden; }
+.miss-bar { height:100%; border-radius:99px; transition:width .3s; }
+.miss-stat { font-size:14px; font-weight:700; color:var(--gray-800); text-align:right; white-space:nowrap; }
+.miss-sub { font-size:11px; font-weight:500; color:var(--gray-400); margin-left:5px; }
+.miss-note { font-size:11.5px; color:var(--gray-500); line-height:1.6; margin-top:12px; }

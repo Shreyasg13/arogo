@@ -337,6 +337,46 @@ def get_pill_planner(days: int = 7) -> dict:
     return {'days': daylist, 'rows': rows, 'has_schedule': bool(rows)}
 
 
+def get_adherence_breakdown(days: int = 30, min_scheduled: int = 3) -> dict:
+    """Per-slot adherence over the last N days, worst first, to answer
+    'which doses do I miss most?'. Each row is one medicine at one time; slots
+    with fewer than min_scheduled scheduled doses are omitted (too little data
+    to judge). Returns the worst slot as a headline when one stands out."""
+    from datetime import date, timedelta
+    uid = current_user_id()
+    days = max(1, min(int(days or 30), 365))
+    meds = [m for m in list_medicines()
+            if m['active'] and m.get('frequency') != 'as_needed' and m.get('times')]
+    anchor = date.fromisoformat(user_today())
+    daykeys = [(anchor - timedelta(days=i)).isoformat() for i in range(days)]
+
+    rows = []
+    for m in meds:
+        for t in m['times']:
+            total = taken = 0
+            for d in daykeys:
+                if not _in_course(m, d):
+                    continue
+                total += 1
+                log = execute("""SELECT taken FROM dose_logs
+                                 WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?""",
+                              (m['id'], d, t, uid), fetchone=True)
+                if log and log['taken']:
+                    taken += 1
+            if total >= min_scheduled:
+                rows.append({'med_id': m['id'], 'med_name': m['name'],
+                             'icon': m.get('icon') or '💊', 'time': t,
+                             'label': _slot_label(t),
+                             'timing_text': m.get('timing_text') or '',
+                             'total': total, 'taken': taken, 'missed': total - taken,
+                             'pct': round(taken / total * 100)})
+    # Worst adherence first; ties broken by more misses, then earlier time.
+    rows.sort(key=lambda r: (r['pct'], -r['missed'], r['time']))
+    # A headline only if the worst slot has real misses and isn't already perfect.
+    worst = next((r for r in rows if r['missed'] > 0), None)
+    return {'days': days, 'slots': rows, 'worst': worst, 'has_data': bool(rows)}
+
+
 def _slot_label(hhmm: str) -> str:
     """Bucket a HH:MM dose time into a plain time-of-day label."""
     try:
