@@ -499,6 +499,8 @@ function showApp() {
   try { setupPushSubscription(); }   catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
   try { scheduleInstallPrompt(); }   catch(e) {}
+  // Replay anything that was logged while offline, and show a pending badge.
+  try { _updateOutboxBadge(); flushOutbox(); } catch(e) {}
 
   const tdp = document.getElementById('thoughts-date-picker');
   if (tdp) tdp.value = localToday();
@@ -3330,18 +3332,115 @@ function renderMedicinesGrid(meds) {
   }).join('');
 }
 
+// ── Offline write queue (IndexedDB outbox) ──────────────────────────────────
+// So a dose logged with no connection isn't lost: the write is queued and
+// replayed when the device is back online. We tell the user it's *queued*, not
+// server-confirmed — honest, and better than dropping the write.
+const _OUTBOX_DB = 'arogo-outbox', _OUTBOX_STORE = 'writes';
+
+function _openOutbox() {
+  return new Promise((res, rej) => {
+    if (!('indexedDB' in window)) return rej(new Error('no indexeddb'));
+    const req = indexedDB.open(_OUTBOX_DB, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore(_OUTBOX_STORE, {keyPath: 'id', autoIncrement: true});
+    req.onsuccess = () => res(req.result);
+    req.onerror = () => rej(req.error);
+  });
+}
+function _outboxTx(mode, fn) {
+  return _openOutbox().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(_OUTBOX_STORE, mode);
+    const out = fn(tx.objectStore(_OUTBOX_STORE));
+    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+const _outboxAdd    = item => _outboxTx('readwrite', s => s.add(item));
+const _outboxAll    = ()   => _outboxTx('readonly',  s => s.getAll());
+const _outboxDelete = id   => _outboxTx('readwrite', s => s.delete(id));
+
+async function _updateOutboxBadge() {
+  let n = 0;
+  try { n = (await _outboxAll()).length; } catch (e) { return; }
+  let el = document.getElementById('offline-badge');
+  if (n <= 0) { if (el) el.style.display = 'none'; return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'offline-badge'; el.className = 'offline-badge';
+    el.setAttribute('data-ev-click', 'flushOutbox()');
+    el.title = 'Waiting to sync — tap to retry now';
+    document.body.appendChild(el);
+  }
+  el.textContent = `⏳ ${n} waiting to sync`;
+  el.style.display = 'block';
+}
+
+// Like fetch(), but a *write* that fails on the network is queued instead of
+// lost, and reported back as {queued:true} so callers can message honestly.
+async function syncableFetch(url, opts = {}) {
+  try {
+    return await fetch(url, opts);
+  } catch (e) {
+    const method = (opts.method || 'GET').toUpperCase();
+    if (['POST', 'PUT', 'DELETE'].includes(method)) {
+      try {
+        await _outboxAdd({url, method, body: opts.body || null,
+                          headers: {'Content-Type': 'application/json'}, ts: Date.now()});
+        _updateOutboxBadge();
+        return {ok: true, queued: true, status: 0, json: async () => ({success: true, queued: true})};
+      } catch (_) { /* fall through to rethrow if we can't even queue */ }
+    }
+    throw e;
+  }
+}
+
+let _flushing = false;
+async function flushOutbox() {
+  if (_flushing || (typeof navigator !== 'undefined' && navigator.onLine === false)) return 0;
+  _flushing = true;
+  let synced = 0;
+  try {
+    const items = await _outboxAll().catch(() => []);
+    for (const it of items) {
+      try {
+        const r = await fetch(it.url, {method: it.method, headers: it.headers, body: it.body});
+        if (r.ok) { await _outboxDelete(it.id); synced++; }
+        else if (r.status >= 400 && r.status < 500) { await _outboxDelete(it.id); }  // a bad row won't fix itself — drop it
+        else break;                                   // server hiccup — keep it for next time
+      } catch (e) { break; }                           // still offline
+    }
+  } finally { _flushing = false; }
+  _updateOutboxBadge();
+  if (synced > 0) {
+    showToast(`✓ Synced ${synced} offline ${synced > 1 ? 'entries' : 'entry'}`, 'success');
+    try { loadMedicines(); loadDashboard(); } catch (e) {}
+  }
+  return synced;
+}
+
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('online', () => { try { flushOutbox(); } catch (e) {} });
+}
+
 async function markDoseTaken(medId, time, el) {
   const date = localToday();
   // Never claim a dose landed without checking. This is the core adherence
   // loop: if the write failed and we say "taken ✓", the user stops thinking
   // about it, the dose stays unlogged, and their family gets escalated to
-  // about a dose they actually took.
-  const r = await fetch(`/api/medicines/${medId}/log`, {
+  // about a dose they actually took. Offline, the write is queued (not
+  // confirmed) — we say so, rather than lie or lose it.
+  const r = await syncableFetch(`/api/medicines/${medId}/log`, {
     method:'POST', headers:{'Content-Type':'application/json'},
     body:JSON.stringify({ date, time, taken:true })
   }).then(r => r.json()).catch(() => null);
   if (!r?.success) {
     showToast("Couldn't log that dose — check your connection and try again", 'error');
+    return;
+  }
+  if (r.queued) {
+    // Optimistically show it as taken; skip the reloads (they'd fail offline).
+    if (el) el.classList.add('taken');
+    showToast("Saved offline — it'll sync when you're back online", 'success');
     return;
   }
   showToast('Dose marked as taken ✓', 'success');

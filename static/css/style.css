@@ -5216,6 +5216,12 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   cursor:pointer; white-space:nowrap; }
 .briefing-read:hover { background:var(--teal-50,#EAF3EE); }
 
+/* Offline write-queue badge */
+.offline-badge { position:fixed; left:50%; bottom:78px; transform:translateX(-50%);
+  z-index:1200; background:#3c4b42; color:#fff; font-size:12.5px; font-weight:600;
+  padding:8px 16px; border-radius:99px; box-shadow:0 3px 12px rgba(0,0,0,.18); cursor:pointer; }
+@media (min-width:900px){ .offline-badge{ bottom:24px; left:auto; right:24px; transform:none; } }
+
 /* Backup & restore */
 .restore-warn { background:#FBECEC; border:1px solid #F0D2D2; border-radius:10px; padding:12px 14px;
   font-size:13px; color:#8a4a44; line-height:1.6; margin-bottom:12px; }
