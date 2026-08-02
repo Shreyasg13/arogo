@@ -403,6 +403,76 @@ const I18N = {
     'Weight': 'वज़न',
     '+ Add exercise': '+ व्यायाम जोड़ें',
     'e.g. Bench Press': 'जैसे बेंच प्रेस',
+    // Food categories + groups
+    '🇺🇸 American': '🇺🇸 अमेरिकी',
+    '🇮🇳 Indian': '🇮🇳 भारतीय',
+    '🌏 South Asian': '🌏 दक्षिण एशियाई',
+    '🌍 World Cuisine': '🌍 विश्व व्यंजन',
+    '🍺 Bar': '🍺 बार',
+    '🥗 Healthy': '🥗 स्वस्थ',
+    '🍿 Snacks': '🍿 स्नैक्स',
+    '💪 Fitness': '💪 फिटनेस',
+    '📂 Other': '📂 अन्य',
+    '🌍 All Foods (%1 categories)': '🌍 सभी खाद्य (%1 श्रेणियाँ)',
+    'Afghan': 'अफ़गानी',
+    'African': 'अफ़्रीकी',
+    'Alcohol': 'शराब',
+    'American': 'अमेरिकी',
+    'American Breakfast': 'अमेरिकी नाश्ता',
+    'American Desserts': 'अमेरिकी मिठाइयाँ',
+    'American Fast Food': 'अमेरिकी फास्ट फूड',
+    'Baby Food': 'शिशु आहार',
+    'Bangladeshi': 'बांग्लादेशी',
+    'Beverages': 'पेय',
+    'Breakfast': 'नाश्ता',
+    'Cafe': 'कैफ़े',
+    'Caribbean': 'कैरिबियन',
+    'Cereals': 'अनाज',
+    'Chocolates': 'चॉकलेट',
+    'Condiments': 'मसाले-चटनी',
+    'Dairy': 'डेयरी',
+    'Dips & Spreads': 'डिप व स्प्रेड',
+    'Dry Fruits': 'सूखे मेवे',
+    'European': 'यूरोपीय',
+    'Fats & Oils': 'वसा व तेल',
+    'Filipino': 'फ़िलिपीनो',
+    'Fruits': 'फल',
+    'Global Breakfast': 'वैश्विक नाश्ता',
+    'Global Mains': 'वैश्विक मुख्य',
+    'Global Snacks': 'वैश्विक स्नैक्स',
+    'Indian Beverages': 'भारतीय पेय',
+    'Indian Bread': 'भारतीय रोटी',
+    'Indian Main': 'भारतीय मुख्य',
+    'Indian Sides': 'भारतीय साइड',
+    'Indian Snacks': 'भारतीय स्नैक्स',
+    'Indian Street Food': 'भारतीय स्ट्रीट फूड',
+    'Indian Sweets': 'भारतीय मिठाइयाँ',
+    'Indo-Chinese': 'इंडो-चाइनीज़',
+    'Indonesian': 'इंडोनेशियाई',
+    'Italian': 'इतालवी',
+    'Jain': 'जैन',
+    'Japanese': 'जापानी',
+    'Korean': 'कोरियाई',
+    'Mediterranean': 'भूमध्यसागरीय',
+    'Mexican': 'मैक्सिकन',
+    'Nepali': 'नेपाली',
+    'Nuts & Seeds': 'मेवे व बीज',
+    'Packaged Snacks': 'पैकेज्ड स्नैक्स',
+    'Pakistani': 'पाकिस्तानी',
+    'Protein': 'प्रोटीन',
+    'Rice & Grains': 'चावल व अनाज',
+    'Salads': 'सलाद',
+    'South Asian Sweets': 'दक्षिण एशियाई मिठाइयाँ',
+    'South Indian': 'दक्षिण भारतीय',
+    'Sri Lankan': 'श्रीलंकाई',
+    'Street Food': 'स्ट्रीट फूड',
+    'Supplements': 'सप्लीमेंट',
+    'Thai': 'थाई',
+    'Trail Mix': 'ट्रेल मिक्स',
+    'Vegetables': 'सब्ज़ियाँ',
+    'Vietnamese': 'वियतनामी',
+    'My Foods': 'मेरे खाद्य',
+    'Custom': 'कस्टम',
     // Dynamic buttons
     'Log vital': 'वाइटल दर्ज करें', 'Permanently delete': 'स्थायी रूप से हटाएँ', 'Start': 'शुरू करें',
     'Continue': 'जारी रखें', 'Back': 'वापस', 'Done': 'पूर्ण', 'Go to dashboard': 'डैशबोर्ड पर जाएँ',
@@ -6105,7 +6175,7 @@ async function loadFoodCategories() {
     console.warn('[Food] No categories returned. API response:', r);
   }
 
-  sel.innerHTML = '<option value="">🌍 All Foods (' + allCats.length + ' categories)</option>';
+  sel.innerHTML = '<option value="">' + tformat('🌍 All Foods (%1 categories)', allCats.length) + '</option>';
 
   const grouped_flat = Object.values(CAT_GROUPS).flat();
 
@@ -6113,11 +6183,11 @@ async function loadFoodCategories() {
     const available = catList.filter(c => allCats.includes(c));
     if (!available.length) return;
     const grp = document.createElement('optgroup');
-    grp.label = groupLabel;
+    grp.label = t(groupLabel);
     available.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c;
-      opt.textContent = (CAT_EMOJI[c] || '🍽️') + ' ' + c;
+      opt.textContent = (CAT_EMOJI[c] || '🍽️') + ' ' + t(c);
       if (activeFoodCat === c) opt.selected = true;
       grp.appendChild(opt);
     });
@@ -6127,11 +6197,11 @@ async function loadFoodCategories() {
   const ungrouped = allCats.filter(c => !grouped_flat.includes(c));
   if (ungrouped.length) {
     const grp = document.createElement('optgroup');
-    grp.label = '📂 Other';
+    grp.label = t('📂 Other');
     ungrouped.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c;
-      opt.textContent = (CAT_EMOJI[c] || '🍽️') + ' ' + c;
+      opt.textContent = (CAT_EMOJI[c] || '🍽️') + ' ' + t(c);
       if (activeFoodCat === c) opt.selected = true;
       grp.appendChild(opt);
     });
@@ -6214,7 +6284,7 @@ async function searchFoodDB(query) {
     const el = document.getElementById('food-search-results');
     const countEl = document.getElementById('food-results-count');
     if (!el) return;
-    const label = activeFoodCat || t('all foods');
+    const label = activeFoodCat ? t(activeFoodCat) : t('all foods');
     if (countEl) countEl.textContent = all.length === 0 ? t('No results') : tformat('%1 items in %2', all.length, label);
     if (all.length === 0) {
       el.innerHTML = `<div class="food-empty-state" style="padding:28px 0;text-align:center">
@@ -6234,7 +6304,7 @@ async function searchFoodDB(query) {
             ${f.is_custom ? `<span class="food-custom-badge">${t('My food')}</span>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap">
-            <span class="food-result-category-tag">${f.is_custom ? t('⭐ My Foods') : f.category}</span>
+            <span class="food-result-category-tag">${f.is_custom ? t('⭐ My Foods') : t(f.category)}</span>
             <span class="food-result-meta">${f.serving_g}${f.serving_unit||'g'} ${t('serving')}</span>
           </div>
         </div>
@@ -6360,7 +6430,7 @@ function selectFoodItem(food) {
       <div class="food-add-emoji">${food.emoji || '🍽️'}</div>
       <div>
         <div class="food-add-name">${escHtml(food.name)}</div>
-        <div class="food-add-cat">${food.category}</div>
+        <div class="food-add-cat">${t(food.category)}</div>
       </div>
     </div>
     <div class="nutrient-preview">
