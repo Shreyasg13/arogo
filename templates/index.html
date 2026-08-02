@@ -742,6 +742,13 @@
 
   <!-- EMERGENCY CARD -->
   <div id="med-tab-emergency" class="wellness-tab-content" style="display:none;margin-top:16px">
+    <div class="sos-panel">
+      <div class="sos-panel-text">
+        <div class="sos-panel-title">🆘 Need help now?</div>
+        <div class="sos-panel-sub">Send an urgent alert to your caregivers with one tap.</div>
+      </div>
+      <button class="sos-btn" data-ev-click="openSos()">SOS</button>
+    </div>
     <div class="emergency-layout">
       <div class="emergency-form-panel">
         <div class="panel">
@@ -3171,6 +3178,26 @@
       <div class="no-print" style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
         <button class="btn-outline" data-ev-click="closeDoctorSummary()">Close</button>
         <button class="btn-primary" data-ev-click="printDoctorSummary()">Print / Save as PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sos-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeSos')">
+  <div class="modal" id="sos-sheet" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title">🆘 Send an urgent alert?</div>
+      <button class="modal-close" data-ev-click="closeSos()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:12px">
+        This immediately notifies your caregivers that you need help now.</p>
+      <div id="sos-recipients" style="font-size:13px;color:var(--gray-500);margin-bottom:12px"></div>
+      <input type="text" class="form-input" id="sos-note" maxlength="200"
+             placeholder="Add a note — optional (e.g. chest pain)">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn-outline" data-ev-click="closeSos()">Cancel</button>
+        <button class="sos-send-btn" id="sos-send" data-ev-click="sendSos()">Send SOS</button>
       </div>
     </div>
   </div>

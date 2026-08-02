@@ -35,6 +35,66 @@ def get_group():
     return jsonify({'group': family.get_my_group()})
 
 
+@bp.route('/api/sos', methods=['POST'])
+@require_auth
+def sos():
+    """Urgent 'I need help now' — the user taps this themselves (their explicit
+    action) and it immediately alerts their caregivers: app-user family who
+    receive care alerts (push + email) and zero-install contacts (SMS/WhatsApp),
+    reusing the same delivery the missed-dose escalation uses. Honest about who
+    was actually reached — an emergency button must never silently reach nobody.
+    """
+    import push, sms
+    from db.core import current_user_id
+    from db import add_notification
+    uid = current_user_id()
+    urow = execute("SELECT name, email FROM users WHERE id=?", (uid,), fetchone=True)
+    name = (urow['name'] if urow else '') or (urow['email'] if urow else 'A family member')
+    note = str((request.json or {}).get('note', '') or '').strip()[:200]
+
+    title = f"🆘 {name} needs help"
+    body = "They sent an urgent SOS from Arogo. Please check on them now."
+    if note:
+        body += f' Note: "{note}"'
+
+    reached, who = 0, []
+
+    me = execute("SELECT group_id FROM family_members WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
+    if me:
+        others = execute("""
+            SELECT u.id, u.email, u.name FROM family_members m
+            JOIN users u ON u.id = m.user_id
+            WHERE m.group_id=? AND m.user_id<>? AND m.receive_care_alerts=1""",
+            (me['group_id'], uid), fetchall=True) or []
+        for o in others:
+            pushed = bool(push.push_to_user(o['id'], title, body, '/'))
+            # Same honesty rule as the escalation: a dev-mode email (printed, not
+            # sent) doesn't count as reaching a human.
+            sent = mailer.send_email(
+                o['email'], title,
+                f"Hi {o['name'] or 'there'},\n\n{body}\n\nOpen Arogo: {mailer.APP_BASE_URL}/\n")
+            if pushed or (sent and mailer.is_configured()):
+                reached += 1
+                who.append(o['name'] or o['email'])
+
+    contacts = execute("""SELECT id, name, phone, channel FROM caregiver_contacts
+                          WHERE user_id=? AND alerts_enabled=1""", (uid,), fetchall=True) or []
+    for c in contacts:
+        msg = (f"Arogo SOS: {name} needs help now."
+               + (f' Note: {note}' if note else '') + " Please check on them.")
+        if sms.notify_contact(c, msg) and sms.is_configured(c.get('channel', 'sms')):
+            reached += 1
+            who.append(c['name'])
+
+    # Transparency — the member's own feed records what happened.
+    add_notification('care', 'SOS sent',
+                     f"You sent an urgent alert to {reached} caregiver{'s' if reached != 1 else ''}."
+                     if reached else
+                     "You tapped SOS, but no caregiver could be reached — add one in Family.")
+
+    return jsonify({'success': True, 'reached': reached, 'who': who})
+
+
 @bp.route('/api/family', methods=['POST'])
 @require_auth
 def create_group():

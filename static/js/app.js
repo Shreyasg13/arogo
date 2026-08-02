@@ -7327,6 +7327,55 @@ async function loadAppointments() {
   loadDoctorQuestions();
 }
 
+// ── Emergency SOS — one-tap "I need help now" to your caregivers ──
+async function openSos() {
+  const modal = document.getElementById('sos-modal');
+  if (!modal) return;
+  const note = document.getElementById('sos-note'); if (note) note.value = '';
+  const rec = document.getElementById('sos-recipients');
+  if (rec) rec.textContent = 'Checking who will be alerted…';
+  modal.style.display = 'flex';
+
+  const [fam, ac] = await Promise.all([
+    fetch('/api/family').then(r => r.json()).catch(() => ({})),
+    fetch('/api/family/alert-contacts').then(r => r.json()).catch(() => ({})),
+  ]);
+  const contacts = (ac.contacts || []).filter(c => c.alerts_enabled).map(c => c.name);
+  const hasFamily = !!(fam.group && (fam.group.members || []).length > 1);
+  if (rec) {
+    if (contacts.length || hasFamily) {
+      const parts = [];
+      if (contacts.length) parts.push(contacts.join(', '));
+      if (hasFamily) parts.push('family members who receive your care alerts');
+      rec.innerHTML = `Will alert: <b>${escHtml(parts.join(' + '))}</b>.`;
+    } else {
+      rec.innerHTML = `⚠️ You have no caregivers set up yet — <a href="#" data-ev-click="closeSos();switchView('family');return false" style="color:#B4443A;font-weight:600">add one in Family</a> so this can reach someone.`;
+    }
+  }
+}
+function closeSos() { const m = document.getElementById('sos-modal'); if (m) m.style.display = 'none'; }
+
+async function sendSos() {
+  const btn = document.getElementById('sos-send');
+  const note = (document.getElementById('sos-note')?.value || '').trim();
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  const r = await fetch('/api/sos', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note }),
+  }).then(r => r.json()).catch(() => null);
+  if (btn) { btn.disabled = false; btn.textContent = 'Send SOS'; }
+  closeSos();
+  if (r && r.success && r.reached > 0) {
+    const who = (r.who || []).length ? ` — ${r.who.join(', ')}` : '';
+    showToast(`✓ Alerted ${r.reached} caregiver${r.reached !== 1 ? 's' : ''}${who}`, 'success');
+  } else if (r && r.success) {
+    // Honest: an emergency button must never pretend it reached someone.
+    showToast('Sent, but no caregiver could be reached — add a caregiver in Family', 'error');
+  } else {
+    showToast('Could not send the SOS — check your connection and try again', 'error');
+  }
+}
+
 // ── Questions to ask at your next doctor visit ──
 async function loadDoctorQuestions() {
   const el = document.getElementById('dq-list');
