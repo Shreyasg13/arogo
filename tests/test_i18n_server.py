@@ -125,6 +125,34 @@ def test_transactional_emails_localize(monkeypatch):
     assert cap['text'].startswith('Someone requested a password reset')
 
 
+def test_weekly_digest_prose_and_email_localize(app, monkeypatch):
+    from db.insights import generate_weekly_digest
+    from db.core import user_context
+    email = "digesthi@medeasy.test"
+    c = _reg(app, email)
+    uid = _uid_for(email)
+
+    with user_context(uid):
+        d_hi = generate_weekly_digest('hi')
+        d_en = generate_weekly_digest('en')
+    # An empty week → the welcoming headline, localized.
+    assert any('ऀ' <= ch <= 'ॿ' for ch in d_hi['headline'])
+    assert d_en['headline'] == 'Nothing logged yet — start tracking and your progress will show up here.'
+
+    import mailer
+    cap = {}
+    monkeypatch.setattr(mailer, 'send_email',
+                        lambda to, subj, text: (cap.update(subj=subj, text=text), True)[1])
+    # Hindi scaffolding.
+    mailer.send_weekly_digest_email('x@y.test', 'Asha', d_hi, 'http://u/unsub', lang='hi')
+    assert any('ऀ' <= ch <= 'ॿ' for ch in cap['subj'])
+    assert 'आपका हफ़्ता' in cap['text']
+    # English default byte-identical.
+    mailer.send_weekly_digest_email('x@y.test', 'Asha', d_en, 'http://u/unsub', lang='en')
+    assert cap['subj'].startswith('Your Arogo week —')
+    assert 'Your week:' in cap['text']
+
+
 def test_scheduler_push_localizes_to_hindi(app, monkeypatch):
     """End-to-end: a Hindi user's dose-snooze push comes out in Devanagari,
     while the default (English) path is unchanged (asserted elsewhere)."""

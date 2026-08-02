@@ -132,11 +132,24 @@ def _hydration_goal_ml() -> int:
     return (rs or {}).get('water_goal_ml') or 2450
 
 
-def generate_weekly_digest() -> dict:
+def generate_weekly_digest(lang: str = None) -> dict:
     """Weekly insight digest — scores, highlights, wins, concerns, headline.
     Built on generate_weekly_report(); used by /api/weekly-digest and the
-    Sunday digest email job."""
+    Sunday digest email job.
+
+    `lang` localizes the prose (headline/wins/concerns/highlight labels). When
+    None it resolves to the current user's stored language, so both the in-app
+    view and the email speak the user's language. Numbers/units stay as-is."""
     import datetime as dt
+    from i18n_server import tr
+
+    if lang is None:
+        try:
+            from db import get_user_language
+            from db.core import current_user_id
+            lang = get_user_language(current_user_id())
+        except Exception:
+            lang = 'en'
 
     r = generate_weekly_report()
     hydration_goal = _hydration_goal_ml()
@@ -187,60 +200,57 @@ def generate_weekly_digest() -> dict:
     # (get_insight_cards one function below already requires >=4; same bar.)
     enough_nights = nights >= 4
     if sleep_h and enough_nights and sleep_h >= 7:
-        wins.append({'icon': '🌙', 'text': f'Averaged {sleep_h}h sleep across {nights} of 7 nights'})
+        wins.append({'icon': '🌙', 'text': tr(lang, 'digest.win_sleep', h=sleep_h, nights=nights)})
     if r['fitness']['workout_days'] >= 4:
-        wins.append({'icon': '🏅', 'text': f'{r["fitness"]["workout_days"]} workout days this week — great consistency'})
+        wins.append({'icon': '🏅', 'text': tr(lang, 'digest.win_workouts', days=r['fitness']['workout_days'])})
     if habit_score is not None and habit_score >= 80:
-        wins.append({'icon': '⭐', 'text': f'{int(habit_score)}% habit completion — nearly perfect week'})
+        wins.append({'icon': '⭐', 'text': tr(lang, 'digest.win_habits', pct=int(habit_score))})
     if hydration_score is not None and hydration_score >= 90:
-        wins.append({'icon': '💧', 'text': f'Well hydrated — averaged {r["nutrition"]["avg_hydration_ml"]}ml/day'})
+        wins.append({'icon': '💧', 'text': tr(lang, 'digest.win_hydration', ml=r['nutrition']['avg_hydration_ml'])})
     if r['fitness']['calories_burned'] >= 2000:
-        wins.append({'icon': '🔥', 'text': f'{r["fitness"]["calories_burned"]:,} kcal burned through exercise'})
+        wins.append({'icon': '🔥', 'text': tr(lang, 'digest.win_burned', kcal=f"{r['fitness']['calories_burned']:,}")})
 
     # ── Concerns ──────────────────────────────────────────────────
     concerns = []
     if sleep_h and enough_nights and sleep_h < 6:
-        concerns.append({'icon': '😴', 'text': f'Sleep averaged {sleep_h}h across {nights} nights — '
-                                               f'under the 7–9h usually recommended. Early night this week?'})
+        concerns.append({'icon': '😴', 'text': tr(lang, 'digest.concern_sleep_low', h=sleep_h, nights=nights)})
     elif sleep_h and enough_nights and sleep_h < 7:
-        concerns.append({'icon': '🌙', 'text': f'Sleep was a bit short ({sleep_h}h avg over {nights} nights). '
-                                               f'Aim for 7h+ tonight.'})
+        concerns.append({'icon': '🌙', 'text': tr(lang, 'digest.concern_sleep_short', h=sleep_h, nights=nights)})
 
     # Only comment on exercise if they log exercise. "No workouts logged this
     # week" fired unconditionally, so it went to people who have never used
     # fitness tracking and never intend to — a complaint about a feature, not
     # about their week.
     if r['fitness']['activities'] and r['fitness']['workout_days'] <= 1:
-        concerns.append({'icon': '🏃', 'text': f'Only {r["fitness"]["workout_days"]} workout day this week. Try for 3+.'})
+        concerns.append({'icon': '🏃', 'text': tr(lang, 'digest.concern_workouts', days=r['fitness']['workout_days'])})
 
     if habit_score is not None and habit_score < 50 and r['habits']['total'] > 0:
-        concerns.append({'icon': '📋', 'text': f'Habits only {int(habit_score)}% complete. Consider removing habits that no longer fit.'})
+        concerns.append({'icon': '📋', 'text': tr(lang, 'digest.concern_habits', pct=int(habit_score))})
 
     if r['symptoms']:
         top = r['symptoms'][0]
-        concerns.append({'icon': '🩺', 'text': f'{top["name"]} appeared {top["count"]} time{"s" if top["count"]>1 else ""} this week. Worth noting if it continues.'})
+        concerns.append({'icon': '🩺', 'text': tr(lang, 'digest.concern_symptom', name=top['name'], count=top['count'], s=('s' if top['count']>1 else ''))})
 
     # This one had no data guard at all, so a user who never logged water was
     # told they "averaged 0ml" — a health claim about someone who simply didn't
     # use the feature — measured against a goal they never set.
     if hydration_score is not None and hydration_score < 60:
-        concerns.append({'icon': '💧', 'text': f'Hydration was low ({r["nutrition"]["avg_hydration_ml"]}ml avg, '
-                                               f'goal {hydration_goal}ml). Try a water reminder.'})
+        concerns.append({'icon': '💧', 'text': tr(lang, 'digest.concern_hydration', ml=r['nutrition']['avg_hydration_ml'], goal=hydration_goal)})
 
     # ── Highlights ────────────────────────────────────────────────
     highlights = []
     if r['sleep']['nights'] > 0 and sleep_h:
         # Carry the denominator: 1 night and 7 nights were shown identically.
-        highlights.append({'label': f'Avg sleep ({nights}/7 nights)',
+        highlights.append({'label': tr(lang, 'digest.hl_sleep', nights=nights),
                            'value': f'{sleep_h}h', 'icon': '🌙'})
     if r['fitness']['workout_days'] > 0:
-        highlights.append({'label': 'Workout days', 'value': str(r['fitness']['workout_days']),  'icon': '🏋️'})
+        highlights.append({'label': tr(lang, 'digest.hl_workouts'), 'value': str(r['fitness']['workout_days']),  'icon': '🏋️'})
     if r['habits']['total'] > 0:
-        highlights.append({'label': 'Habits',       'value': f'{int(habit_score)}%',             'icon': '⭐'})
+        highlights.append({'label': tr(lang, 'digest.hl_habits'),       'value': f'{int(habit_score)}%',             'icon': '⭐'})
     if r['nutrition']['avg_hydration_ml']:
-        highlights.append({'label': 'Avg water',    'value': f'{r["nutrition"]["avg_hydration_ml"]}ml','icon': '💧'})
+        highlights.append({'label': tr(lang, 'digest.hl_water'),    'value': f'{r["nutrition"]["avg_hydration_ml"]}ml','icon': '💧'})
     if r['fitness']['calories_burned']:
-        highlights.append({'label': 'Cal burned',   'value': f'{r["fitness"]["calories_burned"]:,}',  'icon': '🔥'})
+        highlights.append({'label': tr(lang, 'digest.hl_burned'),   'value': f'{r["fitness"]["calories_burned"]:,}',  'icon': '🔥'})
 
     # ── Headline ──────────────────────────────────────────────────
     # Don't score an empty week as a failure — a brand-new user with nothing
@@ -253,20 +263,20 @@ def generate_weekly_digest() -> dict:
         or bool(r['symptoms'])
     )
     if not has_data or overall_score is None:
-        headline = "Nothing logged yet — start tracking and your progress will show up here."
+        headline = tr(lang, 'digest.headline_empty')
         # An empty week has no score and no complaints. The headline was already
         # careful about this; the score ring and the concerns below it weren't,
         # so the friendly sentence sat above a red 0 and two scoldings.
         overall_score = None
         concerns = []
     elif overall_score >= 80:
-        headline = "Strong week — you're building good habits 💪"
+        headline = tr(lang, 'digest.headline_strong')
     elif overall_score >= 60:
-        headline = "Solid week overall, with a few areas to improve"
+        headline = tr(lang, 'digest.headline_solid')
     elif overall_score >= 40:
-        headline = "Mixed week — some wins, some things to work on"
+        headline = tr(lang, 'digest.headline_mixed')
     else:
-        headline = "Tough week — small steps still count. Keep going."
+        headline = tr(lang, 'digest.headline_tough')
 
     # ── Period label (portable: %-d is Linux-only) ────────────────
     start = dt.date.fromisoformat(r['period']['start'])

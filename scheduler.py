@@ -524,9 +524,11 @@ def _send_weekly_digests():
             if already:
                 continue
             with user_context(u['id']):
-                digest = generate_weekly_digest()
+                from db import get_user_language
+                lang = get_user_language(u['id'])
+                digest = generate_weekly_digest(lang)
                 unsub = f"{mailer.APP_BASE_URL}/api/digest/unsubscribe/{make_digest_unsub_token(u['id'])}"
-                if mailer.send_weekly_digest_email(u['email'], u['name'], digest, unsub):
+                if mailer.send_weekly_digest_email(u['email'], u['name'], digest, unsub, lang=lang):
                     from db.core import new_id, now_iso
                     execute("""INSERT INTO notification_log (id,type,title,body,read,created_at,user_id)
                                VALUES (?,?,?,?,1,?,?)""",
@@ -568,12 +570,14 @@ def _send_caregiver_digests():
             if already:
                 continue
             with user_context(c['user_id']):
+                from db import get_user_language
+                cg_lang = get_user_language(c['user_id'])
                 digest = generate_caregiver_digest()
             if not digest.get('has_members'):
                 continue
             unsub = (f"{mailer.APP_BASE_URL}/api/caregiver-digest/unsubscribe/"
                      f"{make_caregiver_digest_unsub_token(c['user_id'])}")
-            if mailer.send_caregiver_digest_email(c['email'], c['name'], digest, unsub):
+            if mailer.send_caregiver_digest_email(c['email'], c['name'], digest, unsub, lang=cg_lang):
                 from db.core import new_id, now_iso
                 execute("""INSERT INTO notification_log (id,type,title,body,read,created_at,user_id)
                            VALUES (?,?,?,?,1,?,?)""",

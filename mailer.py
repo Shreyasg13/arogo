@@ -69,75 +69,80 @@ def send_verification_email(to: str, token: str, lang: str = 'en') -> bool:
                       tr(lang, 'email.verify_body', link=link))
 
 
-def send_weekly_digest_email(to: str, name: str, digest: dict, unsub_url: str) -> bool:
+def send_weekly_digest_email(to: str, name: str, digest: dict, unsub_url: str, lang: str = 'en') -> bool:
     # The score is None when there's nothing to score, and it's only ever an
     # average of the areas the user actually tracks — so say which, rather than
     # implying it's a verdict on their whole week.
+    from i18n_server import tr
+    label = digest['period_label']
     score = digest.get('overall_score')
     tracked = digest.get('tracked_areas') or 0
     if score is None:
-        score_line = f"Your week: {digest['period_label']}"
+        score_line = tr(lang, 'email.digest_week', label=label)
     else:
-        area_word = 'area' if tracked == 1 else 'areas'
-        score_line = (f"Your week: {digest['period_label']}  ·  {score}/100 "
-                      f"across the {tracked} {area_word} you track")
+        area_word = tr(lang, 'email.digest_area' if tracked == 1 else 'email.digest_areas')
+        score_line = tr(lang, 'email.digest_week_scored',
+                        label=label, score=score, tracked=tracked, areas=area_word)
     lines = [
-        f"Hi {name or 'there'},",
+        tr(lang, 'email.digest_greeting', name=name or tr(lang, 'email.digest_there')),
         '',
         digest['headline'],
         score_line,
         '',
     ]
     if digest.get('highlights'):
-        lines.append('At a glance:')
+        lines.append(tr(lang, 'email.digest_glance'))
         lines += [f"  {h['icon']} {h['label']}: {h['value']}" for h in digest['highlights']]
         lines.append('')
     if digest.get('wins'):
-        lines.append('Wins:')
+        lines.append(tr(lang, 'email.digest_wins'))
         lines += [f"  {w['icon']} {w['text']}" for w in digest['wins']]
         lines.append('')
     if digest.get('concerns'):
-        lines.append('Worth watching:')
+        lines.append(tr(lang, 'email.digest_watching'))
         lines += [f"  {c['icon']} {c['text']}" for c in digest['concerns']]
         lines.append('')
     lines += [
-        f'Open Arogo: {APP_BASE_URL}/',
+        tr(lang, 'email.digest_open', url=APP_BASE_URL),
         '',
-        f'No longer want these? Unsubscribe: {unsub_url}',
+        tr(lang, 'email.digest_unsub', url=unsub_url),
     ]
-    return send_email(to, f"Your Arogo week — {digest['period_label']}", '\n'.join(lines) + '\n')
+    return send_email(to, tr(lang, 'email.digest_subject', label=label), '\n'.join(lines) + '\n')
 
 
-def send_caregiver_digest_email(to: str, name: str, digest: dict, unsub_url: str) -> bool:
+def send_caregiver_digest_email(to: str, name: str, digest: dict, unsub_url: str, lang: str = 'en') -> bool:
+    from i18n_server import tr
+    label = digest['period_label']
     lines = [
-        f"Hi {name or 'there'},",
+        tr(lang, 'email.digest_greeting', name=name or tr(lang, 'email.digest_there')),
         '',
-        f"Here's how your family did this week ({digest['period_label']}):",
+        tr(lang, 'email.cg_intro', label=label),
         '',
     ]
     for m in digest.get('members', []):
         if m['total']:
-            adh = f"{round(m['adherence_pct'] or 0)}% of doses taken ({m['taken']}/{m['total']})"
+            adh = tr(lang, 'email.cg_adherence', pct=round(m['adherence_pct'] or 0),
+                     taken=m['taken'], total=m['total'])
         else:
-            adh = "no scheduled doses this week"
+            adh = tr(lang, 'email.cg_no_doses')
         extras = []
         if m.get('sleep_avg'):
-            extras.append(f"{m['sleep_avg']}h avg sleep")
+            extras.append(tr(lang, 'email.cg_sleep', h=m['sleep_avg']))
         if m.get('symptoms'):
-            extras.append(f"{m['symptoms']} symptom log{'s' if m['symptoms'] != 1 else ''}")
+            extras.append(tr(lang, 'email.cg_symptoms', n=m['symptoms'],
+                             s=('s' if m['symptoms'] != 1 else '')))
         line = f"  • {m['name']}: {adh}"
         if extras:
             line += "  ·  " + ", ".join(extras)
         lines.append(line)
     lines += [
         '',
-        'These are the family members who share their medicines with you.',
-        f'Open Arogo: {APP_BASE_URL}/',
+        tr(lang, 'email.cg_footer'),
+        tr(lang, 'email.digest_open', url=APP_BASE_URL),
         '',
-        f'No longer want these? Unsubscribe: {unsub_url}',
+        tr(lang, 'email.digest_unsub', url=unsub_url),
     ]
-    return send_email(to, f"Your family's week on Arogo — {digest['period_label']}",
-                      '\n'.join(lines) + '\n')
+    return send_email(to, tr(lang, 'email.cg_subject', label=label), '\n'.join(lines) + '\n')
 
 
 def send_family_invite_email(to: str, token: str, inviter: str, group: str, lang: str = 'en') -> bool:
