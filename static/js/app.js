@@ -11737,15 +11737,28 @@ async function loadWeightProgressChart(days) {
   const changeColor = (goal.startsWith('lose') && change <= 0) || (goal.startsWith('gain') && change >= 0)
     ? '#22C55E' : change === 0 ? '#888780' : '#F59E0B';
 
-  // ETA text
+  // ETA text — prefer the MEASURED pace ("at your current pace") over the plan's
+  // assumed rate, so we never present the app's assumption as the user's reality.
   let etaText = '';
-  if (s.eta_date) {
-    const eta = new Date(s.eta_date + 'T12:00:00');
+  if (s.measured_eta_date) {
+    const eta = new Date(s.measured_eta_date + 'T12:00:00');
     const daysLeft = Math.round((eta - new Date()) / 86400000);
     etaText = daysLeft <= 0
       ? '🎉 Goal reached!'
-      : `~${daysLeft} days to go (${eta.toLocaleDateString('en-US',{month:'short',day:'numeric'})})`;
+      : `At your current pace, ~${daysLeft} days to your goal (${eta.toLocaleDateString('en-US',{month:'short',day:'numeric'})})`;
+  } else if (s.on_track === false && hasGoal) {
+    etaText = "You're not moving toward your goal at your current pace yet.";
+  } else if (s.eta_date) {
+    const eta = new Date(s.eta_date + 'T12:00:00');
+    const daysLeft = Math.round((eta - new Date()) / 86400000);
+    if (daysLeft > 0)
+      etaText = `On plan: ~${daysLeft} days to go (${eta.toLocaleDateString('en-US',{month:'short',day:'numeric'})})`;
   }
+  const etaColor = s.on_track === false ? '#B4443A' : '#468A5B';
+
+  // Actual pace, measured from real weigh-ins (distinct from the plan's rate).
+  const mRate = s.measured_rate_per_week;
+  const mDir  = mRate == null ? '' : mRate < 0 ? '↓' : mRate > 0 ? '↑' : '→';
 
   // Stat cards
   const statCards = [
@@ -11754,7 +11767,7 @@ async function loadWeightProgressChart(days) {
     {label: 'Change',    val: `${changeDir} ${Math.abs(change)} kg`,   show: change !== 0, color: changeColor},
     {label: 'Target',    val: `${s.target_weight} kg`,                  show: hasGoal},
     {label: 'Progress',  val: `${s.pct_to_goal}%`,                      show: hasGoal && s.pct_to_goal != null},
-    {label: 'Pace',      val: `${Math.abs(s.rate_per_week)}kg/wk`,      show: s.rate_per_week !== 0},
+    {label: 'Actual pace', val: `${mDir} ${Math.abs(mRate)}kg/wk`,      show: mRate != null && mRate !== 0},
   ].filter(c => c.show);
 
   const statsHTML = statCards.map(c => `
@@ -11775,7 +11788,7 @@ async function loadWeightProgressChart(days) {
       <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px">
         <div>
           <h2 class="panel-title">Weight progress</h2>
-          ${etaText ? `<div style="font-size:12px;color:#468A5B;margin-top:3px">${escHtml(etaText)}</div>` : ''}
+          ${etaText ? `<div style="font-size:12px;color:${etaColor};margin-top:3px">${escHtml(etaText)}</div>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="panel-badge">${GOAL_LABELS[goal] || goal}</span>

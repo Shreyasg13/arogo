@@ -420,12 +420,39 @@ def api_body_metrics_trend():
             abs(latest_weight - start_weight) / abs(target_weight - start_weight) * 100, 1
         ))
 
-    # Estimated arrival date
+    # Estimated arrival date (from the PLAN's assumed rate)
     eta_date = None
     if projection:
         last_proj = projection[-1]
         if abs(last_proj['weight'] - target_weight) < 0.1:
             eta_date = last_proj['date']
+
+    # ── Measured pace + ETA from ACTUAL weigh-ins ─────────────────
+    # rate_per_week/eta_date above come from the goal SETTING (an assumed rate),
+    # not from what the scale actually shows. These reflect the real trend, so
+    # the UI can show "at your current pace" honestly instead of "if you follow
+    # the plan". Needs at least a week between the first and last weigh-in.
+    measured_rate = None
+    measured_eta  = None
+    on_track      = None
+    if len(logs) >= 2 and start_weight and latest_weight:
+        d0 = dt.date.fromisoformat(logs[0]['date_key'])
+        d1 = dt.date.fromisoformat(logs[-1]['date_key'])
+        span_days = (d1 - d0).days
+        if span_days >= 7:
+            measured_rate = round((latest_weight - start_weight) / (span_days / 7), 2)
+            if target_weight is not None:
+                remaining = target_weight - latest_weight
+                if abs(remaining) < 0.1:
+                    on_track, measured_eta = True, d1.isoformat()   # already there
+                elif measured_rate != 0 and (
+                        (remaining < 0 and measured_rate < 0) or
+                        (remaining > 0 and measured_rate > 0)):
+                    on_track = True                                 # moving toward goal
+                    weeks_to = remaining / measured_rate
+                    measured_eta = (d1 + dt.timedelta(weeks=weeks_to)).isoformat()
+                else:
+                    on_track = False    # flat or moving away — no honest ETA
 
     return jsonify({
         'logs':           logs,
@@ -442,6 +469,9 @@ def api_body_metrics_trend():
             'goal':           goal,
             'rate_per_week':  rate_per_week,
             'eta_date':       eta_date,
+            'measured_rate_per_week': measured_rate,
+            'measured_eta_date':      measured_eta,
+            'on_track':               on_track,
             'logged_entries': len(logs),
         },
     })
