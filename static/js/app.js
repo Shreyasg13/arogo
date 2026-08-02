@@ -191,6 +191,11 @@ const I18N = {
     'No nights logged yet — start tracking to see your trend': 'अभी कोई रात दर्ज नहीं — रुझान देखने के लिए ट्रैक करना शुरू करें',
     '%1 of %2 nights logged': '%2 में से %1 रातें दर्ज', 'avg %1h': 'औसत %1घं',
     '🌙 Usually asleep around %1, up around %2 · bed/wake times vary by ±%3 min': '🌙 आमतौर पर %1 के आसपास सोते, %2 के आसपास उठते · सोने/जागने का समय ±%3 मिनट बदलता है',
+    'No thoughts yet': 'अभी कोई विचार नहीं', 'Write your first one on the left': 'बाईं ओर अपना पहला लिखें',
+    'Edit': 'संपादित करें', 'Save': 'सहेजें',
+    'All clear!': 'सब साफ़!', 'No pending tasks. Great work!': 'कोई लंबित कार्य नहीं। बढ़िया काम!',
+    'Nothing completed yet': 'अभी कुछ पूरा नहीं', '🔴 High': '🔴 उच्च', '🟡 Medium': '🟡 मध्यम', '🟢 Low': '🟢 निम्न',
+    'Due today': 'आज देय', 'Overdue (%1)': 'अतिदेय (%1)', 'Due %1': 'देय %1',
     // Toasts (action feedback)
     'Action failed': 'कार्रवाई विफल',
     'Activity logged!': 'गतिविधि दर्ज हुई!',
@@ -6597,35 +6602,35 @@ function renderThoughtsList(thoughts) {
   if (!thoughts || thoughts.length === 0) {
     el.innerHTML = `<div class="thoughts-empty">
       <div class="thoughts-empty-icon">💭</div>
-      <div class="thoughts-empty-text">No thoughts yet</div>
-      <div class="thoughts-empty-sub">Write your first one on the left</div>
+      <div class="thoughts-empty-text">${t('No thoughts yet')}</div>
+      <div class="thoughts-empty-sub">${t('Write your first one on the left')}</div>
     </div>`;
     return;
   }
-  el.innerHTML = thoughts.map(t => {
-    const time = new Date(t.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
-    const mood = t.mood || 'neutral';
-    return `<div class="thought-card" data-mood="${mood}" data-id="${t.id}">
+  el.innerHTML = thoughts.map(th => {
+    const time = new Date(th.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    const mood = th.mood || 'neutral';
+    return `<div class="thought-card" data-mood="${mood}" data-id="${th.id}">
       <div class="thought-card-header">
         <div class="thought-meta">
           <span class="thought-mood-badge">${moodEmoji(mood)}</span>
           <span class="thought-time">${time}</span>
         </div>
         <div class="thought-card-actions">
-          <button class="thought-action-btn" data-ev-click="startEditThought('${t.id}')" title="Edit">
+          <button class="thought-action-btn" data-ev-click="startEditThought('${th.id}')" title="${t('Edit')}">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          <button class="thought-action-btn del" data-ev-click="deleteThought('${t.id}')" title="Delete">
+          <button class="thought-action-btn del" data-ev-click="deleteThought('${th.id}')" title="${t('Delete')}">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>
       </div>
-      <div class="thought-content" id="tc-${t.id}">${escHtml(t.content)}</div>
-      <div class="thought-edit-wrap" id="te-${t.id}" style="display:none">
-        <textarea class="thought-edit-area" id="tea-${t.id}">${escHtml(t.content)}</textarea>
+      <div class="thought-content" id="tc-${th.id}">${escHtml(th.content)}</div>
+      <div class="thought-edit-wrap" id="te-${th.id}" style="display:none">
+        <textarea class="thought-edit-area" id="tea-${th.id}">${escHtml(th.content)}</textarea>
         <div class="thought-edit-actions">
-          <button class="btn-outline" style="padding:5px 12px;font-size:12px" data-ev-click="cancelEditThought('${t.id}')">Cancel</button>
-          <button class="btn-primary" style="padding:5px 12px;font-size:12px" data-ev-click="saveEditThought('${t.id}','${mood}')">Save</button>
+          <button class="btn-outline" style="padding:5px 12px;font-size:12px" data-ev-click="cancelEditThought('${th.id}')">${t('Cancel')}</button>
+          <button class="btn-primary" style="padding:5px 12px;font-size:12px" data-ev-click="saveEditThought('${th.id}','${mood}')">${t('Save')}</button>
         </div>
       </div>
     </div>`;
@@ -6813,8 +6818,8 @@ function renderTodos() {
     if (pending.length === 0) {
       pendList.innerHTML = `<div class="todo-empty">
         <div class="todo-empty-icon">🎉</div>
-        <div class="todo-empty-text">All clear!</div>
-        <div class="todo-empty-sub">No pending tasks. Great work!</div>
+        <div class="todo-empty-text">${t('All clear!')}</div>
+        <div class="todo-empty-sub">${t('No pending tasks. Great work!')}</div>
       </div>`;
     } else {
       pendList.innerHTML = pending.map(t => renderTodoCard(t, today)).join('');
@@ -6823,40 +6828,40 @@ function renderTodos() {
 
   if (doneList) {
     if (done.length === 0) {
-      doneList.innerHTML = `<div class="todo-empty"><div class="todo-empty-icon">📋</div><div class="todo-empty-text">Nothing completed yet</div></div>`;
+      doneList.innerHTML = `<div class="todo-empty"><div class="todo-empty-icon">📋</div><div class="todo-empty-text">${t('Nothing completed yet')}</div></div>`;
     } else {
       doneList.innerHTML = done.map(t => renderTodoCard(t, today)).join('');
     }
   }
 }
 
-function renderTodoCard(t, today) {
-  const isDone    = t.status === 'done';
-  const isOverdue = !isDone && t.due_date && t.due_date < today;
-  const PLABEL    = { high:'🔴 High', medium:'🟡 Medium', low:'🟢 Low' };
+function renderTodoCard(td, today) {
+  const isDone    = td.status === 'done';
+  const isOverdue = !isDone && td.due_date && td.due_date < today;
+  const PLABEL    = { high:t('🔴 High'), medium:t('🟡 Medium'), low:t('🟢 Low') };
 
-  let metaHtml = `<span class="todo-badge pri-${t.priority}">${PLABEL[t.priority]||'Medium'}</span>`;
-  if (t.due_date) {
-    const dueLbl = t.due_date === today ? 'Due today' : t.due_date < today ? `Overdue (${t.due_date})` : `Due ${t.due_date}`;
+  let metaHtml = `<span class="todo-badge pri-${td.priority}">${PLABEL[td.priority]||t('🟡 Medium')}</span>`;
+  if (td.due_date) {
+    const dueLbl = td.due_date === today ? t('Due today') : td.due_date < today ? tformat('Overdue (%1)', td.due_date) : tformat('Due %1', td.due_date);
     metaHtml += `<span class="todo-badge ${isOverdue?'overdue':'due'}">📅 ${dueLbl}</span>`;
   }
-  if (t.reminder_at) {
-    const rt = new Date(t.reminder_at).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  if (td.reminder_at) {
+    const rt = new Date(td.reminder_at).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
     metaHtml += `<span class="todo-badge reminder">🔔 ${rt}</span>`;
   }
 
-  return `<div class="todo-card pri-${t.priority} ${isDone?'done':''}" data-id="${t.id}">
-    <div class="todo-checkbox ${isDone?'checked':''}" data-ev-click="toggleTodo('${t.id}')"></div>
+  return `<div class="todo-card pri-${td.priority} ${isDone?'done':''}" data-id="${td.id}">
+    <div class="todo-checkbox ${isDone?'checked':''}" data-ev-click="toggleTodo('${td.id}')"></div>
     <div class="todo-content">
-      <div class="todo-title">${escHtml(t.title)}</div>
-      ${t.notes ? `<div class="todo-notes">${escHtml(t.notes)}</div>` : ''}
+      <div class="todo-title">${escHtml(td.title)}</div>
+      ${td.notes ? `<div class="todo-notes">${escHtml(td.notes)}</div>` : ''}
       <div class="todo-meta-row">${metaHtml}</div>
     </div>
     <div class="todo-card-actions">
-      ${!isDone ? `<button class="todo-act-btn" data-ev-click="openEditTodo('${t.id}')" title="Edit">
+      ${!isDone ? `<button class="todo-act-btn" data-ev-click="openEditTodo('${td.id}')" title="${t('Edit')}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
       </button>` : ''}
-      <button class="todo-act-btn del" data-ev-click="deleteTodo('${t.id}')" title="Delete">
+      <button class="todo-act-btn del" data-ev-click="deleteTodo('${td.id}')" title="${t('Delete')}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
       </button>
     </div>
