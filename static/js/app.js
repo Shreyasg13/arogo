@@ -58,6 +58,11 @@ const I18N = {
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
     'Language': 'भाषा',
+    // Medicines screen (the core loop)
+    'Daily doses & reminders': 'रोज़ की खुराक व रिमाइंडर',
+    'This week': 'इस सप्ताह', 'History': 'इतिहास', 'Printable card': 'प्रिंट कार्ड',
+    'Import prescription': 'पर्ची से जोड़ें', 'Add Medicine': 'दवा जोड़ें',
+    "☀️ Today's schedule": '☀️ आज का शेड्यूल', 'Your Medicines': 'आपकी दवाइयाँ',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
