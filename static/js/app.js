@@ -7092,6 +7092,7 @@ async function loadSymptoms() {
       <span style="font-size:28px">🩺</span>
       <div>No symptoms logged in the last 14 days</div>
     </div>`;
+    loadSymptomTimeline();      // may still have symptoms in the wider 90-day window
     return;
   }
 
@@ -7129,6 +7130,7 @@ async function loadSymptoms() {
       ${rows}
     </div>`;
   }).join('');
+  loadSymptomTimeline();
 }
 
 async function delSymptom(id) {
@@ -10353,6 +10355,69 @@ saveVitalFromView = async function() {
 // ════════════════════════════════════════════════════════════════
 // SYMPTOM PATTERN DETECTOR
 // ════════════════════════════════════════════════════════════════
+
+// ── Symptom ↔ medicine timeline (coincidence in time, not cause) ──
+async function loadSymptomTimeline() {
+  const panel = document.getElementById('symptom-timeline-panel');
+  if (!panel) return;
+  const d = await fetch('/api/symptoms/timeline?days=90', {cache:'no-store'})
+    .then(r => r.json()).catch(() => null);
+  panel.innerHTML = d ? renderSymptomTimeline(d) : '';
+}
+
+function renderSymptomTimeline(d) {
+  const esc = escHtml;
+  if (!d.has_data) return '';                      // nothing to correlate yet
+  const from = new Date(d.range.from + 'T12:00:00').getTime();
+  const to   = new Date(d.range.to   + 'T12:00:00').getTime();
+  const span = Math.max(1, to - from);
+  const pct  = iso => {
+    const t = new Date(iso + 'T12:00:00').getTime();
+    return Math.min(100, Math.max(0, ((t - from) / span) * 100));
+  };
+  const sevColor = s => s>=8?'#EF4444':s>=5?'#F59E0B':'#22C55E';
+  const fmt = iso => { try { return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); } catch(e){ return iso; } };
+
+  const started = d.meds.filter(m => m.started_in_window);
+  const ongoing = d.meds.filter(m => !m.started_in_window);
+
+  // Medicine-start flags along the top of the band. Stagger them into three
+  // tiers so flags that start on the same or nearby days don't overlap into an
+  // unreadable pile (a doctor often starts several meds at once).
+  const medFlags = started.map((m, i) => `
+    <div class="stl-med" style="left:${pct(m.start_date)}%" title="${esc(m.name)} started ${esc(fmt(m.start_date))}${m.purpose ? ' · '+esc(m.purpose) : ''}">
+      <div class="stl-med-line"></div>
+      <div class="stl-med-flag" style="top:${(i % 3) * 22}px">${esc(m.icon)} ${esc(m.name)}</div>
+    </div>`).join('');
+
+  // Symptom dots on the baseline, coloured by severity.
+  const symDots = d.symptoms.map(s => `
+    <div class="stl-sym" style="left:${pct(s.date)}%;background:${sevColor(s.severity||0)}"
+         title="${esc(s.name)} · ${s.severity||'?'}/10 · ${esc(fmt(s.date))}"></div>`).join('');
+
+  const ongoingChips = ongoing.length
+    ? `<div class="stl-ongoing">Already taking: ${ongoing.map(m => `<span class="stl-chip">${esc(m.icon)} ${esc(m.name)}</span>`).join('')}</div>`
+    : '';
+
+  return `<div class="panel">
+    <div class="panel-header">
+      <h2 class="panel-title">🕗 Symptoms &amp; medicine changes</h2>
+      <span class="panel-badge">Last ${d.range.days} days</span>
+    </div>
+    <div style="padding:14px 16px">
+      ${ongoingChips}
+      <div class="stl-band">
+        ${medFlags}
+        <div class="stl-axis"></div>
+        <div class="stl-dots">${symDots}</div>
+      </div>
+      <div class="stl-axis-labels"><span>${esc(fmt(d.range.from))}</span><span>Today</span></div>
+      <p class="stl-caveat">Dots are symptoms (colour = severity); flags mark when a medicine started.
+        This only shows what lined up <em>in time</em> — it isn't proof one caused the other.
+        If something looks connected, it's worth a word with your doctor.</p>
+    </div>
+  </div>`;
+}
 
 async function loadSymptomPatterns() {
   const panel = document.getElementById('symptom-patterns-panel');

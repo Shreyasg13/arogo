@@ -558,6 +558,13 @@ def api_symptoms():
     days = to_int(request.args.get('days', 14), 14, lo=1, hi=3650)
     return jsonify(get_symptoms(days))
 
+@bp.route('/api/symptoms/timeline')
+@require_auth
+def api_symptom_timeline():
+    """Symptoms overlaid against medicine start dates — coincidence, not cause."""
+    days = to_int(request.args.get('days', 90), 90, lo=7, hi=365)
+    return jsonify(get_symptom_med_timeline(days))
+
 @bp.route('/api/symptoms', methods=['POST'])
 @require_auth
 def api_log_symptom():

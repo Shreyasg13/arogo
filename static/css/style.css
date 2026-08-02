@@ -5183,3 +5183,20 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .planner-dash { color:var(--gray-300); font-size:13px; text-align:center; }
 .planner-note { font-size:12px; color:var(--gray-500); margin-top:14px; line-height:1.6; }
 .planner-empty { padding:30px 20px; text-align:center; color:var(--gray-400); font-size:14px; }
+
+/* Symptom ↔ medicine timeline */
+.stl-ongoing { font-size:12px; color:var(--gray-500); margin-bottom:14px; }
+.stl-chip { display:inline-block; font-size:11.5px; font-weight:600; color:var(--gray-700);
+  background:var(--gray-100, #F0EDE6); border-radius:6px; padding:2px 8px; margin:0 4px 4px 0; }
+.stl-band { position:relative; height:120px; margin:8px 0 4px; }
+.stl-axis { position:absolute; left:0; right:0; bottom:26px; height:2px; background:var(--gray-200, #E7E3DA); }
+.stl-med { position:absolute; top:0; bottom:26px; transform:translateX(-50%); }
+.stl-med-line { position:absolute; left:50%; top:22px; bottom:0; width:2px; background:var(--teal-400, #5A9E70); opacity:.6; }
+.stl-med-flag { position:absolute; top:0; left:50%; transform:translateX(-50%); white-space:nowrap;
+  font-size:11px; font-weight:700; color:var(--teal-700, #2E6A4E); background:var(--teal-50, #EAF3EE);
+  border:1px solid var(--teal-200, #C7E0D2); border-radius:6px; padding:2px 7px; }
+.stl-dots { position:absolute; left:0; right:0; bottom:20px; height:16px; }
+.stl-sym { position:absolute; bottom:0; width:12px; height:12px; border-radius:50%;
+  transform:translateX(-50%); border:2px solid var(--surface, #fff); box-shadow:0 0 0 1px rgba(0,0,0,.06); cursor:default; }
+.stl-axis-labels { display:flex; justify-content:space-between; font-size:11px; color:var(--gray-400); margin-top:2px; }
+.stl-caveat { font-size:11.5px; color:var(--gray-500); line-height:1.6; margin-top:12px; }

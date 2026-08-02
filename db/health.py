@@ -131,6 +131,44 @@ def delete_symptom(sid: str):
     execute("DELETE FROM symptoms WHERE id=? AND user_id=?",
             (sid, current_user_id()), commit=True)
 
+
+def get_symptom_med_timeline(days: int = 90) -> dict:
+    """Data to overlay logged symptoms against when medicines started/changed.
+
+    This surfaces *coincidence in time* only — e.g. a symptom that first appears
+    a few days after a new medicine — so the user can raise it with their doctor.
+    It is NOT a causal or clinical claim, and the UI must frame it that way."""
+    import datetime as dt
+    from db.medicines import list_medicines
+    days = max(7, min(int(days or 90), 365))
+    today = dt.date.today()
+    start = today - dt.timedelta(days=days)
+
+    meds = []
+    for m in list_medicines():
+        if not m['active']:
+            continue
+        sd = (m.get('start_date') or '')[:10]
+        try:
+            sdd = dt.date.fromisoformat(sd)
+        except Exception:
+            continue
+        meds.append({'name': m['name'], 'start_date': sd, 'icon': m.get('icon') or '💊',
+                     'purpose': m.get('purpose') or '',
+                     'started_in_window': sdd >= start})
+    meds.sort(key=lambda x: x['start_date'])
+
+    syms = [{'name': s['name'], 'date': s['date_key'], 'severity': s.get('severity')}
+            for s in get_symptoms(days)]
+    syms.sort(key=lambda x: x['date'])
+
+    return {
+        'range': {'from': start.isoformat(), 'to': today.isoformat(), 'days': days},
+        'meds': meds,
+        'symptoms': syms,
+        'has_data': bool(syms),
+    }
+
 # ── Vitals (BP, Blood Sugar) ──────────────────────────────────────────────────
 
 # Physical-plausibility bounds — deliberately WIDE (not clinical-normal ranges,
