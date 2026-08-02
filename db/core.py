@@ -259,7 +259,8 @@ CREATE TABLE IF NOT EXISTS medicines (
     refill_threshold INTEGER DEFAULT 7,
     refill_status TEXT DEFAULT NULL, refill_ordered_at TEXT DEFAULT NULL,
     pharmacy_note TEXT DEFAULT '',
-    purpose TEXT DEFAULT ''
+    purpose TEXT DEFAULT '',
+    timing TEXT DEFAULT ''
 );
 CREATE TABLE IF NOT EXISTS dose_logs (
     id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL,
@@ -591,6 +592,20 @@ def migrate_add_refill_fields():
             pass  # already exists
 
 
+def migrate_add_dose_timing():
+    """Add the per-dose timing instruction column, and seed it from the older
+    with_food flag so existing 'with food' meds keep their instruction."""
+    try:
+        execute("ALTER TABLE medicines ADD COLUMN timing TEXT DEFAULT ''")
+    except Exception:
+        return  # column already exists — nothing to backfill
+    try:
+        execute("UPDATE medicines SET timing='with_food' "
+                "WHERE with_food=1 AND (timing IS NULL OR timing='')")
+    except Exception:
+        pass
+
+
 def migrate_add_token_version():
     """users.token_version — bumped to revoke all of a user's sessions."""
     try:
@@ -794,6 +809,7 @@ def init_db():
     migrate_add_ui_mode()
     migrate_add_family_display()
     migrate_add_refill_fields()
+    migrate_add_dose_timing()
     migrate_add_token_version()
     migrate_add_weekly_digest_flag()
     migrate_add_caregiver_digest_flag()

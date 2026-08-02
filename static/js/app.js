@@ -1804,7 +1804,7 @@ async function loadDashboard() {
         <div class="dash-dose-icon">${d.icon}</div>
         <div class="dash-dose-info">
           <div class="dash-dose-name">${escHtml(d.med_name)}</div>
-          <div class="dash-dose-detail">${d.dosage} ${d.unit}${d.with_food ? ' · with food' : ''}</div>
+          <div class="dash-dose-detail">${d.dosage} ${d.unit}${medTimingText(d) ? ' · ' + escHtml(medTimingText(d)) : ''}</div>
         </div>
         <div class="dash-dose-time">${d.time}</div>
         <div class="dash-dose-check ${d.taken ? 'done' : ''}">${d.taken ? '✓' : ''}</div>
@@ -1869,7 +1869,7 @@ function renderNextAction(doses, calorieState) {
       <div class="next-action-body">
         <div class="next-action-eyebrow">${overdue ? 'Time for your dose' : 'Next dose'}</div>
         <div class="next-action-title">Take ${escHtml(next.med_name)}</div>
-        <div class="next-action-sub">${escHtml(next.dosage || '')} ${escHtml(next.unit || '')} · ${next.time}${next.with_food ? ' · with food' : ''}${more > 0 ? ` · +${more} more today` : ''}</div>
+        <div class="next-action-sub">${escHtml(next.dosage || '')} ${escHtml(next.unit || '')} · ${next.time}${medTimingText(next) ? ' · ' + escHtml(medTimingText(next)) : ''}${more > 0 ? ` · +${more} more today` : ''}</div>
       </div>
       <button class="next-action-btn" data-ev-click="markDoseTaken('${next.med_id}','${next.time}')">Mark taken</button>`;
     el.style.display = '';
@@ -2088,7 +2088,7 @@ function renderDoctorSummary(d) {
 
   const meds = (d.medications || []).length
     ? `<table class="ds-table"><thead><tr><th>Medicine</th><th>Dose</th><th>Schedule</th></tr></thead><tbody>`
-      + d.medications.map(m => `<tr><td>${esc(m.name || '')}</td><td>${esc(((m.dosage || '') + ' ' + (m.unit || '')).trim())}</td><td>${esc((m.times || []).join(', '))}${m.with_food ? ' · with food' : ''}</td></tr>`).join('')
+      + d.medications.map(m => `<tr><td>${esc(m.name || '')}</td><td>${esc(((m.dosage || '') + ' ' + (m.unit || '')).trim())}</td><td>${esc((m.times || []).join(', '))}${medTimingText(m) ? ' · ' + esc(medTimingText(m)) : ''}</td></tr>`).join('')
       + `</tbody></table>`
     : '<p class="ds-empty">No active medicines.</p>';
 
@@ -2140,6 +2140,13 @@ async function openMedCard() {
   if (btn) btn.addEventListener('click', () => win.print());
 }
 
+// Human timing label for a medicine/dose object. Backend supplies timing_text;
+// fall back to the older with_food flag so nothing regresses.
+function medTimingText(m) {
+  if (!m) return '';
+  return m.timing_text || (m.with_food ? 'with food' : '');
+}
+
 function _mc12h(hhmm) {
   const parts = String(hhmm).split(':');
   let h = parseInt(parts[0], 10);
@@ -2164,7 +2171,7 @@ function buildMedCardHtml(d) {
         <div class="mc-med-name">${esc(m.name)}${m.dose ? ` <span class="mc-dose">${esc(m.dose)}</span>` : ''}</div>
         ${m.purpose ? `<div class="mc-med-purpose">for ${esc(m.purpose)}</div>` : ''}
       </div>
-      ${m.with_food ? '<span class="mc-tag">🍽️ with food</span>' : ''}
+      ${medTimingText(m) ? `<span class="mc-tag">${m.timing === 'bedtime' ? '🌙' : m.timing === 'with_water' ? '💧' : m.timing === 'empty_stomach' ? '⏳' : '🍽️'} ${esc(medTimingText(m))}</span>` : ''}
     </div>`;
 
   const schedule = (d.schedule || []).length
@@ -2854,7 +2861,7 @@ function renderTodayTimeline(doses) {
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0];
   if (upcoming) {
     setText('med-next-val', `${fmt12(upcoming.time)} · ${escHtml(upcoming.med_name)}`);
-    setText('med-next-key', `${upcoming.dosage} ${upcoming.unit}${upcoming.with_food ? ' · with food' : ''}`);
+    setText('med-next-key', `${upcoming.dosage} ${upcoming.unit}${medTimingText(upcoming) ? ' · ' + medTimingText(upcoming) : ''}`);
     if (nextIcon) nextIcon.textContent = upcoming.icon || '💊';
   } else if (total) {
     setText('med-next-val', 'All done for today');
@@ -2888,7 +2895,7 @@ function renderTodayTimeline(doses) {
               <div class="dose-card-emoji">${d.icon}</div>
               <div class="dose-card-info">
                 <div class="dose-card-name">${escHtml(d.med_name)}</div>
-                <div class="dose-card-detail">${d.dosage} ${d.unit}${d.with_food ? ' · 🍽️ with food' : ''}</div>
+                <div class="dose-card-detail">${d.dosage} ${d.unit}${medTimingText(d) ? ' · ' + escHtml(medTimingText(d)) : ''}</div>
               </div>
               <div class="dose-card-check">${d.taken ? '✓' : ''}</div>
             </div>
@@ -2960,7 +2967,7 @@ function renderMedicinesGrid(meds) {
       <div class="med-card-times">
         ${isPRN ? '<span class="time-chip">🕐 As needed</span>'
                 : (m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || '')}
-        ${m.with_food ? '<span class="med-food-badge">🍽️ With food</span>' : ''}
+        ${medTimingText(m) ? `<span class="med-food-badge">${m.timing === 'bedtime' ? '🌙' : m.timing === 'with_water' ? '💧' : m.timing === 'empty_stomach' ? '⏳' : '🍽️'} ${escHtml(medTimingText(m))}</span>` : ''}
       </div>
       ${isPRN ? `
       <div class="med-prn-row">
@@ -3150,7 +3157,7 @@ function setupMedForm() {
       unit: form.unit.value,
       frequency: form.querySelector('input[name="frequency"]:checked')?.value || 'once_daily',
       times,
-      with_food: document.getElementById('with-food-toggle')?.checked || false,
+      timing: document.getElementById('med-timing')?.value || '',
       notes: form.notes.value,
       purpose: form.purpose?.value || '',
       start_date: form.start_date.value,

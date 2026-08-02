@@ -10,6 +10,23 @@ from .core import (execute, executemany, jdump, jload, now_iso, today_iso, user_
 
 _TIME_RE = re.compile(r'^([01]?\d|2[0-3]):[0-5]\d$')
 
+# Per-dose timing instructions. Keys are stored; labels are shown. 'with_food'
+# stays in step with the older boolean with_food flag for backward compatibility.
+TIMING_LABELS = {
+    '':              '',
+    'with_food':     'with food',
+    'before_food':   'before food',
+    'after_food':    'after food',
+    'empty_stomach': 'on an empty stomach',
+    'bedtime':       'at bedtime',
+    'with_water':    'with plenty of water',
+}
+
+
+def timing_label(key) -> str:
+    """Human label for a timing key ('' for none / unknown)."""
+    return TIMING_LABELS.get((key or '').strip(), '')
+
 
 def _clean_times(raw):
     """Coerce a submitted `times` value into a list of valid HH:MM strings.
@@ -44,15 +61,23 @@ def insert_medicine(data: dict) -> dict:
     if not name:
         raise ValueError('Medicine name is required')
     mid = new_id()
+    # Timing is the richer instruction; keep with_food in step with it (and honour
+    # a bare with_food flag from older clients that don't send `timing`).
+    timing = (data.get('timing') or '').strip()
+    if timing not in TIMING_LABELS:
+        timing = ''
+    if not timing and data.get('with_food'):
+        timing = 'with_food'
+    with_food = 1 if timing == 'with_food' else 0
     execute("""
         INSERT INTO medicines
-          (id,name,dosage,unit,frequency,times,with_food,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+          (id,name,dosage,unit,frequency,times,with_food,timing,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
           data.get('frequency','once_daily'),
           jdump([] if data.get('frequency') == 'as_needed'
                 else _clean_times(data.get('times', ['08:00']))),
-          1 if data.get('with_food') else 0, data.get('notes',''),
+          with_food, timing, data.get('notes',''),
           str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), data.get('icon','💊'),
           data.get('start_date', today_iso()), data.get('end_date',''), now_iso(),
@@ -135,6 +160,8 @@ def _fmt_med(r):
     d['times'] = jload(d.get('times', '["08:00"]'), ['08:00'])
     d['with_food'] = bool(d.get('with_food', 0))
     d['active'] = bool(d.get('active', 1))
+    d['timing'] = (d.get('timing') or '')
+    d['timing_text'] = timing_label(d['timing'])
     return d
 
 
@@ -214,6 +241,7 @@ def get_today_doses():
                 'med_id': m['id'], 'med_name': m['name'], 'dosage': m['dosage'],
                 'unit': m['unit'], 'time': t, 'icon': m.get('icon', '💊'),
                 'color': m.get('color', 'teal'), 'with_food': m.get('with_food', False),
+                'timing': m.get('timing', ''), 'timing_text': m.get('timing_text', ''),
                 'purpose': m.get('purpose', ''),
                 'taken': bool(log and log.get('taken')),
                 'taken_at': log['taken_at'] if log else ''
@@ -308,6 +336,8 @@ def get_medication_card() -> dict:
             'dose': dose,
             'purpose': m.get('purpose') or '',
             'with_food': bool(m.get('with_food')),
+            'timing': m.get('timing') or '',
+            'timing_text': m.get('timing_text') or '',
             'icon': m.get('icon') or '💊',
         }
 

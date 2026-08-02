@@ -30,7 +30,7 @@ def api_doctor_summary():
 
     meds = [{'name': m['name'], 'dosage': m.get('dosage'), 'unit': m.get('unit'),
              'frequency': m.get('frequency'), 'times': m.get('times'),
-             'with_food': m.get('with_food')}
+             'with_food': m.get('with_food'), 'timing_text': m.get('timing_text', '')}
             for m in list_medicines() if m.get('active')]
 
     latest = {}

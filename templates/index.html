@@ -2207,12 +2207,16 @@
           </div>
         </div>
       </div>
-      <div class="form-group">
-        <label class="toggle-label">
-          <input type="checkbox" name="with_food" id="with-food-toggle">
-          <span class="toggle-switch"></span>
-          Take with food
-        </label>
+      <div class="form-group"><label class="form-label">When to take it <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
+        <select class="form-input" name="timing" id="med-timing">
+          <option value="">No special timing</option>
+          <option value="with_food">With food</option>
+          <option value="before_food">Before food</option>
+          <option value="after_food">After food</option>
+          <option value="empty_stomach">On an empty stomach</option>
+          <option value="bedtime">At bedtime</option>
+          <option value="with_water">With plenty of water</option>
+        </select>
       </div>
       <div class="form-group"><label class="form-label">What's it for? <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
         <input type="text" class="form-input" name="purpose" maxlength="120" placeholder="e.g. blood pressure, thyroid, cholesterol">
