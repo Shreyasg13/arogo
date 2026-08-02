@@ -71,6 +71,11 @@ const I18N = {
     'Log Water': 'पानी दर्ज करें', 'Log Meal': 'भोजन दर्ज करें',
     'Log Workout': 'वर्कआउट दर्ज करें', 'Add Thought': 'विचार जोड़ें', 'Add Task': 'कार्य जोड़ें',
     'food tracker': 'भोजन ट्रैकर', 'fitness': 'फ़िटनेस', 'journal': 'डायरी', 'to-do list': 'कार्य सूची',
+    // Medical tabs + other screen headers
+    '🩺 Symptoms': '🩺 लक्षण', '🆘 Health Card': '🆘 हेल्थ कार्ड', '📅 Visits': '📅 विज़िट',
+    'Daily': 'रोज़',
+    'Track your sleep quality and duration': 'अपनी नींद की गुणवत्ता व अवधि ट्रैक करें',
+    'Track workouts, connect apps, get insights': 'वर्कआउट ट्रैक करें, ऐप्स जोड़ें, जानकारी पाएँ',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
