@@ -76,6 +76,15 @@ const I18N = {
     'Daily': 'रोज़',
     'Track your sleep quality and duration': 'अपनी नींद की गुणवत्ता व अवधि ट्रैक करें',
     'Track workouts, connect apps, get insights': 'वर्कआउट ट्रैक करें, ऐप्स जोड़ें, जानकारी पाएँ',
+    // Add-medicine form
+    'Medicine Name': 'दवा का नाम', 'Dosage': 'मात्रा', 'Unit': 'इकाई', 'Frequency': 'आवृत्ति',
+    'Reminder Times': 'रिमाइंडर समय', 'Start Date': 'शुरू तारीख',
+    'End Date (optional)': 'अंतिम तारीख (वैकल्पिक)', 'Icon & Color': 'आइकन व रंग',
+    'Current pill count': 'वर्तमान गोली संख्या', 'Pills per dose': 'प्रति खुराक गोलियाँ',
+    'Alert when below (days of supply)': 'इतने दिन बचने पर सूचित करें',
+    'Once Daily': 'दिन में एक बार', 'Twice Daily': 'दिन में दो बार', '3× Daily': 'दिन में 3 बार',
+    'Weekly': 'साप्ताहिक', 'As needed': 'ज़रूरत पड़ने पर',
+    'Cancel': 'रद्द करें', '+ Add time': '+ समय जोड़ें',
   },
 };
 function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
