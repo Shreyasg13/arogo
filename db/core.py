@@ -279,7 +279,8 @@ CREATE TABLE IF NOT EXISTS medicines (
     pharmacy_note TEXT DEFAULT '',
     purpose TEXT DEFAULT '',
     timing TEXT DEFAULT '',
-    reminder_lead_min INTEGER DEFAULT 0
+    reminder_lead_min INTEGER DEFAULT 0,
+    cost REAL DEFAULT NULL
 );
 CREATE TABLE IF NOT EXISTS dose_logs (
     id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL,
@@ -647,6 +648,14 @@ def migrate_add_reminder_lead():
         pass
 
 
+def migrate_add_med_cost():
+    """Add the per-medicine monthly-cost column."""
+    try:
+        execute("ALTER TABLE medicines ADD COLUMN cost REAL DEFAULT NULL")
+    except Exception:
+        pass
+
+
 def migrate_add_doctor_questions():
     """Create the doctor-visit questions table on existing databases."""
     try:
@@ -888,6 +897,7 @@ def init_db():
     migrate_add_dose_timing()
     migrate_add_quiet_hours()
     migrate_add_reminder_lead()
+    migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()
     migrate_add_token_version()

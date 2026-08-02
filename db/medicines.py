@@ -103,15 +103,25 @@ def insert_medicine(data: dict) -> dict:
         lead = max(0, min(int(data.get('reminder_lead_min') or 0), 120))
     except (TypeError, ValueError):
         lead = 0
+    # Optional monthly cost — None (not 0) when the user leaves it blank, so an
+    # unpriced medicine doesn't distort the "you spend ₹0" reading.
+    cost = data.get('cost')
+    if cost in (None, ''):
+        cost = None
+    else:
+        try:
+            cost = round(max(0.0, float(cost)), 2)
+        except (TypeError, ValueError):
+            cost = None
     execute("""
         INSERT INTO medicines
-          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
           data.get('frequency','once_daily'),
           jdump([] if data.get('frequency') == 'as_needed'
                 else _clean_times(data.get('times', ['08:00']))),
-          with_food, timing, lead, data.get('notes',''),
+          with_food, timing, lead, cost, data.get('notes',''),
           str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), data.get('icon','💊'),
           data.get('start_date', today_iso()), data.get('end_date',''), now_iso(),
@@ -645,6 +655,21 @@ def _days_of_supply(m):
         return None
     per_day = _FREQ_DOSES.get(m.get('frequency', 'once_daily'), 1) * (m.get('pills_per_dose') or 1)
     return round(pc / max(per_day, 0.01), 1)
+
+
+def get_monthly_med_cost() -> dict:
+    """Total monthly spend across active medicines that have a cost set, plus a
+    per-medicine breakdown (dearest first). Medicines with no cost are omitted —
+    an unpriced med shouldn't read as ₹0."""
+    items, total = [], 0.0
+    for m in list_medicines():
+        if not m['active'] or m.get('cost') is None:
+            continue
+        c = round(float(m['cost']), 2)
+        items.append({'id': m['id'], 'name': m['name'], 'icon': m.get('icon') or '💊', 'cost': c})
+        total += c
+    items.sort(key=lambda x: -x['cost'])
+    return {'total': round(total, 2), 'items': items, 'count': len(items)}
 
 
 def get_refill_list():

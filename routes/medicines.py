@@ -149,6 +149,12 @@ def refill_list():
     """Everything to pick up on a pharmacy run — low, out, or on the way."""
     return jsonify({'items': get_refill_list()})
 
+@bp.route('/api/medicines/cost')
+@require_auth
+def monthly_cost():
+    """Total monthly medicine spend + per-medicine breakdown."""
+    return jsonify(get_monthly_med_cost())
+
 @bp.route('/api/medicines/history')
 @require_auth
 def medicine_history():

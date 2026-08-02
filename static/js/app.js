@@ -3023,7 +3023,22 @@ async function loadMedicines() {
   if (mc) mc.textContent = `${meds.filter(m=>m.active).length} active`;
   loadMedAdherence();
   loadMissedDoses();
+  loadMedCost();
   loadDoseCalendar();
+}
+
+// ── Monthly medicine cost ──
+async function loadMedCost() {
+  const el = document.getElementById('med-cost-summary');
+  if (!el) return;
+  const d = await fetch('/api/medicines/cost').then(r => r.json()).catch(() => null);
+  if (!d || !d.count) { el.style.display = 'none'; return; }
+  const fmt = n => '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="med-cost-card">
+    <span class="med-cost-total">${fmt(d.total)}<span class="med-cost-per">/month</span></span>
+    <span class="med-cost-sub">across ${d.count} priced medicine${d.count !== 1 ? 's' : ''}</span>
+  </div>`;
 }
 
 // ── Which doses you miss most (per-slot adherence, worst first) ──
@@ -3308,6 +3323,7 @@ function renderMedicinesGrid(meds) {
         ${isPRN ? '<span class="time-chip">🕐 As needed</span>'
                 : (m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || '')}
         ${medTimingText(m) ? `<span class="med-food-badge">${m.timing === 'bedtime' ? '🌙' : m.timing === 'with_water' ? '💧' : m.timing === 'empty_stomach' ? '⏳' : '🍽️'} ${escHtml(medTimingText(m))}</span>` : ''}
+        ${m.cost != null ? `<span class="med-cost-badge">₹${(Math.round(m.cost * 100) / 100).toLocaleString('en-IN')}/mo</span>` : ''}
       </div>
       ${isPRN ? `
       <div class="med-prn-row">
@@ -3596,6 +3612,7 @@ function setupMedForm() {
       times,
       timing: document.getElementById('med-timing')?.value || '',
       reminder_lead_min: parseInt(document.getElementById('med-lead')?.value) || 0,
+      cost: document.getElementById('med-cost')?.value || '',
       notes: form.notes.value,
       purpose: form.purpose?.value || '',
       start_date: form.start_date.value,
