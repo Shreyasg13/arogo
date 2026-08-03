@@ -103,7 +103,9 @@ def test_refill_reminder_gates_on_ordered(app, monkeypatch):
 
     # Once ordered, a fresh run must NOT nudge again.
     client.post(f"/api/medicines/{mid}/refill/ordered")
-    execute("DELETE FROM notification_log WHERE user_id=? AND source_id LIKE 'refill:%'", (uid,), commit=True)
+    # Pass the LIKE pattern as a parameter — a literal % in the SQL string breaks
+    # under psycopg2's %-formatting (the whole reason we run this suite on PG too).
+    execute("DELETE FROM notification_log WHERE user_id=? AND source_id LIKE ?", (uid, 'refill:%'), commit=True)
     sent.clear()
     scheduler._refill_reminders()
     assert sent == [], "reminder fired even though the refill was ordered"
