@@ -122,10 +122,16 @@ class TestSleep:
         not a second night — it must update the row, not stack a duplicate,
         so the history and the average reflect the latest values only."""
         c = _user(app, "sleep-upsert@medeasy.test")
-        night = "2026-07-20"
+        # Relative to today so the nights stay inside the API's rolling window —
+        # absolute dates silently aged out of it and broke this test on any run
+        # dated past them.
+        import datetime as _dt
+        night_d = _dt.date.today() - _dt.timedelta(days=2)
+        night = night_d.isoformat()
+        morning = (night_d + _dt.timedelta(days=1)).isoformat()
         for wake, q in [("06:30", 3), ("07:00", 4), ("07:30", 5)]:
             r = c.post("/api/sleep", json={"bedtime": night + "T23:00",
-                                           "wake_time": "2026-07-21T" + wake,
+                                           "wake_time": morning + "T" + wake,
                                            "quality": q, "date_key": night})
             assert r.status_code == 200
 
@@ -136,11 +142,13 @@ class TestSleep:
         assert rows[0]["duration_h"] == 8.5
 
         # A genuinely different night is still its own entry.
-        c.post("/api/sleep", json={"bedtime": "2026-07-19T23:00",
-                                   "wake_time": "2026-07-20T07:00",
-                                   "quality": 4, "date_key": "2026-07-19"})
+        prev_d = night_d - _dt.timedelta(days=1)
+        prev = prev_d.isoformat()
+        c.post("/api/sleep", json={"bedtime": prev + "T23:00",
+                                   "wake_time": night + "T07:00",
+                                   "quality": 4, "date_key": prev})
         nights = {s["date_key"] for s in c.get("/api/sleep").get_json()}
-        assert {"2026-07-19", "2026-07-20"} <= nights
+        assert {prev, night} <= nights
 
     def test_night_is_keyed_to_the_wake_date_not_bedtime(self, app):
         """A night is the morning you woke, so 11pm→7am and 1am→7am are the

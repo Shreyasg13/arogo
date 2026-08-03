@@ -2274,10 +2274,14 @@
           <label class="freq-opt"><input type="radio" name="frequency" value="as_needed"><span data-i18n="As needed">As needed</span></label>
         </div>
       </div>
-      <div class="form-group" id="med-days-group">
-        <label class="form-label"><span data-i18n="Days of the week">Days of the week</span>
-          <span style="font-weight:400;color:var(--gray-400)" data-i18n="— every day unless you pick some">— every day unless you pick some</span></label>
-        <div class="dow-picker" id="dow-picker">
+      <div class="form-group" id="med-repeat-group">
+        <label class="form-label" data-i18n="Repeat">Repeat</label>
+        <div class="freq-picker" id="repeat-picker">
+          <label class="freq-opt"><input type="radio" name="repeat_mode" value="daily" checked data-ev-change="onRepeatMode()"><span data-i18n="Every day">Every day</span></label>
+          <label class="freq-opt"><input type="radio" name="repeat_mode" value="days" data-ev-change="onRepeatMode()"><span data-i18n="Specific days">Specific days</span></label>
+          <label class="freq-opt"><input type="radio" name="repeat_mode" value="interval" data-ev-change="onRepeatMode()"><span data-i18n="Every N days">Every N days</span></label>
+        </div>
+        <div class="dow-picker" id="dow-picker" style="margin-top:10px;display:none">
           <button type="button" class="dow-chip selected" data-dow="0" data-ev-click="toggleDow(this)" data-i18n="Mon">Mon</button>
           <button type="button" class="dow-chip selected" data-dow="1" data-ev-click="toggleDow(this)" data-i18n="Tue">Tue</button>
           <button type="button" class="dow-chip selected" data-dow="2" data-ev-click="toggleDow(this)" data-i18n="Wed">Wed</button>
@@ -2285,6 +2289,11 @@
           <button type="button" class="dow-chip selected" data-dow="4" data-ev-click="toggleDow(this)" data-i18n="Fri">Fri</button>
           <button type="button" class="dow-chip selected" data-dow="5" data-ev-click="toggleDow(this)" data-i18n="Sat">Sat</button>
           <button type="button" class="dow-chip selected" data-dow="6" data-ev-click="toggleDow(this)" data-i18n="Sun">Sun</button>
+        </div>
+        <div id="interval-row" style="margin-top:10px;align-items:center;gap:8px;display:none">
+          <span data-i18n="Every">Every</span>
+          <input type="number" id="med-interval" class="form-input" min="2" max="60" value="2" style="width:72px;display:inline-block">
+          <span data-i18n="days">days</span>
         </div>
       </div>
       <div class="form-group" id="med-times-group"><label class="form-label" data-i18n="Reminder Times">Reminder Times</label>

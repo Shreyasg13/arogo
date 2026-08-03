@@ -113,13 +113,14 @@ def insert_medicine(data: dict) -> dict:
             cost = round(max(0.0, float(cost)), 2)
         except (TypeError, ValueError):
             cost = None
-    # Day-of-week schedule (Mon=0 … Sun=6); None = every day. As-needed meds have
-    # no schedule at all, so never carry days.
-    sched = None if data.get('frequency') == 'as_needed' else clean_schedule_days(data.get('schedule_days'))
+    # Repeat schedule. As-needed meds have none. Otherwise a med repeats EITHER on
+    # an N-day cycle OR on fixed weekdays, never both — interval wins if sent.
+    interval = None if data.get('frequency') == 'as_needed' else clean_interval_days(data.get('interval_days'))
+    sched = None if (interval or data.get('frequency') == 'as_needed') else clean_schedule_days(data.get('schedule_days'))
     execute("""
         INSERT INTO medicines
-          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,schedule_days,active,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,schedule_days,interval_days,active,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
           data.get('frequency','once_daily'),
           jdump([] if data.get('frequency') == 'as_needed'
@@ -128,7 +129,7 @@ def insert_medicine(data: dict) -> dict:
           str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), data.get('icon','💊'),
           data.get('start_date', today_iso()), data.get('end_date',''),
-          jdump(sched) if sched else None, now_iso(),
+          jdump(sched) if sched else None, interval, now_iso(),
           current_user_id()),
         commit=True)
     log_medicine_event(mid, 'started', name)
@@ -228,6 +229,18 @@ def clean_schedule_days(raw):
     return days
 
 
+def clean_interval_days(raw):
+    """Normalise an N-day cycle to an int in [2, 60], or None (not interval-based).
+    1 would just be 'daily', so it collapses to None."""
+    if raw in (None, '', 0, 1):
+        return None
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return n if 2 <= n <= 60 else None
+
+
 def _fmt_med(r):
     d = dict(r)
     d['times'] = jload(d.get('times', '["08:00"]'), ['08:00'])
@@ -237,6 +250,8 @@ def _fmt_med(r):
     d['timing_text'] = timing_label(d['timing'])
     # None = daily; otherwise a list of weekday ints (Mon=0 … Sun=6).
     d['schedule_days'] = clean_schedule_days(jload(d.get('schedule_days'), None))
+    # None = not interval-based; otherwise an N-day cycle from start_date.
+    d['interval_days'] = clean_interval_days(d.get('interval_days'))
     return d
 
 
@@ -308,11 +323,20 @@ def _scheduled_on_day(m, day):
     firing a reminder) all seven days."""
     if not _in_course(m, day):
         return False
+    from datetime import date
+    iv = m.get('interval_days')
+    if iv:
+        # Due every N days counting from the course start (alternate-day = 2).
+        try:
+            start = m.get('start_date') or day
+            delta = (date.fromisoformat(day) - date.fromisoformat(start)).days
+            return delta >= 0 and delta % iv == 0
+        except (ValueError, TypeError):
+            return True   # a bad date should never silently hide a real dose
     sd = m.get('schedule_days')
     if not sd:
         return True
     try:
-        from datetime import date
         return date.fromisoformat(day).weekday() in sd
     except (ValueError, TypeError):
         return True   # a bad date should never silently hide a real dose
@@ -699,11 +723,15 @@ def _days_of_supply(m):
     if pc is None:
         return None
     per_dose = m.get('pills_per_dose') or 1
+    doses = max(len(m.get('times') or []), 1)      # doses per active day
+    iv = m.get('interval_days')
     sd = m.get('schedule_days')
-    if sd:
-        # Doses per active day = number of times; averaged over the week by how
-        # many days it's taken.
-        per_day = max(len(m.get('times') or []), 1) * per_dose * (len(sd) / 7.0)
+    if iv:
+        # Taken one active day in every `iv` days.
+        per_day = doses * per_dose / iv
+    elif sd:
+        # Taken on `len(sd)` weekdays out of 7.
+        per_day = doses * per_dose * (len(sd) / 7.0)
     else:
         per_day = _FREQ_DOSES.get(m.get('frequency', 'once_daily'), 1) * per_dose
     return round(pc / max(per_day, 0.01), 1)

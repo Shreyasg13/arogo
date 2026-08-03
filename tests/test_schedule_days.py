@@ -12,8 +12,9 @@ import pytest
 import auth as auth_module
 from app import create_app
 from db.core import init_db, user_context
-from db.medicines import (clean_schedule_days, insert_medicine, get_today_doses,
-                          get_adherence_stats, _days_of_supply)
+from db.medicines import (clean_schedule_days, clean_interval_days, insert_medicine,
+                          get_today_doses, get_adherence_stats, _days_of_supply,
+                          _scheduled_on_day)
 
 PW = "sched-pw-12345"
 
@@ -86,6 +87,43 @@ def test_days_of_supply_scales_with_schedule():
     # 30 pills, one a day ≈ 30 days; one a week ≈ 30 × 7 = 210 days.
     assert _days_of_supply(daily) == pytest.approx(30, abs=1)
     assert _days_of_supply(weekly) == pytest.approx(210, abs=5)
+
+
+def test_clean_interval_days_normalises():
+    assert clean_interval_days(2) == 2
+    assert clean_interval_days("3") == 3
+    assert clean_interval_days(1) is None      # 1 is just 'daily'
+    assert clean_interval_days(0) is None
+    assert clean_interval_days(None) is None
+    assert clean_interval_days(999) is None    # out of range
+    assert clean_interval_days("x") is None
+
+
+def test_interval_med_due_every_n_days():
+    start = "2026-08-01"
+    m = {"interval_days": 2, "start_date": start, "schedule_days": None}
+    assert _scheduled_on_day(m, "2026-08-01") is True    # day 0
+    assert _scheduled_on_day(m, "2026-08-02") is False   # day 1
+    assert _scheduled_on_day(m, "2026-08-03") is True    # day 2
+    assert _scheduled_on_day(m, "2026-08-09") is True    # day 8
+    # before the course starts → not due
+    assert _scheduled_on_day(m, "2026-07-31") is False
+
+
+def test_interval_days_of_supply_and_mutual_exclusion(app):
+    # Supply: alternate-day med lasts ~2× the daily rate.
+    alt = {"pill_count": 30, "pills_per_dose": 1, "times": ["09:00"],
+           "interval_days": 2, "schedule_days": None, "frequency": "once_daily"}
+    assert _days_of_supply(alt) == pytest.approx(60, abs=2)
+
+    # Interval and weekdays are mutually exclusive — sending both keeps interval,
+    # drops the days.
+    c, uid = _uid(app, "sched5@medeasy.test")
+    r = c.post("/api/medicines", json={"name": "AltDay", "times": ["09:00"],
+                                       "interval_days": 2, "schedule_days": [0, 3]})
+    med = r.get_json()["medicine"]
+    assert med["interval_days"] == 2
+    assert med["schedule_days"] is None
 
 
 def test_api_round_trips_schedule_days(app):

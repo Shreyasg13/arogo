@@ -281,7 +281,8 @@ CREATE TABLE IF NOT EXISTS medicines (
     timing TEXT DEFAULT '',
     reminder_lead_min INTEGER DEFAULT 0,
     cost REAL DEFAULT NULL,
-    schedule_days TEXT DEFAULT NULL
+    schedule_days TEXT DEFAULT NULL,
+    interval_days INTEGER DEFAULT NULL
 );
 CREATE TABLE IF NOT EXISTS dose_logs (
     id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL,
@@ -628,6 +629,17 @@ def migrate_add_schedule_days():
         pass  # already exists
 
 
+def migrate_add_interval_days():
+    """Add interval_days to medicines if missing. When set (>=2), the med is due
+    every N days counting from start_date (alternate-day = 2, every-3-days = 3).
+    NULL means not interval-based. Mutually exclusive with schedule_days — a med
+    repeats either on fixed weekdays or on an N-day cycle, never both."""
+    try:
+        execute("ALTER TABLE medicines ADD COLUMN interval_days INTEGER DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_family_display():
     """Add allow_family_display to family_members if missing — lets a member
     opt in to a caregiver adjusting their Simple View."""
@@ -918,6 +930,7 @@ def init_db():
     migrate_add_ui_mode()
     migrate_add_language()
     migrate_add_schedule_days()
+    migrate_add_interval_days()
     migrate_add_family_display()
     migrate_add_refill_fields()
     migrate_add_dose_timing()
