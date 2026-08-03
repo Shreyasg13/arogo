@@ -18,6 +18,13 @@ digest, push and token flow) passes against a real PostgreSQL 16 server
 (verified 2026-07-08 with portable binaries). Setting `DATABASE_URL`
 is all it takes to switch backends.
 
+Schema added since then (menstrual_cycles table; the language, schedule_days,
+interval_days and allow_manage columns + migrations) was re-audited for
+Postgres on 2026-08-03: portable `ALTER TABLE … ADD COLUMN` DDL guarded by
+try/except, `?`-parameterized queries (execute() rewrites to `%s`), all date
+formatting done in Python, no SQLite-only SQL (`strftime`/`INSERT OR REPLACE`/
+`GROUP_CONCAT`/inline `LIKE '%…%'`). No cross-engine risks found.
+
 ## Deploying on Render (recommended — one blueprint)
 
 1. Push the repo, then on render.com: **New + → Blueprint** → select the
