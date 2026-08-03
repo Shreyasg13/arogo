@@ -173,6 +173,10 @@ const I18N = {
     'Your %1 dose is easy to miss lately': 'आजकल आपकी %1 खुराक अक्सर छूट रही है',
     '%1 — missed %2 of the last %3': '%1 — पिछली %3 में से %2 छूटीं',
     'Try moving its reminder a little earlier, or a few minutes before the dose.': 'इसका रिमाइंडर थोड़ा पहले करें, या खुराक से कुछ मिनट पहले।',
+    '🎯 Doses you miss most': '🎯 सबसे ज़्यादा छूटने वाली खुराकें', 'Last %1 days': 'पिछले %1 दिन',
+    'Your %1 dose is the easiest to forget — taken %2% of the time (%3 missed).': 'आपकी %1 खुराक भूलना सबसे आसान है — %2% बार ली गई (%3 छूटीं)।',
+    'Take it %1.': 'इसे %1 लें।',
+    'Tip: if a slot keeps slipping, try moving its time or turning on a reminder for it.': 'सुझाव: यदि कोई समय बार-बार छूटता है, तो उसका समय बदलें या उसके लिए रिमाइंडर चालू करें।',
     '%1 pills': '%1 गोलियाँ', '%1d left': '%1 दिन बचे', 'Restock': 'रीस्टॉक',
     '+ Track pill count': '+ गोली गिनती ट्रैक करें', '🚚 Refill ordered': '🚚 रिफिल ऑर्डर हुआ',
     'Mark picked up': 'उठा लिया चिह्नित करें', '🔄 Order refill': '🔄 रिफिल ऑर्डर करें',
@@ -3775,15 +3779,16 @@ function renderMissedDoses(d) {
       <div class="miss-stat">${s.pct}%<span class="miss-sub">${s.taken}/${s.total}</span></div>
     </div>`).join('');
 
+  const wBold = `<b>${esc(t12(w.time))} ${esc(w.med_name)}</b>`;
   return nudge + `<div class="panel">
     <div class="panel-header">
-      <h2 class="panel-title">🎯 Doses you miss most</h2>
-      <span class="panel-badge">Last ${d.days} days</span>
+      <h2 class="panel-title">${t('🎯 Doses you miss most')}</h2>
+      <span class="panel-badge">${tformat('Last %1 days', d.days)}</span>
     </div>
     <div style="padding:14px 16px">
-      <div class="miss-headline">Your <b>${esc(t12(w.time))} ${esc(w.med_name)}</b> dose is the easiest to forget — taken ${w.pct}% of the time (${w.missed} missed). ${w.timing_text ? 'Take it ' + esc(w.timing_text) + '.' : ''}</div>
+      <div class="miss-headline">${tformat('Your %1 dose is the easiest to forget — taken %2% of the time (%3 missed).', wBold, w.pct, w.missed)}${w.timing_text ? ' ' + tformat('Take it %1.', esc(w.timing_text)) : ''}</div>
       <div class="miss-list">${rows}</div>
-      <p class="miss-note">Tip: if a slot keeps slipping, try moving its time or turning on a reminder for it.</p>
+      <p class="miss-note">${t('Tip: if a slot keeps slipping, try moving its time or turning on a reminder for it.')}</p>
     </div>
   </div>`;
 }
