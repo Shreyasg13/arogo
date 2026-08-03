@@ -1013,6 +1013,14 @@ async function initAuth() {
     sessionStorage.setItem('me_family_invite', inviteToken);
     history.replaceState({}, '', location.pathname);
   }
+  // Home-screen PWA shortcut (/?action=log-dose|log-water|checkin). Stash it so
+  // it still fires if a sign-in stands between the tap and the app; consumed in
+  // showApp() once the user is in.
+  const shortcut = new URLSearchParams(location.search).get('action');
+  if (shortcut) {
+    sessionStorage.setItem('me_shortcut_action', shortcut);
+    history.replaceState({}, '', location.pathname);
+  }
   // Landing back from the email verification link (/?verified=1|0)
   const verified = new URLSearchParams(location.search).get('verified');
   if (verified !== null) {
@@ -1207,6 +1215,25 @@ function showApp() {
 
   // Load the dashboard
   switchView('dashboard');
+
+  // Fire a pending home-screen shortcut once the app is up.
+  try { _runShortcutAction(); } catch (e) {}
+}
+
+// Dispatch a stashed PWA home-screen shortcut (see the manifest `shortcuts`).
+// Each lands the user one tap from the action: the dashboard's next-dose hero,
+// the food view's water quick-add, or the daily check-in.
+function _runShortcutAction() {
+  const action = sessionStorage.getItem('me_shortcut_action');
+  if (!action) return;
+  sessionStorage.removeItem('me_shortcut_action');
+  setTimeout(() => {
+    try {
+      if (action === 'log-water')   switchView('food');
+      else if (action === 'checkin') startDailyCheckin();
+      else                           switchView('dashboard');   // log-dose (default)
+    } catch (e) {}
+  }, 300);
 }
 
 // Show one auth form, hide the others (login / register / forgot / reset)

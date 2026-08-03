@@ -36,6 +36,7 @@ def _paths(static_folder: str):
         os.path.join(static_folder, 'js', 'app.js'),
         os.path.join(static_folder, 'css', 'style.css'),
         os.path.join(static_folder, 'sw.js'),
+        os.path.join(static_folder, 'manifest.json'),
     )
 
 
@@ -45,9 +46,9 @@ def build_bundle(static_folder: str, minify: bool) -> dict:
     `version` is a 12-char content hash of the three shell files. `app_js`/`css`
     are minified when `minify` is True and the minifiers are available, else the
     raw source. Never raises for a minify problem — it falls back to source."""
-    aj, cs, sw = _paths(static_folder)
+    aj, cs, sw, mf = _paths(static_folder)
     try:
-        key = (os.path.getmtime(aj), os.path.getmtime(cs), os.path.getmtime(sw))
+        key = tuple(os.path.getmtime(p) for p in (aj, cs, sw, mf))
     except OSError:
         key = None
 
@@ -63,8 +64,15 @@ def build_bundle(static_folder: str, minify: bool) -> dict:
         css_src = f.read()
     with open(sw, encoding='utf-8') as f:
         sw_src = f.read()
+    # manifest.json is in the hash (so its shortcuts bust the SW cache on deploy)
+    # but not served here — the static handler serves it.
+    try:
+        with open(mf, encoding='utf-8') as f:
+            mf_src = f.read()
+    except OSError:
+        mf_src = ''
 
-    version = hashlib.sha1((js_src + css_src + sw_src).encode('utf-8')).hexdigest()[:12]
+    version = hashlib.sha1((js_src + css_src + sw_src + mf_src).encode('utf-8')).hexdigest()[:12]
 
     app_js, css = js_src, css_src
     if minify:
