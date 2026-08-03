@@ -2274,6 +2274,19 @@
           <label class="freq-opt"><input type="radio" name="frequency" value="as_needed"><span data-i18n="As needed">As needed</span></label>
         </div>
       </div>
+      <div class="form-group" id="med-days-group">
+        <label class="form-label"><span data-i18n="Days of the week">Days of the week</span>
+          <span style="font-weight:400;color:var(--gray-400)" data-i18n="— every day unless you pick some">— every day unless you pick some</span></label>
+        <div class="dow-picker" id="dow-picker">
+          <button type="button" class="dow-chip selected" data-dow="0" data-ev-click="toggleDow(this)" data-i18n="Mon">Mon</button>
+          <button type="button" class="dow-chip selected" data-dow="1" data-ev-click="toggleDow(this)" data-i18n="Tue">Tue</button>
+          <button type="button" class="dow-chip selected" data-dow="2" data-ev-click="toggleDow(this)" data-i18n="Wed">Wed</button>
+          <button type="button" class="dow-chip selected" data-dow="3" data-ev-click="toggleDow(this)" data-i18n="Thu">Thu</button>
+          <button type="button" class="dow-chip selected" data-dow="4" data-ev-click="toggleDow(this)" data-i18n="Fri">Fri</button>
+          <button type="button" class="dow-chip selected" data-dow="5" data-ev-click="toggleDow(this)" data-i18n="Sat">Sat</button>
+          <button type="button" class="dow-chip selected" data-dow="6" data-ev-click="toggleDow(this)" data-i18n="Sun">Sun</button>
+        </div>
+      </div>
       <div class="form-group" id="med-times-group"><label class="form-label" data-i18n="Reminder Times">Reminder Times</label>
         <div id="time-slots" class="time-slots">
           <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>

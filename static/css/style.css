@@ -266,6 +266,12 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .freq-opt input { display:none; }
 .freq-opt:has(input:checked) { border-color:var(--teal-400); background:var(--teal-50); color:var(--teal-700); font-weight:500; }
 
+/* Day-of-week schedule picker (Mon…Sun) in the add-medicine form */
+.dow-picker { display:flex; gap:6px; flex-wrap:wrap; }
+.dow-chip { padding:6px 11px; border:1px solid var(--gray-200); border-radius:99px; cursor:pointer;
+            font-size:12.5px; background:transparent; color:var(--gray-500); transition:all .15s; user-select:none; }
+.dow-chip.selected { border-color:var(--teal-400); background:var(--teal-50); color:var(--teal-700); font-weight:600; }
+
 /* Time slots */
 .time-slots { display:flex; flex-direction:column; gap:7px; }
 .time-slot-row { display:flex; align-items:center; gap:8px; }

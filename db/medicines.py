@@ -113,10 +113,13 @@ def insert_medicine(data: dict) -> dict:
             cost = round(max(0.0, float(cost)), 2)
         except (TypeError, ValueError):
             cost = None
+    # Day-of-week schedule (Mon=0 … Sun=6); None = every day. As-needed meds have
+    # no schedule at all, so never carry days.
+    sched = None if data.get('frequency') == 'as_needed' else clean_schedule_days(data.get('schedule_days'))
     execute("""
         INSERT INTO medicines
-          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,active,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,schedule_days,active,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
           data.get('frequency','once_daily'),
           jdump([] if data.get('frequency') == 'as_needed'
@@ -124,7 +127,8 @@ def insert_medicine(data: dict) -> dict:
           with_food, timing, lead, cost, data.get('notes',''),
           str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), data.get('icon','💊'),
-          data.get('start_date', today_iso()), data.get('end_date',''), now_iso(),
+          data.get('start_date', today_iso()), data.get('end_date',''),
+          jdump(sched) if sched else None, now_iso(),
           current_user_id()),
         commit=True)
     log_medicine_event(mid, 'started', name)
@@ -208,6 +212,22 @@ def delete_medicine(mid):
         log_medicine_event(mid, 'deleted', prev['name'])
 
 
+def clean_schedule_days(raw):
+    """Normalise a day-of-week schedule to a sorted list of unique ints 0–6
+    (Mon=0 … Sun=6). Anything empty, all-seven, or invalid → None, meaning
+    'every day' — so the storage layer never carries a redundant [0..6] and the
+    'is it due today' check can treat None as the fast daily path."""
+    if not raw:
+        return None
+    try:
+        days = sorted({int(x) for x in raw if 0 <= int(x) <= 6})
+    except (TypeError, ValueError):
+        return None
+    if not days or len(days) == 7:
+        return None
+    return days
+
+
 def _fmt_med(r):
     d = dict(r)
     d['times'] = jload(d.get('times', '["08:00"]'), ['08:00'])
@@ -215,6 +235,8 @@ def _fmt_med(r):
     d['active'] = bool(d.get('active', 1))
     d['timing'] = (d.get('timing') or '')
     d['timing_text'] = timing_label(d['timing'])
+    # None = daily; otherwise a list of weekday ints (Mon=0 … Sun=6).
+    d['schedule_days'] = clean_schedule_days(jload(d.get('schedule_days'), None))
     return d
 
 
@@ -278,12 +300,30 @@ def _in_course(m, day):
     return True
 
 
+def _scheduled_on_day(m, day):
+    """True if the medicine is actually due on `day` (ISO date): within its
+    course window AND — when it has a day-of-week schedule — this weekday is one
+    of the chosen days. schedule_days is None for the common daily case, so that
+    path costs nothing. This is what stops a weekly med from showing as due (and
+    firing a reminder) all seven days."""
+    if not _in_course(m, day):
+        return False
+    sd = m.get('schedule_days')
+    if not sd:
+        return True
+    try:
+        from datetime import date
+        return date.fromisoformat(day).weekday() in sd
+    except (ValueError, TypeError):
+        return True   # a bad date should never silently hide a real dose
+
+
 def get_today_doses():
     uid = current_user_id()
     # The user's day, not the server's — the app and service worker write dose
     # rows keyed to the device's local date, and this is what reads them back.
     today = user_today()
-    meds = [m for m in list_medicines() if m['active'] and _in_course(m, today)]
+    meds = [m for m in list_medicines() if m['active'] and _scheduled_on_day(m, today)]
     doses = []
     for m in meds:
         for t in m.get('times', []):
@@ -314,7 +354,7 @@ def get_adherence_stats(days=30):
         d = (date.today() - timedelta(days=i)).isoformat()
         for m in meds:
             if not m['active']: continue
-            if not _in_course(m, d): continue   # don't penalise days outside the course
+            if not _scheduled_on_day(m, d): continue   # skip days the med isn't due (course + weekday)
             for t in m.get('times', []):
                 total += 1
                 log = execute(
@@ -380,7 +420,7 @@ def get_pill_planner(days: int = 7) -> dict:
         for dinfo in daylist:
             due = []
             for m in meds:
-                if t in m['times'] and _in_course(m, dinfo['date']):
+                if t in m['times'] and _scheduled_on_day(m, dinfo['date']):
                     dosage = (m.get('dosage') or '').strip()
                     dose = (dosage + ' ' + (m.get('unit') or '')).strip() if dosage else ''
                     due.append({'name': m['name'], 'icon': m.get('icon') or '💊',
@@ -649,11 +689,23 @@ _FREQ_DOSES = {
 
 
 def _days_of_supply(m):
-    """Days of stock left for a medicine, or None if it isn't tracking pills."""
+    """Days of stock left for a medicine, or None if it isn't tracking pills.
+
+    A day-of-week schedule stretches the supply: a med taken only 2 of 7 days
+    lasts ~3.5× longer than the daily rate, so scale the per-day burn by how many
+    weekdays it's actually taken — otherwise a weekly med reads as 'low' when it
+    has weeks of pills left."""
     pc = m.get('pill_count')
     if pc is None:
         return None
-    per_day = _FREQ_DOSES.get(m.get('frequency', 'once_daily'), 1) * (m.get('pills_per_dose') or 1)
+    per_dose = m.get('pills_per_dose') or 1
+    sd = m.get('schedule_days')
+    if sd:
+        # Doses per active day = number of times; averaged over the week by how
+        # many days it's taken.
+        per_day = max(len(m.get('times') or []), 1) * per_dose * (len(sd) / 7.0)
+    else:
+        per_day = _FREQ_DOSES.get(m.get('frequency', 'once_daily'), 1) * per_dose
     return round(pc / max(per_day, 0.01), 1)
 
 

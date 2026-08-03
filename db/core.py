@@ -280,7 +280,8 @@ CREATE TABLE IF NOT EXISTS medicines (
     purpose TEXT DEFAULT '',
     timing TEXT DEFAULT '',
     reminder_lead_min INTEGER DEFAULT 0,
-    cost REAL DEFAULT NULL
+    cost REAL DEFAULT NULL,
+    schedule_days TEXT DEFAULT NULL
 );
 CREATE TABLE IF NOT EXISTS dose_logs (
     id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL,
@@ -615,6 +616,18 @@ def migrate_add_language():
         pass  # already exists
 
 
+def migrate_add_schedule_days():
+    """Add schedule_days to medicines if missing. JSON list of weekday ints
+    (Mon=0 … Sun=6, matching date.weekday()); NULL/empty means every day. Lets a
+    medicine be due only on specific days (weekly-on-a-day, Mon/Thu, etc.) instead
+    of the old behaviour where every timed med showed as due — and reminded —
+    seven days a week."""
+    try:
+        execute("ALTER TABLE medicines ADD COLUMN schedule_days TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_family_display():
     """Add allow_family_display to family_members if missing — lets a member
     opt in to a caregiver adjusting their Simple View."""
@@ -904,6 +917,7 @@ def init_db():
     migrate_add_diet_pref()
     migrate_add_ui_mode()
     migrate_add_language()
+    migrate_add_schedule_days()
     migrate_add_family_display()
     migrate_add_refill_fields()
     migrate_add_dose_timing()

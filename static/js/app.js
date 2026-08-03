@@ -164,6 +164,8 @@ const I18N = {
     '%1 of %2 doses taken': '%2 में से %1 खुराक ली गईं', 'no meds today': 'आज कोई दवा नहीं',
     'all doses taken ✓': 'सभी खुराक ली गईं ✓', 'doses today': 'आज की खुराक',
     'Once daily': 'रोज़ एक बार', 'Twice daily': 'रोज़ दो बार', '3× daily': 'रोज़ 3 बार',
+    'Days of the week': 'सप्ताह के दिन', '— every day unless you pick some': '— जब तक आप कुछ न चुनें, हर दिन',
+    'Mon': 'सोम', 'Tue': 'मंगल', 'Wed': 'बुध', 'Thu': 'गुरु', 'Fri': 'शुक्र', 'Sat': 'शनि', 'Sun': 'रवि',
     '%1 pills': '%1 गोलियाँ', '%1d left': '%1 दिन बचे', 'Restock': 'रीस्टॉक',
     '+ Track pill count': '+ गोली गिनती ट्रैक करें', '🚚 Refill ordered': '🚚 रिफिल ऑर्डर हुआ',
     'Mark picked up': 'उठा लिया चिह्नित करें', '🔄 Order refill': '🔄 रिफिल ऑर्डर करें',
@@ -3944,7 +3946,11 @@ function renderMedicinesGrid(meds) {
     // Pill count / refill section
     const isPRN = m.frequency === 'as_needed';
     const hasPills = m.pill_count != null;
-    const freqDoses = {once_daily:1,twice_daily:2,thrice_daily:3,weekly:1/7}[m.frequency] || 1;
+    // A day-of-week schedule stretches supply: doses/active-day × (days taken / 7).
+    const sd = Array.isArray(m.schedule_days) && m.schedule_days.length && m.schedule_days.length < 7 ? m.schedule_days : null;
+    const freqDoses = sd
+      ? Math.max((m.times || []).length, 1) * (sd.length / 7)
+      : ({once_daily:1,twice_daily:2,thrice_daily:3,weekly:1/7}[m.frequency] || 1);
     // As-needed usage is unpredictable, so a "days left" estimate would be a lie.
     const daysLeft = (hasPills && !isPRN) ? Math.floor(m.pill_count / Math.max(freqDoses * (m.pills_per_dose||1), 0.01)) : null;
     const maxDays  = m.refill_threshold ? m.refill_threshold * 4 : 28;
@@ -3984,7 +3990,7 @@ function renderMedicinesGrid(meds) {
         <div class="med-card-icon">${m.icon}</div>
         <div class="med-card-info">
           <div class="med-card-name">${escHtml(m.name)}</div>
-          <div class="med-card-dose">${m.dosage} ${m.unit} · ${freqLabel(m.frequency)}</div>
+          <div class="med-card-dose">${m.dosage} ${m.unit} · ${freqLabel(m.frequency)}${scheduleDaysLabel(m.schedule_days) ? ' · ' + scheduleDaysLabel(m.schedule_days) : ''}</div>
         </div>
       </div>
       <div class="med-card-times">
@@ -4285,6 +4291,7 @@ function setupMedForm() {
       purpose: form.purpose?.value || '',
       start_date: form.start_date.value,
       end_date: form.end_date.value,
+      schedule_days: _collectScheduleDays(),
       icon: selectedIcon,
       color: selectedColor
     };
@@ -4333,6 +4340,9 @@ function removeTimeSlot(btn) {
 function resetTimeSlots() {
   const g = document.getElementById('med-times-group');   // un-hide after an as-needed add
   if (g) g.style.display = '';
+  const dg = document.getElementById('med-days-group');   // un-hide + reset to "every day"
+  if (dg) dg.style.display = '';
+  try { _resetScheduleDays(); } catch (e) {}
   const slots = document.getElementById('time-slots');
   if (slots) slots.innerHTML = `<div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>`;
 }
@@ -4340,13 +4350,17 @@ function resetTimeSlots() {
 function setupFreqPicker() {
   document.querySelectorAll('.freq-opt input').forEach(input => {
     input.addEventListener('change', () => {
-      // As-needed meds have no schedule → hide the reminder times entirely.
+      // As-needed meds have no schedule → hide the reminder times AND the
+      // day-of-week picker (there's nothing to schedule).
       const timesGroup = document.getElementById('med-times-group');
+      const daysGroup = document.getElementById('med-days-group');
       if (input.value === 'as_needed') {
         if (timesGroup) timesGroup.style.display = 'none';
+        if (daysGroup) daysGroup.style.display = 'none';
         return;
       }
       if (timesGroup) timesGroup.style.display = '';
+      if (daysGroup) daysGroup.style.display = '';
       const counts = { once_daily:1, twice_daily:2, thrice_daily:3, weekly:1 };
       const count = counts[input.value] || 1;
       const slots = document.getElementById('time-slots');
@@ -5114,6 +5128,35 @@ function fileIcon(ext) { return { pdf:'📄', png:'🖼️', jpg:'🖼️', jpeg
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 function fmtBytes(b) { if (b<1024) return b+' B'; if (b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
 function freqLabel(f) { return { once_daily:t('Once daily'), twice_daily:t('Twice daily'), thrice_daily:t('3× daily'), weekly:t('Weekly'), as_needed:t('As needed') }[f] || f; }
+
+// ── Day-of-week schedule (Mon=0 … Sun=6, matching the server) ────────────────
+const _DOW_ABBR = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+function toggleDow(btn) {
+  // Never let the user deselect the last day — an empty set is meaningless.
+  const chips = [...document.querySelectorAll('#dow-picker .dow-chip')];
+  if (btn.classList.contains('selected') && chips.filter(c => c.classList.contains('selected')).length <= 1) return;
+  btn.classList.toggle('selected');
+}
+
+// The submitted schedule: null when every day is picked (the daily default), so
+// the server stores no redundant [0..6]; otherwise the chosen weekday ints.
+function _collectScheduleDays() {
+  const picked = [...document.querySelectorAll('#dow-picker .dow-chip.selected')]
+    .map(c => parseInt(c.dataset.dow, 10));
+  return (picked.length === 0 || picked.length === 7) ? null : picked.sort((a, b) => a - b);
+}
+
+// Reset the picker to "every day" (all selected) — called when the modal opens.
+function _resetScheduleDays() {
+  document.querySelectorAll('#dow-picker .dow-chip').forEach(c => c.classList.add('selected'));
+}
+
+// Short label for a med's schedule, e.g. "Mon, Thu"; '' for a daily med.
+function scheduleDaysLabel(sd) {
+  if (!Array.isArray(sd) || !sd.length || sd.length === 7) return '';
+  return sd.slice().sort((a, b) => a - b).map(d => t(_DOW_ABBR[d] || '')).join(', ');
+}
 function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
 let toastTimer;
 function showToast(msg, type='') { const el = document.getElementById('toast'); el.textContent = t(msg); el.className = `toast ${type}`; el.style.display = 'block'; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.display = 'none', 3200); }
