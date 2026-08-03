@@ -294,6 +294,10 @@ CREATE TABLE IF NOT EXISTS medicine_events (
     kind TEXT NOT NULL, detail TEXT DEFAULT '', at TEXT NOT NULL,
     user_id TEXT DEFAULT NULL
 );
+CREATE TABLE IF NOT EXISTS menstrual_cycles (
+    id TEXT PRIMARY KEY, start_date TEXT NOT NULL, end_date TEXT DEFAULT NULL,
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS fitness_activities (
     id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT DEFAULT '',
     date TEXT NOT NULL, duration INTEGER DEFAULT 0, distance REAL DEFAULT 0,
@@ -893,6 +897,7 @@ DATA_TABLES = [
     'fitness_activities', 'medicines', 'dose_logs', 'reports',
     'user_profile', 'oauth_tokens', 'sync_log', 'appointments', 'dose_snoozes',
     'measurement_reminders', 'medicine_events', 'doctor_questions',
+    'menstrual_cycles',
 ]
 
 

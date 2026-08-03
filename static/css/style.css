@@ -266,6 +266,22 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .freq-opt input { display:none; }
 .freq-opt:has(input:checked) { border-color:var(--teal-400); background:var(--teal-50); color:var(--teal-700); font-weight:500; }
 
+/* Cycle / period tracking (Body & Vitals view) */
+.cycle-empty { font-size:13.5px; color:var(--gray-500,#6B7280); padding:6px 0 12px; line-height:1.6; }
+.cycle-status { padding:6px 0 12px; display:flex; flex-direction:column; gap:2px; }
+.cycle-status--period { color:#B54E7A; }
+.cycle-big { font-size:22px; font-weight:800; font-family:'EB Garamond',serif; }
+.cycle-sub { font-size:12.5px; color:var(--gray-500,#6B7280); }
+.cycle-stats { display:flex; gap:10px; flex-wrap:wrap; margin:4px 0 14px; }
+.cycle-stat { flex:1; min-width:90px; background:var(--gray-50,#F7F5F2); border-radius:10px; padding:9px 12px; text-align:center; }
+.cycle-stat b { display:block; font-size:16px; color:var(--gray-900,#1a1a1a); }
+.cycle-stat span { font-size:11px; color:var(--gray-500,#6B7280); }
+.cycle-actions { display:flex; flex-direction:column; gap:8px; }
+.cycle-log-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.cycle-history { margin-top:14px; border-top:1px solid var(--gray-100,#EEE); padding-top:10px; }
+.cycle-hist-row { display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:13px; padding:4px 0; color:var(--gray-700,#374151); }
+.cycle-hist-len { color:var(--gray-400,#9CA3AF); font-size:12px; margin-left:auto; margin-right:4px; }
+
 /* Adherence streak — consecutive perfect days, in the dose-calendar panel */
 .adh-streak { display:flex; align-items:center; gap:8px; margin:2px 0 14px; padding:9px 12px;
               background:var(--teal-50,#ECF3EF); border:1px solid var(--teal-100,#D7E7DF);

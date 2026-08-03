@@ -181,6 +181,15 @@ const I18N = {
     'All taken': 'सभी ली गईं', 'Some': 'कुछ', 'Missed': 'छूट गईं', 'None due': 'कोई देय नहीं',
     '%1-day streak': '%1-दिन की स्ट्रीक', 'every dose taken': 'हर खुराक ली गई',
     'your best yet!': 'अब तक की सर्वश्रेष्ठ!', 'best %1': 'सर्वश्रेष्ठ %1',
+    'Cycle': 'चक्र', 'private': 'निजी',
+    'Track your cycle to see your patterns and an estimated next date. Private to you.': 'अपने पैटर्न और अगली अनुमानित तारीख देखने के लिए अपना चक्र ट्रैक करें। केवल आपके लिए निजी।',
+    'Period · day %1': 'माहवारी · दिन %1', 'Tap "Period ended" when it stops.': 'रुकने पर "माहवारी समाप्त" दबाएँ।',
+    'Your period may be due around now': 'आपकी माहवारी लगभग अभी हो सकती है',
+    '~%1 days until your next period (estimated)': 'अगली माहवारी में ~%1 दिन (अनुमानित)',
+    'cycle day %1': 'चक्र दिन %1', 'log one more cycle for an estimate': 'अनुमान के लिए एक और चक्र दर्ज करें',
+    'avg cycle (days)': 'औसत चक्र (दिन)', 'avg period (days)': 'औसत माहवारी (दिन)', 'est. next start': 'अनुमानित अगली शुरुआत',
+    '%1 days': '%1 दिन', 'ongoing': 'जारी',
+    'Period started': 'माहवारी शुरू', 'Update start': 'शुरुआत अपडेट करें', 'Period ended': 'माहवारी समाप्त',
     '%1 pills': '%1 गोलियाँ', '%1d left': '%1 दिन बचे', 'Restock': 'रीस्टॉक',
     '+ Track pill count': '+ गोली गिनती ट्रैक करें', '🚚 Refill ordered': '🚚 रिफिल ऑर्डर हुआ',
     'Mark picked up': 'उठा लिया चिह्नित करें', '🔄 Order refill': '🔄 रिफिल ऑर्डर करें',
@@ -10727,12 +10736,112 @@ async function loadBodyView() {
 
     <!-- Vital trend charts -->
     <div id="bv-trend-section"></div>
+
+    <!-- Cycle / period tracking -->
+    <div id="cycle-section" style="margin-top:20px"></div>
   `;
 
   loadBodyMetricsView();
   loadVitalsView();
   loadWeightProgressChart();
   loadVitalTrends();
+  loadCycle();
+}
+
+// ── Cycle / period tracking ──────────────────────────────────────────────────
+async function loadCycle() {
+  const el = document.getElementById('cycle-section');
+  if (!el) return;
+  const d = await fetch('/api/cycle', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
+  if (!d) { el.innerHTML = ''; return; }
+  el.innerHTML = renderCycle(d);
+}
+
+function renderCycle(d) {
+  const esc = escHtml;
+  const today = localToday();
+  // Status line — where the user is in their cycle, honestly framed.
+  let status;
+  if (!d.has_data) {
+    status = `<div class="cycle-empty">${t('Track your cycle to see your patterns and an estimated next date. Private to you.')}</div>`;
+  } else if (d.ongoing) {
+    status = `<div class="cycle-status cycle-status--period"><span class="cycle-big">${tformat('Period · day %1', d.ongoing_day)}</span>
+      <span class="cycle-sub">${t('Tap "Period ended" when it stops.')}</span></div>`;
+  } else if (d.days_until_next != null) {
+    const dd = d.days_until_next;
+    const line = dd <= 0 ? t('Your period may be due around now')
+               : tformat('~%1 days until your next period (estimated)', dd);
+    status = `<div class="cycle-status"><span class="cycle-big">${dd <= 0 ? '🌸' : dd} ${dd <= 0 ? '' : t('days')}</span>
+      <span class="cycle-sub">${esc(line)}${d.current_day ? ' · ' + tformat('cycle day %1', d.current_day) : ''}</span></div>`;
+  } else {
+    status = `<div class="cycle-status"><span class="cycle-sub">${d.current_day ? tformat('cycle day %1', d.current_day) : ''} · ${t('log one more cycle for an estimate')}</span></div>`;
+  }
+
+  const stats = d.has_data ? `<div class="cycle-stats">
+      ${d.cycle_length ? `<div class="cycle-stat"><b>${d.cycle_length}</b><span>${t('avg cycle (days)')}</span></div>` : ''}
+      ${d.period_length ? `<div class="cycle-stat"><b>${d.period_length}</b><span>${t('avg period (days)')}</span></div>` : ''}
+      ${d.predicted_next_start ? `<div class="cycle-stat"><b>${_fmtShortDate(d.predicted_next_start)}</b><span>${t('est. next start')}</span></div>` : ''}
+    </div>` : '';
+
+  const history = (d.history || []).length ? `<div class="cycle-history">
+      ${d.history.map(h => `<div class="cycle-hist-row">
+        <span>🩸 ${_fmtShortDate(h.start_date)}${h.end_date ? ' – ' + _fmtShortDate(h.end_date) : ''}</span>
+        <span class="cycle-hist-len">${h.length ? tformat('%1 days', h.length) : t('ongoing')}</span>
+        <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteCycle('${h.id}')" style="color:var(--gray-300);padding:2px 6px">✕</button>
+      </div>`).join('')}
+    </div>` : '';
+
+  return `<div class="panel" style="padding:18px 20px">
+    <div class="panel-header"><h2 class="panel-title">🌸 ${t('Cycle')}</h2>
+      <span class="panel-badge">${t('private')}</span></div>
+    ${status}
+    ${stats}
+    <div class="cycle-actions">
+      <div class="cycle-log-row">
+        <input type="date" id="cycle-start-date" class="form-input" value="${today}" max="${today}" style="max-width:170px">
+        <button class="btn-primary" data-ev-click="logCycleStart()">${d.ongoing ? t('Update start') : t('Period started')}</button>
+      </div>
+      ${d.ongoing ? `<div class="cycle-log-row">
+        <input type="date" id="cycle-end-date" class="form-input" value="${today}" max="${today}" style="max-width:170px">
+        <button class="btn-outline" data-ev-click="logCycleEnd()">${t('Period ended')}</button>
+      </div>` : ''}
+    </div>
+    ${history}
+  </div>`;
+}
+
+async function logCycleStart() {
+  const v = document.getElementById('cycle-start-date')?.value;
+  if (!v) { showToast('Pick a date', 'error'); return; }
+  const r = await fetch('/api/cycle/start', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ start_date: v }),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('🌸 Period logged'); loadCycle(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function logCycleEnd() {
+  const v = document.getElementById('cycle-end-date')?.value;
+  if (!v) { showToast('Pick a date', 'error'); return; }
+  const r = await fetch('/api/cycle/end', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ end_date: v }),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Period end logged'); loadCycle(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+function deleteCycle(cid) {
+  undoable('Deleting cycle entry…', async () => {
+    await fetch(`/api/cycle/${cid}`, { method: 'DELETE', credentials: 'same-origin' });
+    loadCycle();
+  });
+}
+
+function _fmtShortDate(iso) {
+  try { return new Date(iso + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); }
+  catch (e) { return iso; }
 }
 
 function selectVitalTypeView(btn) {

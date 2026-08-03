@@ -419,6 +419,36 @@ def api_log_body():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'metric': m})
+
+
+# ── Cycle / period tracking ──────────────────────────────────────────────────
+@bp.route('/api/cycle')
+@require_auth
+def api_cycle():
+    return jsonify(get_cycle_summary())
+
+@bp.route('/api/cycle/start', methods=['POST'])
+@require_auth
+def api_cycle_start():
+    d = request.json or {}
+    try:
+        return jsonify({'success': True, 'summary': log_period_start(d.get('start_date', ''), d.get('notes', ''))})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/cycle/end', methods=['POST'])
+@require_auth
+def api_cycle_end():
+    d = request.json or {}
+    try:
+        return jsonify({'success': True, 'summary': log_period_end(d.get('end_date', ''))})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/cycle/<cid>', methods=['DELETE'])
+@require_auth
+def api_cycle_delete(cid):
+    return jsonify({'success': True, 'summary': delete_cycle(cid)})
 @bp.route('/api/body-metrics/trend')
 @require_auth
 def api_body_metrics_trend():
