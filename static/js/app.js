@@ -177,6 +177,10 @@ const I18N = {
     'Your %1 dose is the easiest to forget — taken %2% of the time (%3 missed).': 'आपकी %1 खुराक भूलना सबसे आसान है — %2% बार ली गई (%3 छूटीं)।',
     'Take it %1.': 'इसे %1 लें।',
     'Tip: if a slot keeps slipping, try moving its time or turning on a reminder for it.': 'सुझाव: यदि कोई समय बार-बार छूटता है, तो उसका समय बदलें या उसके लिए रिमाइंडर चालू करें।',
+    '📅 Dose calendar': '📅 खुराक कैलेंडर', 'last 5 weeks': 'पिछले 5 सप्ताह',
+    'All taken': 'सभी ली गईं', 'Some': 'कुछ', 'Missed': 'छूट गईं', 'None due': 'कोई देय नहीं',
+    '%1-day streak': '%1-दिन की स्ट्रीक', 'every dose taken': 'हर खुराक ली गई',
+    'your best yet!': 'अब तक की सर्वश्रेष्ठ!', 'best %1': 'सर्वश्रेष्ठ %1',
     '%1 pills': '%1 गोलियाँ', '%1d left': '%1 दिन बचे', 'Restock': 'रीस्टॉक',
     '+ Track pill count': '+ गोली गिनती ट्रैक करें', '🚚 Refill ordered': '🚚 रिफिल ऑर्डर हुआ',
     'Mark picked up': 'उठा लिया चिह्नित करें', '🔄 Order refill': '🔄 रिफिल ऑर्डर करें',
@@ -3830,18 +3834,30 @@ async function loadDoseCalendar() {
   // Nothing scheduled anywhere in the window → don't show an empty grid.
   if (!days.length || days.every(x => x.status === 'none')) { el.innerHTML = ''; return; }
   const COLOR = { all: 'var(--teal-500)', partial: '#F59E0B', missed: '#EF4444', none: 'var(--gray-100)' };
-  const LABEL = { all: 'All taken', partial: 'Some', missed: 'Missed', none: 'None due' };
+  const LABEL = { all: t('All taken'), partial: t('Some'), missed: t('Missed'), none: t('None due') };
   const first = new Date(days[0].date + 'T00:00:00');
   const cells = [];
   for (let i = 0; i < first.getDay(); i++) cells.push('<div class="cal-cell cal-cell--empty"></div>');
   for (const day of days) {
     const dt = new Date(day.date + 'T00:00:00');
-    const t = `${dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} — ${day.total ? `${day.taken}/${day.total} taken` : 'nothing scheduled'}`;
-    cells.push(`<div class="cal-cell" style="background:${COLOR[day.status]}" title="${t}" data-ev-click="showCalDay('${day.date}',${day.taken},${day.total})"></div>`);
+    const tip = `${dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} — ${day.total ? `${day.taken}/${day.total} taken` : 'nothing scheduled'}`;
+    cells.push(`<div class="cal-cell" style="background:${COLOR[day.status]}" title="${tip}" data-ev-click="showCalDay('${day.date}',${day.taken},${day.total})"></div>`);
   }
+
+  // Motivational streak — consecutive perfect days (every scheduled dose taken).
+  const s = d.streak || {};
+  let streakBanner = '';
+  if ((s.streak || 0) >= 2) {
+    const extra = (s.best && s.streak >= s.best && s.best >= 3) ? ' · ' + t('your best yet!')
+                : (s.best > s.streak) ? ' · ' + tformat('best %1', s.best) : '';
+    streakBanner = `<div class="adh-streak"><span class="adh-streak-flame">🔥</span>
+      <span>${tformat('%1-day streak', s.streak)} · <b>${t('every dose taken')}</b>${extra}</span></div>`;
+  }
+
   el.innerHTML =
     `<div class="panel" style="padding:18px 20px">
-       <div class="panel-header"><h2 class="panel-title">📅 Dose calendar</h2><span class="panel-badge">last 5 weeks</span></div>
+       <div class="panel-header"><h2 class="panel-title">${t('📅 Dose calendar')}</h2><span class="panel-badge">${t('last 5 weeks')}</span></div>
+       ${streakBanner}
        <div class="cal-weekdays">${['S','M','T','W','T','F','S'].map(w => `<span>${w}</span>`).join('')}</div>
        <div class="cal-grid">${cells.join('')}</div>
        <div id="cal-day-detail" class="cal-detail"></div>

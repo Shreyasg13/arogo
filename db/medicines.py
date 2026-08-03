@@ -420,6 +420,47 @@ def get_dose_calendar(days: int = 35) -> list:
     return out
 
 
+def get_adherence_streak(window: int = 180) -> dict:
+    """Consecutive 'perfect' days (every scheduled dose taken), ending today or
+    yesterday, plus the best such run in the window.
+
+    A day with nothing scheduled is NEUTRAL — it never breaks a run and never
+    pads it, so a genuine day off doesn't cost you a streak. Today is counted
+    only once it's complete; an in-progress today (some doses not yet taken)
+    doesn't break the streak — it just doesn't extend it until it's done."""
+    cal = get_dose_calendar(max(1, min(int(window or 180), 365)))
+    if not cal:
+        return {'streak': 0, 'best': 0, 'perfect_today': False}
+
+    # Current streak: walk newest → oldest.
+    streak = 0
+    for i, day in enumerate(reversed(cal)):
+        st = day['status']
+        if st == 'all':
+            streak += 1
+        elif st == 'none':
+            continue                       # neutral — skip without breaking
+        elif i == 0 and st in ('partial', 'missed'):
+            continue                       # today still in progress — don't break
+        else:
+            break
+
+    # Best streak in the window (neutral days bridge, misses reset).
+    best = cur = 0
+    for day in cal:
+        st = day['status']
+        if st == 'all':
+            cur += 1
+            best = max(best, cur)
+        elif st == 'none':
+            continue
+        else:
+            cur = 0
+
+    return {'streak': streak, 'best': best,
+            'perfect_today': bool(cal[-1]['status'] == 'all')}
+
+
 def get_pill_planner(days: int = 7) -> dict:
     """A days×times grid of the UPCOMING plan — what to take in each slot over
     the next N days. Rows are the union of scheduled dose times; each cell lists

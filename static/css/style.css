@@ -266,6 +266,12 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .freq-opt input { display:none; }
 .freq-opt:has(input:checked) { border-color:var(--teal-400); background:var(--teal-50); color:var(--teal-700); font-weight:500; }
 
+/* Adherence streak — consecutive perfect days, in the dose-calendar panel */
+.adh-streak { display:flex; align-items:center; gap:8px; margin:2px 0 14px; padding:9px 12px;
+              background:var(--teal-50,#ECF3EF); border:1px solid var(--teal-100,#D7E7DF);
+              border-radius:10px; font-size:13.5px; color:var(--teal-800,#20362D); }
+.adh-streak-flame { font-size:17px; line-height:1; }
+
 /* Adherence trend nudge — the recent (7-day) 'what's slipping' banner */
 .adh-nudge { display:flex; gap:12px; align-items:flex-start; padding:14px 16px; margin-bottom:14px;
              border:1px solid var(--amber-100,#FDE68A); background:var(--amber-50,#FFFBEB); border-radius:12px; }

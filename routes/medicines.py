@@ -140,8 +140,9 @@ def adherence():
 @bp.route('/api/medicines/calendar')
 @require_auth
 def dose_calendar():
+    from db.medicines import get_adherence_streak
     days = to_int(request.args.get('days', 35), 35, lo=1, hi=120)
-    return jsonify({'days': get_dose_calendar(days)})
+    return jsonify({'days': get_dose_calendar(days), 'streak': get_adherence_streak()})
 
 @bp.route('/api/medicines/refill-list')
 @require_auth
