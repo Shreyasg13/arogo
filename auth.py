@@ -21,7 +21,7 @@ import secrets
 import time
 from functools import wraps
 
-from flask import g, jsonify, request, current_app
+from flask import g, jsonify, request, current_app, session
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -291,9 +291,50 @@ def require_auth(f):
         user_id = get_user_id_from_request()
         if not user_id:
             return jsonify({'error': 'Authentication required', 'code': 'UNAUTHENTICATED'}), 401
+        g.real_user_id = user_id
         g.user_id = user_id
+        g.acting_as = None
+        _apply_acting_as(user_id)
         return f(*args, **kwargs)
     return wrapper
+
+
+# ── Caregiver acting-as (managing a family member on one device) ────────────────
+#
+# A caregiver whom a member has granted `allow_manage` can, on their OWN device,
+# switch into "managing" mode so that health-data views/edits scope to the member.
+# The design keeps this narrow and re-verified so it can never become a backdoor:
+#
+#   • The grant is checked against the live DB on EVERY request via can_manage() —
+#     never trusted from the session. Revoking the grant takes effect immediately.
+#   • It applies ONLY to health-data endpoints. Anything under /auth, /api/account,
+#     or /api/family stays scoped to the caregiver's real account, so a caregiver
+#     can never touch the member's password, delete their account, export their
+#     full data dump, or alter their family/consent grants while acting-as.
+#   • g.real_user_id always holds the caregiver; g.user_id (what current_user_id()
+#     reads) is the only thing that flips, and only for non-sensitive paths.
+
+# Prefixes that must always operate on the caregiver's real account.
+_ACTING_AS_EXCLUDED = ('/auth', '/api/account', '/api/family')
+
+
+def _apply_acting_as(real_user_id):
+    """If the caregiver has an active, still-valid acting-as grant, reflect it on
+    g.acting_as, and scope g.user_id to the managed member for health-data paths."""
+    try:
+        acting = session.get('acting_as')
+    except Exception:
+        return
+    if not acting or acting == real_user_id:
+        return
+    # Re-verify the grant live every request — stale sessions must not linger.
+    from db import family
+    if not family.can_manage(real_user_id, acting):
+        return
+    g.acting_as = acting
+    path = request.path or ''
+    if not any(path.startswith(p) for p in _ACTING_AS_EXCLUDED):
+        g.user_id = acting
 
 
 # ── Security headers ───────────────────────────────────────────────────────────

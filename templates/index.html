@@ -337,6 +337,16 @@
   </button>
 </div>
 
+<!-- Acting-as banner: shown whenever a caregiver is managing a family member on
+     this device. Deliberately loud — every health edit below is that member's. -->
+<div id="managing-banner" style="display:none;background:#3E7862;color:#fff;
+     border-radius:10px;padding:10px 16px;margin-bottom:16px;
+     font-size:13px;align-items:center;gap:10px">
+  <span style="flex:1">👥 <span id="managing-banner-text"></span></span>
+  <button class="btn-outline" style="font-size:12px;white-space:nowrap;background:#fff;color:#3E7862;border-color:#fff"
+          data-ev-click="stopActAs()" data-i18n="Return to my account">Return to my account</button>
+</div>
+
 <!-- ═══════════ DASHBOARD ═══════════ -->
 <div id="view-dashboard" class="view active">
   <!-- First-run "get started" checklist (filled by checkFirstRun) -->

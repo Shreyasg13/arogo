@@ -472,6 +472,7 @@ CREATE TABLE IF NOT EXISTS family_members (
     alert_missed_doses INTEGER NOT NULL DEFAULT 0,
     receive_care_alerts INTEGER NOT NULL DEFAULT 1,
     allow_family_display INTEGER NOT NULL DEFAULT 0,
+    allow_manage INTEGER NOT NULL DEFAULT 0,
     joined_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS family_invites (
@@ -649,6 +650,17 @@ def migrate_add_family_display():
     opt in to a caregiver adjusting their Simple View."""
     try:
         execute("ALTER TABLE family_members ADD COLUMN allow_family_display INTEGER NOT NULL DEFAULT 0")
+    except Exception:
+        pass  # already exists
+
+
+def migrate_add_allow_manage():
+    """Add allow_manage to family_members if missing — a member's explicit opt-in
+    to let fellow group members act on their behalf (log doses, add meds, etc.)
+    from their own device. Off by default; the strongest family grant, so it is
+    always the member's own choice."""
+    try:
+        execute("ALTER TABLE family_members ADD COLUMN allow_manage INTEGER NOT NULL DEFAULT 0")
     except Exception:
         pass  # already exists
 
@@ -937,6 +949,7 @@ def init_db():
     migrate_add_schedule_days()
     migrate_add_interval_days()
     migrate_add_family_display()
+    migrate_add_allow_manage()
     migrate_add_refill_fields()
     migrate_add_dose_timing()
     migrate_add_quiet_hours()

@@ -59,7 +59,7 @@ def get_my_group() -> dict | None:
         SELECT m.user_id, m.role, m.joined_at,
                m.share_sleep, m.share_vitals, m.share_medicines,
                m.share_food, m.share_symptoms, m.share_emergency,
-               m.alert_missed_doses, m.receive_care_alerts, m.allow_family_display,
+               m.alert_missed_doses, m.receive_care_alerts, m.allow_family_display, m.allow_manage,
                u.name, u.email, p.ui_mode
         FROM family_members m JOIN users u ON u.id = m.user_id
         LEFT JOIN user_profile p ON p.user_id = m.user_id
@@ -72,6 +72,7 @@ def get_my_group() -> dict | None:
         'my_alerts': bool(me['alert_missed_doses']),
         'my_receive_alerts': bool(me['receive_care_alerts']),
         'my_allow_display': bool(me['allow_family_display']),
+        'my_allow_manage': bool(me['allow_manage']),
         'members': [{
             'user_id': m['user_id'], 'name': m['name'], 'email': m['email'],
             'role': m['role'], 'joined_at': m['joined_at'],
@@ -79,6 +80,8 @@ def get_my_group() -> dict | None:
             'alerts_on': bool(m['alert_missed_doses']),
             # Only surfaced so a caregiver can offer the toggle when allowed.
             'allows_display': bool(m['allow_family_display']),
+            # Whether this member lets fellow members manage their account.
+            'allows_manage': bool(m['allow_manage']),
             'ui_mode': m['ui_mode'] or 'standard',
         } for m in members],
     }
@@ -189,7 +192,7 @@ def update_consent(flags: dict) -> dict:
 
     sets, params = [], []
     for f in CONSENT_FIELDS + ['alert_missed_doses', 'receive_care_alerts',
-                               'allow_family_display']:
+                               'allow_family_display', 'allow_manage']:
         if f in flags:
             sets.append(f"{f}=?")
             params.append(1 if flags[f] else 0)
@@ -205,7 +208,36 @@ def update_consent(flags: dict) -> dict:
     out['alert_missed_doses'] = bool(me['alert_missed_doses'])
     out['receive_care_alerts'] = bool(me['receive_care_alerts'])
     out['allow_family_display'] = bool(me['allow_family_display'])
+    out['allow_manage'] = bool(me['allow_manage'])
     return out
+
+
+def can_manage(actor_uid: str, target_uid: str) -> bool:
+    """True if `actor_uid` may act on `target_uid`'s behalf: they are in the same
+    family group AND the target has opted in via allow_manage. This is the single
+    gate the acting-as override is checked against on EVERY request — never
+    trusted from the session — so revoking the grant takes effect immediately."""
+    if not actor_uid or not target_uid or actor_uid == target_uid:
+        return False
+    actor = _membership_of(actor_uid)
+    target = _membership_of(target_uid)
+    return bool(actor and target
+                and actor['group_id'] == target['group_id']
+                and target['allow_manage'])
+
+
+def managed_members() -> list:
+    """Fellow group members who let ME manage them (for the account switcher).
+    Returns [{user_id, name}], never including myself."""
+    me = my_membership()
+    if not me:
+        return []
+    rows = execute("""SELECT m.user_id, u.name FROM family_members m
+                      JOIN users u ON u.id = m.user_id
+                      WHERE m.group_id=? AND m.allow_manage=1 AND m.user_id<>?
+                      ORDER BY u.name""",
+                   (me['group_id'], me['user_id']), fetchall=True) or []
+    return [{'user_id': r['user_id'], 'name': r['name'] or r['user_id']} for r in rows]
 
 
 def set_member_ui_mode(target_uid: str, mode: str) -> dict:

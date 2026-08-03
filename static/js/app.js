@@ -237,6 +237,14 @@ const I18N = {
     '🚨 Alert my family if I miss a dose by 2+ hours': '🚨 यदि मैं 2+ घंटे खुराक चूकूँ तो परिवार को सूचित करें',
     '🔔 Notify me when a family member misses a dose': '🔔 जब परिवार का कोई सदस्य खुराक चूके तो मुझे सूचित करें',
     '👁️ Let my family turn Simple View on or off for me': '👁️ मेरे परिवार को मेरे लिए सरल दृश्य चालू/बंद करने दें',
+    '👥 Let a family member manage my medicines & health on their device': '👥 किसी परिवार के सदस्य को अपने डिवाइस पर मेरी दवाइयाँ और स्वास्थ्य प्रबंधित करने दें',
+    'They can view and update my health data — never my account, password, or family settings.': 'वे मेरा स्वास्थ्य डेटा देख और अपडेट कर सकते हैं — पर मेरा खाता, पासवर्ड या परिवार सेटिंग्स कभी नहीं।',
+    '👥 Manage on this device': '👥 इस डिवाइस पर प्रबंधित करें',
+    "Managing %1's medicines & health": '%1 की दवाइयाँ और स्वास्थ्य प्रबंधित कर रहे हैं',
+    'Return to my account': 'मेरे खाते पर लौटें',
+    'Now managing %1': 'अब %1 को प्रबंधित कर रहे हैं',
+    'Back to your account': 'आपके खाते पर वापस',
+    'Could not switch': 'बदल नहीं सके',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
     'Pending invites': 'लंबित निमंत्रण',
@@ -1176,6 +1184,10 @@ function showApp() {
   if (vBanner) vBanner.style.display =
     (_currentUser && _currentUser.verified === false) ? 'flex' : 'none';
 
+  // Restore the managing banner if a caregiver was acting-as a member (the
+  // acting-as state lives in the signed session, so it survives reloads).
+  try { refreshActingAs(); } catch (e) {}
+
   // Sync browser timezone to profile (silently, no await needed)
   fetch('/api/food/profile', {
     method: 'POST',
@@ -1987,6 +1999,61 @@ async function loadFamily() {
   if (group) loadAlertContacts();
 }
 
+// ── Caregiver acting-as (manage a family member on one device) ──────────────
+// Whose account am I currently driving. null = my own. Kept so the banner can
+// render immediately on any view without another round-trip.
+let _actingAs = null;
+
+// Reflect the server's acting-as state in the banner. Called on load and after
+// every switch. The grant is enforced server-side; this is presentation only.
+async function refreshActingAs() {
+  const banner = document.getElementById('managing-banner');
+  let state = null;
+  try {
+    const r = await fetch('/api/family/acting-as', {credentials: 'same-origin'});
+    if (r.ok) state = await r.json();
+  } catch (e) { /* offline — leave banner as-is */ return; }
+  _actingAs = state && state.acting_as ? state.acting_as : null;
+  if (!banner) return;
+  if (_actingAs) {
+    const who = (state.managed || []).find(m => m.user_id === _actingAs);
+    const name = who ? who.name : '';
+    const txt = document.getElementById('managing-banner-text');
+    if (txt) txt.textContent = tformat("Managing %1's medicines & health", name);
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// Start managing a family member. The server re-checks the grant; on success we
+// reload so every view now shows that member's data.
+async function startActAs(uid, name) {
+  const r = await fetch('/api/family/act-as', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    credentials: 'same-origin', body: JSON.stringify({user_id: uid}),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { showToast(d.error || 'Could not switch', 'error'); return; }
+  showToast(tformat('Now managing %1', d.name || name || ''));
+  await refreshActingAs();
+  // Re-render the active view so its data reloads under the new scope.
+  const v = _activeViewName();
+  if (v) switchView(v);
+}
+
+// Return to my own account.
+async function stopActAs() {
+  await fetch('/api/family/act-as/stop', {method: 'POST', credentials: 'same-origin'}).catch(() => {});
+  _actingAs = null;
+  const banner = document.getElementById('managing-banner');
+  if (banner) banner.style.display = 'none';
+  showToast(t('Back to your account'));
+  await refreshActingAs();
+  const v = _activeViewName();
+  if (v) switchView(v);
+}
+
 // ── Zero-install caregiver alert contacts (SMS/WhatsApp) ────────────────────
 async function loadAlertContacts() {
   const list = document.getElementById('alert-contacts-list');
@@ -2109,6 +2176,11 @@ function renderFamilyGroup(g) {
       const on = m.ui_mode === 'simple';
       actions.push(`<button class="btn-outline" style="font-size:12px" data-ev-click="setMemberDisplay('${m.user_id}','${on ? 'standard' : 'simple'}')">${on ? t('🔎 Simple View: on') : t('🔍 Turn on Simple View')}</button>`);
     }
+    // Manage-on-this-device — only when this member opted in (allows_manage).
+    if (!isMe && m.allows_manage) {
+      const nm = (m.name || m.email || '').replace(/'/g, "\\'");
+      actions.push(`<button class="btn-outline" style="font-size:12px;border-color:#3E7862;color:#3E7862" data-ev-click="startActAs('${m.user_id}','${nm}')">${t('👥 Manage on this device')}</button>`);
+    }
     if (isOwner && !isMe)
       actions.push(`<button class="btn-outline" style="font-size:12px;color:#DC2626" data-ev-click="removeFamilyMember('${m.user_id}')">${t('Remove')}</button>`);
     return `
@@ -2162,6 +2234,20 @@ function renderFamilyGroup(g) {
       <input type="checkbox" ${g.my_allow_display ? 'checked' : ''}
              data-ev-change="saveFamilyConsent('allow_family_display', this.checked)">
       ${t('👁️ Let my family turn Simple View on or off for me')}
+    </label>`;
+
+  // Opt-in so a family member can manage my medicines & health on their own
+  // device (for someone who can't run the app themselves). They can view and
+  // edit my health data while managing — but never my account, password, or
+  // family settings. I can switch this off anytime.
+  const allowManageToggle = `
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;
+                  margin-top:10px;padding:10px 12px;border:1px solid var(--gray-100);border-radius:10px">
+      <input type="checkbox" ${g.my_allow_manage ? 'checked' : ''} style="margin-top:2px"
+             data-ev-change="saveFamilyConsent('allow_manage', this.checked)">
+      <span>${t('👥 Let a family member manage my medicines & health on their device')}
+        <span style="display:block;font-size:11px;color:var(--gray-400);margin-top:2px">${t('They can view and update my health data — never my account, password, or family settings.')}</span>
+      </span>
     </label>`;
 
   const inviteSection = isOwner ? `
@@ -2220,6 +2306,7 @@ ${t("Add a phone number and they'll get an SMS or WhatsApp if one of my doses is
       ${alertToggle}
       ${receiveAlertsToggle}
       ${allowDisplayToggle}
+      ${allowManageToggle}
     </div>
     ${inviteSection}
     ${alertContactsSection}

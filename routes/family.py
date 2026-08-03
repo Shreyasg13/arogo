@@ -35,6 +35,49 @@ def get_group():
     return jsonify({'group': family.get_my_group()})
 
 
+# ── Caregiver acting-as (manage a family member on one device) ────────────────
+# See auth._apply_acting_as for the security model. These endpoints live under
+# /api/family, so they always run as the real caregiver (never as the managed
+# member), and the grant is verified live on every switch.
+
+@bp.route('/api/family/acting-as')
+@require_auth
+def acting_as_state():
+    """Report who (if anyone) I'm currently managing, plus who I *can* manage —
+    the client uses this on load to render the managing banner + switcher."""
+    return jsonify({
+        'acting_as': getattr(g, 'acting_as', None),
+        'managed': family.managed_members(),
+    })
+
+
+@bp.route('/api/family/act-as', methods=['POST'])
+@require_auth
+def act_as():
+    """Start managing a family member. Only allowed if they granted me manage
+    rights (re-checked here and again on every subsequent request)."""
+    from flask import session
+    target = (request.json or {}).get('user_id')
+    if not target:
+        return jsonify({'error': 'user_id required'}), 400
+    # g.real_user_id is the caregiver; /api/family is never overridden.
+    if not family.can_manage(g.real_user_id, target):
+        return jsonify({'error': "You don't have permission to manage this member"}), 403
+    session['acting_as'] = target
+    name = next((m['name'] for m in family.managed_members()
+                 if m['user_id'] == target), target)
+    return jsonify({'success': True, 'acting_as': target, 'name': name})
+
+
+@bp.route('/api/family/act-as/stop', methods=['POST'])
+@require_auth
+def stop_act_as():
+    """Return to managing my own account."""
+    from flask import session
+    session.pop('acting_as', None)
+    return jsonify({'success': True})
+
+
 @bp.route('/api/sos', methods=['POST'])
 @require_auth
 def sos():

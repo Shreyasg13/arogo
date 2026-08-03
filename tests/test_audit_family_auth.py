@@ -232,7 +232,7 @@ class TestFamilyConsentEdges:
         assert keys == {"share_sleep", "share_vitals", "share_medicines",
                         "share_food", "share_symptoms", "share_emergency",
                         "alert_missed_doses", "receive_care_alerts",
-                        "allow_family_display"}
+                        "allow_family_display", "allow_manage"}
 
     def test_alert_without_medicine_sharing_rejected(self, beth, group):
         # Beth currently shares nothing; enabling alerts alone must fail.
