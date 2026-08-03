@@ -507,6 +507,73 @@ def _slot_label(hhmm: str) -> str:
     return 'Night'
 
 
+def get_adherence_nudge(recent_days: int = 7, min_recent: int = 3) -> dict:
+    """A single timely, per-slot adherence nudge from recent dose logs, or
+    {'kind': None}.
+
+    Complements get_adherence_breakdown (a 30-day 'which do I miss most'
+    aggregate) by looking at just the last `recent_days` days — what's slipping
+    NOW — and naming the specific dose to act on. Surfaces the most useful of:
+      - 'slipping': a slot that was reliable the prior week (>=80% taken) and has
+        fallen this week (<=50%). A change worth catching early.
+      - 'recent_misses': a slot missed on most of its recent scheduled days.
+    Requires >= min_recent scheduled occurrences in the window (so it never
+    judges on thin data) and stays silent when recent adherence is fine. Every
+    count comes from dose_logs — nothing is invented.
+    """
+    from datetime import date, timedelta
+    uid = current_user_id()
+    meds = [m for m in list_medicines()
+            if m['active'] and m.get('frequency') != 'as_needed' and m.get('times')]
+    anchor = date.fromisoformat(user_today())
+    recent = [(anchor - timedelta(days=i)).isoformat() for i in range(recent_days)]
+    prior  = [(anchor - timedelta(days=i)).isoformat() for i in range(recent_days, recent_days * 2)]
+
+    def tally(m, t, daykeys):
+        sched = taken = 0
+        for d in daykeys:
+            if not _scheduled_on_day(m, d):
+                continue
+            sched += 1
+            log = execute("""SELECT taken FROM dose_logs
+                             WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?""",
+                          (m['id'], d, t, uid), fetchone=True)
+            if log and log['taken']:
+                taken += 1
+        return sched, taken
+
+    slipping = None
+    misses = None
+    for m in meds:
+        for t in m['times']:
+            rs, rt = tally(m, t, recent)
+            if rs < min_recent:
+                continue
+            rmissed = rs - rt
+            rpct = rt / rs
+            # 'slipping': reliable last week, not this week — the biggest drop wins.
+            ps, pt = tally(m, t, prior)
+            if ps >= min_recent and (pt / ps) >= 0.8 and rpct <= 0.5:
+                drop = round((pt / ps - rpct) * 100)
+                if not slipping or drop > slipping['_drop']:
+                    slipping = {'kind': 'slipping', 'med_id': m['id'], 'med_name': m['name'],
+                                'icon': m.get('icon') or '💊', 'time': t, 'label': _slot_label(t),
+                                'missed': rmissed, 'scheduled': rs, 'recent_pct': round(rpct * 100),
+                                'prev_pct': round(pt / ps * 100), 'days': recent_days, '_drop': drop}
+            # 'recent_misses': missed at least half of its recent occurrences (and >=2).
+            if rmissed >= 2 and rmissed * 2 >= rs and not (slipping and slipping.get('med_id') == m['id'] and slipping.get('time') == t):
+                if not misses or rmissed > misses['missed']:
+                    misses = {'kind': 'recent_misses', 'med_id': m['id'], 'med_name': m['name'],
+                              'icon': m.get('icon') or '💊', 'time': t, 'label': _slot_label(t),
+                              'missed': rmissed, 'scheduled': rs, 'days': recent_days}
+
+    nudge = slipping or misses
+    if nudge:
+        nudge.pop('_drop', None)
+        return nudge
+    return {'kind': None}
+
+
 def get_medication_card() -> dict:
     """The data behind the printable medication card — a fridge/wallet reference
     of what to take when, plus emergency contacts. Read-only aggregation of the

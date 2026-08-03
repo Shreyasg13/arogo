@@ -167,6 +167,12 @@ const I18N = {
     'Mon': 'सोम', 'Tue': 'मंगल', 'Wed': 'बुध', 'Thu': 'गुरु', 'Fri': 'शुक्र', 'Sat': 'शनि', 'Sun': 'रवि',
     'Repeat': 'दोहराव', 'Every day': 'हर दिन', 'Specific days': 'विशेष दिन', 'Every N days': 'हर N दिन',
     'Every': 'हर', 'days': 'दिन', 'every %1 days': 'हर %1 दिन',
+    'Morning': 'सुबह', 'Afternoon': 'दोपहर', 'Evening': 'शाम', 'Night': 'रात', 'Anytime': 'कभी भी',
+    'Your %1 dose is slipping': 'आपकी %1 खुराक फिसल रही है',
+    '%1 — %2% this week, down from %3%': '%1 — इस हफ़्ते %2%, पहले %3% से कम',
+    'Your %1 dose is easy to miss lately': 'आजकल आपकी %1 खुराक अक्सर छूट रही है',
+    '%1 — missed %2 of the last %3': '%1 — पिछली %3 में से %2 छूटीं',
+    'Try moving its reminder a little earlier, or a few minutes before the dose.': 'इसका रिमाइंडर थोड़ा पहले करें, या खुराक से कुछ मिनट पहले।',
     '%1 pills': '%1 गोलियाँ', '%1d left': '%1 दिन बचे', 'Restock': 'रीस्टॉक',
     '+ Track pill count': '+ गोली गिनती ट्रैक करें', '🚚 Refill ordered': '🚚 रिफिल ऑर्डर हुआ',
     'Mark picked up': 'उठा लिया चिह्नित करें', '🔄 Order refill': '🔄 रिफिल ऑर्डर करें',
@@ -3721,10 +3727,37 @@ async function loadMissedDoses() {
   el.innerHTML = d ? renderMissedDoses(d) : '';
 }
 
+// A timely, per-slot adherence nudge (last 7 days) — what's slipping NOW, above
+// the 30-day pattern. Localized from structured fields; '' when nothing to say.
+function renderAdherenceNudge(n) {
+  if (!n || !n.kind) return '';
+  const esc = escHtml;
+  const label = t(n.label || 'Anytime');
+  const who = `${esc(n.icon || '💊')} ${esc(n.med_name)}`;
+  let lead, detail;
+  if (n.kind === 'slipping') {
+    lead = tformat('Your %1 dose is slipping', label);
+    detail = tformat('%1 — %2% this week, down from %3%', who, n.recent_pct, n.prev_pct);
+  } else {
+    lead = tformat('Your %1 dose is easy to miss lately', label);
+    detail = tformat('%1 — missed %2 of the last %3', who, n.missed, n.scheduled);
+  }
+  return `<div class="panel adh-nudge">
+    <div class="adh-nudge-icon">📉</div>
+    <div class="adh-nudge-body">
+      <div class="adh-nudge-lead">${esc(lead)}</div>
+      <div class="adh-nudge-detail">${detail}</div>
+      <div class="adh-nudge-tip">${t('Try moving its reminder a little earlier, or a few minutes before the dose.')}</div>
+    </div>
+  </div>`;
+}
+
 function renderMissedDoses(d) {
   const esc = escHtml;
-  // Nothing worth showing until there's a slot with real misses.
-  if (!d.has_data || !d.worst) { return ''; }
+  const nudge = renderAdherenceNudge(d.nudge);
+  // Nothing worth showing until there's a slot with real misses — but a recent
+  // nudge can still stand on its own.
+  if (!d.has_data || !d.worst) { return nudge; }
   const barColor = p => p >= 90 ? 'var(--teal-500,#5A9E70)' : p >= 70 ? '#F59E0B' : '#EF4444';
   const t12 = _mc12h;
 
@@ -3742,7 +3775,7 @@ function renderMissedDoses(d) {
       <div class="miss-stat">${s.pct}%<span class="miss-sub">${s.taken}/${s.total}</span></div>
     </div>`).join('');
 
-  return `<div class="panel">
+  return nudge + `<div class="panel">
     <div class="panel-header">
       <h2 class="panel-title">🎯 Doses you miss most</h2>
       <span class="panel-badge">Last ${d.days} days</span>

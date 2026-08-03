@@ -165,9 +165,13 @@ def medicine_history():
 @bp.route('/api/medicines/adherence-breakdown')
 @require_auth
 def adherence_breakdown():
-    """Per-slot adherence, worst first — 'which doses do I miss most?'."""
+    """Per-slot adherence, worst first — 'which doses do I miss most?'. Also
+    carries a recent-trend nudge (last 7 days) for the same panel to surface."""
+    from db.medicines import get_adherence_nudge
     days = to_int(request.args.get('days', 30), 30, lo=1, hi=365)
-    return jsonify(get_adherence_breakdown(days))
+    out = get_adherence_breakdown(days)
+    out['nudge'] = get_adherence_nudge()
+    return jsonify(out)
 
 @bp.route('/api/medicines/planner')
 @require_auth
