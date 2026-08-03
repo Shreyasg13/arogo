@@ -5,9 +5,12 @@
  *   - navigations: network first, cached shell as offline fallback
  *   - static assets (css/js/icons/fonts): stale-while-revalidate
  *
- * Bump CACHE_VERSION when the shell must be refreshed immediately.
+ * CACHE_VERSION is stamped with a content hash of the shell files by the
+ * /sw.js route (see assets.py) — it changes automatically on every deploy, so
+ * there is nothing to bump by hand. The literal below is only a fallback for
+ * the (unused) case of serving this file raw.
  */
-const CACHE_VERSION = 'arogo-v4';   // v4: dose + water + mood quick-log from notifications
+const CACHE_VERSION = 'arogo-dev';   // replaced per-deploy with 'arogo-<hash>'
 const SHELL = [
   '/',
   '/static/css/style.css',

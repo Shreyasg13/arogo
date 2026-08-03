@@ -174,11 +174,51 @@ def create_app(config=Config):
     # authentication AND an ownership check — medical files are private.
     # Never add an unauthenticated file route here.
 
+    # ── Service worker + shell assets (content-versioned, minified in prod) ────
+    # Serve the SW from the root path so its scope covers '/'. The CACHE_VERSION
+    # baked into it is a content hash of the shell files (see assets.py), so the
+    # SW changes on every deploy and the browser drops the stale cache — no more
+    # hand-bumping a version string and forgetting to. In production the same
+    # hash powers minified app.js/style.css served from their usual paths; in
+    # debug we leave the raw files to Flask's static handler so edits are live
+    # and the source stays debuggable.
+    import re as _re
+    from flask import request as _req
+    import assets as _assets
+
+    _MINIFY = not app.config.get('DEBUG')
+
     @app.route('/sw.js')
     def service_worker():
-        # Served from the root path so the service worker scope covers '/'
-        return send_from_directory(app.static_folder, 'sw.js',
-                                   mimetype='application/javascript')
+        b = _assets.build_bundle(app.static_folder, _MINIFY)
+        js = _re.sub(r"const CACHE_VERSION = '[^']*';",
+                     "const CACHE_VERSION = 'arogo-%s';" % b['version'],
+                     b['sw_src'], count=1)
+        resp = app.response_class(js, mimetype='application/javascript')
+        # The SW file itself must always be revalidated, or a cached sw.js would
+        # hide the very update it exists to deliver.
+        resp.headers['Cache-Control'] = 'no-cache'
+        resp.headers['Service-Worker-Allowed'] = '/'
+        return resp
+
+    if _MINIFY:
+        def _shell_asset(body, mimetype, version):
+            resp = app.response_class(body, mimetype=mimetype)
+            resp.set_etag(version)              # 304 on repeat loads when unchanged
+            resp.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
+            return resp.make_conditional(_req)
+
+        # These string routes are more specific than Flask's /static/<path:…>,
+        # so they win — the SW shell + index.html keep referencing the same URLs.
+        @app.route('/static/js/app.js')
+        def _shell_app_js():
+            b = _assets.build_bundle(app.static_folder, _MINIFY)
+            return _shell_asset(b['app_js'], 'application/javascript', b['version'])
+
+        @app.route('/static/css/style.css')
+        def _shell_style_css():
+            b = _assets.build_bundle(app.static_folder, _MINIFY)
+            return _shell_asset(b['css'], 'text/css', b['version'])
 
     # ── Liveness / scheduler health ───────────────────────────────────────────
     # The reminder + caregiver-escalation jobs run in a SEPARATE worker process

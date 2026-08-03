@@ -48,6 +48,12 @@ Pillow
 # (default backend is SQLite, no extra install needed)
 psycopg2-binary
 
+# Optional — minify app.js/style.css in production (assets.py). Pure-Python,
+# comment/whitespace only (no identifier renaming), so the CSP data-ev dispatch
+# and translation strings are preserved. Without them the source is served as-is.
+rjsmin
+rcssmin
+
 # Dev / tests
 pytest>=8.4.2
 pytest-xdist>=3.5.0   # parallel test runs (-n auto --dist loadfile)
