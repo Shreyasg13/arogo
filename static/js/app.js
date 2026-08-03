@@ -245,6 +245,8 @@ const I18N = {
     'Now managing %1': 'अब %1 को प्रबंधित कर रहे हैं',
     'Back to your account': 'आपके खाते पर वापस',
     'Could not switch': 'बदल नहीं सके',
+    'Only you can see this. Never shared with family — not even someone managing your account.': 'केवल आप ही इसे देख सकते हैं। परिवार के साथ कभी साझा नहीं — आपका खाता प्रबंधित करने वाले के साथ भी नहीं।',
+    '🔒 Only you can see your journal. Never shared with family — not even someone managing your account.': '🔒 केवल आप ही अपनी डायरी देख सकते हैं। परिवार के साथ कभी साझा नहीं — आपका खाता प्रबंधित करने वाले के साथ भी नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
     'Pending invites': 'लंबित निमंत्रण',
@@ -10881,6 +10883,7 @@ function renderCycle(d) {
   return `<div class="panel" style="padding:18px 20px">
     <div class="panel-header"><h2 class="panel-title">🌸 ${t('Cycle')}</h2>
       <span class="panel-badge">${t('private')}</span></div>
+    <div class="privacy-note">🔒 ${t('Only you can see this. Never shared with family — not even someone managing your account.')}</div>
     ${status}
     ${stats}
     <div class="cycle-actions">

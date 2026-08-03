@@ -96,6 +96,10 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .panel-link { font-size:12.5px; color:var(--teal-600); text-decoration:none; }
 .panel-link:hover { text-decoration:underline; }
 .panel-badge { font-size:10.5px; padding:3px 9px; border-radius:99px; background:var(--teal-50); color:var(--teal-700); font-weight:500; }
+/* Trust line on the private "diary" tabs (journal/mood, cycle) — reassures a
+   young user their innermost logs stay theirs, even from a managing caregiver. */
+.privacy-note { font-size:12px; line-height:1.5; color:var(--teal-700); background:var(--teal-50);
+  border:1px solid var(--teal-100,#d3e4dc); border-radius:9px; padding:8px 12px; margin:0 0 14px; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
 /* ── DASHBOARD ── */

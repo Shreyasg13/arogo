@@ -295,6 +295,13 @@ def require_auth(f):
         g.user_id = user_id
         g.acting_as = None
         _apply_acting_as(user_id)
+        # Even while legitimately managing a member, a caregiver must not be able
+        # to read their private "diary" categories (journal, mood, cycle). Managing
+        # someone's medicines is not permission to read their innermost logs.
+        if g.acting_as and _is_private_while_acting(request.path or ''):
+            return jsonify({'error': 'This is private to the person you\'re managing '
+                                     'and can\'t be opened while managing their account.',
+                            'code': 'PRIVATE_WHILE_ACTING'}), 403
         return f(*args, **kwargs)
     return wrapper
 
@@ -316,6 +323,17 @@ def require_auth(f):
 
 # Prefixes that must always operate on the caregiver's real account.
 _ACTING_AS_EXCLUDED = ('/auth', '/api/account', '/api/family')
+
+# Private "diary" categories — journal + mood (both the `thoughts` table) and
+# menstrual cycle. A caregiver managing a member's meds/health has no business
+# reading these, so they are blocked outright while acting-as (403), rather than
+# merely scoped. This is what lets a young user trust the private tab even if a
+# parent set up their phone and holds a manage grant.
+_ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood')
+
+
+def _is_private_while_acting(path):
+    return any(path.startswith(p) for p in _ACTING_AS_PRIVATE)
 
 
 def _apply_acting_as(real_user_id):

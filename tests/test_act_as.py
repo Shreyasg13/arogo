@@ -172,3 +172,51 @@ class TestActAsBoundary:
         assert carol.post("/api/family/act-as/stop").status_code == 200
         state = carol.get("/api/family/acting-as").get_json()
         assert state["acting_as"] is None
+
+
+class TestPrivateCategoriesWalledFromManaging:
+    """Managing a member's meds/health must NOT expose their private 'diary'
+    categories — journal, mood, and cycle. This is what makes the private tab
+    trustworthy for a young user whose parent set up (and can manage) their phone."""
+
+    def _start(self, carol, dave):
+        # Ensure the grant is live, then switch into managing Dave.
+        dave.post("/api/family/consent", json={"allow_manage": True})
+        uid = _uid(carol, "am-dave@medeasy.test")
+        carol.post("/api/family/act-as", json={"user_id": uid})
+        return uid
+
+    def test_journal_blocked_while_managing(self, carol, dave, group):
+        self._start(carol, dave)
+        r = carol.get("/api/thoughts")
+        assert r.status_code == 403
+        assert r.get_json().get("code") == "PRIVATE_WHILE_ACTING"
+        carol.post("/api/family/act-as/stop")
+
+    def test_cycle_blocked_while_managing(self, carol, dave, group):
+        self._start(carol, dave)
+        assert carol.get("/api/cycle").status_code == 403
+        carol.post("/api/family/act-as/stop")
+
+    def test_mood_correlation_blocked_while_managing(self, carol, dave, group):
+        self._start(carol, dave)
+        assert carol.get("/api/mood-sleep/correlation").status_code == 403
+        carol.post("/api/family/act-as/stop")
+
+    def test_member_still_sees_own_private_data(self, carol, dave, group):
+        # The wall is only for the caregiver-while-managing; Dave's own access is fine.
+        assert dave.get("/api/thoughts").status_code == 200
+        assert dave.get("/api/cycle").status_code == 200
+
+    def test_caregiver_sees_own_journal_when_not_managing(self, carol, dave, group):
+        # Not managing → Carol's own private tabs work normally.
+        carol.post("/api/family/act-as/stop")
+        assert carol.get("/api/thoughts").status_code == 200
+
+    def test_meds_still_manageable_while_journal_walled(self, carol, dave, group):
+        # The wall is surgical: meds/health management still works, only the
+        # diary categories are off-limits.
+        self._start(carol, dave)
+        assert carol.get("/api/medicines").status_code == 200
+        assert carol.get("/api/thoughts").status_code == 403
+        carol.post("/api/family/act-as/stop")
