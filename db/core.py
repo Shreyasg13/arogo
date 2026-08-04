@@ -348,6 +348,7 @@ CREATE TABLE IF NOT EXISTS custom_foods (
 );
 CREATE TABLE IF NOT EXISTS thoughts (
     id TEXT PRIMARY KEY, content TEXT NOT NULL, mood TEXT DEFAULT 'neutral',
+    triggers TEXT DEFAULT NULL,
     date_key TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS todos (
@@ -665,6 +666,15 @@ def migrate_add_allow_manage():
         pass  # already exists
 
 
+def migrate_add_thought_triggers():
+    """Add triggers to thoughts if missing — an optional JSON list of what was
+    driving a mood (exam, work, sleep…), so a young user can see their patterns."""
+    try:
+        execute("ALTER TABLE thoughts ADD COLUMN triggers TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_refill_fields():
     """Add refill-tracking + purpose columns to medicines if missing."""
     for col, ddl in (
@@ -950,6 +960,7 @@ def init_db():
     migrate_add_interval_days()
     migrate_add_family_display()
     migrate_add_allow_manage()
+    migrate_add_thought_triggers()
     migrate_add_refill_fields()
     migrate_add_dose_timing()
     migrate_add_quiet_hours()

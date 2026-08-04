@@ -491,8 +491,8 @@ class TestIsolation:
         alice = _user(app, "iso-th-a@medeasy.test")
         bob = _user(app, "iso-th-b@medeasy.test")
         alice.post("/api/thoughts", json={"content": "secret", "date_key": DAY})
-        assert len(alice.get(f"/api/thoughts/{DAY}").get_json()) == 1
-        assert len(bob.get(f"/api/thoughts/{DAY}").get_json()) == 0
+        assert len(alice.get(f"/api/thoughts/{DAY}").get_json()["thoughts"]) == 1
+        assert len(bob.get(f"/api/thoughts/{DAY}").get_json()["thoughts"]) == 0
 
     def test_todos_private(self, app):
         alice = _user(app, "iso-td-a@medeasy.test")

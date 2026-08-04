@@ -1563,6 +1563,22 @@
           <span id="thoughts-used">0</span> / 10 today
         </div>
       </div>
+      <!-- What's driving the feeling — optional tags for spotting patterns. -->
+      <div class="composer-triggers">
+        <span class="composer-label" data-i18n="What's driving it? (optional)">What's driving it? (optional)</span>
+        <div class="trigger-chips" id="trigger-chips">
+          <button type="button" class="trigger-chip" data-trigger="study"        data-ev-click="toggleTrigger('study')">📚 <span data-i18n="Study">Study</span></button>
+          <button type="button" class="trigger-chip" data-trigger="work"         data-ev-click="toggleTrigger('work')">💼 <span data-i18n="Work">Work</span></button>
+          <button type="button" class="trigger-chip" data-trigger="sleep"        data-ev-click="toggleTrigger('sleep')">😴 <span data-i18n="Sleep">Sleep</span></button>
+          <button type="button" class="trigger-chip" data-trigger="family"       data-ev-click="toggleTrigger('family')">👪 <span data-i18n="Family">Family</span></button>
+          <button type="button" class="trigger-chip" data-trigger="friends"      data-ev-click="toggleTrigger('friends')">🧑‍🤝‍🧑 <span data-i18n="Friends">Friends</span></button>
+          <button type="button" class="trigger-chip" data-trigger="money"        data-ev-click="toggleTrigger('money')">💰 <span data-i18n="Money">Money</span></button>
+          <button type="button" class="trigger-chip" data-trigger="health"       data-ev-click="toggleTrigger('health')">🩺 <span data-i18n="Health">Health</span></button>
+          <button type="button" class="trigger-chip" data-trigger="relationship" data-ev-click="toggleTrigger('relationship')">💕 <span data-i18n="Relationship">Relationship</span></button>
+          <button type="button" class="trigger-chip" data-trigger="future"       data-ev-click="toggleTrigger('future')">🔮 <span data-i18n="Future">Future</span></button>
+          <button type="button" class="trigger-chip" data-trigger="self"         data-ev-click="toggleTrigger('self')">🪞 <span data-i18n="Self">Self</span></button>
+        </div>
+      </div>
       <div class="composer-body">
         <textarea id="thought-textarea" class="thought-textarea"
           placeholder="What's on your mind right now? …"
@@ -1581,8 +1597,13 @@
     <div class="thoughts-feed" id="thoughts-feed">
       <div class="thoughts-feed-header">
         <h2 class="thoughts-feed-title" id="thoughts-feed-title">Today's thoughts</h2>
-        <div class="thoughts-week-moods" id="thoughts-week-moods"></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="btn-outline" style="font-size:12px" data-ev-click="openBreathing()">🫧 <span data-i18n="Breathe">Breathe</span></button>
+          <div class="thoughts-week-moods" id="thoughts-week-moods"></div>
+        </div>
       </div>
+      <!-- Honest, non-causal read of which triggers show up on low-mood days -->
+      <div id="trigger-insight"></div>
       <div id="thoughts-list" class="thoughts-list">
         <div class="thoughts-empty">
           <div class="thoughts-empty-icon">💭</div>

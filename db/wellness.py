@@ -9,18 +9,47 @@ from .core import (execute, executemany, jdump, jload, now_iso, today_iso, user_
 
 MAX_THOUGHTS_PER_DAY = 10
 
+# What was driving a mood. A fixed vocabulary keeps the data analysable (so we
+# can surface "exam weeks hit your mood hardest") and the UI tidy. Youth-first,
+# India context. Extend deliberately — old rows just won't carry new tags.
+MOOD_TRIGGERS = ['study', 'work', 'sleep', 'family', 'friends', 'money',
+                 'health', 'relationship', 'future', 'self']
+
+
+def clean_triggers(raw) -> list:
+    """Coerce arbitrary input to a de-duped subset of MOOD_TRIGGERS (order kept)."""
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        raw = [raw]
+    seen, out = set(), []
+    for t in raw:
+        k = str(t or '').strip().lower()
+        if k in MOOD_TRIGGERS and k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
+
+
+def _row(r):
+    """Row → dict with triggers decoded from JSON to a list."""
+    d = dict(r)
+    d['triggers'] = jload(d['triggers']) if d.get('triggers') else []
+    return d
+
+
 def get_thoughts(date_key: str) -> list:
     rows = execute(
         "SELECT * FROM thoughts WHERE date_key=? AND user_id=? ORDER BY created_at DESC",
         (date_key, current_user_id()), fetchall=True)
-    return [dict(r) for r in rows]
+    return [_row(r) for r in rows]
 
 def count_thoughts_today(date_key: str) -> int:
     r = execute("SELECT COUNT(*) as n FROM thoughts WHERE date_key=? AND user_id=?",
                 (date_key, current_user_id()), fetchone=True)
     return r['n'] if r else 0
 
-def save_thought(content: str, mood: str, date_key: str) -> dict:
+def save_thought(content: str, mood: str, date_key: str, triggers=None) -> dict:
     content = str(content or '').strip()
     if not content:
         raise ValueError("Thought content is required")
@@ -30,17 +59,45 @@ def save_thought(content: str, mood: str, date_key: str) -> dict:
         raise ValueError(f"Max {MAX_THOUGHTS_PER_DAY} thoughts per day reached")
     tid = new_id()
     now = now_iso()
-    execute("""INSERT INTO thoughts (id,content,mood,date_key,created_at,updated_at,user_id)
-               VALUES (?,?,?,?,?,?,?)""",
-            (tid, content, str(mood or 'neutral'), date_key, now, now, current_user_id()), commit=True)
-    return dict(execute("SELECT * FROM thoughts WHERE id=?", (tid,), fetchone=True))
+    trig = clean_triggers(triggers)
+    execute("""INSERT INTO thoughts (id,content,mood,triggers,date_key,created_at,updated_at,user_id)
+               VALUES (?,?,?,?,?,?,?,?)""",
+            (tid, content, str(mood or 'neutral'), jdump(trig) if trig else None,
+             date_key, now, now, current_user_id()), commit=True)
+    return _row(execute("SELECT * FROM thoughts WHERE id=?", (tid,), fetchone=True))
 
-def update_thought(tid: str, content: str, mood: str) -> dict:
-    execute("UPDATE thoughts SET content=?,mood=?,updated_at=? WHERE id=? AND user_id=?",
-            (str(content or '').strip(), str(mood or 'neutral'), now_iso(), tid, current_user_id()), commit=True)
+def update_thought(tid: str, content: str, mood: str, triggers=None) -> dict:
+    trig = clean_triggers(triggers)
+    execute("UPDATE thoughts SET content=?,mood=?,triggers=?,updated_at=? WHERE id=? AND user_id=?",
+            (str(content or '').strip(), str(mood or 'neutral'), jdump(trig) if trig else None,
+             now_iso(), tid, current_user_id()), commit=True)
     r = execute("SELECT * FROM thoughts WHERE id=? AND user_id=?",
                 (tid, current_user_id()), fetchone=True)
-    return dict(r) if r else {}
+    return _row(r) if r else {}
+
+
+# Moods we treat as "low" for the pattern read. mood values come from the
+# composer's emoji scale (see moodEmoji in app.js).
+_LOW_MOODS = {'awful', 'sad', 'anxious', 'angry', 'stressed', 'down', 'terrible'}
+
+
+def get_trigger_patterns(days: int = 30, min_count: int = 3) -> dict:
+    """Honest read of which triggers show up most on low-mood entries. Returns
+    {'has_data': bool, 'window_days', 'triggers': [{key, low, total}]} — only
+    triggers seen at least `min_count` times, most-low-first. Never invents a
+    causal claim; the UI frames it as 'shows up with' not 'causes'."""
+    rows = get_thoughts_range(days)
+    tally = {}
+    for r in rows:
+        low = str(r.get('mood') or '').lower() in _LOW_MOODS
+        for k in (r.get('triggers') or []):
+            t = tally.setdefault(k, {'key': k, 'low': 0, 'total': 0})
+            t['total'] += 1
+            if low:
+                t['low'] += 1
+    items = [t for t in tally.values() if t['total'] >= min_count]
+    items.sort(key=lambda t: (t['low'], t['total']), reverse=True)
+    return {'has_data': bool(items), 'window_days': days, 'triggers': items}
 
 def delete_thought(tid: str):
     execute("DELETE FROM thoughts WHERE id=? AND user_id=?",
@@ -52,7 +109,7 @@ def get_thoughts_range(days: int = 7) -> list:
     rows = execute(
         "SELECT * FROM thoughts WHERE date_key >= ? AND user_id=? ORDER BY created_at DESC",
         (start, current_user_id()), fetchall=True)
-    return [dict(r) for r in rows]
+    return [_row(r) for r in rows]
 
 # ── Todos ─────────────────────────────────────────────────────────────────────
 

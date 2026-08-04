@@ -124,7 +124,7 @@ class TestWellnessIsolation:
     def test_thoughts_are_private(self, alice, bob):
         alice.post("/api/thoughts", json={"content": "alice private thought", "mood": "happy",
                                           "date_key": TODAY})
-        bob_thoughts = bob.get(f"/api/thoughts/{TODAY}").get_json()
+        bob_thoughts = bob.get(f"/api/thoughts/{TODAY}").get_json()["thoughts"]
         assert all("alice private" not in t.get("content", "") for t in bob_thoughts)
 
     def test_todos_are_private_and_protected(self, alice, bob):

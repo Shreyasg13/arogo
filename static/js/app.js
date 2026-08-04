@@ -247,6 +247,22 @@ const I18N = {
     'Could not switch': 'बदल नहीं सके',
     'Only you can see this. Never shared with family — not even someone managing your account.': 'केवल आप ही इसे देख सकते हैं। परिवार के साथ कभी साझा नहीं — आपका खाता प्रबंधित करने वाले के साथ भी नहीं।',
     '🔒 Only you can see your journal. Never shared with family — not even someone managing your account.': '🔒 केवल आप ही अपनी डायरी देख सकते हैं। परिवार के साथ कभी साझा नहीं — आपका खाता प्रबंधित करने वाले के साथ भी नहीं।',
+    "What's driving it? (optional)": 'इसके पीछे क्या है? (वैकल्पिक)',
+    'Study': 'पढ़ाई', 'Work': 'काम', 'Sleep': 'नींद', 'Family': 'परिवार',
+    'Friends': 'दोस्त', 'Money': 'पैसा', 'Health': 'सेहत',
+    'Relationship': 'रिश्ता', 'Future': 'भविष्य', 'Self': 'खुद',
+    'Breathe': 'साँस लें', 'Done': 'हो गया',
+    'Follow the circle. In through the nose, out through the mouth.': 'घेरे का अनुसरण करें। नाक से साँस लें, मुँह से छोड़ें।',
+    'Breathe in…': 'साँस लें…', 'Hold…': 'रोकें…', 'Breathe out…': 'साँस छोड़ें…',
+    'Hold': 'रोकें', 'Breathe in': 'साँस लें', 'Breathe out': 'साँस छोड़ें',
+    "What's on your mind right now? …": 'अभी आपके मन में क्या है? …',
+    "What's one thing that went okay today?": 'आज एक चीज़ जो ठीक रही?',
+    "What's taking up the most space in your head?": 'आपके दिमाग़ में सबसे ज़्यादा क्या चल रहा है?',
+    'If a friend felt like you do now, what would you tell them?': 'अगर कोई दोस्त अभी आपकी तरह महसूस करता, तो आप उसे क्या कहते?',
+    "What's one small thing you're looking forward to?": 'एक छोटी चीज़ जिसका आपको इंतज़ार है?',
+    'What drained you today — and what gave a little back?': 'आज किस चीज़ ने थकाया — और किसने थोड़ी ऊर्जा दी?',
+    "Name the feeling. You don't have to fix it.": 'भावना को नाम दें। उसे ठीक करना ज़रूरी नहीं।',
+    'Over the last %1 days, tough moods showed up most alongside %2. Just a pattern — only you know what it means.': 'पिछले %1 दिनों में, कठिन भावनाएँ सबसे ज़्यादा %2 के साथ दिखीं। बस एक पैटर्न — इसका मतलब केवल आप जानते हैं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
     'Pending invites': 'लंबित निमंत्रण',
@@ -7184,6 +7200,18 @@ const MOOD_COLOR = {
 function moodEmoji(mood) { return MOOD_EMOJI[mood] || '😐'; }
 function moodColor(mood) { return MOOD_COLOR[mood] || '#4F8D74'; }
 
+// Mood-trigger tags — must mirror MOOD_TRIGGERS in db/wellness.py.
+const TRIGGER_META = {
+  study:'📚 Study', work:'💼 Work', sleep:'😴 Sleep', family:'👪 Family',
+  friends:'🧑‍🤝‍🧑 Friends', money:'💰 Money', health:'🩺 Health',
+  relationship:'💕 Relationship', future:'🔮 Future', self:'🪞 Self',
+};
+function triggerBadge(key) {
+  const meta = TRIGGER_META[key]; if (!meta) return '';
+  const [emoji, ...rest] = meta.split(' ');
+  return `<span class="trigger-badge">${emoji} ${t(rest.join(' '))}</span>`;
+}
+
 let currentThoughtsDate = localToday();
 let selectedMood = 'neutral';
 let editingThoughtId = null;
@@ -7223,8 +7251,72 @@ async function loadThoughts(dateStr) {
   // Render thoughts
   renderThoughtsList(r.thoughts);
 
-  // Week mood dots
+  // A gentle rotating prompt when the box is empty (only if not at the limit).
+  if (ta && r.remaining !== 0 && !ta.value) {
+    ta.placeholder = t(JOURNAL_PROMPTS[Math.floor(Date.now() / 60000) % JOURNAL_PROMPTS.length]);
+  }
+
+  // Week mood dots + trigger-pattern insight
   loadWeekMoods();
+  loadTriggerPatterns();
+}
+
+// Rotating journaling prompts — lower the blank-page barrier. Kept open-ended
+// and non-prescriptive; a prompt should invite, never diagnose.
+const JOURNAL_PROMPTS = [
+  "What's on your mind right now? …",
+  "What's one thing that went okay today?",
+  "What's taking up the most space in your head?",
+  "If a friend felt like you do now, what would you tell them?",
+  "What's one small thing you're looking forward to?",
+  "What drained you today — and what gave a little back?",
+  "Name the feeling. You don't have to fix it.",
+];
+
+// Honest patterns read: "shows up most with", never "is caused by".
+async function loadTriggerPatterns() {
+  const el = document.getElementById('trigger-insight');
+  if (!el) return;
+  const d = await fetch('/api/thoughts/patterns').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  // Surface the single trigger most present on low-mood entries, if any low ones.
+  const top = d.triggers.find(x => x.low > 0);
+  if (!top) { el.innerHTML = ''; return; }
+  const label = (TRIGGER_META[top.key] || top.key);
+  el.innerHTML = `<div class="trigger-insight">💡 ${tformat(
+    'Over the last %1 days, tough moods showed up most alongside %2. Just a pattern — only you know what it means.',
+    d.window_days, label)}</div>`;
+}
+
+// ── Breathing / grounding tool ─────────────────────────────────────────────
+// A 4-4-4 box-breathing loop. Purely a calming aid — no data, no claims.
+let _breatheTimer = null;
+function openBreathing() {
+  closeBreathing();
+  const o = document.createElement('div');
+  o.className = 'breathe-overlay';
+  o.id = 'breathe-overlay';
+  o.innerHTML = `
+    <div class="breathe-circle exhale" id="breathe-circle">${t('Breathe')}</div>
+    <div class="breathe-caption" id="breathe-caption">${t('Follow the circle. In through the nose, out through the mouth.')}</div>
+    <button class="breathe-close" data-ev-click="closeBreathing()">${t('Done')}</button>`;
+  document.body.appendChild(o);
+  const circle = document.getElementById('breathe-circle');
+  const cap = document.getElementById('breathe-caption');
+  const phases = [['inhale', 'Breathe in…'], ['inhale', 'Hold…'], ['exhale', 'Breathe out…'], ['exhale', 'Hold…']];
+  let i = 0;
+  const tick = () => {
+    const [cls, label] = phases[i % phases.length];
+    if (circle) { circle.classList.remove('inhale', 'exhale'); circle.classList.add(cls); circle.textContent = t(label.replace('…','')); }
+    if (cap) cap.textContent = t(label);
+    i++;
+  };
+  tick();
+  _breatheTimer = setInterval(tick, 4000);
+}
+function closeBreathing() {
+  if (_breatheTimer) { clearInterval(_breatheTimer); _breatheTimer = null; }
+  document.getElementById('breathe-overlay')?.remove();
 }
 
 function renderThoughtsList(thoughts) {
@@ -7257,6 +7349,7 @@ function renderThoughtsList(thoughts) {
         </div>
       </div>
       <div class="thought-content" id="tc-${th.id}">${escHtml(th.content)}</div>
+      ${(th.triggers && th.triggers.length) ? `<div class="thought-triggers">${th.triggers.map(triggerBadge).join('')}</div>` : ''}
       <div class="thought-edit-wrap" id="te-${th.id}" style="display:none">
         <textarea class="thought-edit-area" id="tea-${th.id}">${escHtml(th.content)}</textarea>
         <div class="thought-edit-actions">
@@ -7295,6 +7388,21 @@ function selectMood(mood) {
   });
 }
 
+// Optional "what's driving it" tags on the current journal entry.
+let selectedTriggers = new Set();
+
+function toggleTrigger(key) {
+  if (selectedTriggers.has(key)) selectedTriggers.delete(key);
+  else selectedTriggers.add(key);
+  const chip = document.querySelector(`.trigger-chip[data-trigger="${key}"]`);
+  if (chip) chip.classList.toggle('selected', selectedTriggers.has(key));
+}
+
+function resetTriggers() {
+  selectedTriggers.clear();
+  document.querySelectorAll('.trigger-chip.selected').forEach(c => c.classList.remove('selected'));
+}
+
 function updateThoughtCounter(ta) {
   const len = ta.value.length;
   const el  = document.getElementById('thought-char-count');
@@ -7317,12 +7425,14 @@ async function submitThought() {
   const r = await fetch('/api/thoughts', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ content, mood: selectedMood, date_key: currentThoughtsDate })
+    body: JSON.stringify({ content, mood: selectedMood, date_key: currentThoughtsDate,
+                           triggers: [...selectedTriggers] })
   }).then(r => r.json()).catch(() => null);
 
   if (r?.success) {
     ta.value = '';
     updateThoughtCounter(ta);
+    resetTriggers();
     showToast(tformat('Thought saved %1', moodEmoji(selectedMood)), 'success');
     loadThoughts();
   } else {

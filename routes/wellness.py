@@ -573,14 +573,27 @@ def api_body_metrics_trend():
 @bp.route('/api/thoughts/<date_key>')
 @require_auth
 def api_get_thoughts(date_key):
-    return jsonify(get_thoughts(date_key))
+    # Rich shape the journal UI expects: {thoughts, count, remaining, limit, date}.
+    # (A bare list here silently emptied the feed and broke the daily quota.)
+    from db.wellness import MAX_THOUGHTS_PER_DAY
+    thoughts = get_thoughts(date_key)
+    count = len(thoughts)
+    return jsonify({
+        'thoughts':  thoughts,
+        'count':     count,
+        'remaining': max(0, MAX_THOUGHTS_PER_DAY - count),
+        'limit':     MAX_THOUGHTS_PER_DAY,
+        'date':      date_key,
+    })
 
 @bp.route('/api/thoughts', methods=['POST'])
 @require_auth
 def api_save_thought():
     d = request.json or {}
     try:
-        t = save_thought(d.get('content',''), d.get('mood','neutral'), d.get('date_key', today_iso(get_user_timezone())))
+        t = save_thought(d.get('content',''), d.get('mood','neutral'),
+                         d.get('date_key', today_iso(get_user_timezone())),
+                         triggers=d.get('triggers'))
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'thought': t})
@@ -589,8 +602,16 @@ def api_save_thought():
 @require_auth
 def api_update_thought(tid):
     d = request.json or {}
-    t = update_thought(tid, d.get('content',''), d.get('mood','neutral'))
+    t = update_thought(tid, d.get('content',''), d.get('mood','neutral'),
+                       triggers=d.get('triggers'))
     return jsonify({'success': True, 'thought': t})
+
+@bp.route('/api/thoughts/patterns')
+@require_auth
+def api_thought_patterns():
+    """Which triggers show up most on low-mood days (honest, non-causal)."""
+    from db.wellness import get_trigger_patterns
+    return jsonify(get_trigger_patterns())
 
 @bp.route('/api/thoughts/<tid>', methods=['DELETE'])
 @require_auth
