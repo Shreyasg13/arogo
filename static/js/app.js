@@ -361,6 +361,15 @@ const I18N = {
     'Showing the most recent %1 of %2 events.': '%2 में से %1 सबसे हाल की घटनाएँ दिखाई जा रही हैं।',
     'Medicine': 'दवा', 'Symptom': 'लक्षण', 'Vital': 'वाइटल', 'Lab result': 'लैब परिणाम',
     'Appointment': 'अपॉइंटमेंट', 'Vaccine': 'टीका',
+    'People I care for': 'जिनकी मैं देखभाल करता हूँ',
+    'Track vaccines, medicines and notes for a child or parent who doesn\'t use the app': 'ऐप न इस्तेमाल करने वाले बच्चे या माता-पिता के टीके, दवाइयाँ और नोट्स ट्रैक करें',
+    'Add someone': 'किसी को जोड़ें', 'Name': 'नाम', 'Birthdate (optional)': 'जन्मतिथि (वैकल्पिक)',
+    'No one added yet': 'अभी कोई नहीं जोड़ा', 'Add a child or parent above to keep their vaccines, medicines and notes.': 'उनके टीके, दवाइयाँ और नोट्स रखने के लिए ऊपर एक बच्चा या माता-पिता जोड़ें।',
+    'Child': 'बच्चा', 'Parent': 'माता-पिता', 'Spouse': 'जीवनसाथी', 'Sibling': 'भाई-बहन', 'Grandparent': 'दादा-दादी', 'Other': 'अन्य',
+    '%1 yr': '%1 वर्ष', 'Everyone': 'सभी', 'Medicines': 'दवाइयाँ', 'Notes': 'नोट्स', 'Measurements': 'माप',
+    'What? (e.g. MR vaccine, Amlodipine)': 'क्या? (जैसे MR टीका, एम्लोडिपिन)', 'Detail (optional)': 'विवरण (वैकल्पिक)',
+    'No records yet — add a vaccine, medicine or note above.': 'अभी कोई रिकॉर्ड नहीं — ऊपर टीका, दवा या नोट जोड़ें।',
+    'Added': 'जोड़ा गया',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -2090,6 +2099,7 @@ function switchView(view) {
   if (view === 'conditions')    loadConditionsView();
   if (view === 'immunizations') loadImmunizations();
   if (view === 'timeline')      loadTimeline();
+  if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
@@ -11068,6 +11078,155 @@ async function saveSleepLogFromView() {
 // ════════════════════════════════════════════════════════════
 // BODY & VITALS VIEW — standalone page
 // ════════════════════════════════════════════════════════════
+// ── Dependents / family profiles ─────────────────────────────────────────────
+// Track health for someone who doesn't use the app themselves (a child's
+// vaccines, a parent's meds) from the caregiver's own account. All owned and
+// scoped to the caregiver; ownership re-checked server-side on every record op.
+let _activeDependent = null;
+
+const DEP_REL = { child:'🧒 Child', parent:'👵 Parent', spouse:'💑 Spouse',
+  sibling:'👫 Sibling', grandparent:'👴 Grandparent', other:'👤 Other' };
+const DEP_KIND = { medicine:'💊 Medicines', vaccine:'💉 Vaccines',
+  note:'📝 Notes', measurement:'📏 Measurements' };
+
+function _relLabel(k) { const m = DEP_REL[k] || '👤 Other'; const [e, ...r] = m.split(' '); return e + ' ' + t(r.join(' ')); }
+
+async function loadDependents() {
+  const el = document.getElementById('dependents-view-content');
+  if (!el) return;
+  if (_activeDependent) return renderDependentDetail(_activeDependent);
+  const d = await fetch('/api/dependents', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {dependents:[]}).catch(() => ({dependents:[]}));
+  el.innerHTML = renderDependentsList(d.dependents || []);
+}
+
+function renderDependentsList(deps) {
+  const form = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add someone')}</h2>
+      <div class="dep-form">
+        <input type="text" id="dep-name" class="form-input" placeholder="${t('Name')}" style="max-width:180px">
+        <select id="dep-rel" class="form-input" style="max-width:150px">
+          ${Object.keys(DEP_REL).map(k => `<option value="${k}">${_relLabel(k)}</option>`).join('')}
+        </select>
+        <input type="date" id="dep-birthdate" class="form-input" title="${t('Birthdate (optional)')}" max="${localToday()}" style="max-width:160px">
+        <button class="btn-primary" data-ev-click="addDependent()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  if (!deps.length) {
+    return form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">👪</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No one added yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Add a child or parent above to keep their vaccines, medicines and notes.')}</div>
+      </div>`;
+  }
+
+  const cards = deps.map(d => {
+    const chips = Object.entries(d.counts || {}).map(([k, n]) =>
+      `<span class="dep-count">${(DEP_KIND[k] || k).split(' ')[0]} ${n}</span>`).join('');
+    return `<button class="dep-card" data-ev-click="openDependent('${d.id}')">
+        <div class="dep-avatar">${(DEP_REL[d.relationship] || '👤').split(' ')[0]}</div>
+        <div class="dep-card-body">
+          <div class="dep-card-name">${escHtml(d.name)}${d.age != null ? ` <span class="dep-age">${tformat('%1 yr', d.age)}</span>` : ''}</div>
+          <div class="dep-card-rel">${_relLabel(d.relationship)}</div>
+          ${chips ? `<div class="dep-counts">${chips}</div>` : ''}
+        </div>
+        <span class="dep-chevron">›</span>
+      </button>`;
+  }).join('');
+  return form + `<div class="dep-grid">${cards}</div>`;
+}
+
+function openDependent(id) { _activeDependent = id; renderDependentDetail(id); }
+function closeDependent() { _activeDependent = null; loadDependents(); }
+
+async function renderDependentDetail(id) {
+  const el = document.getElementById('dependents-view-content');
+  if (!el) return;
+  const d = await fetch(`/api/dependents/${id}/records`, {credentials:'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d || !d.dependent || !d.dependent.id) { closeDependent(); return; }
+  const dep = d.dependent;
+
+  const addForm = `
+    <div class="panel" style="padding:16px 18px;margin-bottom:16px">
+      <div class="dep-rec-form">
+        <select id="dep-rec-kind" class="form-input" style="max-width:150px">
+          ${Object.keys(DEP_KIND).map(k => { const [e, ...r] = DEP_KIND[k].split(' '); return `<option value="${k}">${e} ${t(r.join(' '))}</option>`; }).join('')}
+        </select>
+        <input type="text" id="dep-rec-label" class="form-input" placeholder="${t('What? (e.g. MR vaccine, Amlodipine)')}" style="max-width:200px">
+        <input type="text" id="dep-rec-detail" class="form-input" placeholder="${t('Detail (optional)')}" style="max-width:160px">
+        <input type="date" id="dep-rec-date" class="form-input" max="${localToday()}" style="max-width:150px">
+        <button class="btn-primary" data-ev-click="addDependentRecord('${id}')">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  const sections = Object.keys(DEP_KIND).map(kind => {
+    const items = d.records[kind] || [];
+    if (!items.length) return '';
+    const [emoji, ...rest] = DEP_KIND[kind].split(' ');
+    return `<div class="panel" style="padding:16px 18px;margin-bottom:14px">
+        <h2 class="panel-title" style="margin-bottom:10px">${emoji} ${t(rest.join(' '))}</h2>
+        ${items.map(r => `<div class="dep-rec-row">
+          <div class="dep-rec-main"><div class="dep-rec-label">${escHtml(r.label)}</div>
+            ${r.detail ? `<span class="dep-rec-detail">${escHtml(r.detail)}</span>` : ''}</div>
+          ${r.date_key ? `<span class="dep-rec-date">${_fmtShortDate(r.date_key)}</span>` : ''}
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteDependentRecord('${r.id}', '${id}')" style="color:var(--gray-300)">✕</button>
+        </div>`).join('')}
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <button class="btn-outline" style="font-size:12px;margin-bottom:14px" data-ev-click="closeDependent()">‹ ${t('Everyone')}</button>
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div class="dep-head">
+        <div class="dep-avatar dep-avatar--lg">${(DEP_REL[dep.relationship] || '👤').split(' ')[0]}</div>
+        <div style="flex:1">
+          <div class="dep-detail-name">${escHtml(dep.name)}</div>
+          <div class="dep-detail-rel">${_relLabel(dep.relationship)}${dep.age != null ? ' · ' + tformat('%1 yr', dep.age) : ''}</div>
+          ${dep.notes ? `<div class="dep-detail-notes">${escHtml(dep.notes)}</div>` : ''}
+        </div>
+        <button class="btn-icon" title="${t('Remove')}" data-ev-click="deleteDependent('${id}')" style="color:#DC2626">🗑</button>
+      </div>
+    </div>
+    ${addForm}
+    ${sections || `<div class="panel" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">${t('No records yet — add a vaccine, medicine or note above.')}</div>`}`;
+}
+
+async function addDependent() {
+  const name = document.getElementById('dep-name')?.value.trim();
+  if (!name) { showToast('Enter a name', 'error'); return; }
+  const r = await fetch('/api/dependents', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({name, relationship: document.getElementById('dep-rel')?.value || 'other',
+                          birthdate: document.getElementById('dep-birthdate')?.value || null}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Added')); loadDependents(); }
+  else showToast((r && r.error) || 'Could not add', 'error');
+}
+
+async function deleteDependent(id) {
+  await fetch('/api/dependents/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  _activeDependent = null; loadDependents();
+}
+
+async function addDependentRecord(id) {
+  const kind = document.getElementById('dep-rec-kind')?.value;
+  const label = document.getElementById('dep-rec-label')?.value.trim();
+  if (!label) { showToast('What is it?', 'error'); return; }
+  const r = await fetch(`/api/dependents/${id}/records`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({kind, label, detail: document.getElementById('dep-rec-detail')?.value || '',
+                          date_key: document.getElementById('dep-rec-date')?.value || ''}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Added')); renderDependentDetail(id); }
+  else showToast((r && r.error) || 'Could not add', 'error');
+}
+
+async function deleteDependentRecord(rid, depId) {
+  await fetch('/api/dependents/records/' + rid, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  renderDependentDetail(depId);
+}
+
 // ── Health timeline ──────────────────────────────────────────────────────────
 // One chronological "health story" merging meds/symptoms/vitals/labs/
 // appointments/vaccines. Private diary categories (journal/mood/cycle) are
