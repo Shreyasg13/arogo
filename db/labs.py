@@ -32,8 +32,13 @@ def _decorate(row, gender=None):
 def log_lab_result(lab_key, value, date_key, notes='') -> dict:
     """Record one lab value. Accepts any catalog test; a free-form key is allowed
     too (stored with no range) so nothing the user has is un-loggable."""
+    # A list/dict lab_key is malformed input — reject cleanly (a bare
+    # lab_catalog.get_lab([...]) would otherwise raise TypeError → uncaught 500).
+    if lab_key is not None and not isinstance(lab_key, (str, int, float)):
+        raise ValueError('A test is required')
+    lab_key = str(lab_key or '').strip()
     meta = lab_catalog.get_lab(lab_key)
-    if not meta and not str(lab_key or '').strip():
+    if not meta and not lab_key:
         raise ValueError('A test is required')
     try:
         val = float(value)

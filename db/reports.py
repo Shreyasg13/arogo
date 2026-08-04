@@ -56,16 +56,23 @@ def delete_report(rid):
 
 
 # Vault buckets — map free-text report_type into a small, filterable set. Keyword
-# match so "Blood test", "Lipid profile", "CBC" all land under 'lab'.
+# match uses WHOLE WORDS (not substrings), so "Latest X-ray" isn't bucketed 'lab'
+# because "latest" contains "test", and "contract"/"label" don't match ct/lab.
+# Order = priority: the specific document kinds win over the generic "has a test
+# word" lab bucket (a discharge summary mentioning a blood test → discharge).
+import re as _re
+
 _DOC_BUCKETS = [
     ('prescription', ('prescription', 'rx', 'medicine')),
+    ('discharge',    ('discharge', 'admission', 'surgery', 'operative')),
+    ('imaging',      ('x-ray', 'xray', 'scan', 'mri', 'ct', 'ctscan', 'ultrasound',
+                      'sonography', 'echo', 'imaging')),
+    ('insurance',    ('insurance', 'policy', 'claim', 'ayushman', 'esi', 'mediclaim')),
     ('lab',          ('lab', 'blood', 'test', 'cbc', 'lipid', 'sugar', 'thyroid',
                       'hba1c', 'urine', 'panel', 'profile')),
-    ('imaging',      ('x-ray', 'xray', 'scan', 'mri', 'ct', 'ultrasound', 'sono',
-                      'echo', 'imaging')),
-    ('discharge',    ('discharge', 'admission', 'hospital', 'surgery', 'operative')),
-    ('insurance',    ('insurance', 'policy', 'claim', 'ayushman', 'esi', 'mediclaim')),
 ]
+_DOC_BUCKET_RE = [(b, _re.compile(r'\b(?:' + '|'.join(_re.escape(k) for k in kws) + r')\b'))
+                  for b, kws in _DOC_BUCKETS]
 
 
 def doc_buckets():
@@ -74,8 +81,8 @@ def doc_buckets():
 
 def _doc_bucket(report_type):
     s = str(report_type or '').lower()
-    for bucket, kws in _DOC_BUCKETS:
-        if any(k in s for k in kws):
+    for bucket, rx in _DOC_BUCKET_RE:
+        if rx.search(s):
             return bucket
     return 'other'
 

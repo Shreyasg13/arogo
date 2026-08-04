@@ -264,3 +264,21 @@ class TestPrivateCategoriesWalledFromManaging:
         # The wall is only while acting-as — the caregiver's own backup works.
         carol.post("/api/family/act-as/stop")
         assert carol.get("/api/backup").status_code == 200
+
+    def test_pcos_dashboard_does_not_leak_cycle_while_managing(self, carol, dave, group):
+        # The PCOS condition dashboard pulls cycle data. /api/conditions isn't a
+        # walled prefix (a caregiver SHOULD see labs/meds), so the cycle block
+        # itself must be withheld while acting-as — else it re-exposes the very
+        # cycle data /api/cycle already blocks.
+        uid = _uid(carol, "am-dave@medeasy.test")
+        dave.post("/api/cycle/start", json={"start_date": "2026-06-01"})
+        dave.post("/api/cycle/start", json={"start_date": "2026-07-05"})
+        # Dave's own view includes the cycle block.
+        assert dave.get("/api/conditions/pcos").get_json().get("cycle") is not None
+        # Carol managing Dave: labs/meds visible, cycle withheld.
+        dave.post("/api/family/consent", json={"allow_manage": True})
+        carol.post("/api/family/act-as", json={"user_id": uid})
+        pcos = carol.get("/api/conditions/pcos").get_json()
+        assert pcos["cycle"] is None and pcos.get("cycle_private") is True
+        assert "labs" in pcos          # meds/labs management still works
+        carol.post("/api/family/act-as/stop")

@@ -45,6 +45,17 @@ def test_bucketing_keywords():
     assert _doc_bucket("something odd") == "other"
 
 
+def test_bucketing_uses_whole_words_not_substrings():
+    # "Latest X-ray" must be imaging, not lab — even though "latest" contains
+    # "test". "Contract" must not become imaging via the "ct" keyword.
+    assert _doc_bucket("Latest X-ray") == "imaging"
+    assert _doc_bucket("Latest scan") == "imaging"
+    assert _doc_bucket("Insurance contract") == "insurance"
+    assert _doc_bucket("Label copy") == "other"
+    # A discharge summary that mentions a blood test buckets as discharge.
+    assert _doc_bucket("Discharge summary with blood test") == "discharge"
+
+
 def test_type_filter_narrows_list(app):
     c, uid = _uid(app, "vault1@medeasy.test")
     with user_context(uid):

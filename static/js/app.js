@@ -345,6 +345,7 @@ const I18N = {
     'Recent cycles ranged %1–%2 days — worth mentioning to a doctor': 'हाल के चक्र %1–%2 दिनों के रहे — डॉक्टर को बताने लायक',
     'Recent cycles look regular (~%1 days)': 'हाल के चक्र नियमित लगते हैं (~%1 दिन)',
     'Log a couple of cycles to see regularity.': 'नियमितता देखने के लिए कुछ चक्र दर्ज करें।',
+    'Cycle details are private to this member and aren\'t shown while managing their account.': 'चक्र विवरण इस सदस्य के लिए निजी है और उनका खाता प्रबंधित करते समय नहीं दिखाया जाता।',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -11107,7 +11108,8 @@ async function renderConditionDashboard(key) {
     <div class="panel" style="padding:16px 18px${d.cycle ? ';margin-bottom:16px' : ''}">
       <div class="cond-section-title">${t('Medicines')}</div>${meds}
     </div>
-    ${d.cycle ? `<div class="panel" style="padding:16px 18px">${cycleBlock}</div>` : ''}`;
+    ${d.cycle ? `<div class="panel" style="padding:16px 18px">${cycleBlock}</div>` : ''}
+    ${d.cycle_private ? `<div class="panel" style="padding:16px 18px"><div class="cond-empty-line">🔒 ${t('Cycle details are private to this member and aren\'t shown while managing their account.')}</div></div>` : ''}`;
 }
 
 // ── Health spending ──────────────────────────────────────────────────────────

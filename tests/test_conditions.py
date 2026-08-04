@@ -91,6 +91,28 @@ def test_meds_match_by_name_or_purpose(app):
     assert len(d["medicines"]) == 2
 
 
+def test_meds_matched_by_whole_word_not_substring(app):
+    # Word-boundary matching: unrelated meds must NOT be mislabelled under a
+    # condition (Nystatin is an antifungal, not a statin; Sugarfree isn't a
+    # diabetes drug; a BPH med isn't a BP med).
+    c, uid = _uid(app, "cond6@medeasy.test")
+    with user_context(uid):
+        _med(uid, "Nystatin")                       # antifungal — NOT cholesterol
+        _med(uid, "Sugarfree Gold")                 # sweetener — NOT diabetes
+        _med(uid, "Tamsulosin", "for BPH")          # prostate — NOT hypertension
+        assert get_condition_dashboard("cholesterol")["medicines"] == []
+        assert get_condition_dashboard("diabetes")["medicines"] == []
+        assert get_condition_dashboard("hypertension")["medicines"] == []
+
+
+def test_bp_named_medicine_still_matches(app):
+    # The old ' bp' leading-space hack MISSED a med literally named "BP Tablet".
+    c, uid = _uid(app, "cond7@medeasy.test")
+    with user_context(uid):
+        _med(uid, "BP Tablet")
+        assert [m["name"] for m in get_condition_dashboard("hypertension")["medicines"]] == ["BP Tablet"]
+
+
 def test_api_round_trip(app):
     c, uid = _uid(app, "cond5@medeasy.test")
     assert "conditions" in c.get("/api/conditions").get_json()

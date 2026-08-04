@@ -110,7 +110,9 @@ def status_for(key, value, gender=None):
     """'low' | 'high' | 'in_range' | None. Never a diagnosis — just where the
     number sits against the typical range, so the UI can flag it for a doctor."""
     lo, hi = ref_range(key, gender)
-    if lo is None or value is None:
+    # Guard BOTH bounds — a future catalog entry with low_f but no high_f would
+    # otherwise reach `v > hi` with hi=None and raise TypeError.
+    if lo is None or hi is None or value is None:
         return None
     try:
         v = float(value)

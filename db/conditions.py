@@ -7,6 +7,8 @@ treat it, and (for PCOS) cycle regularity + symptoms. Nothing new is stored —
 this is a focused *read* over labs, vitals, medicines, and cycle. No diagnosis,
 no targets of our own; lab status still comes from lab_catalog's typical ranges.
 """
+import re
+
 from .core import execute, current_user_id
 import lab_catalog
 
@@ -19,7 +21,7 @@ CONDITIONS = {
         'labs': ['hba1c', 'fasting_glucose', 'pp_glucose'],
         'vitals': ['blood_sugar'],
         'med_keywords': ['metformin', 'glimepiride', 'gliclazide', 'sitagliptin',
-                         'insulin', 'glycomet', 'janumet', 'diabet', 'sugar'],
+                         'insulin', 'glycomet', 'janumet', 'diabetes', 'diabetic'],
         'blurb': 'Your sugar readings, HbA1c, and the medicines that manage them.',
     },
     'hypertension': {
@@ -28,7 +30,7 @@ CONDITIONS = {
         'vitals': ['blood_pressure'],
         'med_keywords': ['amlodipine', 'telmisartan', 'losartan', 'ramipril',
                          'atenolol', 'olmesartan', 'metoprolol', 'cilnidipine',
-                         'pressure', ' bp'],
+                         'pressure', 'bp', 'hypertension'],
         'blurb': 'Your blood-pressure readings and the medicines that manage them.',
     },
     'thyroid': {
@@ -105,11 +107,18 @@ def _matching_meds(keywords):
     uid = current_user_id()
     rows = execute("SELECT name, dosage, purpose FROM medicines WHERE user_id=? AND active=1",
                    (uid,), fetchall=True) or []
-    kws = [k.strip().lower() for k in keywords]
+    # Match WHOLE WORDS, not substrings — otherwise 'statin' matches "Nystatin"
+    # (an antifungal → Cholesterol), 'sugar' matches "Sugarfree" (→ Diabetes), and
+    # 'bp' matches "BPH" meds (→ Blood pressure). Mislabelling a medicine under a
+    # condition is exactly the dishonesty to avoid in a health app.
+    kws = [re.escape(k.strip().lower()) for k in keywords if k and k.strip()]
+    if not kws:
+        return []
+    rx = re.compile(r'\b(?:' + '|'.join(kws) + r')\b')
     out = []
     for r in rows:
         hay = (str(r['name'] or '') + ' ' + str(r['purpose'] or '')).lower()
-        if any(k and k in hay for k in kws):
+        if rx.search(hay):
             out.append({'name': r['name'], 'dosage': r['dosage'], 'purpose': r['purpose']})
     return out
 
@@ -129,9 +138,29 @@ def get_condition_dashboard(key) -> dict:
         'medicines': _matching_meds(cfg['med_keywords']),
     }
     if cfg.get('cycle'):
-        from .cycle import get_cycle_summary, get_symptom_summary
-        summary = get_cycle_summary()
-        out['cycle'] = {'regularity': summary.get('regularity'),
-                        'cycle_length': summary.get('cycle_length'),
-                        'symptoms': get_symptom_summary().get('top', [])[:4]}
+        # Cycle data is a private "diary" category — walled from a caregiver who
+        # is managing this member (see auth._ACTING_AS_PRIVATE / /api/cycle). The
+        # condition dashboard must honour that same wall: surface the cycle block
+        # only when the member is viewing their OWN account, never while someone
+        # is acting-as them. Labs/vitals/meds above stay visible (a caregiver
+        # managing meds is meant to see those).
+        if _acting_as_someone():
+            out['cycle'] = None
+            out['cycle_private'] = True
+        else:
+            from .cycle import get_cycle_summary, get_symptom_summary
+            summary = get_cycle_summary()
+            out['cycle'] = {'regularity': summary.get('regularity'),
+                            'cycle_length': summary.get('cycle_length'),
+                            'symptoms': get_symptom_summary().get('top', [])[:4]}
     return out
+
+
+def _acting_as_someone():
+    """True when the current request is a caregiver managing a family member
+    (acting-as). Safe outside a request context (returns False)."""
+    try:
+        from flask import g, has_request_context
+        return bool(has_request_context() and getattr(g, 'acting_as', None))
+    except Exception:
+        return False

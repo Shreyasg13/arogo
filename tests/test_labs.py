@@ -93,3 +93,6 @@ def test_api_round_trip(app):
     assert c.get("/api/labs/trend/ldl").get_json()["latest"]["value"] == 145
     # bad value rejected
     assert c.post("/api/labs", json={"lab_key": "ldl", "value": "x", "date_key": "2026-07-01"}).status_code == 400
+    # a non-string lab_key (list/dict) must be a clean 400, not a 500
+    assert c.post("/api/labs", json={"lab_key": [1, 2], "value": 5, "date_key": "2026-07-01"}).status_code == 400
+    assert c.post("/api/labs", json={"lab_key": {}, "value": 5, "date_key": "2026-07-01"}).status_code == 400
