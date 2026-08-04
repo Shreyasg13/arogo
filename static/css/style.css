@@ -158,6 +158,12 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .flow-btn.selected { background:#F6E1D4; border-color:var(--purple-500,#D07D4E);
   color:var(--purple-600,#b5632f); font-weight:500; }
 .cycle-sym-summary { font-size:12px; color:var(--gray-500); margin-top:12px; }
+
+/* Peer streak-share button on the adherence streak banner */
+.adh-streak-share { margin-left:auto; font-size:11px; padding:3px 12px; border-radius:99px;
+  cursor:pointer; background:rgba(255,255,255,.25); border:1px solid rgba(255,255,255,.5);
+  color:inherit; white-space:nowrap; }
+.adh-streak-share:hover { background:rgba(255,255,255,.4); }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
 /* ── DASHBOARD ── */

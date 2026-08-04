@@ -528,6 +528,7 @@ CREATE TABLE IF NOT EXISTS reminder_settings (
     quiet_enabled INTEGER DEFAULT 0,
     quiet_start TEXT DEFAULT '22:00',
     quiet_end TEXT DEFAULT '07:00',
+    low_key INTEGER DEFAULT 0,
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS caregiver_contacts (
@@ -676,6 +677,16 @@ def migrate_add_thought_triggers():
     driving a mood (exam, work, sleep…), so a young user can see their patterns."""
     try:
         execute("ALTER TABLE thoughts ADD COLUMN triggers TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
+def migrate_add_low_key():
+    """Add low_key to reminder_settings — a one-tap 'keep it low-key' mode that
+    mutes non-essential nudges (water/habit/sleep/mood/measurements) while still
+    sending safety-critical medication reminders."""
+    try:
+        execute("ALTER TABLE reminder_settings ADD COLUMN low_key INTEGER DEFAULT 0")
     except Exception:
         pass  # already exists
 
@@ -967,6 +978,7 @@ def init_db():
     migrate_add_family_display()
     migrate_add_allow_manage()
     migrate_add_thought_triggers()
+    migrate_add_low_key()
     migrate_add_refill_fields()
     migrate_add_dose_timing()
     migrate_add_quiet_hours()

@@ -283,6 +283,10 @@ const I18N = {
     'None': 'कोई नहीं', 'Save how I feel': 'मैं कैसा महसूस करता हूँ सहेजें', 'Saved': 'सहेजा गया',
     'Most logged': 'सबसे ज़्यादा दर्ज',
     'Your last %1 cycles ranged %2–%3 days apart. Cycles this variable are worth mentioning to a doctor — it can have simple causes, and only they can say.': 'आपके पिछले %1 चक्र %2–%3 दिनों के अंतराल पर रहे। इतने बदलते चक्र डॉक्टर को बताने लायक हैं — इसके सामान्य कारण हो सकते हैं, और केवल वे ही बता सकते हैं।',
+    'Share': 'साझा करें', 'Copied — paste it to a friend': 'कॉपी हो गया — किसी दोस्त को भेजें',
+    "🔥 I'm on a %1-day streak of taking all my meds on time with Arogo. Small wins!": '🔥 मैं Arogo के साथ %1 दिनों से समय पर अपनी सारी दवाइयाँ ले रहा/रही हूँ। छोटी जीत!',
+    'Low-key mode': 'लो-की मोड',
+    'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
     'Pending invites': 'लंबित निमंत्रण',
@@ -3985,7 +3989,8 @@ async function loadDoseCalendar() {
     const extra = (s.best && s.streak >= s.best && s.best >= 3) ? ' · ' + t('your best yet!')
                 : (s.best > s.streak) ? ' · ' + tformat('best %1', s.best) : '';
     streakBanner = `<div class="adh-streak"><span class="adh-streak-flame">🔥</span>
-      <span>${tformat('%1-day streak', s.streak)} · <b>${t('every dose taken')}</b>${extra}</span></div>`;
+      <span>${tformat('%1-day streak', s.streak)} · <b>${t('every dose taken')}</b>${extra}</span>
+      <button class="adh-streak-share" title="${t('Share')}" data-ev-click="shareStreak(${s.streak})">${t('Share')}</button></div>`;
   }
 
   el.innerHTML =
@@ -7401,6 +7406,23 @@ async function loadWeekMoods() {
   }).join('');
 }
 
+// Peer-directed streak share — send it to a FRIEND, not a parent. Uses the
+// native share sheet (WhatsApp, etc.) where available, else copies to clipboard.
+// Just a short line the user chose to send; no health data, no account, no link
+// to anything private. Autonomy over accountability.
+async function shareStreak(streak) {
+  const text = tformat("🔥 I'm on a %1-day streak of taking all my meds on time with Arogo. Small wins!", streak);
+  try {
+    if (navigator.share) { await navigator.share({ text }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(t('Copied — paste it to a friend'));
+  } catch (e) {
+    showToast(text, 'info');
+  }
+}
+
 function selectMood(mood) {
   selectedMood = mood;
   document.querySelectorAll('.mood-btn').forEach(b => {
@@ -10469,6 +10491,7 @@ async function loadReminderSettingsUI() {
   set('rs-quiet-enabled',   s.quiet_enabled);
   set('rs-quiet-start',     s.quiet_start || '22:00');
   set('rs-quiet-end',       s.quiet_end || '07:00');
+  set('rs-lowkey-enabled',  s.low_key);
 
   // Show/hide section bodies based on toggle state
   ['water','habit','sleep','mood','quiet'].forEach(key => {
@@ -10501,6 +10524,7 @@ async function saveReminderSettings() {
     quiet_enabled:           get('rs-quiet-enabled'),
     quiet_start:             get('rs-quiet-start'),
     quiet_end:               get('rs-quiet-end'),
+    low_key:                 get('rs-lowkey-enabled'),
   };
 
   const r = await fetch('/api/reminders/settings', {

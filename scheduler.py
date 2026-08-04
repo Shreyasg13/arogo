@@ -193,6 +193,13 @@ def _push_reminders_for_user(uid):
                               {'action': f"snooze-{s['med_id']}-{s['time']}", 'title': tr(lang, 'push.act_later')}]):
             mark_snooze_notified(s['id'])
 
+    # Low-key mode: the user asked to keep it quiet. Everything above here —
+    # medication doses and snoozes — is safety-critical and still fires. Below
+    # here is non-essential (water, habit/sleep/mood, measurements), so we stop.
+    # This is the guilt-free "leave me alone but keep me safe" switch.
+    if rs.get('low_key'):
+        return
+
     # 2. Water — only when enabled, inside the active window, and behind pace
     if rs.get('water_enabled'):
         start, end = rs.get('water_start') or '08:00', rs.get('water_end') or '21:00'

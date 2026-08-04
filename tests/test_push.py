@@ -253,3 +253,34 @@ class TestWaterQuickLog:
         # Button offers their real pour (500), not a hardcoded 250, + a snooze
         assert acts[0]["action"] == "water-500"
         assert any(a["action"] == "snooze" for a in acts)
+
+    def test_low_key_mutes_water_but_keeps_meds(self, app, user, delivered, monkeypatch):
+        """Low-key mode: a due dose still fires (safety-critical); the behind-pace
+        water nudge does NOT."""
+        import scheduler
+        from db.core import user_context
+        uid = execute("SELECT id FROM users WHERE email=?", (EMAIL,), fetchone=True)["id"]
+        user.post("/api/push/subscribe", json={"subscription": FAKE_SUB})
+        user.get("/api/reminders/settings")
+        execute("DELETE FROM notification_log WHERE user_id=?", (uid,), commit=True)
+        execute("DELETE FROM hydration_logs WHERE user_id=?", (uid,), commit=True)
+        execute("DELETE FROM medicines WHERE user_id=?", (uid,), commit=True)
+        execute("UPDATE reminder_settings SET low_key=1 WHERE user_id=?", (uid,), commit=True)
+
+        # A dose due at 19:00, untaken; and behind on water.
+        from db import log_hydration, today_iso, insert_medicine
+        with user_context(uid):
+            insert_medicine({"name": "LowKeyMed", "dosage": "1", "times": ["19:00"]})
+            log_hydration(300, "water", today_iso())
+        monkeypatch.setattr(scheduler, "_user_local_now",
+                            lambda u: datetime.datetime.combine(
+                                datetime.date.today(), datetime.time(19, 0)))
+
+        with user_context(uid):
+            scheduler._push_reminders_for_user(uid)
+
+        titles = [p["title"] for p in delivered]
+        assert any("LowKeyMed" in t for t in titles), f"med reminder must still fire, got {titles}"
+        assert not any("Hydration" in t for t in titles), f"water must be muted in low-key, got {titles}"
+
+        execute("UPDATE reminder_settings SET low_key=0 WHERE user_id=?", (uid,), commit=True)
