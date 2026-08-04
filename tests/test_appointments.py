@@ -60,6 +60,17 @@ def test_update_appointment(client):
     assert got["notes"] == "Bring old reports" and got["title"] == "Dr. Sharma"
 
 
+def test_update_rejects_invalid_date(client):
+    # An explicitly-supplied but invalid date must error (like create), not
+    # silently keep the old date and falsely report success.
+    aid = client.post("/api/appointments", json={"title": "Recheck", "date": _tomorrow()}).get_json()["appointment"]["id"]
+    r = client.patch(f"/api/appointments/{aid}", json={"date": "2026-13-40"})
+    assert r.status_code == 400
+    # The original date is intact.
+    appt = next(a for a in client.get("/api/appointments").get_json()["appointments"] if a["id"] == aid)
+    assert appt["date"] == _tomorrow()
+
+
 def test_update_rejects_foreign_and_missing(app, client):
     # Editing a non-existent id is a clean 400, not a crash.
     assert client.patch("/api/appointments/nope", json={"title": "x"}).status_code == 400

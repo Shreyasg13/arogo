@@ -350,7 +350,14 @@ def update_appointment(aid: str, data: dict) -> dict:
         raise ValueError('Appointment not found')
     cur = dict(row)
     title = str(data.get('title', cur['title'])).strip() or cur['title']
-    date = _valid_date(data.get('date')) or cur['date'] if 'date' in data else cur['date']
+    # Mirror create: an explicitly-supplied but invalid date is an error, not a
+    # silent keep (which would falsely report "rescheduled").
+    if 'date' in data:
+        date = _valid_date(data.get('date'))
+        if not date:
+            raise ValueError('A valid date (YYYY-MM-DD) is required')
+    else:
+        date = cur['date']
     kind = data.get('kind', cur['kind'])
     if kind not in _APPT_KINDS:
         kind = cur['kind']

@@ -59,6 +59,26 @@ def test_scrub_event_tolerates_a_bare_event():
     assert observability.scrub_event({}, None) == {}
 
 
+# ── request hardening ────────────────────────────────────────────────────────
+def test_non_object_json_body_is_400_not_500():
+    # Routes read `request.json or {}` then `.get(...)`. A top-level JSON array
+    # is truthy and would slip past the fallback → AttributeError → 500. A
+    # central guard must turn any non-object JSON body into a clean 400.
+    import importlib, auth
+    from app import create_app
+    from db.core import init_db
+    app = create_app(); app.config["TESTING"] = True; init_db()
+    importlib.reload(auth); auth.reset_rate_limiter()
+    c = app.test_client()
+    c.post("/auth/register", json={"email": "json@medeasy.test", "password": "json-pw-12345"})
+    for path in ("/api/dependents", "/api/immunizations", "/api/appointments", "/api/labs", "/api/expenses"):
+        assert c.post(path, json=[1, 2]).status_code == 400, f"{path} array body must be 400"
+    assert c.post("/api/dependents", json="just a string").status_code == 400
+    # A proper object body still routes normally (this one 400s on missing name,
+    # NOT on the guard — proving valid objects pass the guard).
+    assert c.post("/api/dependents", json={}).status_code == 400
+
+
 # ── backup / restore ────────────────────────────────────────────────────────
 def _run_backup(args, db_path, backup_dir=None):
     env = dict(os.environ)

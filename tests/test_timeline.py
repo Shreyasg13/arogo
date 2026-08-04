@@ -62,6 +62,18 @@ def test_merges_all_sources_newest_first(app):
     assert "7.2" in lab["detail"] and "↑" in lab["detail"]      # 7.2 above the HbA1c range
 
 
+def test_medicine_dated_by_start_date_not_created_at(app):
+    # A backdated drug must sit at when you STARTED it, not when you logged it.
+    c, uid = _uid(app, "tl6@medeasy.test")
+    execute("""INSERT INTO medicines (id,name,dosage,active,created_at,start_date,user_id)
+               VALUES (?,?,?,1,?,?,?)""",
+            (new_id(), "OldDrug", "5mg", now_iso(), "2020-01-01", uid), commit=True)
+    with user_context(uid):
+        tl = get_timeline()
+    med = next(e for e in tl["events"] if e["type"] == "medicine")
+    assert med["date"] == "2020-01-01"
+
+
 def test_type_filter(app):
     c, uid = _uid(app, "tl2@medeasy.test")
     _seed(uid, c)

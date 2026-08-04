@@ -68,6 +68,18 @@ def create_app(config=Config):
     app.register_blueprint(expenses_bp)
     app.register_blueprint(dependents_bp)
 
+    @app.before_request
+    def _reject_non_object_json():
+        # Every route reads a JSON body as `request.json or {}` then `.get(...)`.
+        # A top-level JSON array/scalar (e.g. `[1,2]`) is truthy, so it slips past
+        # the `or {}` fallback and `.get` raises AttributeError → an unhandled 500.
+        # No endpoint accepts a non-object body, so reject it once, centrally.
+        from flask import request, jsonify
+        if request.is_json:
+            body = request.get_json(silent=True)
+            if body is not None and not isinstance(body, dict):
+                return jsonify({'error': 'Request body must be a JSON object'}), 400
+
     # ── /api/v1/* aliases ────────────────────────────────────────────────────
     # Mobile clients get a versioned surface without duplicating any code:
     # every /api/ and /auth/ route is also reachable under /api/v1/.

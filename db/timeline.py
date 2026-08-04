@@ -39,7 +39,10 @@ def get_timeline(limit: int = 120, types=None) -> dict:
     ev = []
 
     if 'medicine' in want:
-        for r in execute("""SELECT name, dosage, purpose, substr(created_at,1,10) AS d
+        # Date the event by when the medicine was STARTED (user can backdate a
+        # drug they've been on for years), falling back to the row's created_at.
+        for r in execute("""SELECT name, dosage, purpose,
+                                   substr(COALESCE(NULLIF(start_date,''), created_at),1,10) AS d
                             FROM medicines WHERE user_id=?""", (uid,), fetchall=True) or []:
             detail = ' · '.join(x for x in (r['dosage'], r['purpose']) if x)
             ev.append(_ev(r['d'], 'medicine', f"Started {r['name']}", detail))
