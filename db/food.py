@@ -412,6 +412,7 @@ def get_recomp_signal(days: int = 30) -> dict:
 
     on_protein = bool(protein and protein['pct'] >= 90)
     fat_down   = bool(fat and fat['change'] <= -0.5)
+    fat_up     = bool(fat and fat['change'] >= 0.5)
     wt_change  = weight['change'] if weight else None
 
     read = 'keep_logging'
@@ -419,8 +420,11 @@ def get_recomp_signal(days: int = 30) -> dict:
         read = 'recomp'                      # fat down, weight steady/up, protein hit
     elif fat_down:
         read = 'fat_loss'
-    elif wt_change is not None and wt_change >= 0.5 and on_protein:
-        read = 'lean_gain'                   # gaining with protein support
+    elif wt_change is not None and wt_change >= 0.5 and on_protein and not fat_up:
+        # Gaining with protein support — but only claim "lean" if the body-fat we
+        # have isn't rising. If fat is climbing, fall through to the neutral
+        # weight_up read rather than call fat gain lean mass.
+        read = 'lean_gain'
     elif wt_change is not None and wt_change >= 0.5:
         read = 'weight_up'
     elif protein and protein['pct'] < 70:

@@ -114,7 +114,7 @@ def log_symptoms(date_key: str, symptoms=None, flow=None, notes: str = '') -> di
     uid = current_user_id()
     syms = clean_symptoms(symptoms)
     fl = _clean_flow(flow)
-    note = str(notes or '')[:300]
+    note = str(notes or '').strip()[:300]   # strip so a whitespace-only note still clears the day
     existing = execute("SELECT id FROM cycle_symptoms WHERE user_id=? AND date_key=?",
                        (uid, date_key), fetchone=True)
     # Nothing to store → remove any prior row for that day, stay tidy.

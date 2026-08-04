@@ -629,7 +629,10 @@ def get_goal_progress() -> dict:
     # WITHIN this month, to match the days-elapsed denominator — summing the full
     # 30-day done_dates over today.day (4 on the 4th) gave 8 ÷ 4 = 200%. This now
     # matches the per-habit done_this_month below.
-    habit_stats = get_habit_stats(30)
+    # Fetch at least days-elapsed-this-month, not a flat 30 — on the 31st a
+    # 30-day window starts on the 2nd and can never include the 1st, understating
+    # a perfect month as 30/31 = 96.8%.
+    habit_stats = get_habit_stats(max(30, days_in_month))
     total_habits = len(habit_stats['habits'])
     habit_done = sum(sum(1 for d in h['done_dates'] if d >= month_start) for h in habit_stats['habits'])
     habit_possible = total_habits * days_in_month

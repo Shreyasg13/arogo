@@ -92,6 +92,22 @@ def test_protein_low_flag(app):
     assert s["protein"]["pct"] < 70
 
 
+def test_rising_fat_is_not_called_lean_gain(app):
+    # Weight up + protein hit, but body-fat CLIMBING → must NOT read 'lean_gain'
+    # (that would call fat gain lean mass). Falls through to neutral 'weight_up'.
+    c, uid = _uid(app, "rc6@medeasy.test")
+    with user_context(uid):
+        update_profile({"weight_kg": 70, "height_cm": 175, "age": 24,
+                        "gender": "male", "goal": "gain"})
+        _bm(uid, 20, weight=70.0, fat=18.0)
+        _bm(uid, 1,  weight=72.5, fat=21.0)      # weight up 2.5, FAT up 3.0
+        log_food({"food_name": "whey", "calories": 400, "protein": 130,
+                  "carbs": 10, "fat": 5, "meal_type": "snack"})
+        s = get_recomp_signal()
+    assert s["body_fat"]["change"] == 3.0
+    assert s["read"] == "weight_up"              # not 'lean_gain'
+
+
 def test_api_round_trip(app):
     c, uid = _uid(app, "rc5@medeasy.test")
     r = c.get("/api/body/recomp")

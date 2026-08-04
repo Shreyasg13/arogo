@@ -324,16 +324,38 @@ def require_auth(f):
 # Prefixes that must always operate on the caregiver's real account.
 _ACTING_AS_EXCLUDED = ('/auth', '/api/account', '/api/family')
 
-# Private "diary" categories — journal + mood (both the `thoughts` table) and
-# menstrual cycle. A caregiver managing a member's meds/health has no business
-# reading these, so they are blocked outright while acting-as (403), rather than
-# merely scoped. This is what lets a young user trust the private tab even if a
-# parent set up their phone and holds a manage grant.
-_ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood')
+# Endpoints blocked outright while acting-as (403), never merely scoped. Two
+# groups, same rule:
+#   • The private "diary" categories — journal + mood (both the `thoughts`
+#     table), menstrual cycle, and the mood-sleep correlation. A caregiver
+#     managing a member's meds has no business reading these. (/api/mood covers
+#     /api/mood-sleep/correlation — do not narrow to a segment boundary or that
+#     mood-timeline endpoint stops being caught.)
+#   • The whole data-portability + search surface. /api/backup and
+#     /api/export dump the diary tables; /api/search returns journal content
+#     (and `q=last week` returns ALL of it); /api/import would overwrite the
+#     member's private data. None of these make sense to run on a member's
+#     behalf, and each would otherwise re-expose the very categories above under
+#     a different path — so they are walled too. Matching uses the canonical
+#     (v1-normalized) path, so /api/v1/backup etc. are covered as well.
+_ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
+                      '/api/backup', '/api/import', '/api/export', '/api/search')
+
+
+def _canonical_path(path):
+    """Every /api/* route is also served at /api/v1/* (see create_app). Both the
+    exclusion list and the private-category wall match canonical prefixes, so the
+    v1 alias must be collapsed back to /api/* first — otherwise /api/v1/thoughts
+    or /api/v1/account would slip straight past those checks."""
+    path = path or ''
+    if path.startswith('/api/v1/'):
+        return '/api/' + path[len('/api/v1/'):]
+    return path
 
 
 def _is_private_while_acting(path):
-    return any(path.startswith(p) for p in _ACTING_AS_PRIVATE)
+    cp = _canonical_path(path)
+    return any(cp.startswith(p) for p in _ACTING_AS_PRIVATE)
 
 
 def _apply_acting_as(real_user_id):
@@ -350,7 +372,7 @@ def _apply_acting_as(real_user_id):
     if not family.can_manage(real_user_id, acting):
         return
     g.acting_as = acting
-    path = request.path or ''
+    path = _canonical_path(request.path or '')
     if not any(path.startswith(p) for p in _ACTING_AS_EXCLUDED):
         g.user_id = acting
 

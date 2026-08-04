@@ -220,3 +220,47 @@ class TestPrivateCategoriesWalledFromManaging:
         assert carol.get("/api/medicines").status_code == 200
         assert carol.get("/api/thoughts").status_code == 403
         carol.post("/api/family/act-as/stop")
+
+    def test_v1_alias_cannot_bypass_the_private_wall(self, carol, dave, group):
+        # Every /api/* route is also served at /api/v1/*. The wall matches
+        # canonical prefixes, so the v1 alias must be normalized first — otherwise
+        # /api/v1/thoughts would read the member's journal straight through.
+        self._start(carol, dave)
+        assert carol.get("/api/v1/thoughts").status_code == 403
+        assert carol.get("/api/v1/thoughts/2026-08-01").status_code == 403
+        assert carol.get("/api/v1/cycle").status_code == 403
+        assert carol.get("/api/v1/mood-sleep/correlation").status_code == 403
+        carol.post("/api/family/act-as/stop")
+
+    def test_v1_alias_cannot_bypass_account_exclusion(self, carol, dave, group):
+        # The account/family/auth exclusion must also survive the v1 alias — a
+        # caregiver-acting-as must never export the MEMBER's data dump via
+        # /api/v1/account/export. It must scope to the caregiver's own account.
+        self._start(carol, dave)
+        r = carol.get("/api/v1/account/export")
+        assert r.status_code == 200
+        body = r.get_data(as_text=True)
+        assert "am-carol@medeasy.test" in body        # the caregiver's own export
+        assert "am-dave@medeasy.test" not in body      # NOT the managed member's
+        carol.post("/api/family/act-as/stop")
+
+    def test_portability_and_search_walled_while_managing(self, carol, dave, group):
+        # /api/backup and /api/export dump the diary tables; /api/search returns
+        # journal content (q="last week" returns ALL of it); /api/import would
+        # overwrite the member's private data. None may run while acting-as —
+        # canonical AND v1 paths — or they re-expose the walled categories.
+        self._start(carol, dave)
+        for path in ("/api/backup", "/api/export", "/api/export/counts",
+                     "/api/search?q=last week", "/api/v1/backup",
+                     "/api/v1/export", "/api/v1/search?q=a"):
+            assert carol.get(path).status_code == 403, f"{path} must be walled"
+        assert carol.post("/api/import", json={}).status_code == 403
+        assert carol.post("/api/v1/import", json={}).status_code == 403
+        # But ordinary meds/health management is untouched.
+        assert carol.get("/api/medicines").status_code == 200
+        carol.post("/api/family/act-as/stop")
+
+    def test_caregiver_can_export_own_data_when_not_managing(self, carol, dave, group):
+        # The wall is only while acting-as — the caregiver's own backup works.
+        carol.post("/api/family/act-as/stop")
+        assert carol.get("/api/backup").status_code == 200

@@ -66,6 +66,16 @@ def test_empty_day_clears(app):
     assert d["symptoms"] == [] and d["flow"] is None
 
 
+def test_whitespace_only_note_clears_the_day(app):
+    _, uid = _uid(app, "cs9@medeasy.test")
+    with user_context(uid):
+        log_symptoms(_day(1), symptoms=["cramps"])
+        # No symptoms, no flow, only spaces in notes → the day must clear.
+        log_symptoms(_day(1), symptoms=[], flow=None, notes="   ")
+        d = get_symptom_day(_day(1))
+    assert d["symptoms"] == [] and d["flow"] is None and d["notes"] == ""
+
+
 def test_invalid_flow_ignored(app):
     _, uid = _uid(app, "cs4@medeasy.test")
     with user_context(uid):
