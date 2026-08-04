@@ -323,6 +323,13 @@ const I18N = {
     'Previous month': 'पिछला माह', 'Next month': 'अगला माह',
     'Medicines': 'दवाइयाँ', 'Consultation': 'परामर्श', 'Lab tests': 'लैब टेस्ट',
     'Hospital': 'अस्पताल', 'Insurance premium': 'बीमा प्रीमियम', 'Other': 'अन्य',
+    'All': 'सभी', 'Prescriptions': 'नुस्खे', 'Lab reports': 'लैब रिपोर्ट', 'Imaging': 'इमेजिंग',
+    'Discharge': 'डिस्चार्ज', 'Insurance': 'बीमा', 'Visit pack': 'विज़िट पैक',
+    'No records to include — adjust the filter': 'शामिल करने के लिए कोई रिकॉर्ड नहीं — फ़िल्टर बदलें',
+    'Records for my visit': 'मेरी विज़िट के लिए रिकॉर्ड', 'records': 'रिकॉर्ड',
+    'Document': 'दस्तावेज़', 'Doctor': 'डॉक्टर', 'Notes': 'टिप्पणियाँ',
+    'An index of records held in Arogo. Bring the originals if your doctor needs them.': 'Arogo में रखे रिकॉर्ड की सूची। यदि डॉक्टर को मूल चाहिए तो साथ लाएँ।',
+    'Allow pop-ups to print the visit pack': 'विज़िट पैक प्रिंट करने के लिए पॉप-अप की अनुमति दें',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -3623,6 +3630,16 @@ function openUploadModal() {
   document.getElementById('upload-modal-overlay').style.display = 'flex';
 }
 
+let _docTypeFilter = '';
+let _visibleReports = [];   // last-fetched, for the visit pack
+
+function setDocType(type) {
+  _docTypeFilter = type;
+  document.querySelectorAll('.doc-type-chip').forEach(c =>
+    c.classList.toggle('active', (c.dataset.type || '') === type));
+  loadReports();
+}
+
 async function loadReports() {
   const search = document.getElementById('search-input')?.value || '';
   const severity = document.getElementById('severity-filter')?.value || '';
@@ -3631,7 +3648,9 @@ async function loadReports() {
   if (search) params.set('search', search);
   if (severity) params.set('severity', severity);
   if (tag) params.set('tag', tag);
+  if (_docTypeFilter) params.set('type', _docTypeFilter);
   const reports = await fetch(`/api/reports?${params}`).then(r => r.json()).catch(() => []);
+  _visibleReports = reports;
   const label = document.getElementById('reports-count-label');
   if (label) label.textContent = `${reports.length} report${reports.length !== 1 ? 's' : ''}`;
   const grid = document.getElementById('reports-grid');
@@ -3665,6 +3684,44 @@ async function loadReports() {
       </div>
     </div>
   `).join('');
+}
+
+// Bundle the records currently in view (after any type/tag/search filter) into a
+// one-page "visit pack" to print or save as PDF and carry to an appointment.
+// Metadata only — the files themselves stay on the device; this is the index a
+// doctor can scan in seconds.
+function printVisitPack() {
+  const list = _visibleReports || [];
+  if (!list.length) { showToast(t('No records to include — adjust the filter'), 'info'); return; }
+  const who = (_currentUser?.name || _currentUser?.email || '').replace(/</g, '');
+  const rows = list.map(r => `
+    <tr>
+      <td>${escHtml(r.report_date || '—')}</td>
+      <td>${escHtml(r.report_type || r.doc_bucket || '—')}</td>
+      <td>${escHtml(r.original_name || '')}</td>
+      <td>${escHtml(r.doctor || '')}</td>
+      <td>${escHtml((r.analysis_notes || '').slice(0, 120))}</td>
+    </tr>`).join('');
+  const label = _docTypeFilter ? (' · ' + _docTypeFilter) : '';
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Visit pack</title>
+    <style>
+      body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#222;margin:32px;font-size:13px}
+      h1{font-size:19px;margin:0 0 2px} .sub{color:#666;font-size:12px;margin-bottom:18px}
+      table{border-collapse:collapse;width:100%} th,td{border:1px solid #ddd;padding:7px 9px;text-align:left;vertical-align:top}
+      th{background:#f2f2f2;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+      .foot{margin-top:18px;color:#888;font-size:11px}
+    </style></head><body>
+    <h1>${t('Records for my visit')}</h1>
+    <div class="sub">${escHtml(who)}${label} · ${list.length} ${t('records')} · ${new Date().toLocaleDateString()}</div>
+    <table><thead><tr>
+      <th>${t('Date')}</th><th>${t('Type')}</th><th>${t('Document')}</th><th>${t('Doctor')}</th><th>${t('Notes')}</th>
+    </tr></thead><tbody>${rows}</tbody></table>
+    <div class="foot">${t('An index of records held in Arogo. Bring the originals if your doctor needs them.')}</div>
+    </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { showToast(t('Allow pop-ups to print the visit pack'), 'error'); return; }
+  w.document.write(html); w.document.close();
+  w.focus(); setTimeout(() => w.print(), 300);
 }
 
 function openReportDetail(r) {

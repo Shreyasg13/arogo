@@ -522,6 +522,20 @@
     </select>
   </div>
 
+  <!-- Vault: filter by document type + bundle the visible records for a visit -->
+  <div class="doc-type-bar">
+    <div class="doc-type-chips" id="doc-type-chips">
+      <button class="doc-type-chip active" data-type=""            data-ev-click="setDocType('')" data-i18n="All">All</button>
+      <button class="doc-type-chip" data-type="prescription" data-ev-click="setDocType('prescription')">💊 <span data-i18n="Prescriptions">Prescriptions</span></button>
+      <button class="doc-type-chip" data-type="lab"          data-ev-click="setDocType('lab')">🧪 <span data-i18n="Lab reports">Lab reports</span></button>
+      <button class="doc-type-chip" data-type="imaging"      data-ev-click="setDocType('imaging')">🩻 <span data-i18n="Imaging">Imaging</span></button>
+      <button class="doc-type-chip" data-type="discharge"    data-ev-click="setDocType('discharge')">🏥 <span data-i18n="Discharge">Discharge</span></button>
+      <button class="doc-type-chip" data-type="insurance"    data-ev-click="setDocType('insurance')">🛡️ <span data-i18n="Insurance">Insurance</span></button>
+      <button class="doc-type-chip" data-type="other"        data-ev-click="setDocType('other')" data-i18n="Other">Other</button>
+    </div>
+    <button class="btn-outline" style="font-size:12px;white-space:nowrap" data-ev-click="printVisitPack()">🖨️ <span data-i18n="Visit pack">Visit pack</span></button>
+  </div>
+
   <div id="reports-grid" class="reports-grid"></div>
 
   <!-- Medical sub-tabs -->

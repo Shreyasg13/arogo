@@ -60,7 +60,8 @@ def get_reports():
     return jsonify(list_reports(
         search=request.args.get('search',''),
         tag=request.args.get('tag',''),
-        severity=request.args.get('severity','')
+        severity=request.args.get('severity',''),
+        doc_type=request.args.get('type','')
     ))
 
 @bp.route('/api/reports/<rid>', methods=['DELETE'])

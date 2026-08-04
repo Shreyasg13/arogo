@@ -28,7 +28,7 @@ def get_report(rid):
     return _fmt_report(r) if r else None
 
 
-def list_reports(search='', tag='', severity=''):
+def list_reports(search='', tag='', severity='', doc_type=''):
     rows = execute("SELECT * FROM reports WHERE user_id=? ORDER BY upload_date DESC",
                    (current_user_id(),), fetchall=True)
     result = [_fmt_report(r) for r in rows]
@@ -36,6 +36,10 @@ def list_reports(search='', tag='', severity=''):
         result = [r for r in result if tag in r.get('tags', [])]
     if severity:
         result = [r for r in result if r.get('severity') == severity]
+    if doc_type:
+        # Group into vault buckets by keyword, so "Blood test", "CBC report",
+        # "Lipid profile" all land under 'lab' without an exact-match taxonomy.
+        result = [r for r in result if _doc_bucket(r.get('report_type', '')) == doc_type]
     if search:
         s = search.lower()
         result = [r for r in result if
@@ -51,9 +55,35 @@ def delete_report(rid):
             (rid, current_user_id()), commit=True)
 
 
+# Vault buckets — map free-text report_type into a small, filterable set. Keyword
+# match so "Blood test", "Lipid profile", "CBC" all land under 'lab'.
+_DOC_BUCKETS = [
+    ('prescription', ('prescription', 'rx', 'medicine')),
+    ('lab',          ('lab', 'blood', 'test', 'cbc', 'lipid', 'sugar', 'thyroid',
+                      'hba1c', 'urine', 'panel', 'profile')),
+    ('imaging',      ('x-ray', 'xray', 'scan', 'mri', 'ct', 'ultrasound', 'sono',
+                      'echo', 'imaging')),
+    ('discharge',    ('discharge', 'admission', 'hospital', 'surgery', 'operative')),
+    ('insurance',    ('insurance', 'policy', 'claim', 'ayushman', 'esi', 'mediclaim')),
+]
+
+
+def doc_buckets():
+    return ['prescription', 'lab', 'imaging', 'discharge', 'insurance', 'other']
+
+
+def _doc_bucket(report_type):
+    s = str(report_type or '').lower()
+    for bucket, kws in _DOC_BUCKETS:
+        if any(k in s for k in kws):
+            return bucket
+    return 'other'
+
+
 def _fmt_report(r):
     d = dict(r)
     d['tags'] = jload(d.get('tags', '[]'), [])
+    d['doc_bucket'] = _doc_bucket(d.get('report_type', ''))
     return d
 
 
