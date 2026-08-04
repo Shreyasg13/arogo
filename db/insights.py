@@ -71,12 +71,15 @@ def generate_weekly_report() -> dict:
     target_cal_week = targets['target_calories'] * 7 if targets['target_calories'] else None
     cal_adherence = round(cal_eaten / target_cal_week * 100, 1) if target_cal_week else None
 
-    # Habits
+    # Habits — completions WITHIN the 7-day window. get_habit_stats() spans 30
+    # days, so counting all of done_dates against a *7*-day denominator ran past
+    # 100% (e.g. 8 done-days over the month ÷ 7 = 114%). week7 is each habit's
+    # last-7-days view, so numerator and denominator share the same window.
     habit_stats = get_habit_stats()
     total_habits = len(habit_stats['habits'])
-    habit_done_count = sum(len(h['done_dates']) for h in habit_stats['habits'])
+    habit_done_count = sum(sum(1 for d in h['week7'] if d['done']) for h in habit_stats['habits'])
     habit_possible = total_habits * 7
-    habit_pct = round(habit_done_count / habit_possible * 100, 1) if habit_possible else None
+    habit_pct = min(round(habit_done_count / habit_possible * 100, 1), 100) if habit_possible else None
 
     # Top symptoms
     sym_rows = execute("""SELECT name, COUNT(*) as cnt FROM symptoms
@@ -622,12 +625,15 @@ def get_goal_progress() -> dict:
         d = (today - dt.timedelta(days=i)).isoformat()
         daily_workouts.append({'date': d, 'cal': workout_map.get(d, 0)})
 
-    # Habit completion this month + per-habit breakdown
+    # Habit completion this month + per-habit breakdown. Count completions
+    # WITHIN this month, to match the days-elapsed denominator — summing the full
+    # 30-day done_dates over today.day (4 on the 4th) gave 8 ÷ 4 = 200%. This now
+    # matches the per-habit done_this_month below.
     habit_stats = get_habit_stats(30)
     total_habits = len(habit_stats['habits'])
-    habit_done = sum(len(h['done_dates']) for h in habit_stats['habits'])
+    habit_done = sum(sum(1 for d in h['done_dates'] if d >= month_start) for h in habit_stats['habits'])
     habit_possible = total_habits * days_in_month
-    habit_pct = round(habit_done / habit_possible * 100, 1) if habit_possible else 0
+    habit_pct = min(round(habit_done / habit_possible * 100, 1), 100) if habit_possible else 0
     # Per-habit detail
     habit_detail = []
     for h in habit_stats['habits'][:6]:
