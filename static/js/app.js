@@ -330,6 +330,21 @@ const I18N = {
     'Document': 'दस्तावेज़', 'Doctor': 'डॉक्टर', 'Notes': 'टिप्पणियाँ',
     'An index of records held in Arogo. Bring the originals if your doctor needs them.': 'Arogo में रखे रिकॉर्ड की सूची। यदि डॉक्टर को मूल चाहिए तो साथ लाएँ।',
     'Allow pop-ups to print the visit pack': 'विज़िट पैक प्रिंट करने के लिए पॉप-अप की अनुमति दें',
+    'My conditions': 'मेरी स्थितियाँ',
+    'One place for each condition — its labs, readings and medicines together': 'हर स्थिति के लिए एक जगह — उसकी लैब, रीडिंग और दवाइयाँ एक साथ',
+    'Diabetes': 'मधुमेह', 'Blood pressure': 'रक्तचाप', 'Thyroid': 'थायरॉइड', 'Cholesterol': 'कोलेस्ट्रॉल', 'PCOS': 'पीसीओएस',
+    'Your sugar readings, HbA1c, and the medicines that manage them.': 'आपकी शुगर रीडिंग, HbA1c, और उन्हें प्रबंधित करने वाली दवाइयाँ।',
+    'Your blood-pressure readings and the medicines that manage them.': 'आपकी रक्तचाप रीडिंग और उन्हें प्रबंधित करने वाली दवाइयाँ।',
+    'Your thyroid labs (TSH, T4, T3) and thyroid medicine.': 'आपकी थायरॉइड लैब (TSH, T4, T3) और थायरॉइड दवा।',
+    'Your lipid panel and any cholesterol medicine.': 'आपका लिपिड पैनल और कोई कोलेस्ट्रॉल दवा।',
+    'Cycle regularity, symptoms, and the labs/medicines that go with PCOS.': 'चक्र नियमितता, लक्षण, और पीसीओएस से जुड़ी लैब/दवाइयाँ।',
+    'All conditions': 'सभी स्थितियाँ', 'Latest numbers': 'नवीनतम आँकड़े', 'not logged yet': 'अभी दर्ज नहीं',
+    'Low': 'कम', 'High': 'अधिक', 'OK': 'ठीक', 'Blood sugar': 'रक्त शर्करा', 'Heart rate': 'हृदय गति',
+    'Typical ranges are for orientation only — discuss anything out of range with your doctor.': 'सामान्य सीमाएँ केवल दिशा-निर्देश हेतु हैं — सीमा से बाहर किसी भी बात पर डॉक्टर से चर्चा करें।',
+    'No matching medicine found. Add one in Medicines and set its purpose to link it here.': 'कोई मेल खाती दवा नहीं मिली। दवाइयों में एक जोड़ें और उसका उद्देश्य सेट करें ताकि वह यहाँ जुड़े।',
+    'Recent cycles ranged %1–%2 days — worth mentioning to a doctor': 'हाल के चक्र %1–%2 दिनों के रहे — डॉक्टर को बताने लायक',
+    'Recent cycles look regular (~%1 days)': 'हाल के चक्र नियमित लगते हैं (~%1 दिन)',
+    'Log a couple of cycles to see regularity.': 'नियमितता देखने के लिए कुछ चक्र दर्ज करें।',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -2056,6 +2071,7 @@ function switchView(view) {
   if (view === 'sleep')         loadSleepView();
   if (view === 'body')          loadBodyView();
   if (view === 'labs')          loadLabsView();
+  if (view === 'conditions')    loadConditionsView();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
@@ -11000,6 +11016,100 @@ async function saveSleepLogFromView() {
 // ════════════════════════════════════════════════════════════
 // BODY & VITALS VIEW — standalone page
 // ════════════════════════════════════════════════════════════
+// ── Condition dashboards ─────────────────────────────────────────────────────
+// One focused view per chronic condition, pulling its labs + vitals + medicines
+// (+ cycle for PCOS) together. Pure read over existing data — no diagnosis, no
+// targets of our own; lab status still comes from the typical-range catalog.
+let _activeCondition = null;
+
+async function loadConditionsView() {
+  const el = document.getElementById('conditions-view-content');
+  if (!el) return;
+  if (_activeCondition) return renderConditionDashboard(_activeCondition);
+  const d = await fetch('/api/conditions', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {conditions:[]}).catch(() => ({conditions:[]}));
+  el.innerHTML = `
+    <div class="cond-grid">
+      ${(d.conditions || []).map(c => `
+        <button class="cond-card" data-ev-click="openCondition('${c.key}')">
+          <span class="cond-emoji">${c.emoji}</span>
+          <span class="cond-name">${t(c.name)}</span>
+          <span class="cond-blurb">${t(c.blurb)}</span>
+        </button>`).join('')}
+    </div>`;
+}
+
+function openCondition(key) { _activeCondition = key; renderConditionDashboard(key); }
+function closeCondition() { _activeCondition = null; loadConditionsView(); }
+
+const _LAB_ST = {low:{c:'lab-low',l:'Low'}, high:{c:'lab-high',l:'High'}, in_range:{c:'lab-ok',l:'OK'}};
+
+async function renderConditionDashboard(key) {
+  const el = document.getElementById('conditions-view-content');
+  if (!el) return;
+  const d = await fetch('/api/conditions/' + key, {credentials:'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = ''; return; }
+
+  const labs = d.labs.map(l => {
+    if (!l.have) return `<div class="cond-metric cond-missing">
+        <div class="cond-metric-name">${escHtml(l.name)}</div>
+        <div class="cond-metric-empty">${t('not logged yet')}</div></div>`;
+    const st = _LAB_ST[l.status];
+    return `<div class="cond-metric">
+        <div class="cond-metric-name">${escHtml(l.name)} ${st ? `<span class="lab-badge ${st.c}">${t(st.l)}</span>` : ''}</div>
+        <div class="cond-metric-val ${st ? st.c : ''}">${l.value}<span class="cond-metric-unit">${escHtml(l.unit||'')}</span></div>
+        <div class="cond-metric-meta">${_fmtShortDate(l.date)}${l.ref_low != null ? ` · ${t('typical')} ${l.ref_low}–${l.ref_high}` : ''}</div>
+      </div>`;
+  }).join('');
+
+  const vitals = d.vitals.map(v => {
+    if (!v.have) return '';
+    const val = v.value2 != null ? `${v.value1}/${v.value2}` : v.value1;
+    const nm = ({blood_sugar:'Blood sugar', blood_pressure:'Blood pressure', heart_rate:'Heart rate'})[v.type] || v.type;
+    return `<div class="cond-metric">
+        <div class="cond-metric-name">${t(nm)}</div>
+        <div class="cond-metric-val">${val}<span class="cond-metric-unit">${escHtml(v.unit||'')}</span></div>
+        <div class="cond-metric-meta">${_fmtShortDate(v.date)}</div>
+      </div>`;
+  }).join('');
+
+  const meds = d.medicines.length
+    ? `<div class="cond-meds">${d.medicines.map(m => `<span class="cond-med">💊 ${escHtml(m.name)}${m.dosage ? ' · ' + escHtml(m.dosage) : ''}</span>`).join('')}</div>`
+    : `<div class="cond-empty-line">${t('No matching medicine found. Add one in Medicines and set its purpose to link it here.')}</div>`;
+
+  let cycleBlock = '';
+  if (d.cycle) {
+    const reg = d.cycle.regularity;
+    const regLine = reg
+      ? (reg.irregular
+          ? `⚠️ ${tformat('Recent cycles ranged %1–%2 days — worth mentioning to a doctor', reg.min, reg.max)}`
+          : `✓ ${tformat('Recent cycles look regular (~%1 days)', d.cycle.cycle_length || reg.min)}`)
+      : t('Log a couple of cycles to see regularity.');
+    const syms = (d.cycle.symptoms || []).map(s => `${(CYCLE_SYMPTOMS[s.key]||s.key)} ×${s.count}`).join(' · ');
+    cycleBlock = `
+      <div class="cond-section">
+        <div class="cond-section-title">${t('Cycle')}</div>
+        <div class="cond-cycle-reg">${regLine}</div>
+        ${syms ? `<div class="cond-empty-line" style="margin-top:6px">${t('Most logged')}: ${syms}</div>` : ''}
+      </div>`;
+  }
+
+  el.innerHTML = `
+    <button class="btn-outline" style="font-size:12px;margin-bottom:14px" data-ev-click="closeCondition()">‹ ${t('All conditions')}</button>
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div class="cond-head"><span class="cond-emoji-lg">${d.emoji}</span>
+        <div><div class="cond-title">${t(d.name)}</div><div class="cond-sub">${t(d.blurb)}</div></div></div>
+    </div>
+    ${(labs || vitals) ? `<div class="panel" style="padding:16px 18px;margin-bottom:16px">
+      <div class="cond-section-title">${t('Latest numbers')}</div>
+      <div class="cond-metrics">${vitals}${labs}</div>
+      <div class="lab-note" style="margin-top:12px">🩺 ${t('Typical ranges are for orientation only — discuss anything out of range with your doctor.')}</div>
+    </div>` : ''}
+    <div class="panel" style="padding:16px 18px${d.cycle ? ';margin-bottom:16px' : ''}">
+      <div class="cond-section-title">${t('Medicines')}</div>${meds}
+    </div>
+    ${d.cycle ? `<div class="panel" style="padding:16px 18px">${cycleBlock}</div>` : ''}`;
+}
+
 // ── Health spending ──────────────────────────────────────────────────────────
 // Out-of-pocket health costs by month, net of any scheme/insurance cover. India
 // is largely pay-as-you-go, so the number that matters is what you actually paid.

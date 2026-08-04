@@ -10,8 +10,24 @@ from flask import Blueprint, request, jsonify
 from auth import require_auth
 from db.labs import (log_lab_result, delete_lab_result, get_latest_by_test,
                      get_lab_trend, get_catalog)
+from db.conditions import list_conditions, get_condition_dashboard
 
 bp = Blueprint('labs', __name__)
+
+
+@bp.route('/api/conditions')
+@require_auth
+def api_conditions_list():
+    return jsonify({'conditions': list_conditions()})
+
+
+@bp.route('/api/conditions/<key>')
+@require_auth
+def api_condition_dashboard(key):
+    try:
+        return jsonify(get_condition_dashboard(key))
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
 
 
 @bp.route('/api/labs')
