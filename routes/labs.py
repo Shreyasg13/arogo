@@ -11,8 +11,40 @@ from auth import require_auth
 from db.labs import (log_lab_result, delete_lab_result, get_latest_by_test,
                      get_lab_trend, get_catalog)
 from db.conditions import list_conditions, get_condition_dashboard
+from db.immunizations import log_dose, delete_dose, get_record, get_catalog as vaccine_catalog_grouped
 
 bp = Blueprint('labs', __name__)
+
+
+@bp.route('/api/immunizations')
+@require_auth
+def api_immunizations():
+    return jsonify(get_record())
+
+
+@bp.route('/api/immunizations', methods=['POST'])
+@require_auth
+def api_immunizations_add():
+    d = request.json or {}
+    try:
+        return jsonify({'success': True, 'dose': log_dose(
+            d.get('vaccine_key', ''), d.get('date_given', ''),
+            d.get('dose_label', ''), d.get('notes', ''))})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@bp.route('/api/immunizations/<vid>', methods=['DELETE'])
+@require_auth
+def api_immunizations_delete(vid):
+    delete_dose(vid)
+    return jsonify({'success': True})
+
+
+@bp.route('/api/immunizations/catalog')
+@require_auth
+def api_immunizations_catalog():
+    return jsonify(vaccine_catalog_grouped())
 
 
 @bp.route('/api/conditions')

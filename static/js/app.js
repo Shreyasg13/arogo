@@ -348,6 +348,12 @@ const I18N = {
     'Cycle details are private to this member and aren\'t shown while managing their account.': 'चक्र विवरण इस सदस्य के लिए निजी है और उनका खाता प्रबंधित करते समय नहीं दिखाया जाता।',
     'Save changes': 'बदलाव सहेजें', 'Add appointment': 'अपॉइंटमेंट जोड़ें',
     'Appointment updated': 'अपॉइंटमेंट अपडेट हुआ',
+    'Vaccines': 'टीके', 'Your immunization record, with a heads-up when a recurring shot is due': 'आपका टीकाकरण रिकॉर्ड, और आवर्ती टीके के देय होने पर सूचना',
+    'Add a dose': 'खुराक जोड़ें', 'Choose a vaccine…': 'एक टीका चुनें…', 'Dose (e.g. Dose 1, Booster)': 'खुराक (जैसे खुराक 1, बूस्टर)',
+    'Due soon': 'जल्द देय', 'overdue': 'बकाया', 'due now': 'अभी देय', 'due in %1 days': '%1 दिनों में देय',
+    'An estimate from your last dose — your doctor\'s advice always wins.': 'आपकी पिछली खुराक से अनुमान — डॉक्टर की सलाह हमेशा मान्य।',
+    'No vaccines recorded yet': 'अभी कोई टीका दर्ज नहीं', 'Add a dose from your vaccination card above.': 'ऊपर अपने टीकाकरण कार्ड से एक खुराक जोड़ें।',
+    'Dose recorded': 'खुराक दर्ज', 'last': 'अंतिम', 'next': 'अगला',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -2075,6 +2081,7 @@ function switchView(view) {
   if (view === 'body')          loadBodyView();
   if (view === 'labs')          loadLabsView();
   if (view === 'conditions')    loadConditionsView();
+  if (view === 'immunizations') loadImmunizations();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
@@ -11053,6 +11060,110 @@ async function saveSleepLogFromView() {
 // ════════════════════════════════════════════════════════════
 // BODY & VITALS VIEW — standalone page
 // ════════════════════════════════════════════════════════════
+// ── Immunizations ────────────────────────────────────────────────────────────
+// Vaccine dose records + an honest "next due" estimate for the few recurring
+// vaccines (tetanus/flu/typhoid). Catalog is India-weighted (UIP/IAP). Timing
+// text is guidance, never a personal schedule.
+let _vaxCatalog = null;
+
+async function loadImmunizations() {
+  const el = document.getElementById('immunizations-view-content');
+  if (!el) return;
+  const [rec, cat] = await Promise.all([
+    fetch('/api/immunizations', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {vaccines:[],due:[],total_doses:0}).catch(() => ({vaccines:[],due:[],total_doses:0})),
+    fetch('/api/immunizations/catalog', {credentials:'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  _vaxCatalog = cat;
+  el.innerHTML = renderImmunizations(rec, cat);
+}
+
+function _dueLabel(d) {
+  if (d.overdue) return t('overdue');
+  if (d.days_until <= 0) return t('due now');
+  return tformat('due in %1 days', d.days_until);
+}
+
+function renderImmunizations(rec, cat) {
+  const today = localToday();
+  let opts = `<option value="">${t('Choose a vaccine…')}</option>`;
+  if (cat && cat.vaccines) {
+    for (const c of cat.categories) {
+      opts += `<optgroup label="${escHtml(c)}">`;
+      for (const v of (cat.vaccines[c] || [])) {
+        opts += `<option value="${v.key}">${escHtml(v.name)}${v.when ? ' — ' + escHtml(v.when) : ''}</option>`;
+      }
+      opts += `</optgroup>`;
+    }
+  }
+
+  const dueBanner = (rec.due && rec.due.length) ? `
+    <div class="vax-due-banner">
+      <div class="vax-due-title">💉 ${t('Due soon')}</div>
+      ${rec.due.map(d => `<div class="vax-due-row"><span>${escHtml(t2vaxname(d.name))}</span>
+        <span class="vax-due-when ${d.overdue ? 'vax-overdue' : ''}">${_dueLabel(d)} · ${_fmtShortDate(d.date)}</span></div>`).join('')}
+      <div class="vax-due-note">${t('An estimate from your last dose — your doctor\'s advice always wins.')}</div>
+    </div>` : '';
+
+  const form = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add a dose')}</h2>
+      <div class="vax-form">
+        <select id="vax-key" class="form-input" style="max-width:280px">${opts}</select>
+        <input type="text" id="vax-dose" class="form-input" placeholder="${t('Dose (e.g. Dose 1, Booster)')}" style="max-width:180px">
+        <input type="date" id="vax-date" class="form-input" value="${today}" max="${today}" style="max-width:160px">
+        <button class="btn-primary" data-ev-click="logVaccine()">${t('Save')}</button>
+      </div>
+    </div>`;
+
+  if (!rec.vaccines.length) {
+    return dueBanner + form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">💉</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No vaccines recorded yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Add a dose from your vaccination card above.')}</div>
+      </div>`;
+  }
+
+  const byCat = {};
+  for (const v of rec.vaccines) (byCat[v.category] = byCat[v.category] || []).push(v);
+  const cards = Object.entries(byCat).map(([c, items]) => `
+    <div class="panel" style="padding:16px 18px;margin-bottom:14px">
+      <h2 class="panel-title" style="margin-bottom:10px">${escHtml(c)}</h2>
+      ${items.map(v => `
+        <div class="vax-row">
+          <div class="vax-row-main">
+            <div class="vax-name">${escHtml(v.name)}${v.dose_count > 1 ? ` <span class="vax-count">×${v.dose_count}</span>` : ''}</div>
+            <div class="vax-meta">${t('last')}: ${_fmtShortDate(v.last_date)}${v.next_due ? ` · ${t('next')} ~${_fmtShortDate(v.next_due.date)}${v.next_due.overdue ? ' ⚠️' : ''}` : ''}</div>
+          </div>
+          <div class="vax-doses">${v.doses.map(dz => `
+            <span class="vax-dose-chip" title="${escHtml(dz.notes||'')}">${dz.dose_label ? escHtml(dz.dose_label) + ' · ' : ''}${_fmtShortDate(dz.date_given)}
+              <button class="vax-dose-x" data-ev-click="deleteVaccine('${dz.id}')" title="${t('Delete')}">✕</button></span>`).join('')}</div>
+        </div>`).join('')}
+    </div>`).join('');
+
+  return dueBanner + form + cards;
+}
+
+// Vaccine names come from the catalog already; helper kept for clarity/i18n hook.
+function t2vaxname(n) { return n; }
+
+async function logVaccine() {
+  const vaccine_key = document.getElementById('vax-key')?.value;
+  const date_given = document.getElementById('vax-date')?.value || localToday();
+  const dose_label = document.getElementById('vax-dose')?.value || '';
+  if (!vaccine_key) { showToast('Pick a vaccine', 'error'); return; }
+  const r = await fetch('/api/immunizations', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({vaccine_key, date_given, dose_label}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Dose recorded')); loadImmunizations(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function deleteVaccine(id) {
+  await fetch('/api/immunizations/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadImmunizations();
+}
+
 // ── Condition dashboards ─────────────────────────────────────────────────────
 // One focused view per chronic condition, pulling its labs + vitals + medicines
 // (+ cycle for PCOS) together. Pure read over existing data — no diagnosis, no

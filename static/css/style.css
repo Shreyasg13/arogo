@@ -246,6 +246,26 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .cond-med { font-size:13px; background:var(--teal-50); color:var(--teal-700); border-radius:99px; padding:5px 12px; }
 .cond-empty-line { font-size:13px; color:var(--gray-400); line-height:1.5; }
 .cond-cycle-reg { font-size:13.5px; color:var(--gray-700); line-height:1.5; }
+
+/* Immunizations */
+.vax-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.vax-due-banner { background:var(--amber-50,#fdf6ec); border:1px solid var(--amber-100,#f5e6c8);
+  border-radius:12px; padding:14px 16px; margin-bottom:16px; }
+.vax-due-title { font-size:14px; font-weight:700; margin-bottom:8px; }
+.vax-due-row { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; gap:12px; }
+.vax-due-when { color:var(--gray-500); white-space:nowrap; }
+.vax-due-when.vax-overdue { color:#B4443A; font-weight:600; }
+.vax-due-note { font-size:11px; color:var(--gray-400); margin-top:8px; }
+.vax-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid var(--gray-50); flex-wrap:wrap; }
+.vax-row:last-child { border-bottom:none; }
+.vax-row-main { flex:1; min-width:150px; }
+.vax-name { font-size:14px; font-weight:600; }
+.vax-count { font-size:11px; color:var(--teal-600); background:var(--teal-50); border-radius:99px; padding:1px 7px; }
+.vax-meta { font-size:11.5px; color:var(--gray-400); margin-top:2px; }
+.vax-doses { display:flex; flex-wrap:wrap; gap:6px; }
+.vax-dose-chip { font-size:11.5px; background:var(--gray-50); border-radius:99px; padding:3px 9px; color:var(--gray-600); display:inline-flex; align-items:center; gap:5px; }
+.vax-dose-x { border:none; background:transparent; color:var(--gray-300); cursor:pointer; font-size:11px; padding:0; }
+.vax-dose-x:hover { color:#DC2626; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
 /* ── DASHBOARD ── */
