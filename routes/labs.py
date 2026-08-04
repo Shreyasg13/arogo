@@ -12,8 +12,17 @@ from db.labs import (log_lab_result, delete_lab_result, get_latest_by_test,
                      get_lab_trend, get_catalog)
 from db.conditions import list_conditions, get_condition_dashboard
 from db.immunizations import log_dose, delete_dose, get_record, get_catalog as vaccine_catalog_grouped
+from db.timeline import get_timeline
 
 bp = Blueprint('labs', __name__)
+
+
+@bp.route('/api/timeline')
+@require_auth
+def api_timeline():
+    raw = request.args.get('types', '').strip()
+    types = [t for t in raw.split(',') if t] or None
+    return jsonify(get_timeline(types=types))
 
 
 @bp.route('/api/immunizations')

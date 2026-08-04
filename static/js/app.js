@@ -354,6 +354,13 @@ const I18N = {
     'An estimate from your last dose — your doctor\'s advice always wins.': 'आपकी पिछली खुराक से अनुमान — डॉक्टर की सलाह हमेशा मान्य।',
     'No vaccines recorded yet': 'अभी कोई टीका दर्ज नहीं', 'Add a dose from your vaccination card above.': 'ऊपर अपने टीकाकरण कार्ड से एक खुराक जोड़ें।',
     'Dose recorded': 'खुराक दर्ज', 'last': 'अंतिम', 'next': 'अगला',
+    'Timeline': 'समयरेखा', 'Health timeline': 'स्वास्थ्य समयरेखा',
+    'Your whole health story in one place — the thing to scroll through with a doctor': 'आपकी पूरी स्वास्थ्य कहानी एक जगह — डॉक्टर के साथ देखने लायक',
+    'Clear': 'साफ़ करें', 'Nothing here yet': 'अभी यहाँ कुछ नहीं',
+    'As you log medicines, vitals, labs, visits and vaccines, they appear here in order.': 'जैसे-जैसे आप दवाइयाँ, वाइटल्स, लैब, विज़िट और टीके दर्ज करते हैं, वे यहाँ क्रम में दिखते हैं।',
+    'Showing the most recent %1 of %2 events.': '%2 में से %1 सबसे हाल की घटनाएँ दिखाई जा रही हैं।',
+    'Medicine': 'दवा', 'Symptom': 'लक्षण', 'Vital': 'वाइटल', 'Lab result': 'लैब परिणाम',
+    'Appointment': 'अपॉइंटमेंट', 'Vaccine': 'टीका',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -2082,6 +2089,7 @@ function switchView(view) {
   if (view === 'labs')          loadLabsView();
   if (view === 'conditions')    loadConditionsView();
   if (view === 'immunizations') loadImmunizations();
+  if (view === 'timeline')      loadTimeline();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
@@ -11060,6 +11068,84 @@ async function saveSleepLogFromView() {
 // ════════════════════════════════════════════════════════════
 // BODY & VITALS VIEW — standalone page
 // ════════════════════════════════════════════════════════════
+// ── Health timeline ──────────────────────────────────────────────────────────
+// One chronological "health story" merging meds/symptoms/vitals/labs/
+// appointments/vaccines. Private diary categories (journal/mood/cycle) are
+// excluded server-side. Filterable by type; grouped by month.
+let _timelineTypes = new Set();     // empty = all
+let _timelineMeta = null;
+
+const TL_COLOR = {
+  medicine:'#3E7862', symptom:'#D97706', vital:'#DC2626',
+  lab:'#2563EB', appointment:'#7C3AED', vaccine:'#0E9F8B',
+};
+
+async function loadTimeline() {
+  const el = document.getElementById('timeline-view-content');
+  if (!el) return;
+  const q = _timelineTypes.size ? ('?types=' + [..._timelineTypes].join(',')) : '';
+  const d = await fetch('/api/timeline' + q, {credentials:'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = ''; return; }
+  _timelineMeta = d.types;
+  el.innerHTML = renderTimeline(d);
+}
+
+function toggleTimelineType(key) {
+  if (_timelineTypes.has(key)) _timelineTypes.delete(key);
+  else _timelineTypes.add(key);
+  loadTimeline();
+}
+
+function _monthKey(iso) { return (iso || '').slice(0, 7); }
+function _monthTitle(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+}
+
+function renderTimeline(d) {
+  const chips = (d.types || []).map(tp => {
+    const on = _timelineTypes.has(tp.key);
+    return `<button class="tl-chip${on ? ' active' : ''}" data-ev-click="toggleTimelineType('${tp.key}')">${tp.icon} ${t(tp.label)}</button>`;
+  }).join('');
+  const filterBar = `<div class="tl-filter">${chips}${_timelineTypes.size
+    ? `<button class="tl-chip tl-clear" data-ev-click="clearTimelineFilter()">${t('Clear')}</button>` : ''}</div>`;
+
+  if (!d.events.length) {
+    return filterBar + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">🧬</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('Nothing here yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('As you log medicines, vitals, labs, visits and vaccines, they appear here in order.')}</div>
+      </div>`;
+  }
+
+  // Group by month.
+  let html = '', curMonth = null;
+  for (const e of d.events) {
+    const ym = _monthKey(e.date);
+    if (ym !== curMonth) {
+      if (curMonth !== null) html += `</div>`;
+      html += `<div class="tl-month-label">${_monthTitle(ym)}</div><div class="tl-month">`;
+      curMonth = ym;
+    }
+    const c = TL_COLOR[e.type] || 'var(--gray-400)';
+    const icon = (_timelineMeta.find(x => x.key === e.type) || {}).icon || '•';
+    html += `<div class="tl-event">
+      <div class="tl-dot" style="background:${c}"><span>${icon}</span></div>
+      <div class="tl-body">
+        <div class="tl-title">${escHtml(e.title)}</div>
+        ${e.detail ? `<div class="tl-detail">${escHtml(e.detail)}</div>` : ''}
+      </div>
+      <div class="tl-date">${_fmtShortDate(e.date)}</div>
+    </div>`;
+  }
+  html += `</div>`;
+  const more = d.total > d.events.length
+    ? `<div class="tl-more">${tformat('Showing the most recent %1 of %2 events.', d.events.length, d.total)}</div>` : '';
+  return filterBar + `<div class="panel" style="padding:8px 18px 18px">${html}${more}</div>`;
+}
+
+function clearTimelineFilter() { _timelineTypes.clear(); loadTimeline(); }
+
 // ── Immunizations ────────────────────────────────────────────────────────────
 // Vaccine dose records + an honest "next due" estimate for the few recurring
 // vaccines (tetanus/flu/typhoid). Catalog is India-weighted (UIP/IAP). Timing
