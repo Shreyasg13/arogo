@@ -46,6 +46,33 @@ def test_create_list_and_next(client):
     assert appt["kind"] == "doctor" and appt["remind"] == 1
 
 
+def test_update_appointment(client):
+    aid = client.post("/api/appointments", json={
+        "title": "Dr. Sharma", "kind": "doctor", "date": _tomorrow(),
+        "time": "09:00"}).get_json()["appointment"]["id"]
+    # Reschedule + add a post-visit note; leave title alone.
+    later = (dt.date.today() + dt.timedelta(days=3)).isoformat()
+    r = client.patch(f"/api/appointments/{aid}",
+                     json={"date": later, "time": "11:15", "notes": "Bring old reports"})
+    assert r.status_code == 200
+    got = r.get_json()["appointment"]
+    assert got["date"] == later and got["time"] == "11:15"
+    assert got["notes"] == "Bring old reports" and got["title"] == "Dr. Sharma"
+
+
+def test_update_rejects_foreign_and_missing(app, client):
+    # Editing a non-existent id is a clean 400, not a crash.
+    assert client.patch("/api/appointments/nope", json={"title": "x"}).status_code == 400
+    # Another user cannot edit this user's appointment.
+    aid = client.post("/api/appointments", json={"title": "Mine", "date": _tomorrow()}).get_json()["appointment"]["id"]
+    other = app.test_client()
+    other.post("/auth/register", json={"email": "appt-other@medeasy.test", "password": PW})
+    assert other.patch(f"/api/appointments/{aid}", json={"title": "hijacked"}).status_code == 400
+    # Original is untouched.
+    mine = next(a for a in client.get("/api/appointments").get_json()["appointments"] if a["id"] == aid)
+    assert mine["title"] == "Mine"
+
+
 def test_validation(client):
     assert client.post("/api/appointments", json={"date": _tomorrow()}).status_code == 400  # no title
     assert client.post("/api/appointments", json={"title": "x", "date": "not-a-date"}).status_code == 400

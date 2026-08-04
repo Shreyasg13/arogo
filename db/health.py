@@ -340,6 +340,30 @@ def list_appointments(upcoming_only: bool = False) -> list:
     return [dict(r) for r in rows]
 
 
+def update_appointment(aid: str, data: dict) -> dict:
+    """Edit an existing appointment (fix a typo, reschedule, or add post-visit
+    notes). Only the caller's own row; unknown fields ignored; validation mirrors
+    create so a bad edit can't corrupt the row."""
+    uid = current_user_id()
+    row = execute("SELECT * FROM appointments WHERE id=? AND user_id=?", (aid, uid), fetchone=True)
+    if not row:
+        raise ValueError('Appointment not found')
+    cur = dict(row)
+    title = str(data.get('title', cur['title'])).strip() or cur['title']
+    date = _valid_date(data.get('date')) or cur['date'] if 'date' in data else cur['date']
+    kind = data.get('kind', cur['kind'])
+    if kind not in _APPT_KINDS:
+        kind = cur['kind']
+    time = str(data.get('time', cur['time']) or '')[:5]
+    remind = cur['remind'] if 'remind' not in data else (0 if data.get('remind') is False else 1)
+    execute("""UPDATE appointments SET title=?, kind=?, date=?, time=?, location=?, notes=?, remind=?
+               WHERE id=? AND user_id=?""",
+            (title[:160], kind, date, time,
+             str(data.get('location', cur['location']))[:200],
+             str(data.get('notes', cur['notes']))[:500], remind, aid, uid), commit=True)
+    return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?", (aid, uid), fetchone=True))
+
+
 def delete_appointment(aid: str):
     execute("DELETE FROM appointments WHERE id=? AND user_id=?",
             (aid, current_user_id()), commit=True)

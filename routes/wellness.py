@@ -51,6 +51,15 @@ def api_add_appointment():
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+@bp.route('/api/appointments/<aid>', methods=['PATCH'])
+@require_auth
+def api_update_appointment(aid):
+    from db.health import update_appointment
+    try:
+        return jsonify({'success': True, 'appointment': update_appointment(aid, request.json or {})})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
 @bp.route('/api/appointments/<aid>', methods=['DELETE'])
 @require_auth
 def api_delete_appointment(aid):

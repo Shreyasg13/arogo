@@ -346,6 +346,8 @@ const I18N = {
     'Recent cycles look regular (~%1 days)': 'हाल के चक्र नियमित लगते हैं (~%1 दिन)',
     'Log a couple of cycles to see regularity.': 'नियमितता देखने के लिए कुछ चक्र दर्ज करें।',
     'Cycle details are private to this member and aren\'t shown while managing their account.': 'चक्र विवरण इस सदस्य के लिए निजी है और उनका खाता प्रबंधित करते समय नहीं दिखाया जाता।',
+    'Save changes': 'बदलाव सहेजें', 'Add appointment': 'अपॉइंटमेंट जोड़ें',
+    'Appointment updated': 'अपॉइंटमेंट अपडेट हुआ',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -8643,7 +8645,11 @@ function _apptDateLabel(dateStr) {
   return { nice, rel: `in ${days}d`, soon: days <= 7 };
 }
 
+let _appts = [];               // cached for edit
+let _editingApptId = null;
+
 function renderAppointments(appts) {
+  _appts = appts;
   const list = document.getElementById('appointments-list');
   if (!list) return;
   if (!appts.length) {
@@ -8666,9 +8672,14 @@ function renderAppointments(appts) {
         ${a.notes ? `<div class="appt-notes">${escHtml(a.notes)}</div>` : ''}
         ${a.remind ? '' : '<div class="appt-notes" style="color:var(--gray-400)">🔕 Reminders off</div>'}
       </div>
-      <button class="btn-icon" title="Delete" data-ev-click="deleteAppointment('${a.id}')">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-      </button>
+      <div class="appt-actions">
+        <button class="btn-icon" title="${t('Edit')}" data-ev-click="editAppointment('${a.id}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteAppointment('${a.id}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
     </div>`;
   };
   list.innerHTML =
@@ -8676,31 +8687,56 @@ function renderAppointments(appts) {
     (past.length ? `<div class="appt-group-label" style="margin-top:16px">Past</div>${past.map(card).join('')}` : '');
 }
 
+// Load an existing appointment into the add-form for editing.
+function editAppointment(id) {
+  const a = _appts.find(x => x.id === id);
+  if (!a) return;
+  _editingApptId = id;
+  const set = (f, v) => { const el = document.getElementById('appt-' + f); if (el) el.value = v ?? ''; };
+  set('title', a.title); set('date', a.date); set('kind', a.kind);
+  set('time', a.time); set('location', a.location); set('notes', a.notes);
+  const rem = document.getElementById('appt-remind'); if (rem) rem.checked = !!a.remind;
+  const btn = document.getElementById('appt-submit-btn'); if (btn) btn.textContent = t('Save changes');
+  const cancel = document.getElementById('appt-cancel-btn'); if (cancel) cancel.style.display = 'inline-flex';
+  document.getElementById('appt-title')?.scrollIntoView({block: 'center'});
+  document.getElementById('appt-title')?.focus();
+}
+
+function cancelApptEdit() {
+  _editingApptId = null;
+  ['title', 'time', 'location', 'notes'].forEach(f => {
+    const el = document.getElementById('appt-' + f); if (el) el.value = '';
+  });
+  const btn = document.getElementById('appt-submit-btn'); if (btn) btn.textContent = t('Add appointment');
+  const cancel = document.getElementById('appt-cancel-btn'); if (cancel) cancel.style.display = 'none';
+}
+
 async function addAppointment() {
   const title = document.getElementById('appt-title')?.value.trim();
   const date  = document.getElementById('appt-date')?.value;
   if (!title) { showToast('What is the appointment for?', 'error'); return; }
   if (!date)  { showToast('Pick a date', 'error'); return; }
-  const r = await fetch('/api/appointments', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
-    body: JSON.stringify({
-      title, date,
-      kind: document.getElementById('appt-kind')?.value || 'doctor',
-      time: document.getElementById('appt-time')?.value || '',
-      location: document.getElementById('appt-location')?.value || '',
-      notes: document.getElementById('appt-notes')?.value || '',
-      remind: !!document.getElementById('appt-remind')?.checked,
-    })
+  const payload = {
+    title, date,
+    kind: document.getElementById('appt-kind')?.value || 'doctor',
+    time: document.getElementById('appt-time')?.value || '',
+    location: document.getElementById('appt-location')?.value || '',
+    notes: document.getElementById('appt-notes')?.value || '',
+    remind: !!document.getElementById('appt-remind')?.checked,
+  };
+  const editing = _editingApptId;
+  const r = await fetch(editing ? `/api/appointments/${editing}` : '/api/appointments', {
+    method: editing ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify(payload)
   }).then(r => r.json()).catch(() => null);
   if (r?.success) {
-    showToast('Appointment added 📅', 'success');
-    ['appt-title', 'appt-time', 'appt-location', 'appt-notes'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
-    });
+    showToast(editing ? t('Appointment updated') : 'Appointment added 📅', 'success');
+    cancelApptEdit();
     loadAppointments();
     loadDashboard();
   } else {
-    showToast(r?.error || 'Could not add the appointment', 'error');
+    showToast(r?.error || 'Could not save the appointment', 'error');
   }
 }
 

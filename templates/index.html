@@ -594,7 +594,8 @@
           <input type="checkbox" id="appt-remind" checked>
           <span data-i18n="🔔 Remind me the evening before and the morning of">🔔 Remind me the evening before and the morning of</span>
         </label>
-        <button class="btn-primary" data-ev-click="addAppointment()" data-i18n="Add appointment">Add appointment</button>
+        <button class="btn-primary" id="appt-submit-btn" data-ev-click="addAppointment()" data-i18n="Add appointment">Add appointment</button>
+        <button class="btn-outline" id="appt-cancel-btn" data-ev-click="cancelApptEdit()" style="display:none" data-i18n="Cancel">Cancel</button>
       </div>
     </div>
     <div id="appointments-list" style="margin-top:16px"></div>
