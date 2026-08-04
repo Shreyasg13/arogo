@@ -4725,6 +4725,28 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   --shadow-sm:0 1px 3px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.35);
   --shadow-md:0 4px 16px rgba(0,0,0,.5);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   VIBRANT — a brighter, higher-energy LIGHT theme for a younger crowd.
+   Crisp cool-white canvas + a vivid emerald primary and coral accent,
+   swapped for the calm sage/sand default. Same layout & contrast rules.
+   ══════════════════════════════════════════════════════════════ */
+[data-theme="vibrant"] {
+  color-scheme: light;
+  /* Cooler, crisper canvas than the warm sand default */
+  --gray-0:#FFFFFF; --gray-25:#F5FBFA; --gray-50:#ECF6F4; --gray-100:#DCEBE8;
+  /* Vivid emerald primary (was sage) */
+  --teal-50:#DFF7F1; --teal-100:#B6EEE1; --teal-200:#84E1CD; --teal-400:#22C6A6;
+  --teal-500:#0FB295; --teal-600:#0E9F8B; --teal-700:#0A7D6E; --teal-900:#064B42;
+  /* Punchy coral accent (was terracotta) */
+  --purple-50:#FFE9E2; --purple-500:#FF6B4A; --purple-600:#F04E2C;
+  --shadow-sm:0 1px 3px rgba(14,159,139,.10),0 1px 2px rgba(14,159,139,.08);
+  --shadow-md:0 6px 20px rgba(14,159,139,.14);
+}
+[data-theme="vibrant"] .adh-streak { background:linear-gradient(135deg,#0FB295,#22C6A6); }
+[data-theme="vibrant"] .breathe-circle {
+  background:radial-gradient(circle at 40% 35%, #52DEC4, #0E9F8B); }
+
 [data-theme="dark"] .hero-card { border-color:rgba(255,255,255,.06); }
 [data-theme="dark"] .mobile-tabbar { box-shadow:0 -4px 16px rgba(0,0,0,.4); }
 [data-theme="dark"] .lowstock-nudge { background:rgba(245,158,11,.10); border-color:rgba(245,158,11,.35); }

@@ -9,29 +9,46 @@ let _currentUser = null;
 // Applied as early as possible; stored choice wins, otherwise the OS
 // preference decides. (Inline <script> is blocked by CSP, so a brief
 // first-paint flash on the very first load is expected.)
+// Three themes now: the calm sage default ('light'), 'dark' (Warm Dusk), and
+// 'vibrant' — a brighter, higher-energy light palette for a younger crowd who
+// find the default a touch sober. Same layout and contrast rules; only the
+// accent + canvas variables change.
+const _THEME_ORDER = ['light', 'dark', 'vibrant'];
+const _THEME_META = {
+  light:   { icon: '🌙', label: 'Dark mode',    color: '#20362D' },  // shows the NEXT theme
+  dark:    { icon: '✨', label: 'Vibrant mode', color: '#191612' },
+  vibrant: { icon: '☀️', label: 'Calm mode',    color: '#0E9F8B' },
+};
+
+function _currentTheme() {
+  return document.documentElement.dataset.theme || 'light';
+}
+
 (function initTheme() {
-  const stored = localStorage.getItem('me_theme');
-  const dark = stored ? stored === 'dark'
-    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  if (dark) document.documentElement.dataset.theme = 'dark';
+  let stored = localStorage.getItem('me_theme');
+  if (!stored) {
+    stored = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+      ? 'dark' : 'light';
+  }
+  if (stored && stored !== 'light') document.documentElement.dataset.theme = stored;
 })();
 
 function _syncThemeToggleUI() {
-  const dark = document.documentElement.dataset.theme === 'dark';
+  const meta = _THEME_META[_currentTheme()] || _THEME_META.light;
   const icon = document.getElementById('theme-toggle-icon');
   const label = document.getElementById('theme-toggle-label');
-  if (icon)  icon.textContent  = dark ? '☀️' : '🌙';
-  if (label) label.textContent = dark ? 'Light mode' : 'Dark mode';
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = dark ? '#191612' : '#20362D';
+  if (icon)  icon.textContent  = meta.icon;
+  if (label) label.textContent = t(meta.label);
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if (mc) mc.content = meta.color;
 }
 
 function toggleTheme() {
   const el = document.documentElement;
-  const dark = el.dataset.theme !== 'dark';
-  if (dark) el.dataset.theme = 'dark';
-  else delete el.dataset.theme;
-  localStorage.setItem('me_theme', dark ? 'dark' : 'light');
+  const next = _THEME_ORDER[(_THEME_ORDER.indexOf(_currentTheme()) + 1) % _THEME_ORDER.length];
+  if (next === 'light') delete el.dataset.theme;
+  else el.dataset.theme = next;
+  localStorage.setItem('me_theme', next);
   _syncThemeToggleUI();
 }
 
@@ -286,6 +303,8 @@ const I18N = {
     'Share': 'साझा करें', 'Copied — paste it to a friend': 'कॉपी हो गया — किसी दोस्त को भेजें',
     "🔥 I'm on a %1-day streak of taking all my meds on time with Arogo. Small wins!": '🔥 मैं Arogo के साथ %1 दिनों से समय पर अपनी सारी दवाइयाँ ले रहा/रही हूँ। छोटी जीत!',
     'Low-key mode': 'लो-की मोड',
+    'Dark mode': 'डार्क मोड', 'Light mode': 'लाइट मोड',
+    'Vibrant mode': 'वाइब्रेंट मोड', 'Calm mode': 'शांत मोड',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
