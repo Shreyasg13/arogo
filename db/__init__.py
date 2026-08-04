@@ -23,7 +23,7 @@ from .fitness     import (insert_activity, list_activities, delete_activity, fit
                           log_sync, get_sync_history)
 from .food        import (get_profile, update_profile, calc_tdee, get_user_language,
                           log_food, update_food_log, get_food_logs, delete_food_log,
-                          get_nutrition_summary, get_weekly_nutrition,
+                          get_nutrition_summary, get_weekly_nutrition, get_recomp_signal,
                           usual_portions,
                           save_custom_food, list_custom_foods, get_custom_food_by_barcode)
 from .wellness    import (get_thoughts, save_thought, update_thought, delete_thought,
@@ -67,7 +67,7 @@ __all__ = [
     "get_profile", "update_profile", "calc_tdee", "get_user_language", "log_food", "update_food_log",
     "get_food_logs", "delete_food_log",
     "usual_portions",
-    "get_nutrition_summary", "get_weekly_nutrition", "save_custom_food", "list_custom_foods",
+    "get_nutrition_summary", "get_weekly_nutrition", "get_recomp_signal", "save_custom_food", "list_custom_foods",
     "get_custom_food_by_barcode",
     "get_thoughts", "save_thought", "update_thought", "delete_thought",
     "get_thoughts_range", "count_thoughts_today", "MAX_THOUGHTS_PER_DAY",

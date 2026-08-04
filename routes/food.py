@@ -236,6 +236,13 @@ def save_profile():
     return jsonify({'success': True, 'profile': p, 'targets': t})
 
 
+@bp.route('/api/body/recomp')
+@require_auth
+def api_recomp_signal():
+    """Honest recomposition read — weight + body-fat + protein together."""
+    return jsonify(get_recomp_signal())
+
+
 @bp.route('/api/food/recent-meals')
 @require_auth
 def api_recent_meals():

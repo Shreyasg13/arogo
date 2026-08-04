@@ -263,6 +263,18 @@ const I18N = {
     'What drained you today — and what gave a little back?': 'आज किस चीज़ ने थकाया — और किसने थोड़ी ऊर्जा दी?',
     "Name the feeling. You don't have to fix it.": 'भावना को नाम दें। उसे ठीक करना ज़रूरी नहीं।',
     'Over the last %1 days, tough moods showed up most alongside %2. Just a pattern — only you know what it means.': 'पिछले %1 दिनों में, कठिन भावनाएँ सबसे ज़्यादा %2 के साथ दिखीं। बस एक पैटर्न — इसका मतलब केवल आप जानते हैं।',
+    'This looks like recomposition': 'यह रीकंपोज़िशन जैसा दिखता है',
+    'Body-fat down while weight held — muscle likely up. The scale alone would have missed this.': 'वज़न स्थिर रहते हुए शरीर की चर्बी कम — मांसपेशी शायद बढ़ी। अकेला तराज़ू इसे चूक जाता।',
+    'Losing body fat': 'शरीर की चर्बी घट रही है',
+    'Your body-fat readings are trending down over this window.': 'इस अवधि में आपकी शरीर-चर्बी रीडिंग घट रही हैं।',
+    'Gaining, with protein behind it': 'बढ़ रहे हैं, प्रोटीन के साथ',
+    "You're gaining weight and hitting your protein — supportive of muscle, not just fat.": 'आप वज़न बढ़ा रहे हैं और प्रोटीन पूरा कर रहे हैं — सिर्फ़ चर्बी नहीं, मांसपेशी के लिए सहायक।',
+    'Weight is trending up': 'वज़न बढ़ रहा है',
+    'Protein is under target though — worth a look if muscle is the goal.': 'पर प्रोटीन लक्ष्य से कम है — अगर मांसपेशी लक्ष्य है तो ध्यान दें।',
+    'Protein is running low': 'प्रोटीन कम पड़ रहा है',
+    'You logged well under your protein target on the days you tracked. Protein builds and repairs muscle.': 'जिन दिनों आपने ट्रैक किया, प्रोटीन लक्ष्य से काफ़ी कम रहा। प्रोटीन मांसपेशी बनाता और उसकी मरम्मत करता है।',
+    'weight': 'वज़न', 'body fat': 'शरीर की चर्बी', 'avg protein': 'औसत प्रोटीन',
+    'Based on the last %1 days you logged. An observation, not medical advice.': 'आपके पिछले %1 दिनों के लॉग के आधार पर। एक अवलोकन, चिकित्सा सलाह नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
     'Pending invites': 'लंबित निमंत्रण',
@@ -10930,6 +10942,9 @@ async function loadBodyView() {
       </div>
     </div>
 
+    <!-- Recomposition read — weight + body-fat + protein, honestly combined -->
+    <div id="bv-recomp-section" style="margin-bottom:20px"></div>
+
     <!-- Weight progress chart — full width -->
     <div id="bv-weight-chart-section" style="margin-bottom:20px"></div>
 
@@ -10942,6 +10957,7 @@ async function loadBodyView() {
 
   loadBodyMetricsView();
   loadVitalsView();
+  loadRecompSignal();
   loadWeightProgressChart();
   loadVitalTrends();
   loadCycle();
@@ -13239,6 +13255,48 @@ async function loadWeeklyDigest() {
 
 let _weightChart = null;
 let _weightTrendDays = 90;  // default 3 months
+
+// Honest body-recomposition read. Weight, body-fat, and protein are logged
+// separately; a young person doing recomp needs them combined, because the
+// scale alone lies (muscle up + fat down can hold weight flat). Framed as an
+// observation, never a plan or a causal claim.
+async function loadRecompSignal() {
+  const el = document.getElementById('bv-recomp-section');
+  if (!el) return;
+  const d = await fetch('/api/body/recomp', {cache: 'no-store'}).then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data || !d.read || d.read === 'keep_logging') { el.innerHTML = ''; return; }
+
+  // read → headline + honest one-liner. No prescriptions.
+  const READS = {
+    recomp:      ['🔄', t('This looks like recomposition'),
+                  t('Body-fat down while weight held — muscle likely up. The scale alone would have missed this.')],
+    fat_loss:    ['📉', t('Losing body fat'),
+                  t('Your body-fat readings are trending down over this window.')],
+    lean_gain:   ['💪', t('Gaining, with protein behind it'),
+                  t("You're gaining weight and hitting your protein — supportive of muscle, not just fat.")],
+    weight_up:   ['⚖️', t('Weight is trending up'),
+                  t('Protein is under target though — worth a look if muscle is the goal.')],
+    protein_low: ['🍳', t('Protein is running low'),
+                  t('You logged well under your protein target on the days you tracked. Protein builds and repairs muscle.')],
+  };
+  const r = READS[d.read];
+  if (!r) { el.innerHTML = ''; return; }
+
+  const stat = (label, val) => `<div class="recomp-stat"><b>${val}</b><span>${label}</span></div>`;
+  const stats = [];
+  if (d.weight) stats.push(stat(t('weight'), `${d.weight.change >= 0 ? '+' : ''}${d.weight.change} kg`));
+  if (d.body_fat) stats.push(stat(t('body fat'), `${d.body_fat.change >= 0 ? '+' : ''}${d.body_fat.change}%`));
+  if (d.protein) stats.push(stat(t('avg protein'), `${d.protein.avg} / ${d.protein.target}g`));
+
+  el.innerHTML = `
+    <div class="panel recomp-card" style="padding:18px 20px">
+      <div class="recomp-head"><span class="recomp-emoji">${r[0]}</span>
+        <div><div class="recomp-title">${r[1]}</div>
+          <div class="recomp-sub">${r[2]}</div></div></div>
+      ${stats.length ? `<div class="recomp-stats">${stats.join('')}</div>` : ''}
+      <div class="recomp-window">${tformat('Based on the last %1 days you logged. An observation, not medical advice.', d.days)}</div>
+    </div>`;
+}
 
 async function loadWeightProgressChart(days) {
   if (days) _weightTrendDays = days;

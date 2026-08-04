@@ -133,6 +133,17 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .breathe-close { color:#fff; background:transparent; border:1px solid rgba(255,255,255,.5);
   border-radius:99px; padding:8px 20px; font-size:13px; cursor:pointer; }
 @media (prefers-reduced-motion: reduce) { .breathe-circle { transition:none; } }
+
+/* Body-recomposition read — weight + body-fat + protein, honestly combined */
+.recomp-card { border-left:3px solid var(--teal-500,#3E7862); }
+.recomp-head { display:flex; gap:12px; align-items:flex-start; }
+.recomp-emoji { font-size:24px; line-height:1; }
+.recomp-title { font-size:15px; font-weight:700; color:var(--gray-800,#2b2a27); }
+.recomp-sub { font-size:13px; color:var(--gray-500); line-height:1.5; margin-top:3px; }
+.recomp-stats { display:flex; gap:22px; flex-wrap:wrap; margin:14px 0 4px; }
+.recomp-stat b { display:block; font-size:17px; font-weight:700; color:var(--teal-700); }
+.recomp-stat span { font-size:11px; color:var(--gray-400); text-transform:uppercase; letter-spacing:.03em; }
+.recomp-window { font-size:11px; color:var(--gray-400); margin-top:10px; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
 /* ── DASHBOARD ── */

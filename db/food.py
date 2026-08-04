@@ -371,6 +371,64 @@ def get_weekly_nutrition(days: int = 7) -> list:
         result.append({'date': d, **summary['totals']})
     return result
 
+
+def get_recomp_signal(days: int = 30) -> dict:
+    """Synthesise weight, body-fat, and protein into ONE honest read for a young
+    person doing body recomposition — where the scale alone lies (muscle up + fat
+    down can leave weight flat). We never claim causation or give a plan; we
+    describe what the logs show and hedge hard. Returns a `read` key the UI maps
+    to plain, non-prescriptive language, plus the raw numbers behind it.
+
+    read ∈ {None, 'keep_logging', 'recomp', 'fat_loss', 'lean_gain',
+            'weight_up', 'protein_low'} — only set when there's enough to say."""
+    from db.wellness import get_body_metrics
+
+    metrics = get_body_metrics(days)
+    weights = [(m['date_key'], m['weight_kg']) for m in metrics if m.get('weight_kg')]
+    fats    = [(m['date_key'], m['body_fat_pct']) for m in metrics if m.get('body_fat_pct')]
+
+    weight = fat = None
+    if len(weights) >= 2:
+        weight = {'first': weights[0][1], 'last': weights[-1][1],
+                  'change': round(weights[-1][1] - weights[0][1], 1)}
+    if len(fats) >= 2:
+        fat = {'first': fats[0][1], 'last': fats[-1][1],
+               'change': round(fats[-1][1] - fats[0][1], 1)}
+
+    # Average protein across days that actually have food logged (empty days
+    # would drag the average down and misrepresent adherence).
+    protein = None
+    tgt = (calc_tdee(get_profile()) or {}).get('protein_g')
+    if tgt:
+        eaten = [d['protein'] for d in get_weekly_nutrition(days) if (d.get('calories') or 0) > 0]
+        if eaten:
+            avg = sum(eaten) / len(eaten)
+            protein = {'avg': round(avg), 'target': tgt,
+                       'pct': round(avg / tgt * 100), 'days': len(eaten)}
+
+    if not weight and not fat and not protein:
+        return {'has_data': False, 'days': days, 'read': None,
+                'weight': None, 'body_fat': None, 'protein': None}
+
+    on_protein = bool(protein and protein['pct'] >= 90)
+    fat_down   = bool(fat and fat['change'] <= -0.5)
+    wt_change  = weight['change'] if weight else None
+
+    read = 'keep_logging'
+    if fat_down and wt_change is not None and wt_change >= -0.5 and on_protein:
+        read = 'recomp'                      # fat down, weight steady/up, protein hit
+    elif fat_down:
+        read = 'fat_loss'
+    elif wt_change is not None and wt_change >= 0.5 and on_protein:
+        read = 'lean_gain'                   # gaining with protein support
+    elif wt_change is not None and wt_change >= 0.5:
+        read = 'weight_up'
+    elif protein and protein['pct'] < 70:
+        read = 'protein_low'
+
+    return {'has_data': True, 'days': days, 'read': read,
+            'weight': weight, 'body_fat': fat, 'protein': protein}
+
 def save_custom_food(data: dict) -> dict:
     uid = current_user_id()
     name = str(data.get('name', '')).strip()
