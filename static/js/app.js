@@ -305,6 +305,14 @@ const I18N = {
     'Low-key mode': 'लो-की मोड',
     'Dark mode': 'डार्क मोड', 'Light mode': 'लाइट मोड',
     'Vibrant mode': 'वाइब्रेंट मोड', 'Calm mode': 'शांत मोड',
+    'Lab results': 'लैब रिपोर्ट', 'Keep your blood-test numbers in one place and watch the trends': 'अपने ब्लड-टेस्ट के आँकड़े एक जगह रखें और रुझान देखें',
+    'Add a result': 'परिणाम जोड़ें', 'Choose a test…': 'एक टेस्ट चुनें…', 'Value': 'मान',
+    'No lab results yet': 'अभी कोई लैब परिणाम नहीं', 'Add a value from your latest blood test above to start tracking it.': 'ट्रैक करने के लिए ऊपर अपने नवीनतम ब्लड टेस्ट से एक मान जोड़ें।',
+    'Result saved': 'परिणाम सहेजा गया', 'Trend': 'रुझान', 'typical': 'सामान्य', 'no set range': 'कोई तय सीमा नहीं',
+    'Below range': 'सीमा से नीचे', 'Above range': 'सीमा से ऊपर', 'In range': 'सीमा में',
+    'Reference ranges are typical adult values for orientation only — labs and your doctor\'s targets vary. An out-of-range number is worth discussing with your doctor, never a diagnosis.': 'संदर्भ सीमाएँ केवल दिशा-निर्देश हेतु सामान्य वयस्क मान हैं — लैब और आपके डॉक्टर के लक्ष्य भिन्न होते हैं। सीमा से बाहर का मान डॉक्टर से चर्चा योग्य है, निदान नहीं।',
+    'Only one reading so far': 'अभी तक केवल एक रीडिंग', 'Add another to see a trend.': 'रुझान देखने के लिए एक और जोड़ें।',
+    '%1 readings · latest %2 %3': '%1 रीडिंग · नवीनतम %2 %3', 'shaded = typical range': 'छायांकित = सामान्य सीमा',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -2030,6 +2038,7 @@ function switchView(view) {
   if (view === 'thoughts')      { loadWellness(); setTimeout(() => switchWellnessTab('thoughts'), 50); }
   if (view === 'sleep')         loadSleepView();
   if (view === 'body')          loadBodyView();
+  if (view === 'labs')          loadLabsView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
   if (view === 'family')        loadFamily();
@@ -10923,6 +10932,165 @@ async function saveSleepLogFromView() {
 // ════════════════════════════════════════════════════════════
 // BODY & VITALS VIEW — standalone page
 // ════════════════════════════════════════════════════════════
+// ── Lab results ──────────────────────────────────────────────────────────────
+// Blood-panel values (HbA1c, lipids, thyroid, vitamins…) kept over time with
+// trend charts. Reference ranges + status come from the server (lab_catalog) and
+// are ALWAYS framed as "worth discussing with a doctor," never a diagnosis.
+let _labCatalog = null;
+
+async function loadLabsView() {
+  const el = document.getElementById('labs-view-content');
+  if (!el) return;
+  const [results, catalog] = await Promise.all([
+    fetch('/api/labs', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {results:[]}).catch(() => ({results:[]})),
+    fetch('/api/labs/catalog', {credentials:'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  _labCatalog = catalog;
+  el.innerHTML = renderLabsView(results.results || [], catalog);
+}
+
+const LAB_STATUS = {
+  low:      {cls:'lab-low',  label:'Below range'},
+  high:     {cls:'lab-high', label:'Above range'},
+  in_range: {cls:'lab-ok',   label:'In range'},
+};
+
+function _labStatusBadge(status) {
+  const s = LAB_STATUS[status];
+  return s ? `<span class="lab-badge ${s.cls}">${t(s.label)}</span>` : '';
+}
+
+function renderLabsView(results, catalog) {
+  // Add-a-lab picker — optgroups by category, each option carries unit + range.
+  let options = `<option value="">${t('Choose a test…')}</option>`;
+  if (catalog && catalog.tests) {
+    for (const cat of catalog.categories) {
+      options += `<optgroup label="${escHtml(cat)}">`;
+      for (const tst of (catalog.tests[cat] || [])) {
+        const rng = (tst.ref_low != null) ? ` (${tst.ref_low}–${tst.ref_high} ${tst.unit})` : '';
+        options += `<option value="${tst.key}" data-unit="${escHtml(tst.unit)}">${escHtml(tst.name)}${rng}</option>`;
+      }
+      options += `</optgroup>`;
+    }
+  }
+  const today = localToday();
+
+  const form = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:6px">${t('Add a result')}</h2>
+      <div class="lab-note">🩺 ${t('Reference ranges are typical adult values for orientation only — labs and your doctor\'s targets vary. An out-of-range number is worth discussing with your doctor, never a diagnosis.')}</div>
+      <div class="lab-form">
+        <select id="lab-test" class="form-input" data-ev-change="onLabTestPick()">${options}</select>
+        <input type="number" step="any" id="lab-value" class="form-input" placeholder="${t('Value')}" style="max-width:120px">
+        <span id="lab-unit" class="lab-unit"></span>
+        <input type="date" id="lab-date" class="form-input" value="${today}" max="${today}" style="max-width:160px">
+        <button class="btn-primary" data-ev-click="logLab()">${t('Save')}</button>
+      </div>
+    </div>`;
+
+  if (!results.length) {
+    return form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">🧪</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No lab results yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Add a value from your latest blood test above to start tracking it.')}</div>
+      </div>`;
+  }
+
+  // Group latest-per-test by category.
+  const byCat = {};
+  for (const r of results) (byCat[r.category] = byCat[r.category] || []).push(r);
+  const cards = Object.entries(byCat).map(([cat, items]) => `
+    <div class="panel" style="padding:16px 18px;margin-bottom:14px">
+      <h2 class="panel-title" style="margin-bottom:10px">${escHtml(cat)}</h2>
+      ${items.map(r => {
+        const rng = (r.ref_low != null) ? `${r.ref_low}–${r.ref_high} ${escHtml(r.unit||'')}` : t('no set range');
+        return `<div class="lab-row">
+          <div class="lab-row-main">
+            <div class="lab-name">${escHtml(r.name)} ${_labStatusBadge(r.status)}</div>
+            <div class="lab-meta">${t('typical')}: ${rng} · ${_fmtShortDate(r.date_key)}</div>
+          </div>
+          <div class="lab-value ${LAB_STATUS[r.status]?.cls || ''}">${r.value}<span class="lab-value-unit">${escHtml(r.unit||'')}</span></div>
+          <button class="btn-outline" style="font-size:12px" data-ev-click="toggleLabTrend('${r.lab_key}')">${t('Trend')}</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteLab('${r.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+        <div id="lab-trend-${r.lab_key}" class="lab-trend" style="display:none"></div>`;
+      }).join('')}
+    </div>`).join('');
+
+  return form + cards;
+}
+
+function onLabTestPick() {
+  const sel = document.getElementById('lab-test');
+  const opt = sel?.selectedOptions?.[0];
+  const unitEl = document.getElementById('lab-unit');
+  if (unitEl) unitEl.textContent = opt ? (opt.dataset.unit || '') : '';
+}
+
+async function logLab() {
+  const key = document.getElementById('lab-test')?.value;
+  const value = document.getElementById('lab-value')?.value;
+  const date_key = document.getElementById('lab-date')?.value || localToday();
+  if (!key) { showToast('Pick a test', 'error'); return; }
+  if (value === '' || value == null) { showToast('Enter a value', 'error'); return; }
+  const r = await fetch('/api/labs', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({lab_key:key, value, date_key}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Result saved')); loadLabsView(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function deleteLab(id) {
+  await fetch('/api/labs/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadLabsView();
+}
+
+async function toggleLabTrend(key) {
+  const box = document.getElementById('lab-trend-' + key);
+  if (!box) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  box.innerHTML = `<div style="font-size:12px;color:var(--gray-400);padding:8px">${t('Loading…')}</div>`;
+  const d = await fetch('/api/labs/trend/' + key, {credentials:'same-origin'}).then(r => r.json()).catch(() => null);
+  if (!d || !d.points || !d.points.length) { box.innerHTML = ''; return; }
+  box.innerHTML = renderLabTrend(d);
+}
+
+// Compact SVG trend: reference band shaded, points colored by status, connected.
+function renderLabTrend(d) {
+  const pts = d.points;
+  if (pts.length < 2) {
+    const p = pts[0];
+    return `<div class="lab-trend-single">${t('Only one reading so far')} — ${p.value} ${escHtml(d.unit||'')} · ${_fmtShortDate(p.date)}. ${t('Add another to see a trend.')}</div>`;
+  }
+  const W = 320, H = 90, pad = 6;
+  const vals = pts.map(p => p.value);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (d.ref_low != null) { lo = Math.min(lo, d.ref_low); hi = Math.max(hi, d.ref_high); }
+  const span = (hi - lo) || 1;
+  const x = i => pad + (i / (pts.length - 1)) * (W - 2*pad);
+  const y = v => (H - pad) - ((v - lo) / span) * (H - 2*pad);
+  const line = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
+  const band = (d.ref_low != null)
+    ? `<rect x="0" y="${y(d.ref_high).toFixed(1)}" width="${W}" height="${(y(d.ref_low)-y(d.ref_high)).toFixed(1)}" fill="var(--teal-50)" opacity="0.7"/>` : '';
+  const dots = pts.map((p, i) => {
+    const c = p.status === 'high' ? '#D97706' : p.status === 'low' ? '#3B82F6' : '#3E7862';
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="3.5" fill="${c}"/>`;
+  }).join('');
+  const latest = pts[pts.length - 1];
+  return `
+    <div class="lab-trend-wrap">
+      <svg viewBox="0 0 ${W} ${H}" class="lab-trend-svg" preserveAspectRatio="none">
+        ${band}
+        <path d="${line}" fill="none" stroke="var(--gray-300)" stroke-width="1.5"/>
+        ${dots}
+      </svg>
+      <div class="lab-trend-legend">${tformat('%1 readings · latest %2 %3', pts.length, latest.value, d.unit||'')}
+        ${d.ref_low != null ? `· ${t('shaded = typical range')}` : ''}</div>
+    </div>`;
+}
+
 async function loadBodyView() {
   const el = document.getElementById('body-view-content');
   if (!el) return;

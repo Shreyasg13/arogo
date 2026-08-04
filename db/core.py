@@ -429,6 +429,11 @@ CREATE TABLE IF NOT EXISTS vitals (
     value1 REAL NOT NULL, value2 REAL DEFAULT NULL,
     unit TEXT DEFAULT '', notes TEXT DEFAULT '', logged_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS lab_results (
+    id TEXT PRIMARY KEY, lab_key TEXT NOT NULL, name TEXT NOT NULL,
+    value REAL NOT NULL, unit TEXT DEFAULT '', date_key TEXT NOT NULL,
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS emergency_info (
     id TEXT PRIMARY KEY, blood_type TEXT DEFAULT '', allergies TEXT DEFAULT '',
     conditions TEXT DEFAULT '', medications TEXT DEFAULT '',
@@ -937,6 +942,7 @@ DATA_TABLES = [
     'measurement_reminders', 'medicine_events', 'doctor_questions',
     'menstrual_cycles',
     'cycle_symptoms',
+    'lab_results',
 ]
 
 

@@ -164,6 +164,30 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   cursor:pointer; background:rgba(255,255,255,.25); border:1px solid rgba(255,255,255,.5);
   color:inherit; white-space:nowrap; }
 .adh-streak-share:hover { background:rgba(255,255,255,.4); }
+
+/* Lab results */
+.lab-note { font-size:12px; line-height:1.5; color:var(--gray-500); background:var(--gray-50);
+  border-radius:9px; padding:9px 12px; margin:6px 0 14px; }
+.lab-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.lab-form select { max-width:280px; }
+.lab-unit { font-size:13px; color:var(--gray-400); min-width:34px; }
+.lab-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--gray-50); }
+.lab-row:last-child { border-bottom:none; }
+.lab-row-main { flex:1; min-width:140px; }
+.lab-name { font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.lab-meta { font-size:11.5px; color:var(--gray-400); margin-top:2px; }
+.lab-value { font-size:18px; font-weight:700; color:var(--gray-700); white-space:nowrap; }
+.lab-value.lab-high { color:#B45309; } .lab-value.lab-low { color:#2563EB; } .lab-value.lab-ok { color:var(--teal-600); }
+.lab-value-unit { font-size:11px; font-weight:500; color:var(--gray-400); margin-left:3px; }
+.lab-badge { font-size:10px; font-weight:600; padding:2px 8px; border-radius:99px; }
+.lab-badge.lab-ok   { background:var(--teal-50); color:var(--teal-700); }
+.lab-badge.lab-high { background:#FEF3E2; color:#B45309; }
+.lab-badge.lab-low  { background:#E7F0FE; color:#2563EB; }
+.lab-trend { padding:6px 0 12px; }
+.lab-trend-wrap { background:var(--gray-25,#faf8f4); border-radius:10px; padding:10px 12px; }
+.lab-trend-svg { width:100%; height:90px; display:block; }
+.lab-trend-legend, .lab-trend-single { font-size:11.5px; color:var(--gray-400); margin-top:6px; }
+.lab-trend-single { padding:8px 12px; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
 /* ── DASHBOARD ── */

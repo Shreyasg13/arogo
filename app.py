@@ -50,6 +50,7 @@ def create_app(config=Config):
     from routes.insights  import bp as insights_bp
     from routes.family    import bp as family_bp
     from routes.push      import bp as push_bp
+    from routes.labs      import bp as labs_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -61,6 +62,7 @@ def create_app(config=Config):
     app.register_blueprint(insights_bp)
     app.register_blueprint(family_bp)
     app.register_blueprint(push_bp)
+    app.register_blueprint(labs_bp)
 
     # ── /api/v1/* aliases ────────────────────────────────────────────────────
     # Mobile clients get a versioned surface without duplicating any code:
