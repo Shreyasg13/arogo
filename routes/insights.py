@@ -934,53 +934,12 @@ def api_wellness_today():
 # ══════════════════════════════════════════════════════════════════════════════
 # Thoughts (Daily Journal) Routes
 # ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/thoughts/<date_key>')
-@require_auth
-def api_get_thoughts(date_key):
-    thoughts = get_thoughts(date_key)
-    count = len(thoughts)
-    return jsonify({
-        'thoughts': thoughts,
-        'count': count,
-        'remaining': max(0, MAX_THOUGHTS_PER_DAY - count),
-        'limit': MAX_THOUGHTS_PER_DAY,
-        'date': date_key
-    })
-
-@bp.route('/api/thoughts', methods=['POST'])
-@require_auth
-def api_save_thought():
-    data = request.json or {}
-    content = data.get('content', '').strip()
-    if not content:
-        return jsonify({'success': False, 'error': 'Content required'}), 400
-    if len(content) > 1000:
-        return jsonify({'success': False, 'error': 'Max 1000 characters'}), 400
-    date_key = data.get('date_key', today_iso(get_user_timezone()))
-    mood = data.get('mood', 'neutral')
-    try:
-        thought = save_thought(content, mood, date_key)
-        return jsonify({'success': True, 'thought': thought,
-                        'remaining': max(0, MAX_THOUGHTS_PER_DAY - count_thoughts_today(date_key))})
-    except ValueError as e:
-        return jsonify({'success': False, 'error': str(e)}), 429
-
-@bp.route('/api/thoughts/<tid>', methods=['PUT'])
-@require_auth
-def api_update_thought(tid):
-    data = request.json or {}
-    content = data.get('content', '').strip()
-    if not content:
-        return jsonify({'success': False, 'error': 'Content required'}), 400
-    t = update_thought(tid, content, data.get('mood', 'neutral'))
-    return jsonify({'success': True, 'thought': t})
-
-@bp.route('/api/thoughts/<tid>', methods=['DELETE'])
-@require_auth
-def api_delete_thought(tid):
-    delete_thought(tid)
-    return jsonify({'success': True})
+#
+# The GET/POST/PUT/DELETE + list handlers for /api/thoughts live in
+# routes/wellness.py (registered first, so it owns them in the URL map). Only the
+# week-range endpoint below is unique to this blueprint. Do NOT re-add the CRUD
+# handlers here — duplicates would sit dead behind wellness and silently drift
+# from it (e.g. the mood-triggers threading).
 
 @bp.route('/api/thoughts/range/week')
 @require_auth
