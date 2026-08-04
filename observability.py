@@ -14,6 +14,25 @@ import os
 _active = False
 
 
+def scrub_event(event, hint=None):
+    """before_send hook — drop everything that could carry health data or
+    identify a person before an event leaves the process. Module-level (not a
+    closure) so it is unit-testable. Arogo holds health data, so this is hard:
+    request, user, extra, contexts, and stack-frame local variables all go."""
+    event.pop("request", None)      # url, query string, body, headers, cookies
+    event.pop("user", None)         # id / email / ip
+    event.pop("extra", None)        # arbitrary attached context
+    event.pop("contexts", None)     # device/os/runtime + any custom context
+    # Local variables in stack frames are the sneakiest PII vector — a frame can
+    # hold `blood_sugar=450` or an email even after request/user are gone. Strip
+    # them here so it works regardless of the sentry-sdk version's own
+    # include_local_variables flag.
+    for ex in (event.get("exception") or {}).get("values") or []:
+        for frame in (ex.get("stacktrace") or {}).get("frames") or []:
+            frame.pop("vars", None)
+    return event
+
+
 def init_error_tracking(component: str = "web") -> bool:
     """Turn on Sentry if configured. Returns True if active, else False (no-op).
 
@@ -33,12 +52,6 @@ def init_error_tracking(component: str = "web") -> bool:
               "error tracking disabled. `pip install sentry-sdk` to enable.")
         return False
 
-    def _scrub(event, hint):
-        # Drop everything that could carry health data or identify a person.
-        event.pop("request", None)      # url, query string, body, headers, cookies
-        event.pop("user", None)         # id / email / ip
-        return event
-
     sentry_sdk.init(
         dsn=dsn,
         environment=os.environ.get("SENTRY_ENV", "production"),
@@ -47,7 +60,7 @@ def init_error_tracking(component: str = "web") -> bool:
         send_default_pii=False,
         traces_sample_rate=0.0,         # errors only — no performance/PII spans
         max_breadcrumbs=20,
-        before_send=_scrub,
+        before_send=scrub_event,
     )
     sentry_sdk.set_tag("component", component)
     _active = True

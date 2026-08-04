@@ -31,6 +31,34 @@ def test_error_tracking_noop_when_dsn_set_but_sdk_absent(monkeypatch):
     assert observability.init_error_tracking("web") is False
 
 
+def test_scrub_event_strips_all_pii_vectors():
+    # A health app must never leak PII in an error event. Prove the before_send
+    # hook drops request/user/extra/contexts AND stack-frame local variables
+    # (where a blood_sugar value or email most easily hides).
+    import observability
+    event = {
+        "request": {"url": "/api/labs", "data": {"value": 450}, "cookies": "me_session=..."},
+        "user": {"id": "u1", "email": "patient@example.com", "ip_address": "1.2.3.4"},
+        "extra": {"blood_sugar": 450},
+        "contexts": {"device": {"name": "Pixel"}},
+        "exception": {"values": [{"stacktrace": {"frames": [
+            {"function": "log_lab_result", "vars": {"value": 450, "email": "p@x.com"}},
+        ]}}]},
+    }
+    out = observability.scrub_event(event, None)
+    assert "request" not in out and "user" not in out
+    assert "extra" not in out and "contexts" not in out
+    assert out["exception"]["values"][0]["stacktrace"]["frames"][0].get("vars") is None
+    # The useful bit — the exception structure — survives.
+    assert out["exception"]["values"][0]["stacktrace"]["frames"][0]["function"] == "log_lab_result"
+
+
+def test_scrub_event_tolerates_a_bare_event():
+    # Must not raise on a minimal event with no request/exception.
+    import observability
+    assert observability.scrub_event({}, None) == {}
+
+
 # ── backup / restore ────────────────────────────────────────────────────────
 def _run_backup(args, db_path, backup_dir=None):
     env = dict(os.environ)
