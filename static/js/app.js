@@ -313,6 +313,16 @@ const I18N = {
     'Reference ranges are typical adult values for orientation only — labs and your doctor\'s targets vary. An out-of-range number is worth discussing with your doctor, never a diagnosis.': 'संदर्भ सीमाएँ केवल दिशा-निर्देश हेतु सामान्य वयस्क मान हैं — लैब और आपके डॉक्टर के लक्ष्य भिन्न होते हैं। सीमा से बाहर का मान डॉक्टर से चर्चा योग्य है, निदान नहीं।',
     'Only one reading so far': 'अभी तक केवल एक रीडिंग', 'Add another to see a trend.': 'रुझान देखने के लिए एक और जोड़ें।',
     '%1 readings · latest %2 %3': '%1 रीडिंग · नवीनतम %2 %3', 'shaded = typical range': 'छायांकित = सामान्य सीमा',
+    'Spending': 'खर्च', 'Health spending': 'स्वास्थ्य खर्च',
+    'Track what you actually pay out of pocket — after any scheme or insurance': 'योजना या बीमा के बाद आप जो वास्तव में जेब से चुकाते हैं उसे ट्रैक करें',
+    'Add an expense': 'खर्च जोड़ें', 'What for? (optional)': 'किसलिए? (वैकल्पिक)', 'amount': 'राशि',
+    'covered ₹0': 'कवर ₹0', 'Reimbursed by insurance or a scheme': 'बीमा या योजना द्वारा प्रतिपूर्ति',
+    'out of pocket this month': 'इस माह जेब से', '%1 covered by insurance/scheme': 'बीमा/योजना से %1 कवर',
+    'Where it went': 'कहाँ गया', 'Expenses': 'खर्च', 'No expenses logged this month.': 'इस माह कोई खर्च दर्ज नहीं।',
+    'Expense added': 'खर्च जोड़ा गया', '%1 covered': '%1 कवर',
+    'Previous month': 'पिछला माह', 'Next month': 'अगला माह',
+    'Medicines': 'दवाइयाँ', 'Consultation': 'परामर्श', 'Lab tests': 'लैब टेस्ट',
+    'Hospital': 'अस्पताल', 'Insurance premium': 'बीमा प्रीमियम', 'Other': 'अन्य',
     'Only medication reminders. Water, mood, habit and check-in nudges stay quiet — no guilt.': 'केवल दवा अनुस्मारक। पानी, मनोदशा, आदत और चेक-इन नज चुप रहते हैं — कोई अपराधबोध नहीं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
@@ -2039,6 +2049,7 @@ function switchView(view) {
   if (view === 'sleep')         loadSleepView();
   if (view === 'body')          loadBodyView();
   if (view === 'labs')          loadLabsView();
+  if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
   if (view === 'progress')      loadProgress();
   if (view === 'family')        loadFamily();
@@ -10932,6 +10943,165 @@ async function saveSleepLogFromView() {
 // ════════════════════════════════════════════════════════════
 // BODY & VITALS VIEW — standalone page
 // ════════════════════════════════════════════════════════════
+// ── Health spending ──────────────────────────────────────────────────────────
+// Out-of-pocket health costs by month, net of any scheme/insurance cover. India
+// is largely pay-as-you-go, so the number that matters is what you actually paid.
+let _spendMonth = null;   // 'YYYY-MM'; null → current month
+
+const SPEND_CATS = {
+  medicines:    '💊 Medicines',
+  consultation: '🩺 Consultation',
+  lab:          '🧪 Lab tests',
+  hospital:     '🏥 Hospital',
+  insurance:    '🛡️ Insurance premium',
+  other:        '📌 Other',
+};
+
+function _rupee(n) { return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
+function _spendCatLabel(k) {
+  const meta = SPEND_CATS[k] || ('📌 ' + k);
+  const [emoji, ...rest] = meta.split(' ');
+  return emoji + ' ' + t(rest.join(' '));
+}
+
+function _thisMonthKey() {
+  // Uses the app's local-today helper so it matches server month bounds.
+  return localToday().slice(0, 7);
+}
+
+async function loadSpendingView() {
+  const el = document.getElementById('spending-view-content');
+  if (!el) return;
+  const month = _spendMonth || _thisMonthKey();
+  const [data, trend] = await Promise.all([
+    fetch('/api/expenses?month=' + month, {credentials:'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/api/expenses/trend', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {months:[]}).catch(() => ({months:[]})),
+  ]);
+  if (!data) { el.innerHTML = ''; return; }
+  el.innerHTML = renderSpendingView(data, trend.months || []);
+}
+
+function _shiftMonth(month, delta) {
+  let [y, m] = month.split('-').map(Number);
+  m += delta;
+  while (m < 1) { m += 12; y--; }
+  while (m > 12) { m -= 12; y++; }
+  return `${y}-${String(m).padStart(2,'0')}`;
+}
+
+function spendPrevMonth() { _spendMonth = _shiftMonth(_spendMonth || _thisMonthKey(), -1); loadSpendingView(); }
+function spendNextMonth() {
+  const cur = _spendMonth || _thisMonthKey();
+  if (cur >= _thisMonthKey()) return;       // don't go into the future
+  _spendMonth = _shiftMonth(cur, 1); loadSpendingView();
+}
+
+function _monthLabel(m) {
+  const [y, mo] = m.split('-').map(Number);
+  return new Date(y, mo - 1, 1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
+}
+
+function renderSpendingView(d, trendMonths) {
+  const today = localToday();
+  const catOptions = Object.keys(SPEND_CATS).map(k =>
+    `<option value="${k}">${_spendCatLabel(k)}</option>`).join('');
+
+  const form = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add an expense')}</h2>
+      <div class="spend-form">
+        <select id="spend-cat" class="form-input" style="max-width:190px">${catOptions}</select>
+        <input type="text" id="spend-desc" class="form-input" placeholder="${t('What for? (optional)')}" style="max-width:200px">
+        <input type="number" step="any" min="0" id="spend-amount" class="form-input" placeholder="₹ ${t('amount')}" style="max-width:120px">
+        <input type="number" step="any" min="0" id="spend-covered" class="form-input" placeholder="${t('covered ₹0')}" title="${t('Reimbursed by insurance or a scheme')}" style="max-width:130px">
+        <input type="date" id="spend-date" class="form-input" value="${today}" max="${today}" style="max-width:160px">
+        <button class="btn-primary" data-ev-click="logExpense()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  // Month header + out-of-pocket hero
+  const canNext = (d.month < _thisMonthKey());
+  const hero = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div class="spend-monthnav">
+        <button class="btn-icon" data-ev-click="spendPrevMonth()" title="${t('Previous month')}">‹</button>
+        <span class="spend-month">${_monthLabel(d.month)}</span>
+        <button class="btn-icon" data-ev-click="spendNextMonth()" title="${t('Next month')}" ${canNext ? '' : 'disabled style="opacity:.3"'}>›</button>
+      </div>
+      <div class="spend-hero">
+        <div class="spend-hero-main">
+          <div class="spend-oop">${_rupee(d.out_of_pocket)}</div>
+          <div class="spend-oop-label">${t('out of pocket this month')}</div>
+        </div>
+        ${d.covered > 0 ? `<div class="spend-covered">${tformat('%1 covered by insurance/scheme', _rupee(d.covered))}</div>` : ''}
+      </div>
+      ${(trendMonths.length >= 2) ? _spendTrendBars(trendMonths) : ''}
+    </div>`;
+
+  // Category breakdown
+  const breakdown = d.breakdown.length ? `
+    <div class="panel" style="padding:16px 18px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:10px">${t('Where it went')}</h2>
+      ${(() => {
+        const max = Math.max(...d.breakdown.map(b => b.net), 1);
+        return d.breakdown.map(b => `
+          <div class="spend-cat-row">
+            <span class="spend-cat-name">${_spendCatLabel(b.category)}</span>
+            <div class="spend-cat-bar"><div class="spend-cat-fill" style="width:${(b.net/max*100).toFixed(0)}%"></div></div>
+            <span class="spend-cat-amt">${_rupee(b.net)}</span>
+          </div>`).join('');
+      })()}
+    </div>` : '';
+
+  // Itemised list
+  const items = d.items.length ? `
+    <div class="panel" style="padding:16px 18px">
+      <h2 class="panel-title" style="margin-bottom:10px">${t('Expenses')}</h2>
+      ${d.items.map(i => `
+        <div class="spend-row">
+          <div class="spend-row-main">
+            <div class="spend-row-title">${_spendCatLabel(i.category)}${i.description ? ' · ' + escHtml(i.description) : ''}</div>
+            <div class="spend-row-meta">${_fmtShortDate(i.date_key)}${i.covered > 0 ? ' · ' + tformat('%1 covered', _rupee(i.covered)) : ''}</div>
+          </div>
+          <div class="spend-row-amt">${_rupee(i.net)}</div>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteExpense('${i.id}')" style="color:var(--gray-300)">✕</button>
+        </div>`).join('')}
+    </div>` : `<div class="panel" style="padding:24px;text-align:center;color:var(--gray-400);font-size:13px">${t('No expenses logged this month.')}</div>`;
+
+  return form + hero + breakdown + items;
+}
+
+function _spendTrendBars(months) {
+  const max = Math.max(...months.map(m => m.out_of_pocket), 1);
+  return `<div class="spend-trend">${months.map(m => `
+    <div class="spend-trend-col" title="${_monthLabel(m.month)}: ${_rupee(m.out_of_pocket)}">
+      <div class="spend-trend-bar" style="height:${Math.max(m.out_of_pocket/max*46, 2).toFixed(0)}px"></div>
+      <div class="spend-trend-lbl">${m.month.slice(5)}</div>
+    </div>`).join('')}</div>`;
+}
+
+async function logExpense() {
+  const category = document.getElementById('spend-cat')?.value || 'other';
+  const amount = document.getElementById('spend-amount')?.value;
+  const covered = document.getElementById('spend-covered')?.value || 0;
+  const description = document.getElementById('spend-desc')?.value || '';
+  const date_key = document.getElementById('spend-date')?.value || localToday();
+  if (!amount || Number(amount) <= 0) { showToast('Enter an amount', 'error'); return; }
+  const r = await fetch('/api/expenses', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({category, amount, covered, description, date_key}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) {
+    _spendMonth = date_key.slice(0, 7);      // jump to the month we just logged into
+    showToast(t('Expense added')); loadSpendingView();
+  } else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function deleteExpense(id) {
+  await fetch('/api/expenses/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadSpendingView();
+}
+
 // ── Lab results ──────────────────────────────────────────────────────────────
 // Blood-panel values (HbA1c, lipids, thyroid, vitamins…) kept over time with
 // trend charts. Reference ranges + status come from the server (lab_catalog) and
