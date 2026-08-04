@@ -144,6 +144,20 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .recomp-stat b { display:block; font-size:17px; font-weight:700; color:var(--teal-700); }
 .recomp-stat span { font-size:11px; color:var(--gray-400); text-transform:uppercase; letter-spacing:.03em; }
 .recomp-window { font-size:11px; color:var(--gray-400); margin-top:10px; }
+
+/* Cycle: regularity note + symptom logging */
+.cycle-regularity { font-size:12.5px; line-height:1.5; color:var(--gray-700);
+  background:var(--amber-50,#fdf6ec); border:1px solid var(--amber-100,#f5e6c8);
+  border-radius:9px; padding:9px 12px; margin:12px 0; }
+.cycle-symptoms { margin:14px 0; padding-top:14px; border-top:1px solid var(--gray-50,#f1efe9); }
+.cycle-symptoms .composer-label { display:block; margin-bottom:8px; font-size:12px; color:var(--gray-500); }
+.cycle-flow-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:4px; }
+.cycle-flow-label { font-size:12px; color:var(--gray-500); margin-right:2px; }
+.flow-btn { font-size:12px; padding:4px 12px; border-radius:99px; cursor:pointer;
+  background:var(--gray-50); border:1px solid var(--gray-100,#e5e7eb); color:var(--gray-600); }
+.flow-btn.selected { background:#F6E1D4; border-color:var(--purple-500,#D07D4E);
+  color:var(--purple-600,#b5632f); font-weight:500; }
+.cycle-sym-summary { font-size:12px; color:var(--gray-500); margin-top:12px; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
 /* ── DASHBOARD ── */

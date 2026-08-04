@@ -449,6 +449,27 @@ def api_cycle_end():
 @require_auth
 def api_cycle_delete(cid):
     return jsonify({'success': True, 'summary': delete_cycle(cid)})
+
+@bp.route('/api/cycle/symptoms/<date_key>')
+@require_auth
+def api_cycle_symptoms_get(date_key):
+    return jsonify(get_symptom_day(date_key))
+
+@bp.route('/api/cycle/symptoms', methods=['POST'])
+@require_auth
+def api_cycle_symptoms_save():
+    d = request.json or {}
+    try:
+        day = log_symptoms(d.get('date_key', ''), d.get('symptoms'),
+                           d.get('flow'), d.get('notes', ''))
+        return jsonify({'success': True, 'day': day, 'summary': get_symptom_summary()})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/cycle/symptoms')
+@require_auth
+def api_cycle_symptoms_summary():
+    return jsonify(get_symptom_summary())
 @bp.route('/api/body-metrics/trend')
 @require_auth
 def api_body_metrics_trend():

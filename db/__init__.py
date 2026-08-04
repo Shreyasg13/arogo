@@ -46,7 +46,8 @@ from .health      import (list_habits, create_habit, delete_habit, toggle_habit_
 from .insights    import (add_notification, get_notifications, mark_notification_read,
                           mark_all_notifications_read, unread_notification_count,
                           generate_weekly_report, global_search, get_goal_progress)
-from .cycle       import (log_period_start, log_period_end, delete_cycle, get_cycle_summary)
+from .cycle       import (log_period_start, log_period_end, delete_cycle, get_cycle_summary,
+                          log_symptoms, get_symptom_day, get_symptom_summary)
 
 __all__ = [
     "execute", "executemany", "commit", "init_db", "jdump", "jload", "now_iso", "today_iso", "new_id",
@@ -89,4 +90,5 @@ __all__ = [
     "mark_all_notifications_read", "unread_notification_count",
     "generate_weekly_report", "global_search", "get_goal_progress",
     "log_period_start", "log_period_end", "delete_cycle", "get_cycle_summary",
+    "log_symptoms", "get_symptom_day", "get_symptom_summary",
 ]

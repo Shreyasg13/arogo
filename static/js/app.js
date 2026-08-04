@@ -275,6 +275,14 @@ const I18N = {
     'You logged well under your protein target on the days you tracked. Protein builds and repairs muscle.': 'जिन दिनों आपने ट्रैक किया, प्रोटीन लक्ष्य से काफ़ी कम रहा। प्रोटीन मांसपेशी बनाता और उसकी मरम्मत करता है।',
     'weight': 'वज़न', 'body fat': 'शरीर की चर्बी', 'avg protein': 'औसत प्रोटीन',
     'Based on the last %1 days you logged. An observation, not medical advice.': 'आपके पिछले %1 दिनों के लॉग के आधार पर। एक अवलोकन, चिकित्सा सलाह नहीं।',
+    'How do you feel today? (optional)': 'आज आप कैसा महसूस कर रहे हैं? (वैकल्पिक)',
+    'Cramps': 'ऐंठन', 'Headache': 'सिरदर्द', 'Bloating': 'पेट फूलना', 'Acne': 'मुँहासे',
+    'Mood swings': 'मनोदशा में उतार-चढ़ाव', 'Fatigue': 'थकान', 'Tender breasts': 'स्तनों में कोमलता',
+    'Cravings': 'तलब', 'Back pain': 'कमर दर्द', 'Nausea': 'मतली',
+    'Flow': 'प्रवाह', 'Spotting': 'हल्के धब्बे', 'Light': 'हल्का', 'Medium': 'मध्यम', 'Heavy': 'भारी',
+    'None': 'कोई नहीं', 'Save how I feel': 'मैं कैसा महसूस करता हूँ सहेजें', 'Saved': 'सहेजा गया',
+    'Most logged': 'सबसे ज़्यादा दर्ज',
+    'Your last %1 cycles ranged %2–%3 days apart. Cycles this variable are worth mentioning to a doctor — it can have simple causes, and only they can say.': 'आपके पिछले %1 चक्र %2–%3 दिनों के अंतराल पर रहे। इतने बदलते चक्र डॉक्टर को बताने लायक हैं — इसके सामान्य कारण हो सकते हैं, और केवल वे ही बता सकते हैं।',
     'Invite someone': 'किसी को आमंत्रित करें',
     'Send invite': 'निमंत्रण भेजें',
     'Pending invites': 'लंबित निमंत्रण',
@@ -10970,6 +10978,7 @@ async function loadCycle() {
   const d = await fetch('/api/cycle', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
   if (!d) { el.innerHTML = ''; return; }
   el.innerHTML = renderCycle(d);
+  loadCycleSymptoms();
 }
 
 function renderCycle(d) {
@@ -11022,8 +11031,93 @@ function renderCycle(d) {
         <button class="btn-outline" data-ev-click="logCycleEnd()">${t('Period ended')}</button>
       </div>` : ''}
     </div>
+    ${_cycleRegularityNote(d.regularity)}
+    <div id="cycle-symptoms-section"></div>
     ${history}
   </div>`;
+}
+
+// Honest, non-diagnostic regularity note. Irregular cycles are the PCOS hallmark,
+// so we surface the spread and suggest raising it with a doctor — never conclude.
+function _cycleRegularityNote(reg) {
+  if (!reg || !reg.irregular) return '';
+  return `<div class="cycle-regularity">📋 ${tformat(
+    'Your last %1 cycles ranged %2–%3 days apart. Cycles this variable are worth mentioning to a doctor — it can have simple causes, and only they can say.',
+    reg.cycles_compared, reg.min, reg.max)}</div>`;
+}
+
+// Symptom vocab — must mirror SYMPTOMS in db/cycle.py.
+const CYCLE_SYMPTOMS = {
+  cramps:'🌀 Cramps', headache:'🤕 Headache', bloating:'🎈 Bloating', acne:'🔴 Acne',
+  mood_swings:'🎭 Mood swings', fatigue:'🥱 Fatigue', tender_breasts:'💗 Tender breasts',
+  cravings:'🍫 Cravings', back_pain:'🔙 Back pain', nausea:'🤢 Nausea',
+};
+const CYCLE_FLOWS = { spotting:'Spotting', light:'Light', medium:'Medium', heavy:'Heavy' };
+let _cycleSymptomsToday = { symptoms: new Set(), flow: null };
+
+async function loadCycleSymptoms() {
+  const el = document.getElementById('cycle-symptoms-section');
+  if (!el) return;
+  const today = localToday();
+  const [day, summary] = await Promise.all([
+    fetch(`/api/cycle/symptoms/${today}`, {credentials:'same-origin'}).then(r=>r.json()).catch(()=>null),
+    fetch('/api/cycle/symptoms', {credentials:'same-origin'}).then(r=>r.json()).catch(()=>null),
+  ]);
+  _cycleSymptomsToday = { symptoms: new Set(day?.symptoms || []), flow: day?.flow || null };
+
+  const chips = Object.entries(CYCLE_SYMPTOMS).map(([k, label]) => {
+    const on = _cycleSymptomsToday.symptoms.has(k);
+    const [emoji, ...rest] = label.split(' ');
+    return `<button type="button" class="trigger-chip${on ? ' selected' : ''}" data-sym="${k}"
+              data-ev-click="toggleCycleSymptom('${k}')">${emoji} ${t(rest.join(' '))}</button>`;
+  }).join('');
+
+  const flowBtns = Object.entries(CYCLE_FLOWS).map(([k, label]) => {
+    const on = _cycleSymptomsToday.flow === k;
+    return `<button type="button" class="flow-btn${on ? ' selected' : ''}" data-flow="${k}"
+              data-ev-click="setCycleFlow('${k}')">${t(label)}</button>`;
+  }).join('');
+
+  const topSummary = (summary && summary.has_data)
+    ? `<div class="cycle-sym-summary">${t('Most logged')}: ${summary.top.slice(0,3).map(x => {
+         const [emoji, ...rest] = (CYCLE_SYMPTOMS[x.key] || x.key).split(' ');
+         return `${emoji} ${t(rest.join(' '))} ×${x.count}`;
+       }).join(' · ')}</div>`
+    : '';
+
+  el.innerHTML = `
+    <div class="cycle-symptoms">
+      <div class="composer-label">${t('How do you feel today? (optional)')}</div>
+      <div class="trigger-chips" style="margin-bottom:10px">${chips}</div>
+      <div class="cycle-flow-row"><span class="cycle-flow-label">${t('Flow')}:</span>${flowBtns}
+        <button type="button" class="flow-btn${_cycleSymptomsToday.flow===null?' selected':''}" data-ev-click="setCycleFlow('')">${t('None')}</button></div>
+      <button class="btn-outline" style="font-size:12px;margin-top:10px" data-ev-click="saveCycleSymptoms()">${t('Save how I feel')}</button>
+      ${topSummary}
+    </div>`;
+}
+
+function toggleCycleSymptom(k) {
+  if (_cycleSymptomsToday.symptoms.has(k)) _cycleSymptomsToday.symptoms.delete(k);
+  else _cycleSymptomsToday.symptoms.add(k);
+  document.querySelector(`.trigger-chip[data-sym="${k}"]`)?.classList.toggle('selected', _cycleSymptomsToday.symptoms.has(k));
+}
+
+function setCycleFlow(k) {
+  _cycleSymptomsToday.flow = k || null;
+  document.querySelectorAll('.flow-btn').forEach(b => b.classList.remove('selected'));
+  const sel = k ? document.querySelector(`.flow-btn[data-flow="${k}"]`)
+                : [...document.querySelectorAll('.flow-btn')].find(b => !b.dataset.flow);
+  sel?.classList.add('selected');
+}
+
+async function saveCycleSymptoms() {
+  const r = await fetch('/api/cycle/symptoms', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, credentials: 'same-origin',
+    body: JSON.stringify({ date_key: localToday(),
+                           symptoms: [..._cycleSymptomsToday.symptoms], flow: _cycleSymptomsToday.flow }),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Saved')); loadCycleSymptoms(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
 }
 
 async function logCycleStart() {

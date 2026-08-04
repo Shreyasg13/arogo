@@ -298,6 +298,11 @@ CREATE TABLE IF NOT EXISTS menstrual_cycles (
     id TEXT PRIMARY KEY, start_date TEXT NOT NULL, end_date TEXT DEFAULT NULL,
     notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS cycle_symptoms (
+    id TEXT PRIMARY KEY, date_key TEXT NOT NULL, symptoms TEXT DEFAULT NULL,
+    flow TEXT DEFAULT NULL, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS fitness_activities (
     id TEXT PRIMARY KEY, type TEXT NOT NULL, name TEXT DEFAULT '',
     date TEXT NOT NULL, duration INTEGER DEFAULT 0, distance REAL DEFAULT 0,
@@ -920,6 +925,7 @@ DATA_TABLES = [
     'user_profile', 'oauth_tokens', 'sync_log', 'appointments', 'dose_snoozes',
     'measurement_reminders', 'medicine_events', 'doctor_questions',
     'menstrual_cycles',
+    'cycle_symptoms',
 ]
 
 

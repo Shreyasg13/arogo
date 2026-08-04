@@ -14,9 +14,29 @@ from __future__ import annotations
 
 import datetime as _dt
 
-from .core import execute, now_iso, new_id, current_user_id
+from .core import execute, now_iso, new_id, current_user_id, jdump, jload
 
 _RECENT = 6   # average the last few cycles, so a changing pattern is reflected
+
+# Fixed vocab keeps symptom data analysable and the UI tidy. Common,
+# PCOS-relevant, non-diagnostic. Extend deliberately.
+SYMPTOMS = ['cramps', 'headache', 'bloating', 'acne', 'mood_swings', 'fatigue',
+            'tender_breasts', 'cravings', 'back_pain', 'nausea']
+FLOWS = ['spotting', 'light', 'medium', 'heavy']
+
+
+def clean_symptoms(raw) -> list:
+    if not raw:
+        return []
+    if isinstance(raw, str):
+        raw = [raw]
+    seen, out = set(), []
+    for s in raw:
+        k = str(s or '').strip().lower()
+        if k in SYMPTOMS and k not in seen:
+            seen.add(k)
+            out.append(k)
+    return out
 
 
 def _today():
@@ -79,6 +99,66 @@ def delete_cycle(cid: str) -> dict:
     return get_cycle_summary()
 
 
+# ── Symptom + flow logging (PCOS-relevant, non-diagnostic) ───────────────────
+
+def _clean_flow(v):
+    v = str(v or '').strip().lower()
+    return v if v in FLOWS else None
+
+
+def log_symptoms(date_key: str, symptoms=None, flow=None, notes: str = '') -> dict:
+    """Record how a given day felt — symptoms + optional flow. Idempotent per
+    date (re-logging the same day replaces it). Logging an empty day clears it."""
+    if not _valid_date(date_key):
+        raise ValueError('A valid date is required')
+    uid = current_user_id()
+    syms = clean_symptoms(symptoms)
+    fl = _clean_flow(flow)
+    note = str(notes or '')[:300]
+    existing = execute("SELECT id FROM cycle_symptoms WHERE user_id=? AND date_key=?",
+                       (uid, date_key), fetchone=True)
+    # Nothing to store → remove any prior row for that day, stay tidy.
+    if not syms and not fl and not note:
+        if existing:
+            execute("DELETE FROM cycle_symptoms WHERE id=? AND user_id=?", (existing['id'], uid), commit=True)
+        return get_symptom_day(date_key)
+    now = now_iso()
+    if existing:
+        execute("""UPDATE cycle_symptoms SET symptoms=?, flow=?, notes=?, updated_at=?
+                   WHERE id=? AND user_id=?""",
+                (jdump(syms) if syms else None, fl, note, now, existing['id'], uid), commit=True)
+    else:
+        execute("""INSERT INTO cycle_symptoms (id, date_key, symptoms, flow, notes, created_at, updated_at, user_id)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (new_id(), date_key, jdump(syms) if syms else None, fl, note, now, now, uid), commit=True)
+    return get_symptom_day(date_key)
+
+
+def get_symptom_day(date_key: str) -> dict:
+    r = execute("SELECT * FROM cycle_symptoms WHERE user_id=? AND date_key=?",
+                (current_user_id(), date_key), fetchone=True)
+    if not r:
+        return {'date_key': date_key, 'symptoms': [], 'flow': None, 'notes': ''}
+    d = dict(r)
+    return {'date_key': date_key, 'symptoms': jload(d['symptoms']) if d.get('symptoms') else [],
+            'flow': d.get('flow'), 'notes': d.get('notes') or ''}
+
+
+def get_symptom_summary(days: int = 90) -> dict:
+    """Most-logged symptoms over the window — a plain frequency count, no claims."""
+    start = (_dt.date.fromisoformat(_today()) - _dt.timedelta(days=days)).isoformat()
+    rows = execute("""SELECT symptoms FROM cycle_symptoms
+                      WHERE user_id=? AND date_key >= ?""",
+                   (current_user_id(), start), fetchall=True) or []
+    tally = {}
+    for r in rows:
+        for k in (jload(r['symptoms']) if r['symptoms'] else []):
+            tally[k] = tally.get(k, 0) + 1
+    top = sorted(({'key': k, 'count': c} for k, c in tally.items()),
+                 key=lambda x: x['count'], reverse=True)
+    return {'has_data': bool(top), 'window_days': days, 'top': top}
+
+
 def _avg(nums):
     return round(sum(nums) / len(nums)) if nums else None
 
@@ -122,7 +202,24 @@ def get_cycle_summary() -> dict:
         predicted_next_start = nxt.isoformat()
         days_until_next = (nxt - today).days
 
+    # Regularity — the range of recent cycle lengths. Irregular cycles are the
+    # hallmark of PCOS, so surfacing the spread honestly (never a diagnosis) is
+    # genuinely useful: it's the thing worth raising with a doctor. Only offered
+    # with >=3 cycles (2+ gaps) so a single outlier can't cry wolf.
+    regularity = None
+    recent_gaps = gaps[:_RECENT]
+    if len(recent_gaps) >= 2:
+        lo, hi = min(recent_gaps), max(recent_gaps)
+        spread = hi - lo
+        # Clinically, cycles are "regular" when they vary by <= ~9 days, and a
+        # very long typical cycle (>35d) is itself worth noting. We only flag,
+        # never conclude.
+        irregular = spread > 9 or (cycle_length or 0) > 35 or lo < 21
+        regularity = {'min': lo, 'max': hi, 'spread': spread,
+                      'cycles_compared': len(recent_gaps) + 1, 'irregular': irregular}
+
     return {'has_data': True, 'history': history[:12],
             'cycle_length': cycle_length, 'period_length': period_length,
             'predicted_next_start': predicted_next_start, 'days_until_next': days_until_next,
-            'current_day': current_day, 'ongoing': ongoing, 'ongoing_day': ongoing_day}
+            'current_day': current_day, 'ongoing': ongoing, 'ongoing_day': ongoing_day,
+            'regularity': regularity}
