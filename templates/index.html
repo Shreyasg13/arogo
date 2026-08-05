@@ -565,6 +565,9 @@
       <button class="btn-outline" data-ev-click="openDoctorSummary()" title="A printable summary for your next appointment">
         🩺 Doctor summary
       </button>
+      <button class="btn-outline" data-ev-click="openShareManager()" title="Create a private, expiring link to a safe health summary" data-i18n-title="Create a private, expiring link to a safe health summary">
+        🔗 <span data-i18n="Share link">Share link</span>
+      </button>
       <button class="btn-primary" data-ev-click="openUploadModal()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Upload Report
@@ -3608,6 +3611,31 @@
         <button class="btn-outline" data-ev-click="closeDoctorSummary()">Close</button>
         <button class="btn-primary" data-ev-click="printDoctorSummary()">Print / Save as PDF</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="share-manager-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeShareManager')">
+  <div class="modal" id="share-manager-sheet" style="max-width:520px">
+    <div class="modal-head">
+      <div class="modal-title" data-i18n="Shareable health snapshot">Shareable health snapshot</div>
+      <button class="modal-close" data-ev-click="closeShareManager()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray-500);margin-top:0" data-i18n="A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.">A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.</p>
+      <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin:14px 0">
+        <div class="form-group" style="flex:1;min-width:140px"><label class="form-label" data-i18n="Label (optional)">Label (optional)</label>
+          <input type="text" class="form-input" id="share-label" placeholder="e.g. For Dr Rao" data-i18n-ph="e.g. For Dr Rao"></div>
+        <div class="form-group"><label class="form-label" data-i18n="Expires in">Expires in</label>
+          <select class="form-input" id="share-days">
+            <option value="1" data-i18n="1 day">1 day</option>
+            <option value="7" selected data-i18n="7 days">7 days</option>
+            <option value="30" data-i18n="30 days">30 days</option>
+            <option value="90" data-i18n="90 days">90 days</option>
+          </select></div>
+        <button class="btn-primary" data-ev-click="createShareLink()" data-i18n="Create link">Create link</button>
+      </div>
+      <div id="share-list"></div>
     </div>
   </div>
 </div>

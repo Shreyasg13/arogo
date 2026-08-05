@@ -937,6 +937,19 @@ def migrate_add_workout_sets():
         pass
 
 
+def migrate_add_share_snapshots():
+    """Create the time-limited shareable health-snapshot table. A snapshot is a
+    read-only, expiring, revocable public link to a SAFE subset of the user's
+    data (never journal/cycle/mood)."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS share_snapshots (
+            id TEXT PRIMARY KEY, token TEXT NOT NULL UNIQUE, scope TEXT DEFAULT 'summary',
+            label TEXT DEFAULT '', created_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+            revoked INTEGER DEFAULT 0, views INTEGER DEFAULT 0, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1177,6 +1190,7 @@ DATA_TABLES = [
     'dependents',
     'dependent_records',
     'workout_sets',
+    'share_snapshots',
 ]
 
 
@@ -1236,6 +1250,7 @@ def init_db():
     migrate_add_vital_context()
     migrate_add_sleep_goal()
     migrate_add_workout_sets()
+    migrate_add_share_snapshots()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

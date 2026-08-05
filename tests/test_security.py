@@ -42,6 +42,8 @@ PUBLIC_ROUTES = {
     '/auth/reset-password',             # token-gated by signature
     '/api/digest/unsubscribe/<token>',  # token-gated by signature
     '/api/caregiver-digest/unsubscribe/<token>',  # token-gated by signature
+    '/share/<token>',                   # public health snapshot: token-gated, expiring,
+                                        # revocable, safe-subset only (never journal/cycle/mood)
 }
 
 

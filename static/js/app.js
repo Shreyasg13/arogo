@@ -440,6 +440,15 @@ const I18N = {
     'Estimated ovulation in ~%1 days': '~%1 दिनों में अनुमानित ओव्यूलेशन', 'ovulation': 'ओव्यूलेशन',
     'An estimate from your average cycle — not a method of contraception.': 'आपके औसत चक्र से एक अनुमान — गर्भनिरोधक का तरीका नहीं।',
     '5 weeks': '5 सप्ताह', 'Year': 'वर्ष', 'last year': 'पिछला वर्ष', 'last 5 weeks': 'पिछले 5 सप्ताह',
+    'Share link': 'लिंक साझा करें', 'Shareable health snapshot': 'साझा करने योग्य स्वास्थ्य स्नैपशॉट',
+    'Label (optional)': 'लेबल (वैकल्पिक)', 'Expires in': 'समाप्ति', '1 day': '1 दिन', '7 days': '7 दिन',
+    '30 days': '30 दिन', '90 days': '90 दिन', 'Create link': 'लिंक बनाएँ', 'Link created 🔗': 'लिंक बना 🔗',
+    'Could not create link': 'लिंक नहीं बना', 'No share links yet.': 'अभी तक कोई साझा लिंक नहीं।',
+    'Health snapshot': 'स्वास्थ्य स्नैपशॉट', 'active': 'सक्रिय', 'expired': 'समाप्त', 'revoked': 'रद्द',
+    'Copy': 'कॉपी', 'Copied ✓': 'कॉपी हुआ ✓', 'Turn off': 'बंद करें', 'Link turned off': 'लिंक बंद हुआ',
+    'This link is no longer active.': 'यह लिंक अब सक्रिय नहीं है।', 'expires %1': '%1 को समाप्त',
+    '%1 views': '%1 बार देखा', 'Could not update': 'अपडेट नहीं हुआ',
+    'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
     'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
@@ -3297,6 +3306,66 @@ async function openDoctorSummary() {
     : '<div style="padding:20px;color:#DC2626">Could not build the summary.</div>';
 }
 function closeDoctorSummary() { document.getElementById('doctor-summary-modal').style.display = 'none'; }
+
+// ── Shareable health snapshot (time-limited public link) ────────────────────
+function openShareManager() {
+  const m = document.getElementById('share-manager-modal');
+  if (m) { m.style.display = 'flex'; loadShareLinks(); }
+}
+function closeShareManager() { const m = document.getElementById('share-manager-modal'); if (m) m.style.display = 'none'; }
+
+async function createShareLink() {
+  const label = document.getElementById('share-label')?.value || '';
+  const days = parseInt(document.getElementById('share-days')?.value, 10) || 7;
+  const r = await fetch('/api/share/snapshot', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ label, days_valid: days })
+  }).then(r => r.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(t('Link created 🔗'));
+    document.getElementById('share-label').value = '';
+    loadShareLinks();
+  } else {
+    showToast(t('Could not create link'), 'error');
+  }
+}
+
+async function loadShareLinks() {
+  const el = document.getElementById('share-list');
+  if (!el) return;
+  const d = await fetch('/api/share/snapshots').then(r => r.json()).catch(() => null);
+  const snaps = (d && d.snapshots) || [];
+  if (!snaps.length) { el.innerHTML = `<div style="font-size:13px;color:var(--gray-400);padding:8px 0">${t('No share links yet.')}</div>`; return; }
+  const origin = window.location.origin;
+  el.innerHTML = snaps.map(s => {
+    const url = origin + '/share/' + s.token;
+    const badge = { active: '#22C55E', expired: '#94A3B8', revoked: '#EF4444' }[s.status] || '#94A3B8';
+    const exp = new Date(s.expires_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    const active = s.status === 'active';
+    return `<div class="share-row">
+      <div class="share-row-main">
+        <div class="share-row-top"><span class="share-dot" style="background:${badge}"></span>
+          <b>${s.label ? escHtml(s.label) : t('Health snapshot')}</b>
+          <span class="share-status">${t(s.status)}</span></div>
+        ${active ? `<div class="share-url"><input readonly value="${escHtml(url)}" data-ev-click="this.select()"><button class="btn-outline btn-sm" data-ev-click="copyShareUrl('${escHtml(url)}')">${t('Copy')}</button></div>`
+                 : `<div class="share-url-dead">${t('This link is no longer active.')}</div>`}
+        <div class="share-meta">${active ? tformat('expires %1', exp) : ''} ${s.views ? '· ' + tformat('%1 views', s.views) : ''}</div>
+      </div>
+      ${active ? `<button class="btn-outline btn-sm" data-ev-click="revokeShareLink('${s.id}')">${t('Turn off')}</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function copyShareUrl(url) {
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => showToast(t('Copied ✓'))).catch(() => {});
+  else showToast(url);
+}
+
+async function revokeShareLink(id) {
+  const r = await fetch(`/api/share/snapshot/${id}/revoke`, { method: 'POST' }).then(r => r.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Link turned off')); loadShareLinks(); }
+  else showToast(t('Could not update'), 'error');
+}
 function printDoctorSummary() { window.print(); }
 
 // "Since your last visit" — anchored on the last past doctor appointment. Only
