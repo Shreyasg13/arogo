@@ -461,6 +461,11 @@ CREATE TABLE IF NOT EXISTS care_plan_items (
     status TEXT DEFAULT 'active', review_date TEXT DEFAULT NULL,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS providers (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, specialty TEXT DEFAULT '',
+    phone TEXT DEFAULT '', clinic TEXT DEFAULT '', address TEXT DEFAULT '',
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -777,6 +782,21 @@ def migrate_add_default_snooze():
         pass
 
 
+def migrate_add_care_team():
+    """Create the providers directory and link appointments to a provider."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS providers (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, specialty TEXT DEFAULT '',
+            phone TEXT DEFAULT '', clinic TEXT DEFAULT '', address TEXT DEFAULT '',
+            notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+    try:
+        execute("ALTER TABLE appointments ADD COLUMN provider_id TEXT DEFAULT NULL")
+    except Exception:
+        pass
+
+
 def migrate_add_med_cost():
     """Add the per-medicine monthly-cost column."""
     try:
@@ -994,6 +1014,7 @@ DATA_TABLES = [
     'health_goals',
     'fasting_sessions',
     'care_plan_items',
+    'providers',
     'dependents',
     'dependent_records',
 ]
@@ -1043,6 +1064,7 @@ def init_db():
     migrate_add_quiet_hours()
     migrate_add_reminder_lead()
     migrate_add_default_snooze()
+    migrate_add_care_team()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

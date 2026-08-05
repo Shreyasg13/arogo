@@ -407,6 +407,13 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Care team': 'देखभाल टीम', 'Your doctors and clinics in one place — tap to call': 'आपके डॉक्टर और क्लीनिक एक जगह — कॉल करने के लिए टैप करें',
+    'Add a provider': 'एक प्रदाता जोड़ें', 'Name (e.g. Dr Meera Nair)': 'नाम (जैसे डॉ मीरा नायर)',
+    'Specialty': 'विशेषज्ञता', 'Phone': 'फ़ोन', 'Clinic / hospital': 'क्लीनिक / अस्पताल', 'Address (optional)': 'पता (वैकल्पिक)',
+    'No providers yet': 'अभी कोई प्रदाता नहीं',
+    'Add your GP, specialists and clinics so their numbers are one tap away.': 'अपने डॉक्टर, विशेषज्ञ और क्लीनिक जोड़ें ताकि उनके नंबर एक टैप दूर हों।',
+    'Edit provider': 'प्रदाता संपादित करें', 'Provider added': 'प्रदाता जोड़ा गया', 'Provider updated': 'प्रदाता अपडेट हुआ',
+    'Enter a name': 'एक नाम दर्ज करें',
     'Care': 'देखभाल', 'Care plan': 'देखभाल योजना',
     'What to do, who\'s responsible, and when to review it — shared with anyone caring for you': 'क्या करना है, कौन ज़िम्मेदार है, और कब समीक्षा करनी है — आपकी देखभाल करने वालों के साथ साझा',
     'Add to the plan': 'योजना में जोड़ें', 'What to do (e.g. Walk 30 min after dinner)': 'क्या करना है (जैसे रात के खाने के बाद 30 मिनट टहलें)',
@@ -2166,6 +2173,7 @@ function switchView(view) {
   if (view === 'fasting')       loadFasting();
   if (view === 'health-id')     loadHealthId();
   if (view === 'care-plan')     loadCarePlan();
+  if (view === 'care-team')     loadCareTeam();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -11714,6 +11722,108 @@ async function toggleCareItem(id, status) {
 async function deleteCareItem(id) {
   await fetch('/api/care-plan/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   loadCarePlan();
+}
+
+// ── My care team (provider directory) ────────────────────────────────────────
+// The user's own doctors and clinics: name, specialty, phone (tap-to-call),
+// clinic, address, notes. Plain contact records they type themselves.
+let _editingProvider = null;
+
+async function loadCareTeam() {
+  const el = document.getElementById('care-team-content');
+  if (!el) return;
+  const d = await fetch('/api/providers', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {providers:[]}).catch(() => ({providers:[]}));
+  el.innerHTML = renderCareTeam(d.providers || []);
+}
+
+function renderCareTeam(providers) {
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px" id="ct-form-title">${t('Add a provider')}</h2>
+      <div class="ct-form">
+        <input type="text" id="ct-name" class="form-input" placeholder="${t('Name (e.g. Dr Meera Nair)')}" style="flex:2;min-width:180px">
+        <input type="text" id="ct-specialty" class="form-input" placeholder="${t('Specialty')}" style="max-width:150px">
+        <input type="tel" id="ct-phone" class="form-input" placeholder="${t('Phone')}" style="max-width:150px">
+        <input type="text" id="ct-clinic" class="form-input" placeholder="${t('Clinic / hospital')}" style="flex:1;min-width:150px">
+        <input type="text" id="ct-address" class="form-input" placeholder="${t('Address (optional)')}" style="flex:2;min-width:180px">
+        <button class="btn-primary" data-ev-click="saveProvider()" id="ct-save-btn">${t('Add')}</button>
+        <button class="btn-outline" data-ev-click="cancelProviderEdit()" id="ct-cancel-btn" style="display:none">${t('Cancel')}</button>
+      </div>
+    </div>`;
+
+  if (!providers.length) {
+    return form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">🩺</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No providers yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Add your GP, specialists and clinics so their numbers are one tap away.')}</div>
+      </div>`;
+  }
+
+  const cards = providers.map(p => {
+    const tel = (p.phone || '').replace(/[^\d+]/g, '');
+    const call = p.phone ? `<a href="tel:${tel}" class="ct-call" title="${t('Call')}">📞 ${escHtml(p.phone)}</a>` : '';
+    const loc = [p.clinic, p.address].filter(Boolean).map(escHtml).join(' · ');
+    return `<div class="panel ct-card" style="padding:15px 18px;margin-bottom:12px">
+        <div class="ct-card-head">
+          <div class="ct-avatar">🩺</div>
+          <div style="flex:1;min-width:0">
+            <div class="ct-name">${escHtml(p.name)}</div>
+            ${p.specialty ? `<div class="ct-specialty">${escHtml(p.specialty)}</div>` : ''}
+          </div>
+          <button class="btn-icon" title="${t('Edit')}" data-ev-click="startProviderEdit('${p.id}')">✎</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteProvider('${p.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+        <div class="ct-card-body">
+          ${call}
+          ${loc ? `<div class="ct-loc">📍 ${loc}</div>` : ''}
+          ${p.notes ? `<div class="ct-notes">${escHtml(p.notes)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+  return form + cards;
+}
+
+function _providerForm() {
+  return {
+    name: document.getElementById('ct-name')?.value?.trim(),
+    specialty: document.getElementById('ct-specialty')?.value || '',
+    phone: document.getElementById('ct-phone')?.value || '',
+    clinic: document.getElementById('ct-clinic')?.value || '',
+    address: document.getElementById('ct-address')?.value || '',
+  };
+}
+
+async function saveProvider() {
+  const body = _providerForm();
+  if (!body.name) { showToast(t('Enter a name'), 'error'); return; }
+  const url = _editingProvider ? '/api/providers/' + _editingProvider : '/api/providers';
+  const method = _editingProvider ? 'PATCH' : 'POST';
+  const r = await fetch(url, {method, headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(_editingProvider ? t('Provider updated') : t('Provider added')); _editingProvider = null; loadCareTeam(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function startProviderEdit(id) {
+  const d = await fetch('/api/providers', {credentials:'same-origin'}).then(r => r.json()).catch(() => null);
+  const p = d && d.providers.find(x => x.id === id);
+  if (!p) return;
+  _editingProvider = id;
+  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v || ''; };
+  set('ct-name', p.name); set('ct-specialty', p.specialty); set('ct-phone', p.phone);
+  set('ct-clinic', p.clinic); set('ct-address', p.address);
+  const title = document.getElementById('ct-form-title'); if (title) title.textContent = t('Edit provider');
+  const save = document.getElementById('ct-save-btn'); if (save) save.textContent = t('Save');
+  const cancel = document.getElementById('ct-cancel-btn'); if (cancel) cancel.style.display = '';
+  document.getElementById('ct-name')?.scrollIntoView({block:'center'});
+}
+
+function cancelProviderEdit() { _editingProvider = null; loadCareTeam(); }
+
+async function deleteProvider(id) {
+  await fetch('/api/providers/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  if (_editingProvider === id) _editingProvider = null;
+  loadCareTeam();
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────

@@ -316,6 +316,18 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dep-rec-date { font-size:11.5px; color:var(--gray-400); white-space:nowrap; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
+/* My care team (provider directory) */
+.ct-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.ct-card-head { display:flex; align-items:center; gap:12px; }
+.ct-avatar { width:40px; height:40px; border-radius:50%; background:var(--teal-50); display:flex;
+  align-items:center; justify-content:center; font-size:19px; flex-shrink:0; }
+.ct-name { font-size:15px; font-weight:700; color:var(--gray-800); }
+.ct-specialty { font-size:12.5px; color:var(--gray-500); margin-top:1px; }
+.ct-card-body { margin-top:8px; display:flex; flex-direction:column; gap:5px; padding-left:52px; }
+.ct-call { font-size:13.5px; color:var(--teal-700); font-weight:600; text-decoration:none; }
+.ct-loc { font-size:12.5px; color:var(--gray-500); }
+.ct-notes { font-size:12.5px; color:var(--gray-400); }
+
 /* Health goals */
 .goal-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .goal-unit { font-size:12px; color:var(--gray-400); margin-left:-2px; }

@@ -27,7 +27,7 @@ def _uid(app, email):
 
 
 def test_create_and_list(app):
-    _, uid = _uid(app, "care1@medeasy.test")
+    _, uid = _uid(app, "careplan1@medeasy.test")
     with user_context(uid):
         create_item("Walk 30 min daily", "After dinner", "lifestyle", "me")
         create_item("Check BP weekly", owner="caregiver", category="monitoring")
@@ -38,21 +38,21 @@ def test_create_and_list(app):
 
 
 def test_bad_category_and_owner_sanitized(app):
-    _, uid = _uid(app, "care2@medeasy.test")
+    _, uid = _uid(app, "careplan2@medeasy.test")
     with user_context(uid):
         it = create_item("Take meds", category="nonsense", owner="hacker")
     assert it["category"] == "other" and it["owner"] == "me"
 
 
 def test_title_required(app):
-    _, uid = _uid(app, "care3@medeasy.test")
+    _, uid = _uid(app, "careplan3@medeasy.test")
     with user_context(uid):
         with pytest.raises(ValueError):
             create_item("   ")
 
 
 def test_mark_done_and_summary(app):
-    _, uid = _uid(app, "care4@medeasy.test")
+    _, uid = _uid(app, "careplan4@medeasy.test")
     with user_context(uid):
         it = create_item("Book eye exam", category="appointment", owner="doctor")
         update_item(it["id"], {"status": "done"})
@@ -63,7 +63,7 @@ def test_mark_done_and_summary(app):
 
 
 def test_review_date_validation(app):
-    _, uid = _uid(app, "care5@medeasy.test")
+    _, uid = _uid(app, "careplan5@medeasy.test")
     with user_context(uid):
         it = create_item("Review statin dose", review_date="not-a-date")
         assert it["review_date"] is None
@@ -72,8 +72,8 @@ def test_review_date_validation(app):
 
 
 def test_isolation(app):
-    _, uid_a = _uid(app, "care6@medeasy.test")
-    _, uid_b = _uid(app, "care7@medeasy.test")
+    _, uid_a = _uid(app, "careplan6@medeasy.test")
+    _, uid_b = _uid(app, "careplan7@medeasy.test")
     with user_context(uid_a):
         create_item("Private plan item A")
     with user_context(uid_b):
@@ -82,7 +82,7 @@ def test_isolation(app):
 
 
 def test_api_round_trip(app):
-    c, uid = _uid(app, "care8@medeasy.test")
+    c, uid = _uid(app, "careplan8@medeasy.test")
     r = c.post("/api/care-plan", json={"title": "Low-salt diet", "category": "lifestyle", "owner": "me"})
     assert r.status_code == 200
     iid = r.get_json()["item"]["id"]
