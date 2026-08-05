@@ -104,6 +104,83 @@ def get_lab_trend(lab_key) -> dict:
             'latest': points[-1] if points else None}
 
 
+# ── Recheck reminders ─────────────────────────────────────────────────────────
+# The user chooses which tests to keep an eye on and how often. "Due" is derived
+# from the date of their OWN latest result for that test plus the interval — we
+# never invent a value or issue an order, and the suggested intervals are framed
+# as typical guidance the user can change.
+
+SUGGESTED_RECHECK = {          # days — typical, NOT prescriptive
+    'hba1c': 90, 'fasting_glucose': 90,
+    'ldl': 180, 'hdl': 180, 'total_cholesterol': 180, 'triglycerides': 180,
+    'tsh': 180, 't3': 180, 't4': 180,
+    'vitamin_d': 180, 'vitamin_b12': 365,
+    'creatinine': 180, 'egfr': 180, 'alt': 180, 'ast': 180,
+}
+DEFAULT_RECHECK_DAYS = 180
+
+
+def suggested_recheck_days(lab_key) -> int:
+    return SUGGESTED_RECHECK.get(str(lab_key or '').lower(), DEFAULT_RECHECK_DAYS)
+
+
+def set_lab_recheck(lab_key, interval_days) -> dict:
+    """Turn on (or update) a recheck reminder for one test. Idempotent per key."""
+    uid = current_user_id()
+    key = str(lab_key or '').strip().lower()[:40]
+    if not key:
+        raise ValueError('A test is required')
+    try:
+        days = max(1, min(int(interval_days), 3650))
+    except (TypeError, ValueError):
+        days = suggested_recheck_days(key)
+    execute("DELETE FROM lab_rechecks WHERE user_id=? AND lab_key=?", (uid, key), commit=True)
+    execute("INSERT INTO lab_rechecks (id, lab_key, interval_days, created_at, user_id) VALUES (?,?,?,?,?)",
+            (new_id(), key, days, now_iso(), uid), commit=True)
+    return {'lab_key': key, 'interval_days': days}
+
+
+def clear_lab_recheck(lab_key) -> bool:
+    execute("DELETE FROM lab_rechecks WHERE user_id=? AND lab_key=?",
+            (current_user_id(), str(lab_key or '').strip().lower()[:40]), commit=True)
+    return True
+
+
+def get_lab_rechecks() -> dict:
+    """Each configured recheck with its due status, derived from the user's own
+    latest result date. status: 'due' | 'soon' (<=14d) | 'ok' | 'no_baseline'."""
+    import datetime as _dt
+    from .core import user_today
+    uid = current_user_id()
+    rows = execute("SELECT * FROM lab_rechecks WHERE user_id=?", (uid,), fetchall=True) or []
+    try:
+        today = _dt.date.fromisoformat(user_today())
+    except ValueError:
+        today = _dt.date.today()
+
+    out = []
+    for r in rows:
+        key = r['lab_key']
+        last = execute("""SELECT MAX(date_key) d FROM lab_results WHERE user_id=? AND lab_key=?""",
+                       (uid, key), fetchone=True)
+        last_done = last['d'] if last else None
+        meta = lab_catalog.get_lab(key)
+        item = {'lab_key': key, 'name': meta['name'] if meta else key,
+                'interval_days': r['interval_days'], 'last_done': last_done,
+                'next_due': None, 'days_until': None, 'status': 'no_baseline'}
+        if last_done and valid_date(last_done):
+            nd = _dt.date.fromisoformat(last_done) + _dt.timedelta(days=r['interval_days'])
+            days_until = (nd - today).days
+            item['next_due'] = nd.isoformat()
+            item['days_until'] = days_until
+            item['status'] = 'due' if days_until <= 0 else 'soon' if days_until <= 14 else 'ok'
+        out.append(item)
+    # Due first, then soonest.
+    order = {'due': 0, 'soon': 1, 'no_baseline': 2, 'ok': 3}
+    out.sort(key=lambda x: (order[x['status']], x['days_until'] if x['days_until'] is not None else 9999))
+    return {'rechecks': out, 'due_count': sum(1 for x in out if x['status'] == 'due')}
+
+
 def get_catalog() -> dict:
     """Catalog for the add-a-lab picker, grouped by category, with per-test range
     resolved for this user's sex."""

@@ -9,7 +9,9 @@ GET    /api/labs/trend/<key>   — one test's history for a chart
 from flask import Blueprint, request, jsonify
 from auth import require_auth
 from db.labs import (log_lab_result, delete_lab_result, get_latest_by_test,
-                     get_lab_trend, get_catalog)
+                     get_lab_trend, get_catalog,
+                     set_lab_recheck, clear_lab_recheck, get_lab_rechecks,
+                     suggested_recheck_days)
 from db.conditions import list_conditions, get_condition_dashboard
 from db.immunizations import log_dose, delete_dose, get_record, get_catalog as vaccine_catalog_grouped
 from db.timeline import get_timeline
@@ -106,3 +108,30 @@ def api_labs_catalog():
 @require_auth
 def api_labs_trend(key):
     return jsonify(get_lab_trend(key))
+
+
+@bp.route('/api/labs/rechecks')
+@require_auth
+def api_lab_rechecks():
+    return jsonify(get_lab_rechecks())
+
+
+@bp.route('/api/labs/rechecks', methods=['POST'])
+@require_auth
+def api_lab_recheck_set():
+    d = request.json or {}
+    key = d.get('lab_key', '')
+    try:
+        days = d.get('interval_days')
+        if days in (None, ''):
+            days = suggested_recheck_days(key)
+        return jsonify({'success': True, 'recheck': set_lab_recheck(key, days)})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@bp.route('/api/labs/rechecks/<key>', methods=['DELETE'])
+@require_auth
+def api_lab_recheck_clear(key):
+    clear_lab_recheck(key)
+    return jsonify({'success': True})

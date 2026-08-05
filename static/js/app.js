@@ -407,6 +407,11 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Due for a recheck': 'दोबारा जाँच का समय', 'due now': 'अभी देय',
+    'due in %1 days': '%1 दिन में देय', 'typically every %1 months': 'आमतौर पर हर %1 महीने',
+    'Suggested intervals are typical guidance, not a doctor’s order.': 'सुझाए गए अंतराल सामान्य मार्गदर्शन हैं, डॉक्टर का आदेश नहीं।',
+    'Recheck reminder on': 'दोबारा जाँच अनुस्मारक चालू', 'Recheck reminder on — tap to turn off': 'अनुस्मारक चालू — बंद करने के लिए टैप करें',
+    'Remind me to recheck this': 'इसे दोबारा जाँचने की याद दिलाएँ',
     'Care team': 'देखभाल टीम', 'Your doctors and clinics in one place — tap to call': 'आपके डॉक्टर और क्लीनिक एक जगह — कॉल करने के लिए टैप करें',
     'Add a provider': 'एक प्रदाता जोड़ें', 'Name (e.g. Dr Meera Nair)': 'नाम (जैसे डॉ मीरा नायर)',
     'Specialty': 'विशेषज्ञता', 'Phone': 'फ़ोन', 'Clinic / hospital': 'क्लीनिक / अस्पताल', 'Address (optional)': 'पता (वैकल्पिक)',
@@ -12420,12 +12425,25 @@ let _labCatalog = null;
 async function loadLabsView() {
   const el = document.getElementById('labs-view-content');
   if (!el) return;
-  const [results, catalog] = await Promise.all([
+  const [results, catalog, rechecks] = await Promise.all([
     fetch('/api/labs', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {results:[]}).catch(() => ({results:[]})),
     fetch('/api/labs/catalog', {credentials:'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch('/api/labs/rechecks', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {rechecks:[]}).catch(() => ({rechecks:[]})),
   ]);
   _labCatalog = catalog;
-  el.innerHTML = renderLabsView(results.results || [], catalog);
+  el.innerHTML = renderLabsView(results.results || [], catalog, rechecks.rechecks || []);
+}
+
+async function setLabRecheck(key) {
+  const r = await fetch('/api/labs/rechecks', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({lab_key: key})}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Recheck reminder on')); loadLabsView(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function clearLabRecheck(key) {
+  await fetch('/api/labs/rechecks/' + encodeURIComponent(key), {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadLabsView();
 }
 
 const LAB_STATUS = {
@@ -12439,7 +12457,29 @@ function _labStatusBadge(status) {
   return s ? `<span class="lab-badge ${s.cls}">${t(s.label)}</span>` : '';
 }
 
-function renderLabsView(results, catalog) {
+function renderRecheckBanner(rechecks) {
+  const flagged = (rechecks || []).filter(r => r.status === 'due' || r.status === 'soon');
+  if (!flagged.length) return '';
+  const rows = flagged.map(r => {
+    const cls = r.status === 'due' ? 'lrc-due' : 'lrc-soon';
+    const when = r.status === 'due'
+      ? (r.days_until === 0 ? t('due now') : tformat('%1 days overdue', -r.days_until))
+      : tformat('due in %1 days', r.days_until);
+    return `<div class="lrc-item ${cls}">
+        <span class="lrc-name">🧪 ${escHtml(r.name)}</span>
+        <span class="lrc-when">${when}</span>
+        <span class="lrc-typical">${tformat('typically every %1 months', Math.round(r.interval_days / 30))}</span>
+      </div>`;
+  }).join('');
+  return `<div class="panel lrc-panel" style="padding:14px 18px;margin-bottom:16px">
+      <div class="lrc-head">🔔 ${t('Due for a recheck')}</div>
+      ${rows}
+      <div class="lrc-note">${t('Suggested intervals are typical guidance, not a doctor’s order.')}</div>
+    </div>`;
+}
+
+function renderLabsView(results, catalog, rechecks) {
+  const recheckKeys = new Set((rechecks || []).map(r => r.lab_key));
   // Add-a-lab picker — optgroups by category, each option carries unit + range.
   let options = `<option value="">${t('Choose a test…')}</option>`;
   if (catalog && catalog.tests) {
@@ -12490,13 +12530,16 @@ function renderLabsView(results, catalog) {
           </div>
           <div class="lab-value ${LAB_STATUS[r.status]?.cls || ''}">${r.value}<span class="lab-value-unit">${escHtml(r.unit||'')}</span></div>
           <button class="btn-outline" style="font-size:12px" data-ev-click="toggleLabTrend('${r.lab_key}')">${t('Trend')}</button>
+          ${recheckKeys.has(r.lab_key)
+            ? `<button class="btn-icon lab-bell-on" title="${t('Recheck reminder on — tap to turn off')}" data-ev-click="clearLabRecheck('${r.lab_key}')">🔔</button>`
+            : `<button class="btn-icon" title="${t('Remind me to recheck this')}" data-ev-click="setLabRecheck('${r.lab_key}')" style="opacity:.5">🔕</button>`}
           <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteLab('${r.id}')" style="color:var(--gray-300)">✕</button>
         </div>
         <div id="lab-trend-${r.lab_key}" class="lab-trend" style="display:none"></div>`;
       }).join('')}
     </div>`).join('');
 
-  return form + cards;
+  return form + renderRecheckBanner(rechecks) + cards;
 }
 
 function onLabTestPick() {

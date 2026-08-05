@@ -316,6 +316,18 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dep-rec-date { font-size:11.5px; color:var(--gray-400); white-space:nowrap; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
+/* Lab recheck reminders */
+.lrc-panel { background:#FBF6EC; border:1px solid #F0E4CC; }
+.lrc-head { font-size:13px; font-weight:700; color:var(--gray-700); margin-bottom:8px; }
+.lrc-item { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:5px 0; font-size:13px; }
+.lrc-name { font-weight:600; color:var(--gray-800); }
+.lrc-when { font-weight:600; }
+.lrc-due .lrc-when { color:#B4443A; }
+.lrc-soon .lrc-when { color:var(--amber-600,#d08700); }
+.lrc-typical { font-size:11.5px; color:var(--gray-400); margin-left:auto; }
+.lrc-note { font-size:11px; color:var(--gray-400); font-style:italic; margin-top:8px; }
+.lab-bell-on { filter:none; }
+
 /* My care team (provider directory) */
 .ct-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .ct-card-head { display:flex; align-items:center; gap:12px; }
