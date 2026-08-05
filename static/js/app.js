@@ -355,6 +355,20 @@ const I18N = {
     'No vaccines recorded yet': 'अभी कोई टीका दर्ज नहीं', 'Add a dose from your vaccination card above.': 'ऊपर अपने टीकाकरण कार्ड से एक खुराक जोड़ें।',
     'Dose recorded': 'खुराक दर्ज', 'last': 'अंतिम', 'next': 'अगला',
     'Timeline': 'समयरेखा', 'Health timeline': 'स्वास्थ्य समयरेखा',
+    'Goals': 'लक्ष्य', 'Health goals': 'स्वास्थ्य लक्ष्य',
+    'Set a target with a finish line — progress comes from what you actually log': 'एक समय-सीमा के साथ लक्ष्य तय करें — प्रगति उसी से बनती है जो आप वाकई दर्ज करते हैं',
+    'Set a goal': 'लक्ष्य तय करें', 'Get below': 'इससे नीचे लाएँ', 'Get above': 'इससे ऊपर लाएँ', 'Reach': 'तक पहुँचें',
+    'Target': 'लक्ष्य', 'Deadline (optional)': 'समय-सीमा (वैकल्पिक)',
+    'No goals yet': 'अभी कोई लक्ष्य नहीं',
+    'Set a target above — like HbA1c below 6.5, or 8,000 steps a day.': 'ऊपर एक लक्ष्य तय करें — जैसे HbA1c 6.5 से नीचे, या रोज़ 8,000 कदम।',
+    'Show finished': 'पूर्ण दिखाएँ', 'Hide finished': 'पूर्ण छिपाएँ',
+    'now': 'अभी', '🎉 reached!': '🎉 पहुँच गए!', 'target': 'लक्ष्य',
+    'Log a %1 reading to see progress.': 'प्रगति देखने के लिए %1 दर्ज करें।',
+    '%1 days left': '%1 दिन शेष', '%1 days overdue': '%1 दिन देरी',
+    'Mark done': 'पूर्ण चिह्नित करें', 'done': 'पूर्ण', 'archived': 'संग्रहित',
+    'Goal set 🎯': 'लक्ष्य तय हुआ 🎯', 'Enter a target': 'एक लक्ष्य दर्ज करें',
+    'Weight': 'वज़न', 'Body fat': 'शरीर की चर्बी', 'HbA1c': 'HbA1c', 'LDL cholesterol': 'LDL कोलेस्ट्रॉल',
+    'Fasting glucose': 'उपवास ग्लूकोज़', 'Systolic BP': 'सिस्टोलिक बीपी', 'Daily steps': 'रोज़ के कदम', 'Custom goal': 'अपना लक्ष्य',
     'Your whole health story in one place — the thing to scroll through with a doctor': 'आपकी पूरी स्वास्थ्य कहानी एक जगह — डॉक्टर के साथ देखने लायक',
     'Clear': 'साफ़ करें', 'Nothing here yet': 'अभी यहाँ कुछ नहीं',
     'As you log medicines, vitals, labs, visits and vaccines, they appear here in order.': 'जैसे-जैसे आप दवाइयाँ, वाइटल्स, लैब, विज़िट और टीके दर्ज करते हैं, वे यहाँ क्रम में दिखते हैं।',
@@ -2099,6 +2113,7 @@ function switchView(view) {
   if (view === 'conditions')    loadConditionsView();
   if (view === 'immunizations') loadImmunizations();
   if (view === 'timeline')      loadTimeline();
+  if (view === 'goals')         loadGoals();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -11078,6 +11093,119 @@ async function saveSleepLogFromView() {
 // ════════════════════════════════════════════════════════════
 // BODY & VITALS VIEW — standalone page
 // ════════════════════════════════════════════════════════════
+// ── Health goals ─────────────────────────────────────────────────────────────
+// Outcome goals with a finish line (target + direction + optional deadline).
+// Progress is derived from the user's own logged values — honest "log X to see
+// progress" when there's no reading yet.
+let _goalMetrics = [];
+let _goalShowDone = false;
+
+const GOAL_DIR = { below:'Get below', above:'Get above', reach:'Reach' };
+
+async function loadGoals() {
+  const el = document.getElementById('goals-view-content');
+  if (!el) return;
+  const d = await fetch('/api/goals' + (_goalShowDone ? '?all=1' : ''), {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {goals:[],metrics:[]}).catch(() => ({goals:[],metrics:[]}));
+  _goalMetrics = d.metrics || [];
+  el.innerHTML = renderGoals(d.goals || []);
+}
+
+function onGoalMetricPick() {
+  // Default the direction to the metric's natural one; unit hint on the target.
+  const sel = document.getElementById('goal-metric');
+  const m = _goalMetrics.find(x => x.key === sel?.value);
+  const dir = document.getElementById('goal-dir');
+  if (m && dir) dir.value = m.dir;
+  const unit = document.getElementById('goal-unit');
+  if (unit) unit.textContent = m ? m.unit : '';
+}
+
+function renderGoals(goals) {
+  const mOpts = _goalMetrics.map(m => `<option value="${m.key}">${t(m.name)}</option>`).join('');
+  const dOpts = Object.entries(GOAL_DIR).map(([k, v]) => `<option value="${k}">${t(v)}</option>`).join('');
+  const today = localToday();
+  const form = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Set a goal')}</h2>
+      <div class="goal-form">
+        <select id="goal-metric" class="form-input" data-ev-change="onGoalMetricPick()" style="max-width:170px">${mOpts}</select>
+        <select id="goal-dir" class="form-input" style="max-width:130px">${dOpts}</select>
+        <input type="number" step="any" id="goal-target" class="form-input" placeholder="${t('Target')}" style="max-width:110px">
+        <span id="goal-unit" class="goal-unit"></span>
+        <input type="date" id="goal-deadline" class="form-input" min="${today}" title="${t('Deadline (optional)')}" style="max-width:160px">
+        <button class="btn-primary" data-ev-click="addGoal()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  const toggle = `<div style="text-align:right;margin-bottom:10px">
+      <button class="btn-outline" style="font-size:12px" data-ev-click="toggleGoalDone()">${_goalShowDone ? t('Hide finished') : t('Show finished')}</button></div>`;
+
+  if (!goals.length) {
+    return form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">🎯</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No goals yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Set a target above — like HbA1c below 6.5, or 8,000 steps a day.')}</div>
+      </div>`;
+  }
+
+  const cards = goals.map(g => {
+    const done = g.status !== 'active';
+    const pct = g.progress != null ? Math.round(g.progress * 100) : null;
+    const dirWord = t(GOAL_DIR[g.direction] || 'Reach').toLowerCase();
+    const title = g.title || `${t(g.metric_name)} · ${dirWord} ${g.target_value}${g.unit ? ' ' + g.unit : ''}`;
+    const bar = pct != null
+      ? `<div class="goal-bar"><div class="goal-fill${g.auto_achieved ? ' goal-fill--done' : ''}" style="width:${pct}%"></div></div>
+         <div class="goal-progress-label">${g.current != null ? `${t('now')} ${g.current}${g.unit ? ' ' + g.unit : ''}` : ''} · ${pct}%${g.auto_achieved ? ' · ' + t('🎉 reached!') : ''}</div>`
+      : `<div class="goal-nodata">${tformat('Log a %1 reading to see progress.', t(g.metric_name).toLowerCase())}</div>`;
+    let deadline = '';
+    if (g.days_left != null) {
+      deadline = g.days_left < 0 ? `<span class="goal-overdue">${tformat('%1 days overdue', -g.days_left)}</span>`
+               : `<span class="goal-deadline">${tformat('%1 days left', g.days_left)}</span>`;
+    }
+    return `<div class="panel goal-card${done ? ' goal-card--done' : ''}" style="padding:16px 18px;margin-bottom:12px">
+        <div class="goal-head">
+          <div style="flex:1"><div class="goal-title">${escHtml(title)}</div>
+            <div class="goal-meta">${t('target')} ${g.target_value}${g.unit ? ' ' + g.unit : ''}${deadline ? ' · ' + deadline : ''}</div></div>
+          ${done ? `<span class="goal-badge">${g.status === 'achieved' ? t('done') : t('archived')}</span>` :
+            (g.auto_achieved ? `<button class="btn-outline" style="font-size:11px" data-ev-click="markGoal('${g.id}','achieved')">${t('Mark done')}</button>` : '')}
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteGoal('${g.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+        ${bar}
+      </div>`;
+  }).join('');
+
+  return form + toggle + cards;
+}
+
+function toggleGoalDone() { _goalShowDone = !_goalShowDone; loadGoals(); }
+
+async function addGoal() {
+  const metric = document.getElementById('goal-metric')?.value;
+  const target_value = document.getElementById('goal-target')?.value;
+  const direction = document.getElementById('goal-dir')?.value;
+  const deadline = document.getElementById('goal-deadline')?.value || null;
+  if (target_value === '' || target_value == null) { showToast('Enter a target', 'error'); return; }
+  const r = await fetch('/api/goals', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({metric, target_value, direction, deadline}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Goal set 🎯')); loadGoals(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function markGoal(id, status) {
+  await fetch('/api/goals/' + id, {method:'PATCH', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({status})}).catch(() => {});
+  if (status === 'achieved') { try { celebrate && celebrate(); } catch (e) {} }
+  loadGoals();
+}
+
+async function deleteGoal(id) {
+  await fetch('/api/goals/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadGoals();
+}
+
 // ── Dependents / family profiles ─────────────────────────────────────────────
 // Track health for someone who doesn't use the app themselves (a child's
 // vaccines, a parent's meds) from the caregiver's own account. All owned and

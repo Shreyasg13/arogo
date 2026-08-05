@@ -444,6 +444,12 @@ CREATE TABLE IF NOT EXISTS immunizations (
     dose_label TEXT DEFAULT '', date_given TEXT NOT NULL, notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS health_goals (
+    id TEXT PRIMARY KEY, title TEXT DEFAULT '', metric TEXT NOT NULL,
+    target_value REAL NOT NULL, direction TEXT DEFAULT 'below',
+    start_value REAL DEFAULT NULL, deadline TEXT DEFAULT NULL,
+    status TEXT DEFAULT 'active', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -965,6 +971,7 @@ DATA_TABLES = [
     'lab_results',
     'health_expenses',
     'immunizations',
+    'health_goals',
     'dependents',
     'dependent_records',
 ]
