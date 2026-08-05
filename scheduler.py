@@ -319,9 +319,29 @@ def _refill_reminders():
 
 # ── Appointment reminders: the day before and the morning of ─────────────────
 
+def appt_reminder_phase(appt_date, reminder_days, today):
+    """Which reminder (if any) fires for an appointment on `today`:
+      'day'  — the morning of the appointment
+      'pre'  — the advance nudge, `reminder_days` before (default 1; 0 = none)
+      None   — nothing today
+    Pure and side-effect-free so it can be unit-tested without push/db."""
+    import datetime as dt
+    if appt_date == today:
+        return 'day'
+    rd = reminder_days if isinstance(reminder_days, int) and reminder_days >= 0 else 1
+    if rd >= 1:
+        try:
+            lead_date = (dt.date.fromisoformat(today) + dt.timedelta(days=rd)).isoformat()
+        except ValueError:
+            return None
+        if appt_date == lead_date:
+            return 'pre'
+    return None
+
+
 def _appointment_reminders():
-    """Remind about upcoming appointments — a heads-up the day before and again
-    on the morning of. Deduped per appointment per phase."""
+    """Remind about upcoming appointments — an advance heads-up (N days before,
+    user-chosen) and again on the morning of. Deduped per appointment per phase."""
     try:
         import push
         if not push.PUSH_AVAILABLE:
@@ -338,15 +358,17 @@ def _appointment_reminders():
                     lang = get_user_language(uid)
                     now = _user_local_now(uid)
                     today = now.strftime('%Y-%m-%d')
-                    tomorrow = (now.date() + dt.timedelta(days=1)).isoformat()
                     for a in list_appointments(upcoming_only=True):
                         if not a.get('remind'):
                             continue
-                        when = a['date']
-                        if when == tomorrow:
-                            phase, lead = 'pre', tr(lang, 'push.appt_tomorrow')
-                        elif when == today:
-                            phase, lead = 'day', tr(lang, 'push.appt_today')
+                        rd = a.get('reminder_days')
+                        rd = rd if isinstance(rd, int) and rd >= 0 else 1
+                        phase = appt_reminder_phase(a['date'], rd, today)
+                        if phase == 'pre':
+                            lead = (tr(lang, 'push.appt_tomorrow') if rd == 1
+                                    else tr(lang, 'push.appt_in_days', days=rd))
+                        elif phase == 'day':
+                            lead = tr(lang, 'push.appt_today')
                         else:
                             continue
                         key = f"appt:{a['id']}:{phase}"

@@ -403,6 +403,8 @@ CREATE TABLE IF NOT EXISTS appointments (
     location TEXT DEFAULT '',
     notes TEXT DEFAULT '',
     remind INTEGER DEFAULT 1,
+    reminder_days INTEGER DEFAULT 1,
+    provider_id TEXT DEFAULT NULL,
     created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS doctor_questions (
@@ -835,6 +837,14 @@ def migrate_add_prescriptions():
         pass
 
 
+def migrate_add_appt_reminder_days():
+    """Add the configurable appointment reminder lead-time column."""
+    try:
+        execute("ALTER TABLE appointments ADD COLUMN reminder_days INTEGER DEFAULT 1")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1121,6 +1131,7 @@ def init_db():
     migrate_add_lab_rechecks()
     migrate_add_prescriptions()
     migrate_add_claims()
+    migrate_add_appt_reminder_days()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

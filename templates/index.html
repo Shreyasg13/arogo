@@ -630,10 +630,19 @@
           <input type="text" class="form-input" id="appt-notes" maxlength="500"
                  placeholder="e.g. fasting, bring old reports" data-i18n-ph="e.g. fasting, bring old reports">
         </div>
-        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="appt-remind" checked>
-          <span data-i18n="🔔 Remind me the evening before and the morning of">🔔 Remind me the evening before and the morning of</span>
-        </label>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="appt-remind" checked data-ev-change="onApptRemindToggle()">
+            <span data-i18n="🔔 Remind me">🔔 Remind me</span>
+          </label>
+          <select class="form-input" id="appt-remind-days" style="max-width:170px;padding:6px 10px">
+            <option value="0" data-i18n="on the morning of">on the morning of</option>
+            <option value="1" selected data-i18n="1 day before">1 day before</option>
+            <option value="2" data-i18n="2 days before">2 days before</option>
+            <option value="3" data-i18n="3 days before">3 days before</option>
+            <option value="7" data-i18n="1 week before">1 week before</option>
+          </select>
+        </div>
         <button class="btn-primary" id="appt-submit-btn" data-ev-click="addAppointment()" data-i18n="Add appointment">Add appointment</button>
         <button class="btn-outline" id="appt-cancel-btn" data-ev-click="cancelApptEdit()" style="display:none" data-i18n="Cancel">Cancel</button>
       </div>

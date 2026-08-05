@@ -70,6 +70,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     'push.refill_body':   {'en': 'About {days} day{s} of pills left.', 'hi': 'लगभग {days} दिन की गोलियाँ बाकी।'},
     'push.appt_tomorrow': {'en': 'Tomorrow', 'hi': 'कल'},
     'push.appt_today':    {'en': 'Today',    'hi': 'आज'},
+    'push.appt_in_days':  {'en': 'In {days} days', 'hi': '{days} दिन में'},
     'push.appt_at':       {'en': ' at {time}', 'hi': ' {time} बजे'},
 
     # ── Email: verification ───────────────────────────────────────────────

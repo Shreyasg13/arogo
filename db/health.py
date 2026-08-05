@@ -307,6 +307,14 @@ def _valid_date(s):
         return None
 
 
+def _clean_reminder_days(v, default=1):
+    """Days before the appointment to nudge (0–30). 0 = only the morning-of."""
+    try:
+        return max(0, min(int(v), 30))
+    except (TypeError, ValueError):
+        return default
+
+
 def create_appointment(data: dict) -> dict:
     title = str(data.get('title', '')).strip()
     if not title:
@@ -320,11 +328,12 @@ def create_appointment(data: dict) -> dict:
     time = str(data.get('time', '') or '')[:5]
     aid = new_id()
     execute("""INSERT INTO appointments
-                 (id,user_id,title,kind,date,time,location,notes,remind,created_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                 (id,user_id,title,kind,date,time,location,notes,remind,reminder_days,created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (aid, current_user_id(), title[:160], kind, date, time,
              str(data.get('location', ''))[:200], str(data.get('notes', ''))[:500],
-             0 if data.get('remind') is False else 1, now_iso()), commit=True)
+             0 if data.get('remind') is False else 1, _clean_reminder_days(data.get('reminder_days')),
+             now_iso()), commit=True)
     return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?",
                         (aid, current_user_id()), fetchone=True))
 
@@ -363,11 +372,13 @@ def update_appointment(aid: str, data: dict) -> dict:
         kind = cur['kind']
     time = str(data.get('time', cur['time']) or '')[:5]
     remind = cur['remind'] if 'remind' not in data else (0 if data.get('remind') is False else 1)
-    execute("""UPDATE appointments SET title=?, kind=?, date=?, time=?, location=?, notes=?, remind=?
+    reminder_days = _clean_reminder_days(data['reminder_days'], cur.get('reminder_days', 1)) \
+        if 'reminder_days' in data else cur.get('reminder_days', 1)
+    execute("""UPDATE appointments SET title=?, kind=?, date=?, time=?, location=?, notes=?, remind=?, reminder_days=?
                WHERE id=? AND user_id=?""",
             (title[:160], kind, date, time,
              str(data.get('location', cur['location']))[:200],
-             str(data.get('notes', cur['notes']))[:500], remind, aid, uid), commit=True)
+             str(data.get('notes', cur['notes']))[:500], remind, reminder_days, aid, uid), commit=True)
     return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?", (aid, uid), fetchone=True))
 
 

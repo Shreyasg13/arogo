@@ -347,6 +347,8 @@ const I18N = {
     'Log a couple of cycles to see regularity.': 'नियमितता देखने के लिए कुछ चक्र दर्ज करें।',
     'Cycle details are private to this member and aren\'t shown while managing their account.': 'चक्र विवरण इस सदस्य के लिए निजी है और उनका खाता प्रबंधित करते समय नहीं दिखाया जाता।',
     'Save changes': 'बदलाव सहेजें', 'Add appointment': 'अपॉइंटमेंट जोड़ें',
+    '🔔 Remind me': '🔔 मुझे याद दिलाएँ', 'on the morning of': 'उसी दिन सुबह',
+    '1 day before': '1 दिन पहले', '2 days before': '2 दिन पहले', '3 days before': '3 दिन पहले', '1 week before': '1 सप्ताह पहले',
     'Appointment updated': 'अपॉइंटमेंट अपडेट हुआ',
     'Vaccines': 'टीके', 'Your immunization record, with a heads-up when a recurring shot is due': 'आपका टीकाकरण रिकॉर्ड, और आवर्ती टीके के देय होने पर सूचना',
     'Add a dose': 'खुराक जोड़ें', 'Choose a vaccine…': 'एक टीका चुनें…', 'Dose (e.g. Dose 1, Booster)': 'खुराक (जैसे खुराक 1, बूस्टर)',
@@ -8824,10 +8826,18 @@ function editAppointment(id) {
   set('title', a.title); set('date', a.date); set('kind', a.kind);
   set('time', a.time); set('location', a.location); set('notes', a.notes);
   const rem = document.getElementById('appt-remind'); if (rem) rem.checked = !!a.remind;
+  const rd = document.getElementById('appt-remind-days'); if (rd) rd.value = String(a.reminder_days ?? 1);
+  onApptRemindToggle();
   const btn = document.getElementById('appt-submit-btn'); if (btn) btn.textContent = t('Save changes');
   const cancel = document.getElementById('appt-cancel-btn'); if (cancel) cancel.style.display = 'inline-flex';
   document.getElementById('appt-title')?.scrollIntoView({block: 'center'});
   document.getElementById('appt-title')?.focus();
+}
+
+function onApptRemindToggle() {
+  const on = !!document.getElementById('appt-remind')?.checked;
+  const sel = document.getElementById('appt-remind-days');
+  if (sel) { sel.disabled = !on; sel.style.opacity = on ? '1' : '.4'; }
 }
 
 function cancelApptEdit() {
@@ -8851,6 +8861,7 @@ async function addAppointment() {
     location: document.getElementById('appt-location')?.value || '',
     notes: document.getElementById('appt-notes')?.value || '',
     remind: !!document.getElementById('appt-remind')?.checked,
+    reminder_days: parseInt(document.getElementById('appt-remind-days')?.value ?? '1', 10) || 0,
   };
   const editing = _editingApptId;
   const r = await fetch(editing ? `/api/appointments/${editing}` : '/api/appointments', {
