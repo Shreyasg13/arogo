@@ -407,6 +407,17 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Claims': 'दावे', 'Insurance claims': 'बीमा दावे',
+    "Track what you've claimed and what's actually been reimbursed": 'आपने क्या दावा किया और वास्तव में कितना वापस मिला, ट्रैक करें',
+    'Add a claim': 'दावा जोड़ें', 'Insurer (e.g. Star Health)': 'बीमाकर्ता (जैसे स्टार हेल्थ)',
+    'claimed': 'दावा किया', 'reimbursed': 'वापस मिला',
+    'awaiting (%1 open)': 'प्रतीक्षित (%1 खुले)',
+    '“Awaiting” counts only still-open claims — a rejected claim isn’t money that’s coming.': '"प्रतीक्षित" केवल खुले दावे गिनता है — अस्वीकृत दावा आने वाला पैसा नहीं है।',
+    'No claims yet': 'अभी कोई दावा नहीं', 'Log an insurance claim to track its status and what gets reimbursed.': 'दावे की स्थिति और वापसी ट्रैक करने के लिए एक बीमा दावा दर्ज करें।',
+    'Submitted': 'जमा किया', 'Under review': 'समीक्षाधीन', 'Approved': 'स्वीकृत', 'Partially paid': 'आंशिक भुगतान', 'Paid': 'भुगतान', 'Rejected': 'अस्वीकृत',
+    '%1 reimbursed': '%1 वापस मिला', 'nothing reimbursed yet': 'अभी कुछ वापस नहीं', '%1 outstanding': '%1 बकाया', 'submitted %1': '%1 को जमा',
+    'Edit claim': 'दावा संपादित करें', 'Claim added': 'दावा जोड़ा गया', 'Claim updated': 'दावा अपडेट हुआ',
+    'Enter an insurer': 'बीमाकर्ता दर्ज करें', 'Enter the amount claimed': 'दावा राशि दर्ज करें',
     'Prescriptions': 'नुस्खे', 'Who prescribed what, when it expires, and how many refills are left': 'किसने क्या लिखा, कब समाप्त होता है, और कितने रिफिल बचे हैं',
     'Add a prescription': 'नुस्खा जोड़ें', 'Prescriber (e.g. Dr Nair)': 'लिखने वाले (जैसे डॉ नायर)',
     'Issued': 'जारी', 'Valid until': 'तक मान्य', 'Refills left': 'रिफिल शेष', 'Covers': 'शामिल दवाइयाँ',
@@ -2190,6 +2201,7 @@ function switchView(view) {
   if (view === 'care-plan')     loadCarePlan();
   if (view === 'care-team')     loadCareTeam();
   if (view === 'prescriptions') loadPrescriptions();
+  if (view === 'claims')        loadClaims();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -11968,6 +11980,129 @@ async function deleteRx(id) {
   await fetch('/api/prescriptions/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   if (_editingRx === id) _editingRx = null;
   loadPrescriptions();
+}
+
+// ── Insurance claims ─────────────────────────────────────────────────────────
+// Track a claim through its real lifecycle. The reimbursed figure is what has
+// ACTUALLY been paid, kept separate from the amount claimed — a submitted claim
+// is not money in hand, and "awaiting" only counts still-open claims.
+let _editingClaim = null;
+
+const CLAIM_STATUS = {
+  submitted:      {label:'Submitted',      cls:'clm-pending'},
+  under_review:   {label:'Under review',   cls:'clm-pending'},
+  approved:       {label:'Approved',       cls:'clm-pending'},
+  partially_paid: {label:'Partially paid', cls:'clm-partial'},
+  paid:           {label:'Paid',           cls:'clm-paid'},
+  rejected:       {label:'Rejected',       cls:'clm-rejected'},
+};
+
+async function loadClaims() {
+  const el = document.getElementById('claims-content');
+  if (!el) return;
+  const d = await fetch('/api/claims', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {claims:[],summary:{},statuses:[]}).catch(() => ({claims:[],summary:{},statuses:[]}));
+  el.innerHTML = renderClaims(d);
+}
+
+function renderClaims(d) {
+  const today = localToday();
+  const statuses = d.statuses || Object.keys(CLAIM_STATUS);
+  const statusOpts = statuses.map(s => `<option value="${s}">${t(CLAIM_STATUS[s]?.label || s)}</option>`).join('');
+
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px" id="clm-form-title">${t('Add a claim')}</h2>
+      <div class="clm-form">
+        <input type="text" id="clm-insurer" class="form-input" placeholder="${t('Insurer (e.g. Star Health)')}" style="flex:2;min-width:170px">
+        <input type="number" step="any" min="0" id="clm-amount" class="form-input" placeholder="₹ ${t('claimed')}" style="max-width:120px">
+        <input type="number" step="any" min="0" id="clm-reimbursed" class="form-input" placeholder="₹ ${t('reimbursed')}" style="max-width:130px">
+        <select id="clm-status" class="form-input" style="max-width:150px">${statusOpts}</select>
+        <input type="date" id="clm-date" class="form-input" value="${today}" max="${today}" style="max-width:160px">
+        <button class="btn-primary" data-ev-click="saveClaim()" id="clm-save-btn">${t('Add')}</button>
+        <button class="btn-outline" data-ev-click="cancelClaimEdit()" id="clm-cancel-btn" style="display:none">${t('Cancel')}</button>
+      </div>
+    </div>`;
+
+  const s = d.summary || {};
+  const hero = (d.claims || []).length ? `<div class="panel clm-hero" style="padding:18px 20px;margin-bottom:16px">
+      <div class="clm-hero-grid">
+        <div><div class="clm-hero-n">${_rupee(s.total_claimed)}</div><div class="clm-hero-l">${t('claimed')}</div></div>
+        <div><div class="clm-hero-n clm-hero-paid">${_rupee(s.total_reimbursed)}</div><div class="clm-hero-l">${t('reimbursed')}</div></div>
+        <div><div class="clm-hero-n clm-hero-await">${_rupee(s.awaiting)}</div><div class="clm-hero-l">${tformat('awaiting (%1 open)', s.pending_count || 0)}</div></div>
+      </div>
+      <div class="clm-note">${t('“Awaiting” counts only still-open claims — a rejected claim isn’t money that’s coming.')}</div>
+    </div>` : '';
+
+  if (!(d.claims || []).length) {
+    return form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">🧾</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No claims yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Log an insurance claim to track its status and what gets reimbursed.')}</div>
+      </div>`;
+  }
+
+  const cards = d.claims.map(c => {
+    const st = CLAIM_STATUS[c.status] || {label:c.status, cls:''};
+    const badge = `<span class="clm-badge ${st.cls}">${t(st.label)}</span>`;
+    const paid = c.reimbursed > 0 ? tformat('%1 reimbursed', _rupee(c.reimbursed)) : t('nothing reimbursed yet');
+    const outstanding = (c.outstanding > 0 && c.pending) ? ` · ${tformat('%1 outstanding', _rupee(c.outstanding))}` : '';
+    return `<div class="panel clm-card" style="padding:15px 18px;margin-bottom:12px">
+        <div class="clm-card-head">
+          <div style="flex:1;min-width:0">
+            <div class="clm-insurer">${escHtml(c.insurer)} ${badge}</div>
+            <div class="clm-meta">${_rupee(c.amount)} ${t('claimed')} · ${tformat('submitted %1', _fmtShortDate(c.date_submitted))}</div>
+            <div class="clm-paid">${paid}${outstanding}</div>
+          </div>
+          <button class="btn-icon" title="${t('Edit')}" data-ev-click="startClaimEdit('${c.id}')">✎</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteClaim('${c.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+        ${c.notes ? `<div class="clm-notes">${escHtml(c.notes)}</div>` : ''}
+      </div>`;
+  }).join('');
+  return form + hero + cards;
+}
+
+function _claimFormBody() {
+  return {
+    insurer: document.getElementById('clm-insurer')?.value?.trim() || '',
+    amount: document.getElementById('clm-amount')?.value || '',
+    reimbursed: document.getElementById('clm-reimbursed')?.value || 0,
+    status: document.getElementById('clm-status')?.value || 'submitted',
+    date_submitted: document.getElementById('clm-date')?.value || '',
+  };
+}
+
+async function saveClaim() {
+  const body = _claimFormBody();
+  if (!body.insurer) { showToast(t('Enter an insurer'), 'error'); return; }
+  if (!body.amount || Number(body.amount) <= 0) { showToast(t('Enter the amount claimed'), 'error'); return; }
+  const url = _editingClaim ? '/api/claims/' + _editingClaim : '/api/claims';
+  const r = await fetch(url, {method: _editingClaim ? 'PATCH' : 'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(_editingClaim ? t('Claim updated') : t('Claim added')); _editingClaim = null; loadClaims(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function startClaimEdit(id) {
+  const d = await fetch('/api/claims', {credentials:'same-origin'}).then(r => r.json()).catch(() => null);
+  const c = d && d.claims.find(x => x.id === id);
+  if (!c) return;
+  _editingClaim = id;
+  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v ?? ''; };
+  set('clm-insurer', c.insurer); set('clm-amount', c.amount); set('clm-reimbursed', c.reimbursed);
+  set('clm-status', c.status); set('clm-date', c.date_submitted);
+  const title = document.getElementById('clm-form-title'); if (title) title.textContent = t('Edit claim');
+  const save = document.getElementById('clm-save-btn'); if (save) save.textContent = t('Save');
+  const cancel = document.getElementById('clm-cancel-btn'); if (cancel) cancel.style.display = '';
+  document.getElementById('clm-insurer')?.scrollIntoView({block:'center'});
+}
+
+function cancelClaimEdit() { _editingClaim = null; loadClaims(); }
+
+async function deleteClaim(id) {
+  await fetch('/api/claims/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  if (_editingClaim === id) _editingClaim = null;
+  loadClaims();
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────

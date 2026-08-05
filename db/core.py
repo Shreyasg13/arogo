@@ -476,6 +476,12 @@ CREATE TABLE IF NOT EXISTS prescriptions (
     medicine_ids TEXT DEFAULT '[]', notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS claims (
+    id TEXT PRIMARY KEY, insurer TEXT NOT NULL, amount REAL NOT NULL,
+    date_submitted TEXT NOT NULL, status TEXT DEFAULT 'submitted',
+    reimbursed REAL DEFAULT 0, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -829,6 +835,18 @@ def migrate_add_prescriptions():
         pass
 
 
+def migrate_add_claims():
+    """Create the insurance-claims table on existing databases."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS claims (
+            id TEXT PRIMARY KEY, insurer TEXT NOT NULL, amount REAL NOT NULL,
+            date_submitted TEXT NOT NULL, status TEXT DEFAULT 'submitted',
+            reimbursed REAL DEFAULT 0, notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_med_cost():
     """Add the per-medicine monthly-cost column."""
     try:
@@ -1049,6 +1067,7 @@ DATA_TABLES = [
     'providers',
     'lab_rechecks',
     'prescriptions',
+    'claims',
     'dependents',
     'dependent_records',
 ]
@@ -1101,6 +1120,7 @@ def init_db():
     migrate_add_care_team()
     migrate_add_lab_rechecks()
     migrate_add_prescriptions()
+    migrate_add_claims()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()
