@@ -45,7 +45,8 @@ from .health      import (list_habits, create_habit, delete_habit, toggle_habit_
                           toggle_measurement_reminder, delete_measurement_reminder)
 from .insights    import (add_notification, get_notifications, mark_notification_read,
                           mark_all_notifications_read, unread_notification_count,
-                          generate_weekly_report, global_search, get_goal_progress)
+                          generate_weekly_report, generate_health_review,
+                          global_search, get_goal_progress)
 from .cycle       import (log_period_start, log_period_end, delete_cycle, get_cycle_summary,
                           log_symptoms, get_symptom_day, get_symptom_summary)
 
@@ -88,7 +89,7 @@ __all__ = [
     "toggle_measurement_reminder", "delete_measurement_reminder",
     "add_notification", "get_notifications", "mark_notification_read",
     "mark_all_notifications_read", "unread_notification_count",
-    "generate_weekly_report", "global_search", "get_goal_progress",
+    "generate_weekly_report", "generate_health_review", "global_search", "get_goal_progress",
     "log_period_start", "log_period_end", "delete_cycle", "get_cycle_summary",
     "log_symptoms", "get_symptom_day", "get_symptom_summary",
 ]

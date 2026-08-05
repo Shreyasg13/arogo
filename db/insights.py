@@ -120,6 +120,135 @@ def generate_weekly_report() -> dict:
         'profile': {'name': profile.get('name','User'), 'goal': profile.get('goal','maintain')},
     }
 
+def generate_health_review(days: int = 7) -> dict:
+    """A richer, on-screen recap for a chosen window (weekly or monthly): the
+    things the plain weekly report leaves out — medication adherence, which way
+    the vitals are trending, goal progress, and honest 'wins'. Read-only; every
+    number comes from the user's own logs (None where there isn't the data).
+
+    Separate from generate_weekly_report() so the digest email path is untouched.
+    """
+    import datetime as dt
+    from db.goals import list_goals
+    from db.medicines import get_adherence_stats
+
+    uid = current_user_id()
+    days = 30 if int(days or 7) >= 30 else 7
+    today = dt.date.today()
+    start = (today - dt.timedelta(days=days - 1)).isoformat()
+    end = today.isoformat()
+
+    # ── Medication adherence over the window ──────────────────────
+    adh = get_adherence_stats(days=days)
+    adherence = adh if adh.get('total') else None
+
+    # ── Sleep + hydration averages ────────────────────────────────
+    srows = execute("SELECT duration_h FROM sleep_logs WHERE date_key>=? AND date_key<=? AND user_id=?",
+                    (start, end, uid), fetchall=True) or []
+    avg_sleep = round(sum(r['duration_h'] for r in srows) / len(srows), 1) if srows else None
+    hyd = execute("""SELECT AVG(daily) a FROM (SELECT date_key, SUM(amount_ml) daily FROM hydration_logs
+                     WHERE date_key>=? AND date_key<=? AND user_id=? GROUP BY date_key) t""",
+                  (start, end, uid), fetchone=True)
+    avg_hydration = round(hyd['a']) if hyd and hyd['a'] else None
+
+    # ── Vitals with a direction (needs enough readings to judge) ──
+    vitals = _vitals_directions(uid, start, end)
+
+    # ── Goal progress (active goals only) ─────────────────────────
+    goals = []
+    for g in list_goals().get('goals', []):
+        goals.append({
+            'title': g.get('title') or g.get('metric_name'),
+            'metric_name': g.get('metric_name'), 'unit': g.get('unit'),
+            'target': g.get('target_value'), 'current': g.get('current'),
+            'progress': g.get('progress'), 'achieved': g.get('auto_achieved'),
+        })
+
+    # ── Top symptoms in the window ────────────────────────────────
+    sym = execute("""SELECT name, COUNT(*) c FROM symptoms WHERE date_key>=? AND date_key<=? AND user_id=?
+                     GROUP BY name ORDER BY c DESC LIMIT 5""", (start, end, uid), fetchall=True) or []
+    symptoms = [{'name': r['name'], 'count': r['c']} for r in sym]
+
+    # ── Wins: only statements the data actually supports ──────────
+    wins = []
+    if adherence and adherence['pct'] >= 90:
+        wins.append({'icon': '💊', 'text': f"Took {adherence['pct']}% of your scheduled doses"})
+    if avg_sleep is not None and avg_sleep >= 7:
+        wins.append({'icon': '😴', 'text': f"Averaged {avg_sleep} h of sleep a night"})
+    for g in goals:
+        if g['achieved']:
+            wins.append({'icon': '🎯', 'text': f"Reached your goal: {g['title']}"})
+    down_vitals = [v for v in vitals if v['direction'] == 'down' and v['type'] in ('blood_pressure', 'blood_sugar', 'weight')]
+    for v in down_vitals:
+        wins.append({'icon': '📉', 'text': f"{v['label']} trending down"})
+
+    profile = get_profile()
+    label = 'Last 30 days' if days == 30 else 'Last 7 days'
+    return {
+        'period': {'days': days, 'start': start, 'end': end, 'label': label},
+        'name': profile.get('name') or 'there',
+        'adherence': adherence,
+        'sleep': {'avg_hours': avg_sleep, 'nights': len(srows)},
+        'hydration_avg_ml': avg_hydration,
+        'vitals': vitals,
+        'goals': goals,
+        'symptoms': symptoms,
+        'wins': wins,
+    }
+
+
+def _vitals_directions(uid, start, end):
+    """For each vital with enough readings in the window, the latest value and a
+    conservative direction (up / down / flat). Below the minimum we return None
+    for direction rather than call a trend off two points."""
+    specs = [
+        ('blood_pressure', 'Blood pressure', 'mmHg', 3.0),
+        ('blood_sugar',    'Blood sugar',    'mg/dL', 6.0),
+        ('heart_rate',     'Resting heart rate', 'bpm', 3.0),
+    ]
+    out = []
+    for vtype, label, unit, thresh in specs:
+        rows = execute("""SELECT value1, value2 FROM vitals WHERE type=? AND user_id=?
+                          AND logged_at>=? ORDER BY logged_at ASC""",
+                       (vtype, uid, start + 'T00:00:00'), fetchall=True) or []
+        vals = [r['value1'] for r in rows if r['value1'] is not None]
+        if not vals:
+            continue
+        latest_row = rows[-1]
+        latest = (f"{int(latest_row['value1'])}/{int(latest_row['value2'])}"
+                  if vtype == 'blood_pressure' and latest_row['value2'] is not None
+                  else _fmt_num(latest_row['value1']))
+        direction = None
+        if len(vals) >= 4:
+            mid = len(vals) // 2
+            first, second = sum(vals[:mid]) / mid, sum(vals[mid:]) / (len(vals) - mid)
+            diff = second - first
+            direction = 'up' if diff > thresh else 'down' if diff < -thresh else 'flat'
+        out.append({'type': vtype, 'label': label, 'unit': unit,
+                    'latest': latest, 'readings': len(vals), 'direction': direction})
+    # Weight from body_metrics
+    wrows = execute("""SELECT weight_kg FROM body_metrics WHERE date_key>=? AND date_key<=? AND user_id=?
+                       AND weight_kg IS NOT NULL ORDER BY date_key ASC""",
+                    (start, end, uid), fetchall=True) or []
+    wvals = [r['weight_kg'] for r in wrows]
+    if wvals:
+        direction = None
+        if len(wvals) >= 3:
+            diff = wvals[-1] - wvals[0]
+            direction = 'up' if diff > 0.4 else 'down' if diff < -0.4 else 'flat'
+        out.append({'type': 'weight', 'label': 'Weight', 'unit': 'kg',
+                    'latest': _fmt_num(wvals[-1]), 'readings': len(wvals), 'direction': direction})
+    return out
+
+
+def _fmt_num(v):
+    try:
+        f = float(v)
+        return str(int(f)) if f == int(f) else str(round(f, 1))
+    except (TypeError, ValueError):
+        return str(v)
+
+
 # ── Weekly digest ─────────────────────────────────────────────────────────────
 
 def _hydration_goal_ml() -> int:

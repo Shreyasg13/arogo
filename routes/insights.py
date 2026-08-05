@@ -15,6 +15,18 @@ def api_weekly_report():
     return jsonify(generate_weekly_report())
 
 
+@bp.route('/api/report/review')
+@require_auth
+def api_health_review():
+    """Richer on-screen recap for a 7- or 30-day window: adherence, vitals
+    direction, goal progress and honest wins."""
+    try:
+        days = int(request.args.get('days', 7))
+    except (TypeError, ValueError):
+        days = 7
+    return jsonify(generate_health_review(days))
+
+
 @bp.route('/api/doctor-summary')
 @require_auth
 def api_doctor_summary():

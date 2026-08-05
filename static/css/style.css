@@ -334,6 +334,35 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .goal-deadline { color:var(--gray-500); }
 .goal-overdue { color:var(--amber-600,#d08700); font-weight:600; }
 
+/* Health review recap */
+.hr-panel { padding: 18px 20px; margin-bottom: 18px;
+  background: linear-gradient(160deg, var(--teal-50, #eef5f1), var(--gray-0, #fff)); }
+.hr-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.hr-title { font-family: 'EB Garamond', serif; font-size: 20px; font-weight: 600; color: var(--gray-800); }
+.hr-toggle { display: inline-flex; background: var(--gray-100, #eee); border-radius: 99px; padding: 3px; }
+.hr-tog { border: none; background: transparent; font-size: 12px; padding: 5px 12px; border-radius: 99px; cursor: pointer; color: var(--gray-500); }
+.hr-tog--on { background: var(--gray-0, #fff); color: var(--teal-700); font-weight: 600; box-shadow: var(--shadow-sm); }
+.hr-wins { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.hr-win { font-size: 13.5px; color: var(--gray-700); background: rgba(255,255,255,.6); border-radius: 8px; padding: 7px 11px; }
+.hr-tiles { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.hr-tile { flex: 1; min-width: 90px; background: var(--gray-0, #fff); border: 1px solid var(--gray-100, #e5e7eb); border-radius: 12px; padding: 12px; text-align: center; }
+.hr-tile-n { font-size: 22px; font-weight: 700; color: var(--teal-700); }
+.hr-tile-l { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.hr-sub { font-size: 12px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--gray-500); margin: 6px 0 8px; }
+.hr-vitals { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 6px; }
+.hr-vital { background: var(--gray-0, #fff); border: 1px solid var(--gray-100, #e5e7eb); border-radius: 12px; padding: 10px 12px; }
+.hr-vital-label { font-size: 11.5px; color: var(--gray-400); }
+.hr-vital-val { font-size: 16px; font-weight: 600; color: var(--gray-800); margin-top: 2px; }
+.hr-vital-unit { font-size: 11px; color: var(--gray-400); font-weight: 400; }
+.hr-vital-dir { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+.hr-goals { display: flex; flex-direction: column; gap: 10px; }
+.hr-goal { background: var(--gray-0, #fff); border: 1px solid var(--gray-100, #e5e7eb); border-radius: 12px; padding: 11px 13px; }
+.hr-goal-top { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+.hr-goal-pct { color: var(--teal-700); }
+.hr-goal-meta { font-size: 11.5px; color: var(--gray-400); margin-top: 5px; }
+.hr-goal-nodata { font-size: 12px; color: var(--gray-400); font-style: italic; margin-top: 5px; }
+.hr-empty { font-size: 13px; color: var(--gray-400); padding: 8px 0; }
+
 /* Fasting tracker */
 .fast-live { background:linear-gradient(160deg,var(--teal-50,#eef5f1),var(--gray-0,#fff)); }
 .fast-target-lbl { font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--teal-600); }
