@@ -385,6 +385,28 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .hid-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
 .hid-empty-note, .fast-note.hid-empty-note { font-size:12.5px; color:var(--gray-400); margin-top:12px; }
 
+/* Shared care plan */
+.cp-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.cp-summary { font-size:12.5px; color:var(--gray-400); text-align:right; margin-bottom:10px; }
+.cp-group-head { font-size:12px; font-weight:700; letter-spacing:.03em; color:var(--gray-500);
+  text-transform:uppercase; margin-bottom:8px; }
+.cp-item { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid var(--gray-50); }
+.cp-item:last-child { border-bottom:none; }
+.cp-item--done .cp-item-title { text-decoration:line-through; color:var(--gray-400); }
+.cp-check { flex-shrink:0; width:22px; height:22px; border-radius:6px; border:1.5px solid var(--gray-200,#d1d5db);
+  background:var(--gray-0,#fff); cursor:pointer; color:#fff; font-size:13px; line-height:1; margin-top:1px; transition:all .12s; }
+.cp-check:hover { border-color:var(--teal-400); }
+.cp-check--done { background:var(--teal-600); border-color:var(--teal-600); }
+.cp-main { flex:1; min-width:0; }
+.cp-item-title { font-size:14px; font-weight:600; color:var(--gray-800); }
+.cp-item-detail { font-size:12.5px; color:var(--gray-500); margin-top:2px; }
+.cp-item-meta { display:flex; gap:8px; align-items:center; margin-top:5px; flex-wrap:wrap; }
+.cp-owner { font-size:11px; font-weight:600; border-radius:99px; padding:2px 9px; }
+.cp-owner--me { background:var(--teal-50); color:var(--teal-700); }
+.cp-owner--caregiver { background:#EFEAF7; color:var(--purple-600,#7c5cbf); }
+.cp-owner--doctor { background:#E7F0F7; color:var(--blue-600,#2b6cb0); }
+.cp-review { font-size:11px; color:var(--gray-400); }
+
 /* Print: hide everything, reveal only the ID card. This subtree-visibility
    pattern doesn't depend on the app's wrapper class names. */
 @media print {
