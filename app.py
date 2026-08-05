@@ -63,6 +63,7 @@ def create_app(config=Config):
     from routes.allergies  import bp as allergies_bp
     from routes.upcoming   import bp as upcoming_bp
     from routes.meal_plan  import bp as meal_plan_bp
+    from routes.tapers     import bp as tapers_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -87,6 +88,7 @@ def create_app(config=Config):
     app.register_blueprint(allergies_bp)
     app.register_blueprint(upcoming_bp)
     app.register_blueprint(meal_plan_bp)
+    app.register_blueprint(tapers_bp)
 
     @app.before_request
     def _reject_non_object_json():

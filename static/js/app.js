@@ -409,6 +409,13 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Dose taper': 'खुराक टेपर', "Step a medicine's dose down (or up) over time — the current dose is highlighted": 'समय के साथ दवा की खुराक घटाएँ (या बढ़ाएँ) — वर्तमान खुराक हाइलाइट होती है',
+    'Add a dose step': 'खुराक चरण जोड़ें', 'Dose (e.g. 20mg)': 'खुराक (जैसे 20mg)', 'Note (optional)': 'नोट (वैकल्पिक)', 'Add step': 'चरण जोड़ें',
+    'The step with the most recent start date on or before today is your current dose.': 'आज या उससे पहले की सबसे हाल की आरंभ तिथि वाला चरण आपकी वर्तमान खुराक है।',
+    'No steps yet — add the first dose above.': 'अभी कोई चरण नहीं — ऊपर पहली खुराक जोड़ें।',
+    'Other tapers': 'अन्य टेपर', 'not started': 'शुरू नहीं हुआ', 'from': 'से',
+    'Add a medicine first, then build its taper here.': 'पहले एक दवा जोड़ें, फिर यहाँ उसका टेपर बनाएँ।',
+    'Step added': 'चरण जोड़ा गया', 'Enter a dose': 'खुराक दर्ज करें', 'Pick a start date': 'आरंभ तिथि चुनें',
     'Meal plan': 'भोजन योजना', "Plan the week's meals, then turn them into a grocery list": 'सप्ताह के भोजन की योजना बनाएँ, फिर उन्हें किराना सूची में बदलें',
     'Add to the plan': 'योजना में जोड़ें', 'Food (e.g. Toor dal, Roti)': 'भोजन (जैसे तूर दाल, रोटी)', 'Qty': 'मात्रा', 'unit': 'इकाई',
     'Breakfast': 'नाश्ता', 'Lunch': 'दोपहर का भोजन', 'Dinner': 'रात का खाना', 'Snack': 'नाश्ता',
@@ -2232,6 +2239,7 @@ function switchView(view) {
   if (view === 'allergies')     loadAllergies();
   if (view === 'upcoming')      loadUpcoming();
   if (view === 'meal-plan')     loadMealPlan();
+  if (view === 'taper')         loadTaper();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -12472,6 +12480,105 @@ async function loadGrocery() {
     return `<div class="mp-grocery-row"><span>${escHtml(i.item)}</span><span class="mp-grocery-qty">${qty}</span></div>`;
   }).join('');
   box.innerHTML = `<div class="mp-grocery-head">🛒 ${tformat('Grocery list · %1 items', d.total)}</div>${rows}`;
+}
+
+// ── Medication dose taper ────────────────────────────────────────────────────
+// A schedule of dated dose steps for one medicine. The step active today is
+// highlighted; the current dose is derived, never guessed.
+let _taperMed = null;
+
+async function loadTaper() {
+  const el = document.getElementById('taper-content');
+  if (!el) return;
+  const [meds, overview] = await Promise.all([
+    fetch('/api/medicines', {credentials:'same-origin'}).then(r => r.ok ? r.json() : []).catch(() => []),
+    fetch('/api/tapers', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {tapers:[]}).catch(() => ({tapers:[]})),
+  ]);
+  const active = (meds || []).filter(m => m.active);
+  if (!_taperMed && active.length) _taperMed = active[0].id;
+  el.innerHTML = renderTaperShell(active, overview.tapers || []);
+  if (_taperMed) loadTaperSteps();
+}
+
+function renderTaperShell(meds, overview) {
+  if (!meds.length) {
+    return `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">💊</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No medicines yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Add a medicine first, then build its taper here.')}</div>
+      </div>`;
+  }
+  const opts = meds.map(m => `<option value="${m.id}"${m.id === _taperMed ? ' selected' : ''}>${escHtml(m.icon || '💊')} ${escHtml(m.name)}</option>`).join('');
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div class="tp-pick">
+        <label class="rs-label">${t('Medicine')}</label>
+        <select id="tp-med" class="form-input" data-ev-change="onTaperMedPick()" style="max-width:220px">${opts}</select>
+      </div>
+      <h2 class="panel-title" style="margin:14px 0 10px">${t('Add a dose step')}</h2>
+      <div class="tp-form">
+        <input type="text" id="tp-dose" class="form-input" placeholder="${t('Dose (e.g. 20mg)')}" style="max-width:130px">
+        <input type="date" id="tp-date" class="form-input" style="max-width:160px">
+        <input type="text" id="tp-note" class="form-input" placeholder="${t('Note (optional)')}" style="flex:1;min-width:140px">
+        <button class="btn-primary" data-ev-click="addTaperStep()">${t('Add step')}</button>
+      </div>
+      <div class="rs-hint" style="margin-top:8px">${t('The step with the most recent start date on or before today is your current dose.')}</div>
+    </div>
+    <div id="tp-steps"></div>`;
+
+  const others = overview.filter(o => o.medicine_id !== _taperMed);
+  const ov = others.length ? `<div class="panel" style="padding:14px 18px;margin-top:16px">
+      <div class="tp-ov-head">${t('Other tapers')}</div>
+      ${others.map(o => `<div class="tp-ov-row" data-ev-click="pickTaper('${o.medicine_id}')">
+        <span>${escHtml(o.icon || '💊')} ${escHtml(o.name)}</span>
+        <span class="tp-ov-dose">${o.current ? escHtml(o.current.dosage) : t('not started')}</span></div>`).join('')}
+    </div>` : '';
+  return form + ov;
+}
+
+function onTaperMedPick() { _taperMed = document.getElementById('tp-med')?.value || null; loadTaperSteps(); }
+function pickTaper(mid) { _taperMed = mid; loadTaper(); }
+
+async function loadTaperSteps() {
+  const box = document.getElementById('tp-steps');
+  if (!box || !_taperMed) return;
+  const d = await fetch('/api/tapers/' + _taperMed, {credentials:'same-origin'}).then(r => r.json()).catch(() => ({steps:[]}));
+  if (!(d.steps || []).length) {
+    box.innerHTML = `<div class="panel" style="padding:22px;text-align:center;color:var(--gray-400);font-size:13px">${t('No steps yet — add the first dose above.')}</div>`;
+    return;
+  }
+  const rows = d.steps.map(s => {
+    const dt = new Date(s.start_date + 'T12:00:00').toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
+    const when = s.status === 'upcoming' && s.days_until != null ? ` · ${tformat('in %1 days', s.days_until)}` : '';
+    return `<div class="tp-step tp-step--${s.status}">
+        <div class="tp-step-dot"></div>
+        <div class="tp-step-main">
+          <div class="tp-step-dose">${escHtml(s.dosage)}${s.status === 'current' ? ` <span class="tp-now">${t('now')}</span>` : ''}</div>
+          <div class="tp-step-meta">${t('from')} ${dt}${when}${s.note ? ' · ' + escHtml(s.note) : ''}</div>
+        </div>
+        <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteTaperStep('${s.id}')" style="color:var(--gray-300)">✕</button>
+      </div>`;
+  }).join('');
+  box.innerHTML = `<div class="panel" style="padding:16px 20px"><div class="tp-timeline">${rows}</div></div>`;
+}
+
+async function addTaperStep() {
+  const dosage = document.getElementById('tp-dose')?.value?.trim();
+  const date = document.getElementById('tp-date')?.value;
+  if (!dosage) { showToast(t('Enter a dose'), 'error'); return; }
+  if (!date) { showToast(t('Pick a start date'), 'error'); return; }
+  const r = await fetch('/api/tapers', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({medicine_id: _taperMed, dosage, start_date: date, note: document.getElementById('tp-note')?.value || ''})})
+    .then(x => x.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(t('Step added'));
+    ['tp-dose','tp-note'].forEach(i => { const el = document.getElementById(i); if (el) el.value = ''; });
+    loadTaperSteps();
+  } else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function deleteTaperStep(id) {
+  await fetch('/api/tapers/step/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadTaperSteps();
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────

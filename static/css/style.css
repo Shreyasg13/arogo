@@ -316,6 +316,26 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dep-rec-date { font-size:11.5px; color:var(--gray-400); white-space:nowrap; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
+/* Medication dose taper */
+.tp-pick { display:flex; align-items:center; gap:10px; }
+.tp-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.tp-timeline { position:relative; }
+.tp-step { display:flex; align-items:center; gap:12px; padding:9px 0; position:relative; }
+.tp-step-dot { width:12px; height:12px; border-radius:50%; background:var(--gray-200,#d1d5db); flex-shrink:0; }
+.tp-step--current .tp-step-dot { background:var(--teal-600,#4C9A5E); box-shadow:0 0 0 4px var(--teal-50,#eef5f1); }
+.tp-step--past { opacity:.55; }
+.tp-step--past .tp-step-dot { background:var(--gray-300,#c7c7c7); }
+.tp-step-main { flex:1; min-width:0; }
+.tp-step-dose { font-size:15px; font-weight:700; color:var(--gray-800); }
+.tp-step--current .tp-step-dose { color:var(--teal-700); }
+.tp-now { font-size:10.5px; font-weight:600; background:var(--teal-50); color:var(--teal-700); border-radius:99px; padding:1px 8px; margin-left:4px; }
+.tp-step-meta { font-size:12px; color:var(--gray-400); margin-top:1px; }
+.tp-ov-head { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--gray-500); margin-bottom:8px; }
+.tp-ov-row { display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:6px 0; cursor:pointer; border-bottom:1px solid var(--gray-50); }
+.tp-ov-row:last-child { border-bottom:none; }
+.tp-ov-row:hover { color:var(--teal-700); }
+.tp-ov-dose { color:var(--gray-500); font-weight:600; }
+
 /* Meal planner + grocery list */
 .mp-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .mp-day--today { border-left:3px solid var(--teal-500,#4C9A5E); }
