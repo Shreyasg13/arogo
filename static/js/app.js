@@ -451,6 +451,7 @@ const I18N = {
     'When you miss doses': 'आप खुराक कब चूकते हैं', 'Morning': 'सुबह', 'Afternoon': 'दोपहर', 'Evening': 'शाम', 'Night': 'रात',
     'Your %1 doses are the easiest to miss.': 'आपकी %1 की खुराकें सबसे आसानी से छूट जाती हैं।',
     'morning': 'सुबह', 'afternoon': 'दोपहर', 'evening': 'शाम', 'night': 'रात',
+    "Don't forget your %1 dose today": 'आज अपनी %1 की खुराक न भूलें', 'you missed it %1% of the last %2 days': 'आपने इसे पिछले %2 दिनों में %1% बार छोड़ा',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -2944,6 +2945,7 @@ async function loadDashboard() {
   try { loadEncouragements(); } catch (e) {}
   try { loadLowStock(); }       catch (e) {}
   try { loadNextAppointment(); } catch (e) {}
+  try { loadAtRiskDose(); }     catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -3134,6 +3136,26 @@ async function readDailyBriefing() {
     fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []),
   ]);
   speakText(composeSpokenBriefing(doses, low, new Date().getHours()));
+}
+
+// A gentle, forward-looking heads-up: of today's still-pending doses, the one
+// this user historically misses most. Only shows when the backend judges the
+// risk real (enough history + high miss rate). Hidden when nothing qualifies.
+async function loadAtRiskDose() {
+  const el = document.getElementById('dash-at-risk');
+  if (!el) return;
+  const d = await fetch('/api/medicines/at-risk').then(r => r.json()).catch(() => null);
+  const r = d && d.at_risk;
+  if (!r) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = `<div class="at-risk-card">
+    <span class="at-risk-icon">👀</span>
+    <div class="at-risk-body">
+      <div class="at-risk-lead">${tformat("Don't forget your %1 dose today", t(r.label))}</div>
+      <div class="at-risk-sub">${escHtml(r.icon)} ${escHtml(r.med_name)} · ${tformat('you missed it %1% of the last %2 days', r.miss_pct, r.scheduled)}</div>
+    </div>
+    <button class="at-risk-btn" data-ev-click="markDoseTaken('${r.med_id}','${r.time}')">${t('Mark taken')}</button>
+  </div>`;
 }
 
 function renderNextAction(doses, calorieState) {

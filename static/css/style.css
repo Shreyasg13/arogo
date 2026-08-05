@@ -820,6 +820,16 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .adh-nudge-detail { font-size:13px; color:var(--gray-700,#374151); }
 .adh-nudge-tip { font-size:12px; color:var(--gray-500,#6B7280); margin-top:6px; }
 
+/* At-risk dose heads-up (G2) */
+.at-risk-card { display:flex; gap:12px; align-items:center; padding:12px 16px; margin:0 0 14px;
+                border:1px solid var(--amber-100,#FDE68A); background:var(--amber-50,#FFFBEB); border-radius:12px; }
+.at-risk-icon { font-size:20px; flex-shrink:0; }
+.at-risk-body { flex:1; min-width:0; }
+.at-risk-lead { font-weight:700; font-size:14px; color:var(--gray-900,#1a1a1a); }
+.at-risk-sub { font-size:12.5px; color:var(--gray-600,#475569); margin-top:2px; }
+.at-risk-btn { flex-shrink:0; padding:8px 14px; font-size:13px; font-weight:600; border:none; border-radius:9px;
+               background:var(--teal-600,#0D9488); color:#fff; cursor:pointer; }
+
 /* Day-of-week schedule picker (Mon…Sun) in the add-medicine form */
 .dow-picker { display:flex; gap:6px; flex-wrap:wrap; }
 .dow-chip { padding:6px 11px; border:1px solid var(--gray-200); border-radius:99px; cursor:pointer;

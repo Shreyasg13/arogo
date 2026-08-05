@@ -175,6 +175,11 @@ def adherence_timeofday():
     days = to_int(request.args.get('days', 30), 30, lo=1, hi=366)
     return jsonify(get_adherence_by_timeofday(days))
 
+@bp.route('/api/medicines/at-risk')
+@require_auth
+def at_risk_dose():
+    return jsonify({'at_risk': get_at_risk_dose_today()})
+
 @bp.route('/api/medicines/calendar')
 @require_auth
 def dose_calendar():

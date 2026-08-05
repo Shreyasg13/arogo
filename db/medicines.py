@@ -622,6 +622,60 @@ def get_adherence_breakdown(days: int = 30, min_scheduled: int = 3) -> dict:
     return {'days': days, 'slots': rows, 'worst': worst, 'has_data': bool(rows)}
 
 
+def get_at_risk_dose_today(history_days: int = 30, min_history: int = 4, risk_threshold: int = 25):
+    """Of today's STILL-PENDING doses, the one the user most often misses — a
+    forward-looking "don't forget this one today" rather than a backward report.
+
+    Distinct from get_adherence_nudge (what slipped this week) and
+    get_adherence_breakdown (all-time worst slot): this looks only at doses
+    actually due-and-untaken today, ranked by their own historical miss rate.
+    Returns None unless a pending slot has enough history (>= min_history days)
+    AND is missed at least risk_threshold% of the time — we don't nag about a
+    dose you rarely miss.
+    """
+    from datetime import date, timedelta
+    uid = current_user_id()
+    today = user_today()
+    pending = [d for d in get_today_doses() if not d['taken']]
+    if not pending:
+        return None
+    try:
+        anchor = date.fromisoformat(today)
+    except ValueError:
+        return None
+    start = (anchor - timedelta(days=history_days)).isoformat()
+    taken_set = set()
+    for r in (execute("""SELECT medicine_id, date_key, time_key FROM dose_logs
+                         WHERE user_id=? AND taken=1 AND date_key>=? AND date_key<?""",
+                      (uid, start, today), fetchall=True) or []):
+        taken_set.add((r['medicine_id'], r['date_key'], r['time_key']))
+    meds_by_id = {m['id']: m for m in list_medicines()}
+
+    best = None
+    for dose in pending:
+        m = meds_by_id.get(dose['med_id'])
+        if not m or m.get('frequency') == 'as_needed':
+            continue
+        sched = taken = 0
+        for i in range(1, history_days + 1):        # yesterday backwards; today excluded
+            day = (anchor - timedelta(days=i)).isoformat()
+            if not _scheduled_on_day(m, day):
+                continue
+            sched += 1
+            if (m['id'], day, dose['time']) in taken_set:
+                taken += 1
+        if sched < min_history:
+            continue
+        miss_pct = round((sched - taken) / sched * 100)
+        if miss_pct < risk_threshold:
+            continue
+        if best is None or miss_pct > best['miss_pct']:
+            best = {'med_id': m['id'], 'med_name': m['name'], 'icon': m.get('icon') or '💊',
+                    'time': dose['time'], 'label': _slot_label(dose['time']),
+                    'miss_pct': miss_pct, 'missed': sched - taken, 'scheduled': sched}
+    return best
+
+
 def _slot_label(hhmm: str) -> str:
     """Bucket a HH:MM dose time into a plain time-of-day label."""
     try:
