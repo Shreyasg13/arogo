@@ -153,10 +153,18 @@ def log_dose_route(mid):
     ok = log_dose(mid,
                   data.get('date', user_today()),
                   data.get('time', ''),
-                  taken=data.get('taken', True))
+                  taken=data.get('taken', True),
+                  reason=data.get('reason'))
     if not ok:
         return jsonify({'success': False, 'error': 'Medicine not found'}), 404
     return jsonify({'success': True})
+
+@bp.route('/api/medicines/skip-reasons')
+@require_auth
+def skip_reasons():
+    from db.medicines import get_skip_reasons
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=366)
+    return jsonify(get_skip_reasons(days))
 
 @bp.route('/api/medicines/today')
 @require_auth

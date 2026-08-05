@@ -937,6 +937,14 @@ def migrate_add_workout_sets():
         pass
 
 
+def migrate_add_dose_skip_reason():
+    """Add an optional reason tag to a skipped dose (forgot / away / side-effect / out)."""
+    try:
+        execute("ALTER TABLE dose_logs ADD COLUMN skip_reason TEXT DEFAULT NULL")
+    except Exception:
+        pass
+
+
 def migrate_add_share_snapshots():
     """Create the time-limited shareable health-snapshot table. A snapshot is a
     read-only, expiring, revocable public link to a SAFE subset of the user's
@@ -1250,6 +1258,7 @@ def init_db():
     migrate_add_vital_context()
     migrate_add_sleep_goal()
     migrate_add_workout_sets()
+    migrate_add_dose_skip_reason()
     migrate_add_share_snapshots()
     migrate_add_med_cost()
     migrate_add_doctor_questions()

@@ -262,7 +262,12 @@ def _fmt_med(r):
 
 # ── Dose Logs ────────────────────────────────────────────────────────────────
 
-def log_dose(medicine_id, date_key, time_key, taken=True):
+# Reasons a dose can be skipped — a small closed set so the summary can count
+# them. 'other' is the catch-all; anything unrecognised is dropped to None.
+SKIP_REASONS = ('forgot', 'away', 'side_effect', 'ran_out', 'felt_ok', 'other')
+
+
+def log_dose(medicine_id, date_key, time_key, taken=True, reason=None):
     uid = current_user_id()
     # Only log doses against medicines the user owns
     owner = execute("SELECT id FROM medicines WHERE id=? AND user_id=?",
@@ -270,20 +275,25 @@ def log_dose(medicine_id, date_key, time_key, taken=True):
     if not owner:
         return False
     lid = new_id()
+    new_taken = bool(taken)
+    # A reason only means anything on a SKIP; a taken dose clears it.
+    skip_reason = None
+    if not new_taken:
+        r = str(reason or '').strip().lower()
+        skip_reason = r if r in SKIP_REASONS else None
     # Upsert
     existing = execute(
         "SELECT id, taken FROM dose_logs WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?",
         (medicine_id, date_key, time_key, uid), fetchone=True)
     prev_taken = bool(existing and existing['taken'])
-    new_taken  = bool(taken)
     if existing:
-        execute("UPDATE dose_logs SET taken=?, taken_at=? WHERE id=?",
-                (1 if new_taken else 0, now_iso(), existing['id']), commit=True)
+        execute("UPDATE dose_logs SET taken=?, taken_at=?, skip_reason=? WHERE id=?",
+                (1 if new_taken else 0, now_iso(), skip_reason, existing['id']), commit=True)
     else:
         execute("""
-            INSERT INTO dose_logs (id,medicine_id,date_key,time_key,taken,taken_at,user_id)
-            VALUES (?,?,?,?,?,?,?)
-        """, (lid, medicine_id, date_key, time_key, 1 if new_taken else 0, now_iso(), uid),
+            INSERT INTO dose_logs (id,medicine_id,date_key,time_key,taken,taken_at,user_id,skip_reason)
+            VALUES (?,?,?,?,?,?,?,?)
+        """, (lid, medicine_id, date_key, time_key, 1 if new_taken else 0, now_iso(), uid, skip_reason),
             commit=True)
     # Keep pill stock honest: consume on a fresh "taken", restore on un-take.
     # Guarded on the state *transition* so a double-log never double-counts,
@@ -620,6 +630,34 @@ def get_adherence_breakdown(days: int = 30, min_scheduled: int = 3) -> dict:
     # A headline only if the worst slot has real misses and isn't already perfect.
     worst = next((r for r in rows if r['missed'] > 0), None)
     return {'days': days, 'slots': rows, 'worst': worst, 'has_data': bool(rows)}
+
+
+_SKIP_LABEL = {'forgot': 'Forgot', 'away': 'Was away', 'side_effect': 'Side effect',
+               'ran_out': 'Ran out', 'felt_ok': 'Felt fine', 'other': 'Other'}
+
+
+def get_skip_reasons(days: int = 30) -> dict:
+    """How often each skip reason was given over the window — so a pattern (you
+    skip when travelling, or over side-effects) becomes visible. Only counts
+    rows the user explicitly tagged; an untagged miss isn't guessed at."""
+    from datetime import date, timedelta
+    uid = current_user_id()
+    days = max(1, min(int(days or 30), 366))
+    start = (date.today() - timedelta(days=days - 1)).isoformat()
+    rows = execute("""SELECT skip_reason, COUNT(*) AS n FROM dose_logs
+                      WHERE user_id=? AND taken=0 AND skip_reason IS NOT NULL AND date_key>=?
+                      GROUP BY skip_reason""", (uid, start), fetchall=True) or []
+    counts = []
+    total = 0
+    for r in rows:
+        reason = r['skip_reason']
+        if reason not in SKIP_REASONS:
+            continue
+        counts.append({'reason': reason, 'label': _SKIP_LABEL.get(reason, reason), 'count': r['n']})
+        total += r['n']
+    counts.sort(key=lambda x: -x['count'])
+    return {'days': days, 'reasons': counts, 'total': total,
+            'top': counts[0]['reason'] if counts else None, 'has_data': bool(counts)}
 
 
 def get_at_risk_dose_today(history_days: int = 30, min_history: int = 4, risk_threshold: int = 25):

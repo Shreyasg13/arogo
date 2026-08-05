@@ -452,6 +452,9 @@ const I18N = {
     'Your %1 doses are the easiest to miss.': 'आपकी %1 की खुराकें सबसे आसानी से छूट जाती हैं।',
     'morning': 'सुबह', 'afternoon': 'दोपहर', 'evening': 'शाम', 'night': 'रात',
     "Don't forget your %1 dose today": 'आज अपनी %1 की खुराक न भूलें', 'you missed it %1% of the last %2 days': 'आपने इसे पिछले %2 दिनों में %1% बार छोड़ा',
+    'Skip': 'छोड़ें', 'Skip this dose': 'यह खुराक छोड़ें', 'Why are you skipping this?': 'आप इसे क्यों छोड़ रहे हैं?', 'Just skip': 'बस छोड़ें',
+    'Dose skipped': 'खुराक छोड़ी गई', 'Why doses get skipped': 'खुराकें क्यों छूटती हैं',
+    'Forgot': 'भूल गए', 'Was away': 'बाहर थे', 'Side effect': 'दुष्प्रभाव', 'Ran out': 'खत्म हो गई', 'Felt fine': 'ठीक महसूस हुआ', 'Other': 'अन्य',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -4371,6 +4374,7 @@ async function loadMedicines() {
   loadMedAdherence();
   loadMissedDoses();
   loadAdherenceTimeOfDay();
+  loadSkipReasons();
   loadMedCost();
   loadDoseCalendar();
   loadTimingConflicts();
@@ -4728,6 +4732,7 @@ function renderTodayTimeline(doses) {
                 <div class="dose-card-name">${escHtml(d.med_name)}</div>
                 <div class="dose-card-detail">${d.dosage} ${d.unit}${medTimingText(d) ? ' · ' + escHtml(medTimingText(d)) : ''}</div>
               </div>
+              ${d.taken ? '' : `<button class="dose-skip-btn" title="${t('Skip this dose')}" data-ev-click="event.stopPropagation();skipDose('${d.med_id}','${d.time}')">${t('Skip')}</button>`}
               <div class="dose-card-check">${d.taken ? '✓' : ''}</div>
             </div>
           `).join('')}
@@ -4944,6 +4949,65 @@ async function markDoseTaken(medId, time, el) {
   showToast('Dose marked as taken ✓', 'success');
   loadMedicines();
   loadDashboard();
+}
+
+// Skip a dose WITH a reason — an optional tap that turns a silent miss into a
+// pattern you can see later. The reason set is closed (mirrors SKIP_REASONS
+// server-side); "Just skip" logs the miss with no reason.
+const SKIP_REASON_OPTS = [
+  { id: 'forgot',      label: 'Forgot' },
+  { id: 'away',        label: 'Was away' },
+  { id: 'side_effect', label: 'Side effect' },
+  { id: 'ran_out',     label: 'Ran out' },
+  { id: 'felt_ok',     label: 'Felt fine' },
+  { id: 'other',       label: 'Other' },
+];
+
+function skipDose(medId, time) {
+  closeSkipPicker();
+  const ov = document.createElement('div');
+  ov.className = 'lang-picker-overlay';
+  ov.id = 'skip-picker-overlay';
+  ov.setAttribute('data-ev-click', 'skipPickerBackdrop(event)');
+  ov.innerHTML = `<div class="lang-picker" role="menu" style="max-width:320px">
+    <div class="lang-picker-head">${t('Why are you skipping this?')}</div>
+    ${SKIP_REASON_OPTS.map(o => `<button class="lang-opt" role="menuitem" data-ev-click="confirmSkip('${medId}','${time}','${o.id}')">
+        <span class="lang-opt-native" style="font-size:14px">${t(o.label)}</span></button>`).join('')}
+    <button class="lang-opt" role="menuitem" data-ev-click="confirmSkip('${medId}','${time}','')">
+      <span class="lang-opt-native" style="font-size:14px;color:var(--gray-500)">${t('Just skip')}</span></button>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function skipPickerBackdrop(ev) { if (ev.target && ev.target.id === 'skip-picker-overlay') closeSkipPicker(); }
+function closeSkipPicker() { const el = document.getElementById('skip-picker-overlay'); if (el) el.remove(); }
+
+async function confirmSkip(medId, time, reason) {
+  closeSkipPicker();
+  const r = await fetch(`/api/medicines/${medId}/log`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: localToday(), time, taken: false, reason: reason || null })
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) { showToast(t('Dose skipped')); loadMedicines(); loadDashboard(); }
+  else showToast(t('Could not update'), 'error');
+}
+
+// Summary of why doses get skipped — a pattern, not a scolding.
+async function loadSkipReasons() {
+  const el = document.getElementById('med-skip-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/skip-reasons?days=30').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const max = Math.max(...d.reasons.map(r => r.count), 1);
+  const rows = d.reasons.map(r => `
+    <div class="skip-row">
+      <div class="skip-label">${t(r.label)}</div>
+      <div class="skip-bar-wrap"><div class="skip-bar" style="width:${Math.round(r.count / max * 100)}%"></div></div>
+      <div class="skip-count">${r.count}</div>
+    </div>`).join('');
+  el.innerHTML = `<div class="panel" style="padding:18px 20px">
+      <div class="panel-header"><h2 class="panel-title">📝 ${t('Why doses get skipped')}</h2><span class="panel-badge">${t('last 30 days')}</span></div>
+      ${rows}
+    </div>`;
 }
 
 async function toggleMed(id) {
