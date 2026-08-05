@@ -409,6 +409,15 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Upcoming': 'आगामी',
+    'Everything coming up — appointments, rechecks, renewals and vaccines, for you and your family': 'आने वाला सब कुछ — अपॉइंटमेंट, दोबारा जाँच, नवीनीकरण और टीके, आपके और परिवार के लिए',
+    'Nothing coming up': 'कुछ आगामी नहीं',
+    'Appointments, lab rechecks, renewals and vaccines due will appear here as you add them.': 'जैसे-जैसे आप जोड़ते हैं, अपॉइंटमेंट, लैब दोबारा जाँच, नवीनीकरण और देय टीके यहाँ दिखेंगे।',
+    'Appointment': 'अपॉइंटमेंट', 'Lab recheck': 'लैब दोबारा जाँच', 'Prescription renewal': 'नुस्खा नवीनीकरण', 'Vaccine due': 'टीका देय', 'Family': 'परिवार',
+    '%1 recheck': '%1 दोबारा जाँच', 'Renew prescription · %1': 'नुस्खा नवीनीकरण · %1', 'Renew a prescription': 'नुस्खा नवीनीकृत करें', '%1 due': '%1 देय',
+    'today': 'आज', 'tomorrow': 'कल', 'in %1 days': '%1 दिन में',
+    'Overdue': 'बकाया', 'This week': 'इस सप्ताह', 'Next 30 days': 'अगले 30 दिन', 'Later': 'बाद में',
+    '%1 overdue': '%1 बकाया', '%1 this week': '%1 इस सप्ताह',
     'Allergies': 'एलर्जी', 'What you react to, how badly — these show on your Health ID card': 'आपको किससे और कितनी एलर्जी है — ये आपके हेल्थ ID कार्ड पर दिखती हैं',
     'Add an allergy': 'एलर्जी जोड़ें', 'Allergen (e.g. Penicillin, Peanuts)': 'एलर्जन (जैसे पेनिसिलिन, मूँगफली)',
     'Reaction (e.g. rash, swelling)': 'प्रतिक्रिया (जैसे चकत्ते, सूजन)', 'Date noticed (optional)': 'देखी गई तिथि (वैकल्पिक)',
@@ -2214,6 +2223,7 @@ function switchView(view) {
   if (view === 'prescriptions') loadPrescriptions();
   if (view === 'claims')        loadClaims();
   if (view === 'allergies')     loadAllergies();
+  if (view === 'upcoming')      loadUpcoming();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -12243,6 +12253,95 @@ async function deleteAllergy(id) {
   await fetch('/api/allergies/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   if (_editingAllergy === id) _editingAllergy = null;
   loadAllergies();
+}
+
+// ── Family health calendar (upcoming) ────────────────────────────────────────
+// A forward-looking merge of everything coming up — appointments, lab rechecks,
+// prescription renewals, vaccines due, and future-dated dependent records — for
+// the user and their family. All derived; nothing invented.
+const UPC_TYPE = {
+  appointment: {icon:'🗓️', label:'Appointment'},
+  lab_recheck: {icon:'🧪', label:'Lab recheck'},
+  rx_renewal:  {icon:'📄', label:'Prescription renewal'},
+  vaccine:     {icon:'💉', label:'Vaccine due'},
+  dependent:   {icon:'👤', label:'Family'},
+};
+
+async function loadUpcoming() {
+  const el = document.getElementById('upcoming-content');
+  if (!el) return;
+  const d = await fetch('/api/upcoming?days=90', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {events:[]}).catch(() => ({events:[]}));
+  el.innerHTML = renderUpcoming(d);
+}
+
+function _upcTitle(e) {
+  const name = escHtml(e.name || '');
+  switch (e.type) {
+    case 'appointment': return name || t('Appointment');
+    case 'lab_recheck': return tformat('%1 recheck', name);
+    case 'rx_renewal':  return name ? tformat('Renew prescription · %1', name) : t('Renew a prescription');
+    case 'vaccine':     return tformat('%1 due', name);
+    case 'dependent':   return name;
+    default:            return name;
+  }
+}
+
+function _upcWhen(du) {
+  if (du < 0)  return {txt: tformat('%1 days overdue', -du), cls: 'upc-overdue'};
+  if (du === 0) return {txt: t('today'), cls: 'upc-today'};
+  if (du === 1) return {txt: t('tomorrow'), cls: 'upc-soon'};
+  if (du <= 7)  return {txt: tformat('in %1 days', du), cls: 'upc-soon'};
+  return {txt: tformat('in %1 days', du), cls: ''};
+}
+
+function renderUpcoming(d) {
+  const events = d.events || [];
+  if (!events.length) {
+    return `<div class="panel" style="padding:32px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">📆</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('Nothing coming up')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Appointments, lab rechecks, renewals and vaccines due will appear here as you add them.')}</div>
+      </div>`;
+  }
+
+  // Group into relative buckets.
+  const buckets = [
+    {key: 'overdue', label: t('Overdue'), test: e => e.days_until < 0, items: []},
+    {key: 'week',    label: t('This week'), test: e => e.days_until >= 0 && e.days_until <= 7, items: []},
+    {key: 'month',   label: t('Next 30 days'), test: e => e.days_until > 7 && e.days_until <= 30, items: []},
+    {key: 'later',   label: t('Later'), test: e => e.days_until > 30, items: []},
+  ];
+  for (const e of events) (buckets.find(b => b.test(e)) || buckets[3]).items.push(e);
+
+  const summary = (d.overdue_count || d.this_week)
+    ? `<div class="upc-summary">${[
+        d.overdue_count ? `<span class="upc-summary-overdue">${tformat('%1 overdue', d.overdue_count)}</span>` : '',
+        d.this_week ? tformat('%1 this week', d.this_week) : '',
+      ].filter(Boolean).join(' · ')}</div>` : '';
+
+  const sections = buckets.filter(b => b.items.length).map(b => {
+    const rows = b.items.map(e => {
+      const ty = UPC_TYPE[e.type] || {icon:'•', label:e.type};
+      const when = _upcWhen(e.days_until);
+      const dt = new Date(e.date + 'T12:00:00');
+      const dayLbl = dt.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+      const who = e.who ? `<span class="upc-who">${escHtml(e.who)}</span>` : '';
+      const detail = e.detail && e.type !== 'dependent' ? ` · ${escHtml(e.detail)}` : '';
+      return `<div class="upc-item">
+          <div class="upc-icon">${ty.icon}</div>
+          <div class="upc-main">
+            <div class="upc-title">${_upcTitle(e)} ${who}</div>
+            <div class="upc-sub">${t(ty.label)}${detail} · ${dayLbl}</div>
+          </div>
+          <div class="upc-when ${when.cls}">${when.txt}</div>
+        </div>`;
+    }).join('');
+    return `<div class="panel" style="padding:14px 18px;margin-bottom:12px">
+        <div class="upc-bucket-head">${b.label}</div>${rows}</div>`;
+  }).join('');
+
+  return summary + sections;
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────
