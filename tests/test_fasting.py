@@ -92,6 +92,27 @@ def test_future_start_ignored(app):
         assert f["elapsed_hours"] == pytest.approx(0, abs=0.1)
 
 
+def test_tz_aware_input_does_not_crash(app):
+    # A mobile client may send an offset-bearing ISO string; it must not 500.
+    c, uid = _uid(app, "fast8@medeasy.test")
+    r = c.post("/api/fasting/start", json={"target_hours": 16,
+                                           "start_at": "2026-08-04T10:00:00+05:30"})
+    assert r.status_code == 200
+    # end with a tz-aware end_at too
+    r2 = c.post("/api/fasting/end", json={"end_at": "2026-08-04T18:00:00+05:30"})
+    assert r2.status_code == 200
+    assert r2.get_json()["fast"]["status"] == "completed"
+
+
+def test_future_end_clamped_to_now(app):
+    _, uid = _uid(app, "fast9@medeasy.test")
+    with user_context(uid):
+        start_fast(16, start_at=_ago(5))
+        # An end 100h in the future is impossible → falls back to now (~5h).
+        done = end_fast(end_at=(_dt.datetime.now() + _dt.timedelta(hours=100)).isoformat())
+        assert done["duration_hours"] == pytest.approx(5, abs=0.1)
+
+
 def test_api_round_trip(app):
     c, uid = _uid(app, "fast7@medeasy.test")
     r = c.post("/api/fasting/start", json={"target_hours": 18, "start_at": _ago(6)})

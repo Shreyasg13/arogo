@@ -89,6 +89,8 @@ def create_goal(metric, target_value, direction=None, deadline=None, title='') -
     target = _num(target_value)
     if target is None:
         raise ValueError('A numeric target is required')
+    if target <= 0:
+        raise ValueError('Target must be greater than zero')
     direction = direction if direction in _DIRS else METRICS[metric]['dir']
     dl = deadline if (deadline and valid_date(deadline)) else None
     # Capture today's value as the baseline (so "below/above" progress has a
@@ -126,7 +128,17 @@ def _decorate(row):
     d['unit'] = meta['unit']
     current = latest_value(d['metric']) if d['metric'] != 'custom' else None
     d['current'] = current
-    pct, achieved = _progress(d['direction'], d['start_value'], current, d['target_value'])
+    start = d['start_value']
+    # Lazy baseline: if no reading existed at creation (start_value is NULL) but
+    # one exists now, adopt it as the from-point and persist it. Without this a
+    # below/above goal created before its first reading would be stuck showing
+    # "no progress" forever, then jump straight to 100% on crossing the target.
+    if start is None and current is not None and d['metric'] != 'custom':
+        execute("UPDATE health_goals SET start_value=? WHERE id=? AND user_id=? AND start_value IS NULL",
+                (current, d['id'], current_user_id()), commit=True)
+        start = current
+        d['start_value'] = current
+    pct, achieved = _progress(d['direction'], start, current, d['target_value'])
     d['progress'] = pct
     d['auto_achieved'] = achieved
     # Days left (never negative-surprising: negative = overdue).

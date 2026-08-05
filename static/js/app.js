@@ -11294,15 +11294,21 @@ function renderFasting(d) {
   if (d.active) {
     const started = new Date(Date.parse(d.active.start_at));
     const startLbl = started.toLocaleString([], {weekday:'short', hour:'2-digit', minute:'2-digit'});
+    // Compute the first paint from the SAME client clock _tickFast uses, so the
+    // display doesn't jump on the first tick if the server's local time differs.
+    const target = d.active.target_hours || 0;
+    const elapsed0 = (Date.now() - Date.parse(d.active.start_at)) / 3600000;
+    const reached0 = target > 0 && elapsed0 >= target;
+    const pct0 = target > 0 ? Math.max(0, Math.min(elapsed0 / target, 1)) : 0;
     top = `<div class="panel fast-live" style="padding:26px 22px;text-align:center;margin-bottom:16px">
         <div class="fast-target-lbl">${tformat('%1 h fast', d.active.target_hours)}</div>
-        <div id="fast-elapsed" class="fast-clock">${_fastFmt(d.active.elapsed_hours)}</div>
+        <div id="fast-elapsed" class="fast-clock">${_fastFmt(elapsed0)}</div>
         <div id="fast-remaining" class="fast-remaining">${
-          d.active.reached_target ? t('🎉 Target reached — end whenever you like')
-          : tformat('%1 to go', _fastFmt(d.active.remaining_hours))}</div>
+          reached0 ? t('🎉 Target reached — end whenever you like')
+          : tformat('%1 to go', _fastFmt(Math.max(0, target - elapsed0)))}</div>
         <div class="goal-bar" style="max-width:320px;margin:14px auto 4px">
-          <div id="fast-fill" class="goal-fill${d.active.reached_target ? ' goal-fill--done' : ''}"
-               style="width:${Math.round((d.active.progress || 0) * 100)}%"></div></div>
+          <div id="fast-fill" class="goal-fill${reached0 ? ' goal-fill--done' : ''}"
+               style="width:${Math.round(pct0 * 100)}%"></div></div>
         <div class="fast-started">${tformat('Started %1', startLbl)}</div>
         <button class="btn-primary" style="margin-top:16px" data-ev-click="endFast()">${t('End fast')}</button>
       </div>`;
@@ -11401,7 +11407,9 @@ function renderHealthId(d) {
   const id = d.identity || {};
   const sub = [];
   if (id.age != null) sub.push(tformat('%1 yrs', id.age));
-  if (id.gender) sub.push(t(id.gender));
+  // escHtml: gender is free-text the user controls and could contain markup;
+  // t() is a passthrough that doesn't escape, so escape before it hits innerHTML.
+  if (id.gender) sub.push(escHtml(t(id.gender)));
   if (id.blood_type || d.blood_type) { /* shown as its own row */ }
   const bio = [];
   if (id.height_cm) bio.push(id.height_cm + ' cm');

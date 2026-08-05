@@ -99,6 +99,29 @@ def test_rejects_bad_input(app):
             create_goal("nonsense_metric", 5)
         with pytest.raises(ValueError):
             create_goal("weight", "abc")
+        with pytest.raises(ValueError):
+            create_goal("weight", 0)          # non-positive target rejected
+        with pytest.raises(ValueError):
+            create_goal("weight", -5)
+
+
+def test_baseline_backfills_when_created_before_first_reading(app):
+    # Goal made before any weight is logged: baseline is None. Once readings
+    # arrive, the first is adopted as the from-point so progress is intermediate
+    # (not stuck at "no progress" then jumping to 100%).
+    c, uid = _uid(app, "goal8@medeasy.test")
+    with user_context(uid):
+        g = create_goal("weight", 70, "below")     # nothing logged → start None
+        assert g["start_value"] is None
+        _weight(uid, 80, "2026-06-01")             # first reading becomes baseline
+        first = list_goals()["goals"][0]
+        assert first["start_value"] == 80 and first["current"] == 80
+        assert first["progress"] == pytest.approx(0.0, abs=0.01)   # shown, not None
+        _weight(uid, 75, "2026-07-01")             # halfway to 70
+        second = list_goals()["goals"][0]
+    assert second["start_value"] == 80             # baseline stays put
+    assert second["current"] == 75
+    assert second["progress"] == pytest.approx(0.5, abs=0.01)
 
 
 def test_api_round_trip(app):

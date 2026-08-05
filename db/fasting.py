@@ -27,11 +27,15 @@ def _num(v, default=None):
 
 
 def _parse(ts):
-    """Parse an ISO datetime string to a naive datetime, or None."""
+    """Parse an ISO datetime string to a NAIVE datetime, or None. A client may
+    send a timezone-aware string (e.g. '...+05:30'); we drop the offset and keep
+    the wall-clock, since the whole app compares naive local times — mixing a
+    naive and an aware datetime would raise TypeError and 500 the request."""
     if not ts:
         return None
     try:
-        return _dt.datetime.fromisoformat(ts)
+        dt = _dt.datetime.fromisoformat(ts)
+        return dt.replace(tzinfo=None) if dt.tzinfo is not None else dt
     except (ValueError, TypeError):
         return None
 
@@ -81,7 +85,11 @@ def end_fast(fid=None, end_at=None) -> dict:
     if not row:
         raise ValueError('No fast to end')
     now = now_iso()
-    end = end_at if (_parse(end_at) and _parse(end_at) >= _parse(row['start_at'])) else now
+    # A supplied end must sit between the start and now; anything outside that
+    # window (before the start, or in the future) falls back to now so an
+    # impossible duration can't skew the history stats.
+    pend, pstart, pnow = _parse(end_at), _parse(row['start_at']), _parse(now)
+    end = end_at if (pend is not None and pstart <= pend <= pnow) else now
     execute("UPDATE fasting_sessions SET status='completed', end_at=? WHERE id=? AND user_id=?",
             (end, row['id'], uid), commit=True)
     return _decorate(execute("SELECT * FROM fasting_sessions WHERE id=?", (row['id'],), fetchone=True))
