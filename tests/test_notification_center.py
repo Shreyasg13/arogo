@@ -33,6 +33,20 @@ def test_default_snooze_round_trips(app):
     assert c.get("/api/reminders/settings").get_json()["default_snooze_min"] == 20
 
 
+def test_default_snooze_persists_on_first_post(app):
+    # POST before any GET hits the INSERT branch; it must still store the value.
+    c = _client(app, "notif9@medeasy.test")
+    c.post("/api/reminders/settings", json={"default_snooze_min": 30})
+    assert c.get("/api/reminders/settings").get_json()["default_snooze_min"] == 30
+
+
+def test_medicine_icon_is_sanitized(app):
+    c = _client(app, "notif10@medeasy.test")
+    m = c.post("/api/medicines", json={"name": "Zap", "frequency": "once_daily",
+                                       "times": ["09:00"], "icon": "<img src=x onerror=alert(1)>"}).get_json()["medicine"]
+    assert "<" not in m["icon"] and ">" not in m["icon"]   # markup stripped → safe default
+
+
 def test_default_snooze_is_clamped(app):
     c = _client(app, "notif2@medeasy.test")
     c.get("/api/reminders/settings")

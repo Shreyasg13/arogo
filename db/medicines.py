@@ -117,6 +117,11 @@ def insert_medicine(data: dict) -> dict:
     # an N-day cycle OR on fixed weekdays, never both — interval wins if sent.
     interval = None if data.get('frequency') == 'as_needed' else clean_interval_days(data.get('interval_days'))
     sched = None if (interval or data.get('frequency') == 'as_needed') else clean_schedule_days(data.get('schedule_days'))
+    # The icon is rendered into innerHTML in several places; keep it a short,
+    # markup-free glyph so a crafted value can't inject HTML (defence at source).
+    raw_icon = str(data.get('icon') or '💊')
+    icon = raw_icon[:8] if ('<' not in raw_icon and '>' not in raw_icon) else '💊'
+    icon = icon or '💊'
     execute("""
         INSERT INTO medicines
           (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,schedule_days,interval_days,active,created_at,user_id)
@@ -127,7 +132,7 @@ def insert_medicine(data: dict) -> dict:
                 else _clean_times(data.get('times', ['08:00']))),
           with_food, timing, lead, cost, data.get('notes',''),
           str(data.get('purpose', '')).strip()[:120],
-          data.get('color','teal'), data.get('icon','💊'),
+          data.get('color','teal'), icon,
           data.get('start_date', today_iso()), data.get('end_date',''),
           jdump(sched) if sched else None, interval, now_iso(),
           current_user_id()),

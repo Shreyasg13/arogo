@@ -1112,14 +1112,14 @@ def api_save_reminder_settings():
              habit_reminder_enabled,habit_reminder_time,
              sleep_reminder_enabled,sleep_reminder_time,
              mood_reminder_enabled,mood_reminder_time,
-             quiet_enabled,quiet_start,quiet_end,updated_at,user_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+             quiet_enabled,quiet_start,quiet_end,low_key,default_snooze_min,updated_at,user_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (rid, water_enabled, water_interval,
              water_start, water_end, water_goal_ml,
              habit_enabled, habit_time,
              sleep_enabled, sleep_time,
              mood_enabled, mood_time,
-             quiet_enabled, quiet_start, quiet_end,
+             quiet_enabled, quiet_start, quiet_end, low_key, snooze_default,
              now_iso(), uid), commit=True)
     updated = execute("SELECT * FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     return jsonify({'success': True, 'settings': dict(updated)})

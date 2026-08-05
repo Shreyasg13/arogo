@@ -10834,10 +10834,13 @@ async function renderMedLeads() {
   if (!active.length) { box.innerHTML = ''; return; }
   const rows = active.map(m => {
     const lead = m.reminder_lead_min || 0;
-    const opts = _LEAD_OPTS.map(v => `<option value="${v}"${v === lead ? ' selected' : ''}>${
+    // Include the stored value even if it isn't one of the presets (the API
+    // accepts any 0–120), so a 45-min lead isn't silently shown as "On time".
+    const choices = _LEAD_OPTS.includes(lead) ? _LEAD_OPTS : [..._LEAD_OPTS, lead].sort((a, b) => a - b);
+    const opts = choices.map(v => `<option value="${v}"${v === lead ? ' selected' : ''}>${
       v === 0 ? t('On time') : tformat('%1 min early', v)}</option>`).join('');
     return `<div class="rs-lead-row">
-        <span class="rs-lead-name">${m.icon || '💊'} ${escHtml(m.name)}</span>
+        <span class="rs-lead-name">${escHtml(m.icon || '💊')} ${escHtml(m.name)}</span>
         <select class="form-input rs-select" data-ev-change="setMedLead('${m.id}', this.value)">${opts}</select>
       </div>`;
   }).join('');

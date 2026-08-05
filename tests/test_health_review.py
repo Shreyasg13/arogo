@@ -38,6 +38,17 @@ def _sleep(uid, dkey, h):
                VALUES (?,?,'23:00','07:00',?,4,'',?,?)""", (new_id(), dkey, h, now_iso(), uid), commit=True)
 
 
+def _weight(uid, kg, dkey):
+    execute("""INSERT INTO body_metrics (id,date_key,weight_kg,body_fat_pct,waist_cm,bmi,notes,created_at,user_id)
+               VALUES (?,?,?,NULL,NULL,NULL,'',?,?)""", (new_id(), dkey, kg, now_iso(), uid), commit=True)
+
+
+def _set_goal(uid, goal):
+    execute("DELETE FROM user_profile WHERE user_id=?", (uid,), commit=True)
+    execute("INSERT INTO user_profile (id,name,goal,updated_at,user_id) VALUES (?,?,?,?,?)",
+            (new_id(), "T", goal, now_iso(), uid), commit=True)
+
+
 def _bp(uid, systolic, dia, ts):
     execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,logged_at,user_id)
                VALUES (?,?,'blood_pressure',?,?,'mmHg',?,?)""",
@@ -99,6 +110,36 @@ def test_no_adherence_without_meds(app):
     with user_context(uid):
         rev = generate_health_review(7)
     assert rev["adherence"] is None      # honest: nothing scheduled to adhere to
+
+
+def test_sleep_win_needs_enough_nights(app):
+    _, uid = _uid(app, "rev8@medeasy.test")
+    with user_context(uid):
+        _sleep(uid, _ago(1), 8.0)              # a single good night is not a "win"
+        rev = generate_health_review(30)
+    assert not any("sleep" in w["text"].lower() for w in rev["wins"])
+
+
+def test_weight_down_win_respects_goal(app):
+    _, uid = _uid(app, "rev9@medeasy.test")
+    with user_context(uid):
+        _set_goal(uid, "gain")                 # losing weight is NOT a win here
+        for i, kg in enumerate([72.0, 71.5, 71.0, 70.4]):
+            _weight(uid, kg, _ago(4 - i))
+        rev = generate_health_review(30)
+    w = next(v for v in rev["vitals"] if v["type"] == "weight")
+    assert w["direction"] == "down"
+    assert not any("Weight" in win["text"] for win in rev["wins"])
+
+
+def test_weight_direction_needs_four_readings(app):
+    _, uid = _uid(app, "rev10@medeasy.test")
+    with user_context(uid):
+        for i, kg in enumerate([72.0, 71.0, 70.0]):   # only 3 → no direction
+            _weight(uid, kg, _ago(3 - i))
+        rev = generate_health_review(30)
+    w = next(v for v in rev["vitals"] if v["type"] == "weight")
+    assert w["direction"] is None
 
 
 def test_api_endpoint(app):

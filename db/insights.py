@@ -169,20 +169,30 @@ def generate_health_review(days: int = 7) -> dict:
                      GROUP BY name ORDER BY c DESC LIMIT 5""", (start, end, uid), fetchall=True) or []
     symptoms = [{'name': r['name'], 'count': r['c']} for r in sym]
 
+    profile = get_profile()
+    goal = (profile.get('goal') or '')
+
     # ── Wins: only statements the data actually supports ──────────
+    # Each win needs enough underlying data to be honest — a single logged night
+    # or a lone dose must never become "you averaged 8h" / "you took 100%".
     wins = []
-    if adherence and adherence['pct'] >= 90:
+    if adherence and adherence['pct'] >= 90 and adherence['total'] >= 5:
         wins.append({'icon': '💊', 'text': f"Took {adherence['pct']}% of your scheduled doses"})
-    if avg_sleep is not None and avg_sleep >= 7:
+    if avg_sleep is not None and avg_sleep >= 7 and len(srows) >= 4:
         wins.append({'icon': '😴', 'text': f"Averaged {avg_sleep} h of sleep a night"})
     for g in goals:
         if g['achieved']:
             wins.append({'icon': '🎯', 'text': f"Reached your goal: {g['title']}"})
-    down_vitals = [v for v in vitals if v['direction'] == 'down' and v['type'] in ('blood_pressure', 'blood_sugar', 'weight')]
-    for v in down_vitals:
-        wins.append({'icon': '📉', 'text': f"{v['label']} trending down"})
+    for v in vitals:
+        if v['direction'] != 'down':
+            continue
+        # BP/sugar down is generically good; weight down is only a "win" if the
+        # user is actually trying to lose — not for a gain/maintain goal.
+        if v['type'] in ('blood_pressure', 'blood_sugar'):
+            wins.append({'icon': '📉', 'text': f"{v['label']} trending down"})
+        elif v['type'] == 'weight' and goal in ('lose', 'lose_fast'):
+            wins.append({'icon': '📉', 'text': f"{v['label']} trending down toward your goal"})
 
-    profile = get_profile()
     label = 'Last 30 days' if days == 30 else 'Last 7 days'
     return {
         'period': {'days': days, 'start': start, 'end': end, 'label': label},
@@ -233,8 +243,12 @@ def _vitals_directions(uid, start, end):
     wvals = [r['weight_kg'] for r in wrows]
     if wvals:
         direction = None
-        if len(wvals) >= 3:
-            diff = wvals[-1] - wvals[0]
+        # Mean of the first half vs the second half (same method as the other
+        # vitals) — comparing two lone endpoints flips on day-to-day water swings.
+        if len(wvals) >= 4:
+            mid = len(wvals) // 2
+            first, second = sum(wvals[:mid]) / mid, sum(wvals[mid:]) / (len(wvals) - mid)
+            diff = second - first
             direction = 'up' if diff > 0.4 else 'down' if diff < -0.4 else 'flat'
         out.append({'type': 'weight', 'label': 'Weight', 'unit': 'kg',
                     'latest': _fmt_num(wvals[-1]), 'readings': len(wvals), 'direction': direction})
