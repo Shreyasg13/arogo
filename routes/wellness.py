@@ -872,6 +872,20 @@ def api_symptom_patterns():
     })
 
 
+@bp.route('/api/symptoms/correlations')
+@require_auth
+def api_symptom_correlations():
+    """Cross-factor patterns: does a symptom line up with short sleep, the start
+    of a medicine, or the menstrual cycle? Patterns only — never a diagnosis."""
+    from db.symptom_insights import get_symptom_correlations
+    days = request.args.get('days', 60)
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        days = 60
+    return jsonify(get_symptom_correlations(days))
+
+
 
 # ── Vitals ────────────────────────────────────────────────────────────────────
 @bp.route('/api/vitals')

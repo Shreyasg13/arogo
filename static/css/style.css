@@ -4072,6 +4072,13 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   border-radius: var(--border-radius-lg);
   padding: 14px 18px; margin-top: 18px;
 }
+/* Cross-factor correlations */
+.spp-corr-note { font-size: 12px; color: var(--gray-400); font-style: italic; margin: 0 0 10px; }
+.spp-corr-card { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0;
+  border-bottom: 1px solid var(--gray-50); font-size: 13.5px; color: var(--gray-700); line-height: 1.45; }
+.spp-corr-card:last-child { border-bottom: none; }
+.spp-corr-icon { font-size: 17px; flex-shrink: 0; }
+.spp-corr-card b { color: var(--gray-800); font-weight: 600; }
 .spp-alerts-head {
   display: flex; align-items: center; gap: 7px;
   font-size: 13px; font-weight: 600; color: #92400E;
