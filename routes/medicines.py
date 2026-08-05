@@ -169,6 +169,12 @@ def adherence():
     days = to_int(request.args.get('days', 30), 30, lo=0, hi=3650)
     return jsonify(get_adherence_stats(days))
 
+@bp.route('/api/medicines/adherence/timeofday')
+@require_auth
+def adherence_timeofday():
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=366)
+    return jsonify(get_adherence_by_timeofday(days))
+
 @bp.route('/api/medicines/calendar')
 @require_auth
 def dose_calendar():

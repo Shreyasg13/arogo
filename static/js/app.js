@@ -448,6 +448,9 @@ const I18N = {
     'Copy': 'कॉपी', 'Copied ✓': 'कॉपी हुआ ✓', 'Turn off': 'बंद करें', 'Link turned off': 'लिंक बंद हुआ',
     'This link is no longer active.': 'यह लिंक अब सक्रिय नहीं है।', 'expires %1': '%1 को समाप्त',
     '%1 views': '%1 बार देखा', 'Could not update': 'अपडेट नहीं हुआ', 'Choose language': 'भाषा चुनें',
+    'When you miss doses': 'आप खुराक कब चूकते हैं', 'Morning': 'सुबह', 'Afternoon': 'दोपहर', 'Evening': 'शाम', 'Night': 'रात',
+    'Your %1 doses are the easiest to miss.': 'आपकी %1 की खुराकें सबसे आसानी से छूट जाती हैं।',
+    'morning': 'सुबह', 'afternoon': 'दोपहर', 'evening': 'शाम', 'night': 'रात',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -4345,6 +4348,7 @@ async function loadMedicines() {
   if (mc) mc.textContent = `${meds.filter(m=>m.active).length} active`;
   loadMedAdherence();
   loadMissedDoses();
+  loadAdherenceTimeOfDay();
   loadMedCost();
   loadDoseCalendar();
   loadTimingConflicts();
@@ -4395,6 +4399,34 @@ async function loadMissedDoses() {
     .then(r => r.json()).catch(() => null);
   el.innerHTML = d ? renderMissedDoses(d) : '';
 }
+
+// ── Adherence by part of day (coarser, cross-medicine lens) ──
+const _TOD_ICON = { morning: '🌅', afternoon: '☀️', evening: '🌆', night: '🌙' };
+
+async function loadAdherenceTimeOfDay() {
+  const el = document.getElementById('med-tod-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/adherence/timeofday?days=30').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const withDoses = d.buckets.filter(b => b.total > 0);
+  if (!withDoses.length) { el.innerHTML = ''; return; }
+  const barColor = p => p == null ? 'var(--gray-200)' : p >= 90 ? 'var(--teal-500,#5A9E70)' : p >= 70 ? '#F59E0B' : '#EF4444';
+  const rows = withDoses.map(b => `
+    <div class="tod-row${b.bucket === d.worst ? ' tod-row--worst' : ''}">
+      <div class="tod-label">${_TOD_ICON[b.bucket] || ''} ${t(b.label)}</div>
+      <div class="tod-bar-wrap"><div class="tod-bar" style="width:${b.pct == null ? 0 : b.pct}%;background:${barColor(b.pct)}"></div></div>
+      <div class="tod-stat">${b.pct == null ? '—' : b.pct + '%'}<span class="tod-sub">${b.taken}/${b.total}</span></div>
+    </div>`).join('');
+  const worstLine = d.worst
+    ? `<div class="tod-note">${tformat('Your %1 doses are the easiest to miss.', t(_TOD_LABEL(d.worst)))}</div>`
+    : '';
+  el.innerHTML = `<div class="panel" style="padding:18px 20px">
+      <div class="panel-header"><h2 class="panel-title">🕑 ${t('When you miss doses')}</h2><span class="panel-badge">${t('last 30 days')}</span></div>
+      ${rows}
+      ${worstLine}
+    </div>`;
+}
+function _TOD_LABEL(bucket) { return { morning: 'morning', afternoon: 'afternoon', evening: 'evening', night: 'night' }[bucket] || bucket; }
 
 // A timely, per-slot adherence nudge (last 7 days) — what's slipping NOW, above
 // the 30-day pattern. Localized from structured fields; '' when nothing to say.

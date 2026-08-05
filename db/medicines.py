@@ -393,6 +393,79 @@ def get_adherence_stats(days=30):
     return {'total': total, 'taken': taken, 'pct': round(taken/total*100, 1) if total else 0}
 
 
+# The part of the day a dose slot falls in. A reading of the clock only — the
+# labels are for grouping, not clinical claims.
+_TOD_BUCKETS = [
+    ('morning',   'Morning',   5, 12),   # 05:00–11:59
+    ('afternoon', 'Afternoon', 12, 17),  # 12:00–16:59
+    ('evening',   'Evening',   17, 21),  # 17:00–20:59
+    ('night',     'Night',     21, 5),   # 21:00–04:59 (wraps midnight)
+]
+
+
+def _time_bucket(time_key: str) -> str:
+    try:
+        h = int(str(time_key)[:2])
+    except (ValueError, TypeError):
+        return 'morning'
+    for key, _lbl, lo, hi in _TOD_BUCKETS:
+        if lo < hi:
+            if lo <= h < hi:
+                return key
+        else:                       # night wraps midnight
+            if h >= lo or h < hi:
+                return key
+    return 'morning'
+
+
+def get_adherence_by_timeofday(days: int = 30) -> dict:
+    """Per-part-of-day miss rate over the window — which dose slot the user
+    actually struggles with. Same scheduling rules as get_adherence_stats, but
+    grouped by morning/afternoon/evening/night. The taken flags are prefetched in
+    one query so a 30-day span isn't hundreds of round-trips.
+
+    'worst' names the bucket with the lowest adherence among those with enough
+    scheduled doses to be meaningful (>= _TOD_MIN); None if none qualify — we
+    don't crown a 'worst' off one or two doses."""
+    from datetime import date, timedelta
+    uid = current_user_id()
+    days = max(1, min(int(days or 30), 366))
+    meds = [m for m in list_medicines() if m['active'] and m.get('times')]
+    start = (date.today() - timedelta(days=days - 1)).isoformat()
+
+    taken_set = set()
+    for r in (execute("""SELECT medicine_id, date_key, time_key FROM dose_logs
+                         WHERE user_id=? AND taken=1 AND date_key>=?""",
+                      (uid, start), fetchall=True) or []):
+        taken_set.add((r['medicine_id'], r['date_key'], r['time_key']))
+
+    agg = {key: {'bucket': key, 'label': lbl, 'total': 0, 'taken': 0}
+           for key, lbl, _lo, _hi in _TOD_BUCKETS}
+    for i in range(days):
+        d = (date.today() - timedelta(days=i)).isoformat()
+        for m in meds:
+            if not _scheduled_on_day(m, d):
+                continue
+            for t in m.get('times', []):
+                b = agg[_time_bucket(t)]
+                b['total'] += 1
+                if (m['id'], d, t) in taken_set:
+                    b['taken'] += 1
+
+    _TOD_MIN = 5
+    out = []
+    for key, lbl, _lo, _hi in _TOD_BUCKETS:
+        b = agg[key]
+        b['missed'] = b['total'] - b['taken']
+        b['pct'] = round(b['taken'] / b['total'] * 100, 1) if b['total'] else None
+        out.append(b)
+    eligible = [b for b in out if b['total'] >= _TOD_MIN]
+    worst = min(eligible, key=lambda b: b['pct']) if eligible else None
+    return {'days': days, 'buckets': out,
+            'worst': worst['bucket'] if worst else None,
+            'has_data': any(b['total'] for b in out)}
+
+
 def get_dose_calendar(days: int = 35) -> list:
     """Per-day scheduled-dose status for a heatmap, oldest→newest.
 
