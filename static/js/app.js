@@ -419,6 +419,16 @@ const I18N = {
     'Bedtime': 'सोने से पहले', 'Random': 'कभी भी', 'Glucose logbook': 'ग्लूकोज़ लॉगबुक', 'avg': 'औसत',
     'Your target': 'आपका लक्ष्य', 'Set a blood-sugar target to flag out-of-range readings': 'सीमा-बाहर रीडिंग चिह्नित करने के लिए ब्लड-शुगर लक्ष्य तय करें',
     '%1 high': '%1 उच्च', '%1 low': '%1 निम्न', '%1 readings': '%1 रीडिंग',
+    'Sleep debt & rhythm': 'नींद की कमी और लय', 'Sleep debt': 'नींद की कमी', 'Average night': 'औसत रात',
+    'Bedtime spread': 'सोने के समय का फैलाव', 'Nightly goal': 'रात्रि लक्ष्य', 'hours': 'घंटे',
+    'No shortfall — nice': 'कोई कमी नहीं — बढ़िया', 'Set a nightly goal to track this': 'इसे ट्रैक करने के लिए रात्रि लक्ष्य तय करें',
+    'Needs 3+ nights with a bedtime': 'सोने के समय वाली 3+ रातें चाहिए',
+    'Log a few nights to see your sleep debt and bedtime consistency.': 'अपनी नींद की कमी और सोने के समय की नियमितता देखने के लिए कुछ रातें लॉग करें।',
+    'Set a nightly goal to unlock debt math': 'कमी गणना खोलने के लिए रात्रि लक्ष्य तय करें',
+    'very steady': 'बहुत स्थिर', 'fairly steady': 'काफ़ी स्थिर', 'quite variable': 'काफ़ी परिवर्तनशील',
+    '%1 short of %2h over %3 night(s)': '%3 रात(ों) में %2घं से %1 कम', 'across %1 night(s)': '%1 रात(ों) में',
+    'usually ~%1 · %2': 'आमतौर पर ~%1 · %2', 'Sleep goal saved 😴': 'नींद लक्ष्य सहेजा गया 😴',
+    'Sleep goal cleared': 'नींद लक्ष्य हटाया गया', 'Could not save': 'सहेजा नहीं जा सका',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
     'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
@@ -11213,12 +11223,98 @@ async function loadSleepView() {
       <div style="font-size:12px;color:var(--gray-400);margin-bottom:14px" id="sleep-trend-sub"></div>
       <div style="position:relative;height:180px"><canvas id="sleep-chart"></canvas></div>
       <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap" id="sleep-week-strip"></div>
-    </div>`;
+    </div>
+
+    <!-- Sleep debt & bedtime consistency -->
+    <div class="panel" id="sleep-insights-card" style="padding:18px 20px 20px;margin-top:18px"></div>`;
 
   window._svQuality = 4;
   initSleepEntry();          // sets duration + wake anchor from the user's usual
   loadSleepTrend();
   renderSleepFocal();
+  loadSleepInsights();
+}
+
+async function loadSleepInsights() {
+  const el = document.getElementById('sleep-insights-card');
+  if (!el) return;
+  const d = await fetch('/api/sleep/insights?days=14').then(r => r.json()).catch(() => null);
+  if (!d) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  // Target editor — always shown, so the user can set one and unlock debt math.
+  const tgtVal = d.target_h != null ? d.target_h : '';
+  const targetRow = `<div class="sleep-target-row">
+    <label class="sleep-target-label">${t('Nightly goal')}</label>
+    <input type="number" id="sleep-target-input" class="form-input" min="3" max="14" step="0.5"
+           value="${tgtVal}" placeholder="8" style="width:80px">
+    <span style="font-size:13px;color:var(--gray-500)">${t('hours')}</span>
+    <button class="btn-outline btn-sm" data-ev-click="saveSleepTarget()">${t('Save')}</button>
+  </div>`;
+
+  let body;
+  if (!d.has_data) {
+    body = `<div style="color:var(--gray-400);font-size:13px;padding:8px 0">${t('Log a few nights to see your sleep debt and bedtime consistency.')}</div>`;
+  } else {
+    const tiles = [];
+    // Sleep debt — only when a target exists.
+    if (d.debt_h != null) {
+      const col = d.debt_h > 0 ? '#EF4444' : '#22C55E';
+      const sub = d.debt_h > 0
+        ? tformat('%1 short of %2h over %3 night(s)', d.short_nights, d.target_h, d.nights)
+        : t('No shortfall — nice');
+      tiles.push(`<div class="sleep-ins-tile">
+        <div class="sleep-ins-val" style="color:${col}">${d.debt_h > 0 ? '−' + d.debt_h + 'h' : '0h'}</div>
+        <div class="sleep-ins-lbl">${t('Sleep debt')}</div>
+        <div class="sleep-ins-sub">${escHtml(sub)}</div>
+      </div>`);
+    } else {
+      tiles.push(`<div class="sleep-ins-tile">
+        <div class="sleep-ins-val" style="color:var(--gray-300);font-size:20px">—</div>
+        <div class="sleep-ins-lbl">${t('Sleep debt')}</div>
+        <div class="sleep-ins-sub">${t('Set a nightly goal to track this')}</div>
+      </div>`);
+    }
+    // Average duration.
+    tiles.push(`<div class="sleep-ins-tile">
+      <div class="sleep-ins-val">${d.avg_duration_h}h</div>
+      <div class="sleep-ins-lbl">${t('Average night')}</div>
+      <div class="sleep-ins-sub">${tformat('across %1 night(s)', d.nights)}</div>
+    </div>`);
+    // Bedtime consistency.
+    if (d.consistency_min != null) {
+      const steady = d.consistency_min <= 30 ? t('very steady') : d.consistency_min <= 60 ? t('fairly steady') : t('quite variable');
+      tiles.push(`<div class="sleep-ins-tile">
+        <div class="sleep-ins-val">±${d.consistency_min}m</div>
+        <div class="sleep-ins-lbl">${t('Bedtime spread')}</div>
+        <div class="sleep-ins-sub">${d.typical_bedtime ? tformat('usually ~%1 · %2', d.typical_bedtime, steady) : escHtml(steady)}</div>
+      </div>`);
+    } else {
+      tiles.push(`<div class="sleep-ins-tile">
+        <div class="sleep-ins-val" style="color:var(--gray-300);font-size:20px">—</div>
+        <div class="sleep-ins-lbl">${t('Bedtime spread')}</div>
+        <div class="sleep-ins-sub">${t('Needs 3+ nights with a bedtime')}</div>
+      </div>`);
+    }
+    body = `<div class="sleep-ins-grid">${tiles.join('')}</div>`;
+  }
+
+  el.innerHTML = `<div class="panel-header" style="padding:0 0 6px"><h2 class="panel-title">😴 ${t('Sleep debt & rhythm')}</h2></div>
+    ${body}${targetRow}`;
+}
+
+async function saveSleepTarget() {
+  const raw = document.getElementById('sleep-target-input')?.value;
+  const r = await fetch('/api/sleep/target', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ hours: raw === '' ? null : parseFloat(raw) })
+  }).then(r => r.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(r.target_h ? t('Sleep goal saved 😴') : t('Sleep goal cleared'));
+    loadSleepInsights();
+  } else {
+    showToast((r && r.error) || t('Could not save'), 'error');
+  }
 }
 
 async function renderSleepFocal() {

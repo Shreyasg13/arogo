@@ -361,6 +361,103 @@ def delete_sleep_log(lid: str):
     execute("DELETE FROM sleep_logs WHERE id=? AND user_id=?",
             (lid, current_user_id()), commit=True)
 
+
+# ── Sleep debt & bedtime consistency ─────────────────────────────────────────
+
+def get_sleep_target() -> float:
+    """The user's nightly sleep goal in hours, or None if they haven't set one.
+    We never invent a target: sleep-debt math is only shown once it's theirs."""
+    r = execute("SELECT sleep_goal_h FROM reminder_settings WHERE user_id=? LIMIT 1",
+                (current_user_id(),), fetchone=True)
+    g = (r or {}).get('sleep_goal_h') if r else None
+    try:
+        return round(float(g), 1) if g not in (None, '') else None
+    except (TypeError, ValueError):
+        return None
+
+
+def set_sleep_target(hours) -> float:
+    """Set (or, with None/0, clear) the nightly sleep goal. Clamped to 3–14 h —
+    outside that a 'debt' figure would be nonsense rather than useful."""
+    uid = current_user_id()
+    # A row may not exist yet (settings are lazily created elsewhere); ensure one.
+    exists = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
+    if not exists:
+        execute("INSERT INTO reminder_settings (id, user_id, updated_at) VALUES (?,?,?)",
+                (new_id(), uid, now_iso()), commit=True)
+    if hours in (None, '', 0, '0'):
+        execute("UPDATE reminder_settings SET sleep_goal_h=NULL WHERE user_id=?", (uid,), commit=True)
+        return None
+    h = to_num(hours, None)
+    if h is None:
+        raise ValueError('Sleep goal must be a number')
+    h = max(3.0, min(round(float(h), 1), 14.0))
+    execute("UPDATE reminder_settings SET sleep_goal_h=? WHERE user_id=?", (h, uid), commit=True)
+    return h
+
+
+def _bedtime_offset_min(bedtime: str):
+    """Minutes past 18:00 for a bedtime, wrapping into [0,1440). Anchoring at 6pm
+    keeps a normal night's bedtimes on one continuous scale — 23:30 and 00:30 sit
+    60 min apart, not ~1380 apart as raw midnight-minutes would make them."""
+    try:
+        hh = int(bedtime[11:13]); mm = int(bedtime[14:16])
+    except (ValueError, IndexError, TypeError):
+        return None
+    if not (0 <= hh <= 23 and 0 <= mm <= 59):
+        return None
+    return ((hh * 60 + mm) - 18 * 60) % 1440
+
+
+def get_sleep_insights(days: int = 14) -> dict:
+    """Sleep debt (cumulative shortfall vs the user's target) and bedtime
+    consistency (spread of bedtimes) over the recent window.
+
+    Both are None until the inputs exist — no target set, or too few nights —
+    rather than a fabricated zero. Debt counts only nights that fell short; a long
+    Sunday lie-in doesn't erase a week of short nights the way a simple average
+    would.
+    """
+    import statistics
+    target = get_sleep_target()
+    logs = get_sleep_logs(days=days)
+    nights = [l for l in logs if to_num(l.get('duration_h'), 0) > 0]
+    n = len(nights)
+
+    debt_h = None
+    avg_dur = None
+    short_nights = None
+    if n:
+        durs = [to_num(l['duration_h'], 0) for l in nights]
+        avg_dur = round(sum(durs) / n, 1)
+        if target is not None:
+            shortfalls = [max(0.0, target - d) for d in durs]
+            debt_h = round(sum(shortfalls), 1)
+            short_nights = sum(1 for s in shortfalls if s > 0)
+
+    # Bedtime consistency — stdev of bedtime offsets, in minutes. Needs ≥3 nights
+    # with a real bedtime to mean anything.
+    offsets = [o for o in (_bedtime_offset_min(l.get('bedtime', '')) for l in nights) if o is not None]
+    consistency_min = round(statistics.stdev(offsets)) if len(offsets) >= 3 else None
+    # A friendly typical bedtime (median offset → clock time), only when we have it.
+    typical_bedtime = None
+    if offsets:
+        med = int(statistics.median(offsets))
+        tot = (med + 18 * 60) % 1440
+        typical_bedtime = f'{tot // 60:02d}:{tot % 60:02d}'
+
+    return {
+        'days': days,
+        'nights': n,
+        'target_h': target,
+        'avg_duration_h': avg_dur,
+        'debt_h': debt_h,                 # None if no target; cumulative shortfall
+        'short_nights': short_nights,
+        'consistency_min': consistency_min,   # stdev of bedtime, minutes (lower = steadier)
+        'typical_bedtime': typical_bedtime,
+        'has_data': n > 0,
+    }
+
 # ── Body Metrics ──────────────────────────────────────────────────────────────
 
 def _opt_num(v, lo=None, hi=None):

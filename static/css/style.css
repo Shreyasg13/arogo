@@ -4969,6 +4969,16 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .sdial-q-label { font-size: 10.5px; color: var(--gray-500); font-weight: 500; }
 .sdial-q-btn.active .sdial-q-label { color: var(--teal-700); }
 
+/* Sleep debt & bedtime consistency */
+.sleep-ins-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.sleep-ins-tile { background: var(--surface-2, #F8FAFC); border: 1px solid var(--border, #E2E8F0); border-radius: 12px; padding: 12px 14px; }
+.sleep-ins-val { font-size: 26px; font-weight: 700; color: var(--gray-800, #1E293B); line-height: 1.1; }
+.sleep-ins-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--gray-500, #64748B); margin-top: 4px; }
+.sleep-ins-sub { font-size: 12px; color: var(--gray-500, #64748B); margin-top: 3px; }
+.sleep-target-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border-light, #F1F5F9); }
+.sleep-target-label { font-size: 13px; font-weight: 600; color: var(--gray-600, #475569); }
+.btn-sm { padding: 6px 14px; font-size: 13px; }
+
 /* ════════════════════════════════════════
    TREND TOGGLE — underline tab style
    ════════════════════════════════════════ */

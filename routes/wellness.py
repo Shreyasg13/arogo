@@ -300,6 +300,24 @@ def api_log_sleep():
 def api_del_sleep(lid):
     delete_sleep_log(lid)
     return jsonify({'success': True})
+
+@bp.route('/api/sleep/insights')
+@require_auth
+def api_sleep_insights():
+    days = int(request.args.get('days', 14))
+    return jsonify(get_sleep_insights(days))
+
+@bp.route('/api/sleep/target', methods=['GET', 'POST'])
+@require_auth
+def api_sleep_target():
+    if request.method == 'POST':
+        try:
+            h = set_sleep_target((request.json or {}).get('hours'))
+        except ValueError as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': True, 'target_h': h})
+    return jsonify({'target_h': get_sleep_target()})
+
 @bp.route('/api/sleep/trend')
 @require_auth
 def api_sleep_trend():

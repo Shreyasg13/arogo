@@ -917,6 +917,14 @@ def migrate_add_vital_context():
         pass
 
 
+def migrate_add_sleep_goal():
+    """Add the nightly sleep-hours target (for sleep-debt math) to reminder_settings."""
+    try:
+        execute("ALTER TABLE reminder_settings ADD COLUMN sleep_goal_h REAL DEFAULT NULL")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1213,6 +1221,7 @@ def init_db():
     migrate_add_med_tapers()
     migrate_add_vital_targets()
     migrate_add_vital_context()
+    migrate_add_sleep_goal()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()
