@@ -42,6 +42,12 @@ def get_health_id() -> dict:
         if _s(n) or _s(p):
             contacts.append({'name': _s(n), 'phone': _s(p)})
 
+    # Structured allergies (severity-ordered) take precedence over the old
+    # free-text box; the free-text is kept as a fallback for existing users.
+    from .allergies import list_allergies
+    allergy_rows = [{'allergen': a['allergen'], 'reaction': a['reaction'], 'severity': a['severity']}
+                    for a in list_allergies()]
+
     return {
         'identity': {
             'name': _s(prof.get('name')),
@@ -51,7 +57,8 @@ def get_health_id() -> dict:
             'height_cm': prof.get('height_cm'),
         },
         'blood_type': _s(e.get('blood_type')),
-        'allergies': _s(e.get('allergies')),
+        'allergies': _s(e.get('allergies')),       # legacy free-text (fallback)
+        'allergy_list': allergy_rows,              # structured, severity-ordered
         'conditions': _s(e.get('conditions')),
         'notes_medications': _s(e.get('medications')),   # free text (e.g. meds not in Arogo)
         'active_medicines': active_medicines,            # live from the tracker

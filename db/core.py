@@ -484,6 +484,11 @@ CREATE TABLE IF NOT EXISTS claims (
     reimbursed REAL DEFAULT 0, notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS allergies (
+    id TEXT PRIMARY KEY, allergen TEXT NOT NULL, reaction TEXT DEFAULT '',
+    severity TEXT DEFAULT 'moderate', date_noted TEXT DEFAULT NULL,
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -845,6 +850,17 @@ def migrate_add_appt_reminder_days():
         pass
 
 
+def migrate_add_allergies():
+    """Create the structured allergies table on existing databases."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS allergies (
+            id TEXT PRIMARY KEY, allergen TEXT NOT NULL, reaction TEXT DEFAULT '',
+            severity TEXT DEFAULT 'moderate', date_noted TEXT DEFAULT NULL,
+            notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1078,6 +1094,7 @@ DATA_TABLES = [
     'lab_rechecks',
     'prescriptions',
     'claims',
+    'allergies',
     'dependents',
     'dependent_records',
 ]
@@ -1132,6 +1149,7 @@ def init_db():
     migrate_add_prescriptions()
     migrate_add_claims()
     migrate_add_appt_reminder_days()
+    migrate_add_allergies()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

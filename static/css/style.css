@@ -316,6 +316,18 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dep-rec-date { font-size:11.5px; color:var(--gray-400); white-space:nowrap; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
+/* Allergy & reactions log */
+.alg-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.alg-card--severe { border-left:3px solid #B4443A; }
+.alg-head { display:flex; align-items:flex-start; gap:10px; }
+.alg-allergen { font-size:15px; font-weight:700; color:var(--gray-800); }
+.alg-meta { font-size:12.5px; color:var(--gray-500); margin-top:2px; }
+.alg-notes { font-size:12.5px; color:var(--gray-400); margin-top:4px; }
+.alg-badge { font-size:11px; font-weight:600; border-radius:99px; padding:2px 9px; }
+.alg-severe { background:#FBECEA; color:#B4443A; }
+.alg-moderate { background:#FBF3E2; color:var(--amber-600,#d08700); }
+.alg-mild { background:var(--gray-50); color:var(--gray-500); }
+
 /* Insurance claims */
 .clm-form { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 .clm-hero-grid { display:flex; gap:14px; flex-wrap:wrap; }

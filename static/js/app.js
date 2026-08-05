@@ -409,6 +409,15 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Allergies': 'एलर्जी', 'What you react to, how badly — these show on your Health ID card': 'आपको किससे और कितनी एलर्जी है — ये आपके हेल्थ ID कार्ड पर दिखती हैं',
+    'Add an allergy': 'एलर्जी जोड़ें', 'Allergen (e.g. Penicillin, Peanuts)': 'एलर्जन (जैसे पेनिसिलिन, मूँगफली)',
+    'Reaction (e.g. rash, swelling)': 'प्रतिक्रिया (जैसे चकत्ते, सूजन)', 'Date noticed (optional)': 'देखी गई तिथि (वैकल्पिक)',
+    'Severe': 'गंभीर', 'Moderate': 'मध्यम', 'Mild': 'हल्की', 'severe': 'गंभीर',
+    'No allergies logged': 'कोई एलर्जी दर्ज नहीं',
+    'Add any drug, food or other allergies so they show on your Health ID card.': 'कोई दवा, भोजन या अन्य एलर्जी जोड़ें ताकि वे आपके हेल्थ ID कार्ड पर दिखें।',
+    'Reaction': 'प्रतिक्रिया', 'noted %1': '%1 को दर्ज',
+    'Edit allergy': 'एलर्जी संपादित करें', 'Allergy added': 'एलर्जी जोड़ी गई', 'Allergy updated': 'एलर्जी अपडेट हुई',
+    'Enter an allergen': 'एक एलर्जन दर्ज करें',
     'Claims': 'दावे', 'Insurance claims': 'बीमा दावे',
     "Track what you've claimed and what's actually been reimbursed": 'आपने क्या दावा किया और वास्तव में कितना वापस मिला, ट्रैक करें',
     'Add a claim': 'दावा जोड़ें', 'Insurer (e.g. Star Health)': 'बीमाकर्ता (जैसे स्टार हेल्थ)',
@@ -2204,6 +2213,7 @@ function switchView(view) {
   if (view === 'care-team')     loadCareTeam();
   if (view === 'prescriptions') loadPrescriptions();
   if (view === 'claims')        loadClaims();
+  if (view === 'allergies')     loadAllergies();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -11582,6 +11592,21 @@ function _hidRow(label, value, cls) {
     <div class="hid-value ${cls || ''}">${escHtml(value)}</div></div>`;
 }
 
+// Allergies on the ID card: prefer the structured list (with severity), fall
+// back to the legacy free-text box.
+function _hidAllergyRow(d) {
+  const list = d.allergy_list || [];
+  if (list.length) {
+    const items = list.map(a => {
+      const sev = a.severity === 'severe' ? ` <b>(${t('severe')})</b>` : '';
+      return `<div>${escHtml(a.allergen)}${sev}${a.reaction ? ` — ${escHtml(a.reaction)}` : ''}</div>`;
+    }).join('');
+    return `<div class="hid-row"><div class="hid-label">${t('Allergies')}</div>
+      <div class="hid-value hid-alert">${items}</div></div>`;
+  }
+  return _hidRow('Allergies', d.allergies, 'hid-alert');
+}
+
 function renderHealthId(d) {
   const id = d.identity || {};
   const sub = [];
@@ -11629,7 +11654,7 @@ function renderHealthId(d) {
       ${(sub.length || bio.length) ? `<div class="hid-sub">${[...sub, ...bio].join(' · ')}</div>` : ''}
       <div class="hid-body">
         ${_hidRow('Blood type', d.blood_type, 'hid-blood')}
-        ${_hidRow('Allergies', d.allergies, 'hid-alert')}
+        ${_hidAllergyRow(d)}
         ${_hidRow('Conditions', d.conditions)}
         ${medsBlock}
         ${contactsBlock}
@@ -12115,6 +12140,109 @@ async function deleteClaim(id) {
   await fetch('/api/claims/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   if (_editingClaim === id) _editingClaim = null;
   loadClaims();
+}
+
+// ── Allergy & reactions log ──────────────────────────────────────────────────
+// One structured row per allergen — what it is, the reaction, severity, when
+// noticed. Severe entries are red-flagged and feed the Health ID card.
+let _editingAllergy = null;
+
+const ALLERGY_SEV = {
+  severe:   {label:'Severe',   cls:'alg-severe'},
+  moderate: {label:'Moderate', cls:'alg-moderate'},
+  mild:     {label:'Mild',     cls:'alg-mild'},
+};
+
+async function loadAllergies() {
+  const el = document.getElementById('allergies-content');
+  if (!el) return;
+  const d = await fetch('/api/allergies', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {allergies:[]}).catch(() => ({allergies:[]}));
+  el.innerHTML = renderAllergies(d.allergies || [], d.severities || ['mild','moderate','severe']);
+}
+
+function renderAllergies(list, severities) {
+  const today = localToday();
+  const sevOpts = severities.map(s => `<option value="${s}">${t(ALLERGY_SEV[s]?.label || s)}</option>`).join('');
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px" id="alg-form-title">${t('Add an allergy')}</h2>
+      <div class="alg-form">
+        <input type="text" id="alg-allergen" class="form-input" placeholder="${t('Allergen (e.g. Penicillin, Peanuts)')}" style="flex:2;min-width:180px">
+        <input type="text" id="alg-reaction" class="form-input" placeholder="${t('Reaction (e.g. rash, swelling)')}" style="flex:2;min-width:180px">
+        <select id="alg-severity" class="form-input" style="max-width:140px">${sevOpts}</select>
+        <input type="date" id="alg-date" class="form-input" max="${today}" title="${t('Date noticed (optional)')}" style="max-width:160px">
+        <button class="btn-primary" data-ev-click="saveAllergy()" id="alg-save-btn">${t('Add')}</button>
+        <button class="btn-outline" data-ev-click="cancelAllergyEdit()" id="alg-cancel-btn" style="display:none">${t('Cancel')}</button>
+      </div>
+    </div>`;
+
+  if (!list.length) {
+    return form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">⚠️</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No allergies logged')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Add any drug, food or other allergies so they show on your Health ID card.')}</div>
+      </div>`;
+  }
+
+  const cards = list.map(a => {
+    const sev = ALLERGY_SEV[a.severity] || {label:a.severity, cls:''};
+    const badge = `<span class="alg-badge ${sev.cls}">${t(sev.label)}</span>`;
+    const meta = [a.reaction && `${t('Reaction')}: ${escHtml(a.reaction)}`,
+                  a.date_noted && tformat('noted %1', _fmtShortDate(a.date_noted))].filter(Boolean).join(' · ');
+    return `<div class="panel alg-card ${a.severity === 'severe' ? 'alg-card--severe' : ''}" style="padding:14px 18px;margin-bottom:10px">
+        <div class="alg-head">
+          <div style="flex:1;min-width:0">
+            <div class="alg-allergen">${escHtml(a.allergen)} ${badge}</div>
+            ${meta ? `<div class="alg-meta">${meta}</div>` : ''}
+            ${a.notes ? `<div class="alg-notes">${escHtml(a.notes)}</div>` : ''}
+          </div>
+          <button class="btn-icon" title="${t('Edit')}" data-ev-click="startAllergyEdit('${a.id}')">✎</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteAllergy('${a.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+  return form + cards;
+}
+
+function _allergyFormBody() {
+  return {
+    allergen: document.getElementById('alg-allergen')?.value?.trim() || '',
+    reaction: document.getElementById('alg-reaction')?.value || '',
+    severity: document.getElementById('alg-severity')?.value || 'moderate',
+    date_noted: document.getElementById('alg-date')?.value || null,
+  };
+}
+
+async function saveAllergy() {
+  const body = _allergyFormBody();
+  if (!body.allergen) { showToast(t('Enter an allergen'), 'error'); return; }
+  const url = _editingAllergy ? '/api/allergies/' + _editingAllergy : '/api/allergies';
+  const r = await fetch(url, {method: _editingAllergy ? 'PATCH' : 'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(_editingAllergy ? t('Allergy updated') : t('Allergy added')); _editingAllergy = null; loadAllergies(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function startAllergyEdit(id) {
+  const d = await fetch('/api/allergies', {credentials:'same-origin'}).then(r => r.json()).catch(() => null);
+  const a = d && d.allergies.find(x => x.id === id);
+  if (!a) return;
+  _editingAllergy = id;
+  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v ?? ''; };
+  set('alg-allergen', a.allergen); set('alg-reaction', a.reaction);
+  set('alg-severity', a.severity); set('alg-date', a.date_noted);
+  const title = document.getElementById('alg-form-title'); if (title) title.textContent = t('Edit allergy');
+  const save = document.getElementById('alg-save-btn'); if (save) save.textContent = t('Save');
+  const cancel = document.getElementById('alg-cancel-btn'); if (cancel) cancel.style.display = '';
+  document.getElementById('alg-allergen')?.scrollIntoView({block:'center'});
+}
+
+function cancelAllergyEdit() { _editingAllergy = null; loadAllergies(); }
+
+async function deleteAllergy(id) {
+  await fetch('/api/allergies/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  if (_editingAllergy === id) _editingAllergy = null;
+  loadAllergies();
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────
