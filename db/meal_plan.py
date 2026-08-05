@@ -92,15 +92,19 @@ def get_grocery(start=None, days=7) -> dict:
     for r in rows:
         key = (r['item'].strip().lower(), (r['unit'] or '').strip().lower())
         a = agg.setdefault(key, {'item': r['item'].strip(), 'unit': (r['unit'] or '').strip(),
-                                 'quantity': 0.0, 'has_qty': False, 'count': 0})
+                                 'quantity': 0.0, 'qty_count': 0, 'count': 0})
         a['count'] += 1
         if r['quantity'] is not None:
             a['quantity'] += r['quantity']
-            a['has_qty'] = True
+            a['qty_count'] += 1
     items = []
     for a in agg.values():
+        has_qty = a['qty_count'] > 0
         items.append({'item': a['item'], 'unit': a['unit'],
-                      'quantity': round(a['quantity'], 2) if a['has_qty'] else None,
-                      'count': a['count']})
+                      'quantity': round(a['quantity'], 2) if has_qty else None,
+                      'count': a['count'],
+                      # occurrences with no quantity that the summed figure doesn't
+                      # cover — so a "Rice 500g" + a bare "Rice" isn't under-bought.
+                      'extra': a['count'] - a['qty_count'] if has_qty else 0})
     items.sort(key=lambda x: x['item'].lower())
     return {'items': items, 'total': len(items)}

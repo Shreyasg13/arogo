@@ -65,11 +65,15 @@ def get_upcoming(days=60) -> dict:
             add(p['valid_until'], du, 'rx_renewal', p.get('prescriber') or '')
 
     # ── Vaccines due ──────────────────────────────────────────────
+    # Use the per-vaccine next_due (not get_record()['due'], which is pre-capped
+    # at 60 days) so the window honours the full `days` like the other sources.
     from .immunizations import get_record
-    for v in get_record().get('due', []):
-        du = v.get('days_until')
-        if du is not None and -OVERDUE_FLOOR <= du <= days:
-            add(v['date'], du, 'vaccine', v['name'])
+    for v in get_record().get('vaccines', []):
+        nd = v.get('next_due')
+        if nd:
+            du = nd.get('days_until')
+            if du is not None and -OVERDUE_FLOOR <= du <= days:
+                add(nd['date'], du, 'vaccine', v['name'])
 
     # ── Future-dated dependent records ────────────────────────────
     from .dependents import list_dependents

@@ -81,6 +81,17 @@ def test_grocery_unquantified_counts(app):
     assert apple["quantity"] is None and apple["count"] == 2
 
 
+def test_grocery_mixed_quantified_surfaces_extra(app):
+    # "Rice 500g" + a bare "Rice" must not hide the second occurrence.
+    _, uid = _uid(app, "meal11@medeasy.test")
+    with user_context(uid):
+        add_planned({"date": _ahead(0), "meal_type": "lunch", "item": "Rice", "quantity": 500, "unit": "g"})
+        add_planned({"date": _ahead(1), "meal_type": "dinner", "item": "rice", "unit": "g"})
+        g = get_grocery(days=7)
+    rice = next(i for i in g["items"] if i["item"].lower() == "rice")
+    assert rice["quantity"] == 500 and rice["count"] == 2 and rice["extra"] == 1
+
+
 def test_window_excludes_outside(app):
     _, uid = _uid(app, "meal6@medeasy.test")
     with user_context(uid):

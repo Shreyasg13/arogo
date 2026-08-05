@@ -415,7 +415,7 @@ const I18N = {
     'Grocery list': 'किराना सूची', 'Hide grocery list': 'किराना सूची छिपाएँ',
     'Nothing planned': 'कुछ योजनाबद्ध नहीं', 'Enter a food': 'एक भोजन दर्ज करें', 'Remove': 'हटाएँ',
     'Plan some meals and your grocery list builds itself.': 'कुछ भोजन की योजना बनाएँ और आपकी किराना सूची अपने आप बन जाएगी।',
-    'Grocery list · %1 items': 'किराना सूची · %1 वस्तुएँ',
+    'Grocery list · %1 items': 'किराना सूची · %1 वस्तुएँ', '+%1 more': '+%1 और', '%1 days before': '%1 दिन पहले',
     'Upcoming': 'आगामी',
     'Everything coming up — appointments, rechecks, renewals and vaccines, for you and your family': 'आने वाला सब कुछ — अपॉइंटमेंट, दोबारा जाँच, नवीनीकरण और टीके, आपके और परिवार के लिए',
     'Nothing coming up': 'कुछ आगामी नहीं',
@@ -8854,7 +8854,17 @@ function editAppointment(id) {
   set('title', a.title); set('date', a.date); set('kind', a.kind);
   set('time', a.time); set('location', a.location); set('notes', a.notes);
   const rem = document.getElementById('appt-remind'); if (rem) rem.checked = !!a.remind;
-  const rd = document.getElementById('appt-remind-days'); if (rd) rd.value = String(a.reminder_days ?? 1);
+  const rd = document.getElementById('appt-remind-days');
+  if (rd) {
+    const v = String(a.reminder_days ?? 1);
+    // The stored value may be a non-preset (the API accepts 0–30); add it as an
+    // option so editing doesn't silently reset the lead to 0 on save.
+    if (![...rd.options].some(o => o.value === v)) {
+      const opt = new Option(tformat('%1 days before', v), v);
+      rd.add(opt);
+    }
+    rd.value = v;
+  }
   onApptRemindToggle();
   const btn = document.getElementById('appt-submit-btn'); if (btn) btn.textContent = t('Save changes');
   const cancel = document.getElementById('appt-cancel-btn'); if (cancel) cancel.style.display = 'inline-flex';
@@ -11662,8 +11672,8 @@ function renderHealthId(d) {
   const ins = d.insurance || {};
   const insVal = [ins.provider, ins.number].filter(Boolean).join(' · ');
 
-  const anyData = id.name || d.blood_type || d.allergies || d.conditions ||
-    (d.active_medicines || []).length || contacts || insVal;
+  const anyData = id.name || d.blood_type || d.allergies || (d.allergy_list || []).length ||
+    d.conditions || (d.active_medicines || []).length || contacts || insVal;
 
   const card = `
     <div id="health-id-card" class="hid-card">
@@ -12403,7 +12413,7 @@ function renderMealPlan(d) {
       const items = day.meals[k] || [];
       if (!items.length) return '';
       const rows = items.map(i => {
-        const qty = i.quantity != null ? ` · ${i.quantity}${i.unit || ''}` : '';
+        const qty = i.quantity != null ? ` · ${i.quantity}${escHtml(String(i.unit || ''))}` : '';
         return `<div class="mp-item"><span>${escHtml(i.item)}${qty}</span>
           <button class="btn-icon" title="${t('Remove')}" data-ev-click="deleteMealItem('${i.id}')" style="color:var(--gray-300);font-size:12px">✕</button></div>`;
       }).join('');
@@ -12456,7 +12466,9 @@ async function loadGrocery() {
     return;
   }
   const rows = d.items.map(i => {
-    const qty = i.quantity != null ? `${i.quantity}${i.unit || ''}` : (i.count > 1 ? `×${i.count}` : '');
+    const unit = escHtml(String(i.unit || ''));
+    let qty = i.quantity != null ? `${i.quantity}${unit}` : (i.count > 1 ? `×${i.count}` : '');
+    if (i.extra > 0) qty += ` ${tformat('+%1 more', i.extra)}`;    // unquantified extras
     return `<div class="mp-grocery-row"><span>${escHtml(i.item)}</span><span class="mp-grocery-qty">${qty}</span></div>`;
   }).join('');
   box.innerHTML = `<div class="mp-grocery-head">🛒 ${tformat('Grocery list · %1 items', d.total)}</div>${rows}`;
