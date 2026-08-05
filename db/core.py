@@ -470,6 +470,12 @@ CREATE TABLE IF NOT EXISTS lab_rechecks (
     id TEXT PRIMARY KEY, lab_key TEXT NOT NULL, interval_days INTEGER DEFAULT 180,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS prescriptions (
+    id TEXT PRIMARY KEY, prescriber TEXT DEFAULT '', date_issued TEXT NOT NULL,
+    valid_until TEXT DEFAULT NULL, refills_left INTEGER DEFAULT NULL,
+    medicine_ids TEXT DEFAULT '[]', notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -811,6 +817,18 @@ def migrate_add_lab_rechecks():
         pass
 
 
+def migrate_add_prescriptions():
+    """Create the prescription library table on existing databases."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS prescriptions (
+            id TEXT PRIMARY KEY, prescriber TEXT DEFAULT '', date_issued TEXT NOT NULL,
+            valid_until TEXT DEFAULT NULL, refills_left INTEGER DEFAULT NULL,
+            medicine_ids TEXT DEFAULT '[]', notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_med_cost():
     """Add the per-medicine monthly-cost column."""
     try:
@@ -1030,6 +1048,7 @@ DATA_TABLES = [
     'care_plan_items',
     'providers',
     'lab_rechecks',
+    'prescriptions',
     'dependents',
     'dependent_records',
 ]
@@ -1081,6 +1100,7 @@ def init_db():
     migrate_add_default_snooze()
     migrate_add_care_team()
     migrate_add_lab_rechecks()
+    migrate_add_prescriptions()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

@@ -58,6 +58,7 @@ def create_app(config=Config):
     from routes.health_id import bp as health_id_bp
     from routes.care_plan  import bp as care_plan_bp
     from routes.providers  import bp as providers_bp
+    from routes.prescriptions import bp as prescriptions_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -77,6 +78,7 @@ def create_app(config=Config):
     app.register_blueprint(health_id_bp)
     app.register_blueprint(care_plan_bp)
     app.register_blueprint(providers_bp)
+    app.register_blueprint(prescriptions_bp)
 
     @app.before_request
     def _reject_non_object_json():

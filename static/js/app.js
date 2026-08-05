@@ -407,6 +407,16 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Prescriptions': 'नुस्खे', 'Who prescribed what, when it expires, and how many refills are left': 'किसने क्या लिखा, कब समाप्त होता है, और कितने रिफिल बचे हैं',
+    'Add a prescription': 'नुस्खा जोड़ें', 'Prescriber (e.g. Dr Nair)': 'लिखने वाले (जैसे डॉ नायर)',
+    'Issued': 'जारी', 'Valid until': 'तक मान्य', 'Refills left': 'रिफिल शेष', 'Covers': 'शामिल दवाइयाँ',
+    'Add medicines first to link them to a prescription.': 'नुस्खे से जोड़ने के लिए पहले दवाइयाँ जोड़ें।',
+    'No prescriptions yet': 'अभी कोई नुस्खा नहीं', 'Log a prescription to track its refills and renewal date.': 'रिफिल और नवीनीकरण तिथि ट्रैक करने के लिए एक नुस्खा दर्ज करें।',
+    'Prescription': 'नुस्खा', 'Expired': 'समाप्त', 'Renew soon': 'जल्द नवीनीकरण', 'Valid': 'मान्य',
+    'expired %1 days ago': '%1 दिन पहले समाप्त', 'expires in %1 days': '%1 दिन में समाप्त', 'valid to %1': '%1 तक मान्य',
+    '%1 refills left': '%1 रिफिल शेष', 'issued %1': '%1 को जारी',
+    'Add a prescriber or a medicine': 'लिखने वाले या एक दवा जोड़ें', 'Edit prescription': 'नुस्खा संपादित करें',
+    'Prescription added': 'नुस्खा जोड़ा गया', 'Prescription updated': 'नुस्खा अपडेट हुआ',
     'Due for a recheck': 'दोबारा जाँच का समय', 'due now': 'अभी देय',
     'due in %1 days': '%1 दिन में देय', 'typically every %1 months': 'आमतौर पर हर %1 महीने',
     'Suggested intervals are typical guidance, not a doctor’s order.': 'सुझाए गए अंतराल सामान्य मार्गदर्शन हैं, डॉक्टर का आदेश नहीं।',
@@ -2179,6 +2189,7 @@ function switchView(view) {
   if (view === 'health-id')     loadHealthId();
   if (view === 'care-plan')     loadCarePlan();
   if (view === 'care-team')     loadCareTeam();
+  if (view === 'prescriptions') loadPrescriptions();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -11829,6 +11840,134 @@ async function deleteProvider(id) {
   await fetch('/api/providers/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   if (_editingProvider === id) _editingProvider = null;
   loadCareTeam();
+}
+
+// ── Prescription library ─────────────────────────────────────────────────────
+// The paperwork behind the medicines: prescriber, date, validity, refills left,
+// and which medicines each Rx covers. A renewal nudge is derived from the expiry
+// date — a reminder to renew, never a clinical instruction.
+let _editingRx = null;
+let _rxLibMeds = [];
+
+async function loadPrescriptions() {
+  const el = document.getElementById('prescriptions-content');
+  if (!el) return;
+  const [d, meds] = await Promise.all([
+    fetch('/api/prescriptions', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {prescriptions:[]}).catch(() => ({prescriptions:[]})),
+    fetch('/api/medicines', {credentials:'same-origin'}).then(r => r.ok ? r.json() : []).catch(() => []),
+  ]);
+  _rxLibMeds = (meds || []).filter(m => m.active);
+  el.innerHTML = renderPrescriptions(d.prescriptions || []);
+}
+
+const RX_STATUS = {
+  expired:  {cls:'rx-expired',  label:'Expired'},
+  expiring: {cls:'rx-expiring', label:'Renew soon'},
+  valid:    {cls:'rx-valid',    label:'Valid'},
+};
+
+function renderPrescriptions(list) {
+  const today = localToday();
+  const medChecks = _rxLibMeds.length
+    ? `<div class="rx-med-picker">${_rxLibMeds.map(m => `<label class="rx-med-chk">
+         <input type="checkbox" value="${m.id}" class="rx-med-cb"> ${m.icon || '💊'} ${escHtml(m.name)}</label>`).join('')}</div>`
+    : `<div class="rx-note">${t('Add medicines first to link them to a prescription.')}</div>`;
+
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px" id="rx-form-title">${t('Add a prescription')}</h2>
+      <div class="rx-form">
+        <input type="text" id="rx-prescriber" class="form-input" placeholder="${t('Prescriber (e.g. Dr Nair)')}" style="flex:2;min-width:170px">
+        <label class="rx-field"><span>${t('Issued')}</span><input type="date" id="rx-issued" class="form-input" value="${today}" max="${today}"></label>
+        <label class="rx-field"><span>${t('Valid until')}</span><input type="date" id="rx-valid" class="form-input"></label>
+        <label class="rx-field"><span>${t('Refills left')}</span><input type="number" id="rx-refills" class="form-input" min="0" max="99" style="max-width:80px"></label>
+      </div>
+      <div class="rx-med-label">${t('Covers')}</div>
+      ${medChecks}
+      <div style="margin-top:12px">
+        <button class="btn-primary" data-ev-click="saveRx()" id="rx-save-btn">${t('Add')}</button>
+        <button class="btn-outline" data-ev-click="cancelRxEdit()" id="rx-cancel-btn" style="display:none">${t('Cancel')}</button>
+      </div>
+    </div>`;
+
+  if (!list.length) {
+    return form + `<div class="panel" style="padding:28px;text-align:center">
+        <div style="font-size:30px;margin-bottom:8px">📄</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t('No prescriptions yet')}</div>
+        <div style="font-size:13px;color:var(--gray-400)">${t('Log a prescription to track its refills and renewal date.')}</div>
+      </div>`;
+  }
+
+  const cards = list.map(p => {
+    const badge = p.status ? `<span class="rx-badge ${RX_STATUS[p.status].cls}">${t(RX_STATUS[p.status].label)}</span>` : '';
+    let expiry = '';
+    if (p.valid_until) {
+      const d = p.days_until_expiry;
+      expiry = p.status === 'expired' ? `<span class="rx-expiry-txt rx-expired">${tformat('expired %1 days ago', -d)}</span>`
+             : p.status === 'expiring' ? `<span class="rx-expiry-txt rx-expiring">${tformat('expires in %1 days', d)}</span>`
+             : `<span class="rx-expiry-txt">${tformat('valid to %1', _fmtShortDate(p.valid_until))}</span>`;
+    }
+    const refill = p.refills_left != null
+      ? `<span class="rx-refill${p.refills_left === 0 ? ' rx-refill-0' : ''}">${tformat('%1 refills left', p.refills_left)}</span>` : '';
+    const meds = (p.medicines || []).map(m => `<span class="rx-med-chip">${m.icon || '💊'} ${escHtml(m.name)}</span>`).join('');
+    return `<div class="panel rx-card" style="padding:15px 18px;margin-bottom:12px">
+        <div class="rx-card-head">
+          <div style="flex:1;min-width:0">
+            <div class="rx-prescriber">${escHtml(p.prescriber || t('Prescription'))} ${badge}</div>
+            <div class="rx-meta">${tformat('issued %1', _fmtShortDate(p.date_issued))}${expiry ? ' · ' : ''}${expiry}${refill ? ' · ' + refill : ''}</div>
+          </div>
+          <button class="btn-icon" title="${t('Edit')}" data-ev-click="startRxEdit('${p.id}')">✎</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteRx('${p.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+        ${meds ? `<div class="rx-meds">${meds}</div>` : ''}
+        ${p.notes ? `<div class="rx-notes">${escHtml(p.notes)}</div>` : ''}
+      </div>`;
+  }).join('');
+  return form + cards;
+}
+
+function _rxFormBody() {
+  const checked = [...document.querySelectorAll('.rx-med-cb:checked')].map(c => c.value);
+  return {
+    prescriber: document.getElementById('rx-prescriber')?.value?.trim() || '',
+    date_issued: document.getElementById('rx-issued')?.value || '',
+    valid_until: document.getElementById('rx-valid')?.value || null,
+    refills_left: document.getElementById('rx-refills')?.value || null,
+    medicine_ids: checked,
+  };
+}
+
+async function saveRx() {
+  const body = _rxFormBody();
+  if (!body.prescriber && !body.medicine_ids.length) { showToast(t('Add a prescriber or a medicine'), 'error'); return; }
+  const url = _editingRx ? '/api/prescriptions/' + _editingRx : '/api/prescriptions';
+  const r = await fetch(url, {method: _editingRx ? 'PATCH' : 'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(_editingRx ? t('Prescription updated') : t('Prescription added')); _editingRx = null; loadPrescriptions(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function startRxEdit(id) {
+  const d = await fetch('/api/prescriptions', {credentials:'same-origin'}).then(r => r.json()).catch(() => null);
+  const p = d && d.prescriptions.find(x => x.id === id);
+  if (!p) return;
+  _editingRx = id;
+  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v || ''; };
+  set('rx-prescriber', p.prescriber); set('rx-issued', p.date_issued);
+  set('rx-valid', p.valid_until); set('rx-refills', p.refills_left);
+  const ids = new Set(p.medicine_ids || []);
+  document.querySelectorAll('.rx-med-cb').forEach(cb => { cb.checked = ids.has(cb.value); });
+  const title = document.getElementById('rx-form-title'); if (title) title.textContent = t('Edit prescription');
+  const save = document.getElementById('rx-save-btn'); if (save) save.textContent = t('Save');
+  const cancel = document.getElementById('rx-cancel-btn'); if (cancel) cancel.style.display = '';
+  document.getElementById('rx-prescriber')?.scrollIntoView({block:'center'});
+}
+
+function cancelRxEdit() { _editingRx = null; loadPrescriptions(); }
+
+async function deleteRx(id) {
+  await fetch('/api/prescriptions/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  if (_editingRx === id) _editingRx = null;
+  loadPrescriptions();
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────
