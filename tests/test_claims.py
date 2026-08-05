@@ -74,6 +74,14 @@ def test_summary_awaiting_excludes_terminal(app):
     assert s["awaiting"] == 5000 and s["pending_count"] == 1
 
 
+def test_update_rejects_zero_amount(app):
+    _, uid = _uid(app, "clm10@medeasy.test")
+    with user_context(uid):
+        c = create_claim({"insurer": "X", "amount": 5000})
+        upd = update_claim(c["id"], {"amount": 0})     # invalid → keeps old amount
+    assert upd["amount"] == 5000
+
+
 def test_negative_reimbursed_floored(app):
     _, uid = _uid(app, "clm6@medeasy.test")
     with user_context(uid):

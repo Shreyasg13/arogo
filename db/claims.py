@@ -58,7 +58,12 @@ def update_claim(cid, data) -> dict:
         raise ValueError('Claim not found')
     row = dict(row)
     insurer = _s(data.get('insurer', row['insurer']), 120) or row['insurer']
-    amount = _num(data.get('amount', row['amount']), row['amount']) if 'amount' in data else row['amount']
+    if 'amount' in data:
+        amount = _num(data.get('amount'), row['amount'])
+        if amount <= 0:                     # a claim of 0 is invalid — keep the old amount
+            amount = row['amount']
+    else:
+        amount = row['amount']
     date_submitted = data.get('date_submitted', row['date_submitted'])
     if not valid_date(date_submitted):
         date_submitted = row['date_submitted']

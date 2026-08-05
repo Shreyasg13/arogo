@@ -79,6 +79,8 @@ def update_prescription(pid, data) -> dict:
     else:
         refills = row['refills_left']
     med_ids = _clean_med_ids(data['medicine_ids']) if 'medicine_ids' in data else jload(row['medicine_ids'], [])
+    if not prescriber and not med_ids:
+        raise ValueError('Add a prescriber or link at least one medicine')
     execute("""UPDATE prescriptions SET prescriber=?, date_issued=?, valid_until=?, refills_left=?,
                  medicine_ids=?, notes=? WHERE id=? AND user_id=?""",
             (prescriber, date_issued, valid_until, refills, jdump(med_ids),

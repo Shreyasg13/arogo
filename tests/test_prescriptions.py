@@ -101,6 +101,14 @@ def test_update_and_delete(app):
         assert list_prescriptions()["prescriptions"] == []
 
 
+def test_update_reenforces_prescriber_or_medicine(app):
+    _, uid = _uid(app, "rx10@medeasy.test")
+    with user_context(uid):
+        p = create_prescription({"prescriber": "Dr X"})
+        with pytest.raises(ValueError):           # can't empty it out via update
+            update_prescription(p["id"], {"prescriber": "", "medicine_ids": []})
+
+
 def test_isolation(app):
     c_a, uid_a = _uid(app, "rx7@medeasy.test")
     _, uid_b = _uid(app, "rx8@medeasy.test")

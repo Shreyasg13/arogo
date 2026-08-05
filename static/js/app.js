@@ -429,7 +429,7 @@ const I18N = {
     'Add a prescriber or a medicine': 'लिखने वाले या एक दवा जोड़ें', 'Edit prescription': 'नुस्खा संपादित करें',
     'Prescription added': 'नुस्खा जोड़ा गया', 'Prescription updated': 'नुस्खा अपडेट हुआ',
     'Due for a recheck': 'दोबारा जाँच का समय', 'due now': 'अभी देय',
-    'due in %1 days': '%1 दिन में देय', 'typically every %1 months': 'आमतौर पर हर %1 महीने',
+    'due in %1 days': '%1 दिन में देय', 'typically every %1 months': 'आमतौर पर हर %1 महीने', 'typically every %1 days': 'आमतौर पर हर %1 दिन',
     'Suggested intervals are typical guidance, not a doctor’s order.': 'सुझाए गए अंतराल सामान्य मार्गदर्शन हैं, डॉक्टर का आदेश नहीं।',
     'Recheck reminder on': 'दोबारा जाँच अनुस्मारक चालू', 'Recheck reminder on — tap to turn off': 'अनुस्मारक चालू — बंद करने के लिए टैप करें',
     'Remind me to recheck this': 'इसे दोबारा जाँचने की याद दिलाएँ',
@@ -11882,7 +11882,7 @@ function renderPrescriptions(list) {
   const today = localToday();
   const medChecks = _rxLibMeds.length
     ? `<div class="rx-med-picker">${_rxLibMeds.map(m => `<label class="rx-med-chk">
-         <input type="checkbox" value="${m.id}" class="rx-med-cb"> ${m.icon || '💊'} ${escHtml(m.name)}</label>`).join('')}</div>`
+         <input type="checkbox" value="${m.id}" class="rx-med-cb"> ${escHtml(m.icon || '💊')} ${escHtml(m.name)}</label>`).join('')}</div>`
     : `<div class="rx-note">${t('Add medicines first to link them to a prescription.')}</div>`;
 
   const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
@@ -11920,7 +11920,7 @@ function renderPrescriptions(list) {
     }
     const refill = p.refills_left != null
       ? `<span class="rx-refill${p.refills_left === 0 ? ' rx-refill-0' : ''}">${tformat('%1 refills left', p.refills_left)}</span>` : '';
-    const meds = (p.medicines || []).map(m => `<span class="rx-med-chip">${m.icon || '💊'} ${escHtml(m.name)}</span>`).join('');
+    const meds = (p.medicines || []).map(m => `<span class="rx-med-chip">${escHtml(m.icon || '💊')} ${escHtml(m.name)}</span>`).join('');
     return `<div class="panel rx-card" style="padding:15px 18px;margin-bottom:12px">
         <div class="rx-card-head">
           <div style="flex:1;min-width:0">
@@ -11963,7 +11963,8 @@ async function startRxEdit(id) {
   const p = d && d.prescriptions.find(x => x.id === id);
   if (!p) return;
   _editingRx = id;
-  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v || ''; };
+  // v ?? '' (not || '') so a real 0 (e.g. "0 refills left") survives editing.
+  const set = (i, v) => { const el = document.getElementById(i); if (el) el.value = v ?? ''; };
   set('rx-prescriber', p.prescriber); set('rx-issued', p.date_issued);
   set('rx-valid', p.valid_until); set('rx-refills', p.refills_left);
   const ids = new Set(p.medicine_ids || []);
@@ -12739,10 +12740,13 @@ function renderRecheckBanner(rechecks) {
     const when = r.status === 'due'
       ? (r.days_until === 0 ? t('due now') : tformat('%1 days overdue', -r.days_until))
       : tformat('due in %1 days', r.days_until);
+    const iv = r.interval_days < 30
+      ? tformat('typically every %1 days', r.interval_days)
+      : tformat('typically every %1 months', Math.max(1, Math.round(r.interval_days / 30)));
     return `<div class="lrc-item ${cls}">
         <span class="lrc-name">🧪 ${escHtml(r.name)}</span>
         <span class="lrc-when">${when}</span>
-        <span class="lrc-typical">${tformat('typically every %1 months', Math.round(r.interval_days / 30))}</span>
+        <span class="lrc-typical">${iv}</span>
       </div>`;
   }).join('');
   return `<div class="panel lrc-panel" style="padding:14px 18px;margin-bottom:16px">
