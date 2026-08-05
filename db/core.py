@@ -925,6 +925,18 @@ def migrate_add_sleep_goal():
         pass
 
 
+def migrate_add_workout_sets():
+    """Create the strength-training set log (exercise/reps/weight per set)."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS workout_sets (
+            id TEXT PRIMARY KEY, exercise TEXT NOT NULL, exercise_key TEXT NOT NULL,
+            date_key TEXT NOT NULL, reps INTEGER NOT NULL, weight REAL DEFAULT 0,
+            unit TEXT DEFAULT 'kg', notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1164,6 +1176,7 @@ DATA_TABLES = [
     'vital_targets',
     'dependents',
     'dependent_records',
+    'workout_sets',
 ]
 
 
@@ -1222,6 +1235,7 @@ def init_db():
     migrate_add_vital_targets()
     migrate_add_vital_context()
     migrate_add_sleep_goal()
+    migrate_add_workout_sets()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

@@ -4979,6 +4979,25 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .sleep-target-label { font-size: 13px; font-weight: 600; color: var(--gray-600, #475569); }
 .btn-sm { padding: 6px 14px; font-size: 13px; }
 
+/* Strength training log */
+@media (max-width: 720px) { .strength-grid { grid-template-columns: 1fr !important; } }
+.wk-unit-toggle { display: inline-flex; border: 1px solid var(--border, #E2E8F0); border-radius: 8px; overflow: hidden; }
+.wk-unit { padding: 9px 12px; font-size: 13px; background: var(--surface, #fff); border: none; cursor: pointer; color: var(--gray-500, #64748B); font-weight: 600; }
+.wk-unit.selected { background: var(--teal-600, #0D9488); color: #fff; }
+.wk-session-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.wk-name-link { background: none; border: none; padding: 0; font-size: 15px; font-weight: 700; color: var(--teal-700, #0F766E); cursor: pointer; font-family: inherit; }
+.wk-name-link:hover { text-decoration: underline; }
+.wk-session-date { font-size: 12px; color: var(--gray-400, #94A3B8); }
+.wk-session-sets { font-size: 14px; color: var(--gray-700, #334155); margin-bottom: 4px; }
+.wk-session-meta { font-size: 12px; color: var(--gray-500, #64748B); }
+.wk-1rm { color: var(--teal-600, #0D9488); font-weight: 600; margin-left: 4px; }
+.wk-prog-card { background: var(--surface-2, #F8FAFC); border: 1px solid var(--border, #E2E8F0); border-radius: 12px; padding: 12px 14px; }
+.wk-prog-head { font-size: 14px; font-weight: 700; color: var(--gray-800, #1E293B); }
+.wk-prog-pb { font-size: 12px; color: var(--gray-500, #64748B); margin: 2px 0 8px; }
+.wk-spark { display: flex; align-items: flex-end; gap: 3px; height: 62px; }
+.wk-spark-bar { flex: 1; min-width: 5px; background: var(--teal-500, #14B8A6); border-radius: 3px 3px 0 0; }
+.wk-prog-delta { font-size: 12px; color: var(--gray-500, #64748B); margin-top: 8px; }
+
 /* ════════════════════════════════════════
    TREND TOGGLE — underline tab style
    ════════════════════════════════════════ */

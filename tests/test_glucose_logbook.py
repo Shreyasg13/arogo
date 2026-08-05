@@ -102,3 +102,16 @@ def test_api_round_trip(app):
     book = c.get("/api/glucose/logbook").get_json()
     assert book["has_data"] is True
     assert book["readings"][0]["context"] == "pre_meal"
+
+
+def test_bad_date_key_falls_back_to_today(app):
+    # A garbage date_key (e.g. injected markup) must not be stored — it would
+    # orphan the reading on a non-navigable day and reach a render sink. Files
+    # under today instead, like log_sleep/log_body_metric already do.
+    from db.health import log_vital
+    from db.core import today_iso
+    _, uid = _uid(app, "gl10@medeasy.test")
+    with user_context(uid):
+        v = log_vital({"type": "blood_sugar", "value1": 100,
+                       "date_key": "<img src=x onerror=alert(1)>"})
+        assert v["date_key"] == today_iso()

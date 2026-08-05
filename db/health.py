@@ -5,7 +5,7 @@ All queries are scoped to the authenticated user via current_user_id().
 """
 import math
 
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int, valid_date
 
 
 def list_habits() -> list:
@@ -252,10 +252,17 @@ def log_vital(data: dict) -> dict:
     if vtype == 'blood_sugar':
         c = str(data.get('context', '') or '').strip().lower()
         context = c if c in GLUCOSE_CONTEXTS else ''
+    # Validate the date, like log_sleep/log_body_metric do: an unchecked date_key
+    # both orphans the reading on a non-navigable day AND (before escaping was
+    # added downstream) let arbitrary text reach a render sink. Bad input files
+    # under today rather than being trusted.
+    date_key = data.get('date_key') or today_iso()
+    if not valid_date(date_key):
+        date_key = today_iso()
     vid = new_id()
     execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,notes,context,logged_at,user_id)
                VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (vid, data.get('date_key', today_iso()), vtype,
+            (vid, date_key, vtype,
              value1, value2,
              data.get('unit',''), data.get('notes',''), context, now_iso(),
              current_user_id()), commit=True)

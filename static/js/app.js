@@ -429,6 +429,12 @@ const I18N = {
     '%1 short of %2h over %3 night(s)': '%3 रात(ों) में %2घं से %1 कम', 'across %1 night(s)': '%1 रात(ों) में',
     'usually ~%1 · %2': 'आमतौर पर ~%1 · %2', 'Sleep goal saved 😴': 'नींद लक्ष्य सहेजा गया 😴',
     'Sleep goal cleared': 'नींद लक्ष्य हटाया गया', 'Could not save': 'सहेजा नहीं जा सका',
+    'Strength': 'शक्ति', 'Strength log': 'शक्ति लॉग', 'Log your sets and watch the weights climb over time': 'अपने सेट लॉग करें और समय के साथ वज़न बढ़ते देखें',
+    'Log a set': 'एक सेट लॉग करें', 'Exercise': 'व्यायाम', 'e.g. Bench Press': 'जैसे बेंच प्रेस', 'Reps': 'दोहराव',
+    'Weight': 'वज़न', 'Add set': 'सेट जोड़ें', 'Set logged 💪': 'सेट लॉग हुआ 💪', 'Enter an exercise': 'एक व्यायाम दर्ज करें',
+    'Enter reps': 'दोहराव दर्ज करें', 'BW': 'शारीरिक', 'est. 1RM': 'अनु. 1RM', 'no change': 'कोई बदलाव नहीं', 'Best': 'सर्वश्रेष्ठ',
+    'No sets logged yet. Log your first set to start tracking progress.': 'अभी तक कोई सेट लॉग नहीं। प्रगति ट्रैक करने के लिए अपना पहला सेट लॉग करें।',
+    'volume %1%2': 'आयतन %1%2', 'top %1%2': 'शीर्ष %1%2', 'over %1 session(s)': '%1 सत्र में',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
     'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
@@ -2268,6 +2274,7 @@ function switchView(view) {
   if (view === 'upcoming')      loadUpcoming();
   if (view === 'meal-plan')     loadMealPlan();
   if (view === 'taper')         loadTaper();
+  if (view === 'strength')      loadStrength();
   if (view === 'med-budget')    loadMedBudget();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
@@ -9264,7 +9271,7 @@ async function loadGlucoseLogbook() {
     return `<div class="gl-row">
       <span class="gl-row-val" style="color:${col}">${r.value}</span>
       <span class="gl-row-ctx">${t(GLUCOSE_CTX_LABEL[r.context] || r.context)}</span>
-      <span class="gl-row-date">${r.date_key}</span>
+      <span class="gl-row-date">${escHtml(r.date_key)}</span>
     </div>`;
   }).join('');
   el.innerHTML = `<div class="panel" style="margin-top:12px">
@@ -9332,8 +9339,8 @@ async function loadVitals() {
     return `<div class="vital-row">
       <div class="vital-type-icon">${cfg.icon}</div>
       <div class="vital-info">
-        <div class="vital-reading">${display} <span style="font-size:12px;color:var(--gray-400)">${v.unit}</span></div>
-        <div class="vital-meta">${v.date_key} ${v.notes ? '· '+escHtml(v.notes) : ''}</div>
+        <div class="vital-reading">${display} <span style="font-size:12px;color:var(--gray-400)">${escHtml(v.unit)}</span></div>
+        <div class="vital-meta">${escHtml(v.date_key)} ${v.notes ? '· '+escHtml(v.notes) : ''}</div>
       </div>
       ${flagStr ? `<span class="vital-flag ${flagStr}">${t(flagStr.charAt(0).toUpperCase()+flagStr.slice(1))}</span>` : ''}
       <button class="todo-act-btn del" data-ev-click="delVital('${v.id}')">
@@ -12726,6 +12733,135 @@ function renderMedBudget(d) {
     runouts = `<div class="panel" style="padding:16px 20px"><h2 class="panel-title" style="margin-bottom:10px">${t('Runs out')}</h2>${rows}</div>`;
   }
   return cost + runouts;
+}
+
+// ── Strength training log ────────────────────────────────────────────────────
+// One row per set. Sessions group same-day sets of the same lift. Estimated 1RM
+// (Epley) is always labelled "est." — it's a model, not a number you lifted.
+let _strengthUnit = 'kg';
+
+async function loadStrength() {
+  const el = document.getElementById('strength-content');
+  if (!el) return;
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:340px 1fr;gap:18px;align-items:start" class="strength-grid">
+      <div class="panel" style="padding:16px 18px 18px">
+        <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">${t('Log a set')}</h2></div>
+        <div class="form-group" style="margin-bottom:8px">
+          <label class="form-label">${t('Exercise')}</label>
+          <input type="text" class="form-input" id="wk-exercise" list="wk-exercise-list" placeholder="${t('e.g. Bench Press')}" autocomplete="off">
+          <datalist id="wk-exercise-list"></datalist>
+        </div>
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:10px">
+          <div class="form-group"><label class="form-label">${t('Reps')}</label>
+            <input type="number" class="form-input" id="wk-reps" min="1" max="1000" placeholder="8"></div>
+          <div class="form-group"><label class="form-label">${t('Weight')}</label>
+            <input type="number" class="form-input" id="wk-weight" min="0" step="0.5" placeholder="60"></div>
+          <div class="form-group"><label class="form-label">&nbsp;</label>
+            <div class="wk-unit-toggle" id="wk-unit-toggle">
+              <button type="button" class="wk-unit selected" data-unit="kg" data-ev-click="setStrengthUnit('kg')">kg</button>
+              <button type="button" class="wk-unit" data-unit="lb" data-ev-click="setStrengthUnit('lb')">lb</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary" style="width:100%" data-ev-click="addWorkoutSet()">${t('Add set')}</button>
+        <div id="wk-progression" style="margin-top:16px"></div>
+      </div>
+      <div>
+        <div id="wk-sessions"></div>
+      </div>
+    </div>`;
+  loadWorkoutExercises();
+  loadWorkoutSessions();
+}
+
+function setStrengthUnit(u) {
+  _strengthUnit = (u === 'lb') ? 'lb' : 'kg';
+  document.querySelectorAll('#wk-unit-toggle .wk-unit').forEach(b => b.classList.toggle('selected', b.dataset.unit === _strengthUnit));
+}
+
+async function loadWorkoutExercises() {
+  const d = await fetch('/api/workouts/exercises').then(r => r.json()).catch(() => null);
+  const dl = document.getElementById('wk-exercise-list');
+  if (dl && d && d.exercises) dl.innerHTML = d.exercises.map(e => `<option value="${escHtml(e)}">`).join('');
+}
+
+async function addWorkoutSet() {
+  const exercise = (document.getElementById('wk-exercise')?.value || '').trim();
+  const reps = parseInt(document.getElementById('wk-reps')?.value, 10);
+  const weight = parseFloat(document.getElementById('wk-weight')?.value) || 0;
+  if (!exercise) { showToast(t('Enter an exercise'), 'error'); return; }
+  if (!reps || reps < 1) { showToast(t('Enter reps'), 'error'); return; }
+  const r = await fetch('/api/workouts', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ exercise, reps, weight, unit:_strengthUnit, date_key: localToday() })
+  }).then(r => r.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(t('Set logged 💪'));
+    document.getElementById('wk-reps').value = '';
+    document.getElementById('wk-weight').value = '';
+    loadWorkoutSessions();
+    loadWorkoutExercises();
+    loadWorkoutProgression(exercise);
+  } else {
+    showToast((r && r.error) || t('Could not save'), 'error');
+  }
+}
+
+async function loadWorkoutSessions() {
+  const el = document.getElementById('wk-sessions');
+  if (!el) return;
+  const d = await fetch('/api/workouts?days=90').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) {
+    el.innerHTML = `<div class="panel" style="padding:28px;text-align:center;color:var(--gray-400);font-size:13px">${t('No sets logged yet. Log your first set to start tracking progress.')}</div>`;
+    return;
+  }
+  el.innerHTML = d.sessions.map(s => {
+    const setStr = s.sets.map(st => `${st.reps}×${st.weight || t('BW')}`).join(' · ');
+    const dateStr = new Date(s.date_key + 'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+    const oneRm = s.best_1rm > 0 ? `<span class="wk-1rm">${t('est. 1RM')} ${s.best_1rm}${s.unit}</span>` : '';
+    return `<div class="panel wk-session" style="padding:14px 18px;margin-bottom:10px">
+      <div class="wk-session-head">
+        <button class="wk-name-link" data-exercise="${escHtml(s.exercise)}" data-ev-click="progFromEl()">${escHtml(s.exercise)}</button>
+        <span class="wk-session-date">${dateStr}</span>
+      </div>
+      <div class="wk-session-sets">${escHtml(setStr)}</div>
+      <div class="wk-session-meta">${tformat('volume %1%2', Math.round(s.volume), s.unit)} · ${tformat('top %1%2', s.top_weight, s.unit)} ${oneRm}</div>
+    </div>`;
+  }).join('');
+}
+
+// Called via data-ev-click with `this` bound to the clicked element; reads the
+// exercise from a data attribute so a name with quotes can't break out of the
+// handler string (delegation parses args, but the data-attr path never eval's).
+function progFromEl() { loadWorkoutProgression(this.dataset.exercise); }
+
+async function loadWorkoutProgression(exercise) {
+  const el = document.getElementById('wk-progression');
+  if (!el || !exercise) return;
+  const d = await fetch('/api/workouts/progression?exercise=' + encodeURIComponent(exercise))
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  // Simple inline sparkline of best est-1RM per session.
+  const pts = d.points.map(p => p.best_1rm);
+  const max = Math.max(...pts, 1), min = Math.min(...pts);
+  const bars = d.points.slice(-12).map(p => {
+    const h = max === min ? 60 : Math.round(((p.best_1rm - min) / (max - min)) * 46 + 14);
+    return `<div class="wk-spark-bar" style="height:${h}px" title="${p.date_key}: ${p.best_1rm}${d.unit}"></div>`;
+  }).join('');
+  const first = pts[0], last = pts[pts.length - 1];
+  const delta = last - first;
+  const deltaStr = pts.length > 1
+    ? (delta > 0 ? `<span style="color:#22C55E">▲ +${Math.round(delta * 10) / 10}${d.unit}</span>`
+       : delta < 0 ? `<span style="color:#EF4444">▼ ${Math.round(delta * 10) / 10}${d.unit}</span>`
+       : `<span style="color:var(--gray-400)">${t('no change')}</span>`)
+    : '';
+  el.innerHTML = `<div class="wk-prog-card">
+    <div class="wk-prog-head">${escHtml(d.display_name)}</div>
+    <div class="wk-prog-pb">${t('Best')}: ${d.best_weight}${d.unit} · ${t('est. 1RM')} ${d.best_1rm}${d.unit}</div>
+    <div class="wk-spark">${bars}</div>
+    <div class="wk-prog-delta">${tformat('over %1 session(s)', d.points.length)} ${deltaStr}</div>
+  </div>`;
 }
 
 // ── Medication dose taper ────────────────────────────────────────────────────

@@ -27,8 +27,8 @@ def _uid(app, email):
     return c, dict(execute("SELECT id FROM users WHERE email=?", (email,), fetchone=True))["id"]
 
 
-def _med(c, name, cost=None):
-    body = {"name": name, "frequency": "once_daily", "times": ["09:00"]}
+def _med(c, name, cost=None, frequency="once_daily"):
+    body = {"name": name, "frequency": frequency, "times": ["09:00"]}
     if cost is not None:
         body["cost"] = cost
     return c.post("/api/medicines", json=body).get_json()["medicine"]["id"]
@@ -72,6 +72,19 @@ def test_untracked_meds_have_no_runout(app):
     with user_context(uid):
         f = get_med_forecast()
     assert f["run_outs"] == [] and f["next_runout"] is None
+
+
+def test_as_needed_has_no_runout_but_still_costs(app):
+    # A PRN med has no daily schedule, so forecasting a run-out date would assume
+    # 1 dose/day and invent a countdown — omit it from run_outs. Its cost still
+    # counts toward the monthly projection.
+    c, uid = _uid(app, "fc6@medeasy.test")
+    mid = _med(c, "Rescue Inhaler", cost=300, frequency="as_needed")
+    with user_context(uid):
+        update_medicine_stock(mid, pill_count=200, pills_per_dose=1)
+        f = get_med_forecast()
+    assert all(r["id"] != mid for r in f["run_outs"])       # no fabricated run-out
+    assert f["monthly_cost"] == 300                          # cost still projected
 
 
 def test_api_endpoint(app):

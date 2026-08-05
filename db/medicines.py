@@ -921,6 +921,11 @@ def get_med_forecast() -> dict:
             continue
         if m.get('cost') is not None:
             monthly += float(m['cost'])
+        # As-needed (PRN) meds have no daily schedule, so there's no honest
+        # run-out date to project — _days_of_supply would assume 1 dose/day and
+        # invent a countdown. Skip the forecast (cost above still counts).
+        if m.get('frequency') == 'as_needed':
+            continue
         dl = _days_of_supply(m)
         if dl is not None:
             run_outs.append({
