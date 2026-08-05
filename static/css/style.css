@@ -316,6 +316,19 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dep-rec-date { font-size:11.5px; color:var(--gray-400); white-space:nowrap; }
 .panel-badge--ai { background:linear-gradient(135deg,#F9EBE0,#F6E1D4); color:var(--purple-600); }
 
+/* Personal vital target ranges */
+.vt-note { font-size:12px; color:var(--gray-400); font-style:italic; margin:0 0 10px; }
+.vt-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 0; border-bottom:1px solid var(--gray-50); }
+.vt-row:last-child { border-bottom:none; }
+.vt-name { flex:1; min-width:120px; font-size:13.5px; font-weight:600; color:var(--gray-700); }
+.vt-unit { font-size:11px; color:var(--gray-400); font-weight:400; }
+.vt-band { font-size:12.5px; color:var(--gray-500); min-width:90px; }
+.vt-none { color:var(--gray-300); font-style:italic; }
+.vt-flag { font-size:11px; font-weight:600; border-radius:99px; padding:1px 8px; }
+.vt-in { background:var(--teal-50); color:var(--teal-700); }
+.vt-below, .vt-above { background:#FBECEA; color:#B4443A; }
+.vt-editor { display:flex; gap:6px; align-items:center; width:100%; margin-top:8px; }
+
 /* Dose-timing hygiene */
 .tc-panel { background:#FBF6EC; border:1px solid #F0E4CC; }
 .tc-head { font-size:13px; font-weight:700; color:var(--gray-700); margin-bottom:8px; }

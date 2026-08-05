@@ -409,6 +409,12 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Your target ranges': 'आपकी लक्ष्य सीमाएँ',
+    'The band your doctor set. A reading outside it is worth discussing — never a diagnosis.': 'आपके डॉक्टर द्वारा तय सीमा। इसके बाहर की रीडिंग चर्चा योग्य है — निदान नहीं।',
+    'Blood pressure (systolic)': 'रक्तचाप (सिस्टोलिक)', 'Resting heart rate': 'विश्राम हृदय गति', 'SpO₂': 'SpO₂', 'Temperature': 'तापमान',
+    'no target set': 'कोई लक्ष्य नहीं', 'target %1': 'लक्ष्य %1', 'Set target': 'लक्ष्य तय करें',
+    'latest %1 · below': 'नवीनतम %1 · नीचे', 'latest %1 · above': 'नवीनतम %1 · ऊपर', 'latest %1 · in range': 'नवीनतम %1 · सीमा में',
+    'Target set 🎯': 'लक्ष्य तय हुआ 🎯', 'Give a low, a high, or both': 'न्यूनतम, अधिकतम, या दोनों दें', 'min': 'न्यून', 'max': 'अधिक',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
     'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
@@ -8699,7 +8705,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -13799,6 +13805,83 @@ async function loadVitalsView() {
         ${v.value1}${v.value2 ? '/' + v.value2 : ''} <span style="font-size:11px;font-weight:400">${v.unit}</span>
       </div>
     </div>`).join('');
+}
+
+// ── Personal vital target ranges ─────────────────────────────────────────────
+// The band your doctor set; the latest reading is flagged in/below/above it.
+const VT_LABEL = { blood_pressure:'Blood pressure (systolic)', blood_sugar:'Blood sugar', heart_rate:'Resting heart rate',
+  weight:'Weight', spo2:'SpO₂', temperature:'Temperature' };
+const VT_UNIT = { blood_pressure:'mmHg', blood_sugar:'mg/dL', heart_rate:'bpm', weight:'kg', spo2:'%', temperature:'°C' };
+
+async function loadVitalTargets() {
+  const el = document.getElementById('vital-targets-panel');
+  if (!el) return;
+  const [d, vitals] = await Promise.all([
+    fetch('/api/vital-targets', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {targets:{}}).catch(() => ({targets:{}})),
+    fetch('/api/vitals', {credentials:'same-origin'}).then(r => r.ok ? r.json() : []).catch(() => []),
+  ]);
+  const targets = d.targets || {};
+  const latest = {};
+  for (const v of (Array.isArray(vitals) ? vitals : [])) { if (!(v.type in latest)) latest[v.type] = v.value1; }
+  el.innerHTML = renderVitalTargets(d.types || Object.keys(VT_LABEL), targets, latest);
+}
+
+function _vtFlag(t, val) {
+  if (val == null || !t) return null;
+  const v = Number(val);
+  if (t.target_min != null && v < t.target_min) return 'below';
+  if (t.target_max != null && v > t.target_max) return 'above';
+  return 'in';
+}
+
+function renderVitalTargets(types, targets, latest) {
+  const rows = types.map(vt => {
+    const tg = targets[vt];
+    const band = tg ? `${tg.target_min != null ? tg.target_min : ''}${(tg.target_min != null && tg.target_max != null) ? '–' : ''}${tg.target_max != null ? tg.target_max : (tg.target_min != null ? '+' : '')}` : '';
+    const flag = _vtFlag(tg, latest[vt]);
+    const flagHtml = flag === 'below' ? `<span class="vt-flag vt-below">${tformat('latest %1 · below', latest[vt])}</span>`
+      : flag === 'above' ? `<span class="vt-flag vt-above">${tformat('latest %1 · above', latest[vt])}</span>`
+      : flag === 'in' ? `<span class="vt-flag vt-in">${tformat('latest %1 · in range', latest[vt])}</span>` : '';
+    return `<div class="vt-row">
+        <div class="vt-name">${tg ? '🎯 ' : ''}${t(VT_LABEL[vt] || vt)} <span class="vt-unit">${VT_UNIT[vt] || ''}</span></div>
+        <div class="vt-band">${tg ? tformat('target %1', band) : `<span class="vt-none">${t('no target set')}</span>`}</div>
+        ${flagHtml}
+        <button class="btn-icon vt-edit" title="${t('Set target')}" data-ev-click="editVitalTarget('${vt}')">✎</button>
+      </div>`;
+  }).join('');
+  return `<div class="panel" style="padding:16px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:4px">${t('Your target ranges')}</h2>
+      <p class="vt-note">${t('The band your doctor set. A reading outside it is worth discussing — never a diagnosis.')}</p>
+      ${rows}
+    </div>`;
+}
+
+function editVitalTarget(vt) {
+  const cur = document.getElementById('vt-edit-' + vt);
+  const row = event?.target?.closest('.vt-row');
+  if (!row) return;
+  if (row.querySelector('.vt-editor')) { row.querySelector('.vt-editor').remove(); return; }
+  const box = document.createElement('div');
+  box.className = 'vt-editor';
+  box.innerHTML = `<input type="number" step="any" class="form-input" id="vt-min-${vt}" placeholder="${t('min')}" style="max-width:80px">
+    <input type="number" step="any" class="form-input" id="vt-max-${vt}" placeholder="${t('max')}" style="max-width:80px">
+    <button class="btn-primary" data-ev-click="saveVitalTarget('${vt}')" style="padding:6px 12px">${t('Save')}</button>
+    <button class="btn-icon" data-ev-click="clearVitalTarget('${vt}')" title="${t('Remove')}">✕</button>`;
+  row.appendChild(box);
+}
+
+async function saveVitalTarget(vt) {
+  const mn = document.getElementById('vt-min-' + vt)?.value;
+  const mx = document.getElementById('vt-max-' + vt)?.value;
+  const r = await fetch('/api/vital-targets', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({vtype: vt, target_min: mn || null, target_max: mx || null})}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Target set 🎯')); loadVitalTargets(); }
+  else showToast((r && r.error) || t('Give a low, a high, or both'), 'error');
+}
+
+async function clearVitalTarget(vt) {
+  await fetch('/api/vital-targets/' + vt, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadVitalTargets();
 }
 
 // ── Vitals sparklines (compact, self-contained SVG — no Chart.js/CDN) ──

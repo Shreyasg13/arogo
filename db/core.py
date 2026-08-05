@@ -499,6 +499,11 @@ CREATE TABLE IF NOT EXISTS med_taper_steps (
     start_date TEXT NOT NULL, note TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS vital_targets (
+    id TEXT PRIMARY KEY, vtype TEXT NOT NULL,
+    target_min REAL DEFAULT NULL, target_max REAL DEFAULT NULL,
+    updated_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -893,6 +898,17 @@ def migrate_add_med_tapers():
         pass
 
 
+def migrate_add_vital_targets():
+    """Create the user-defined vital-target-range table on existing databases."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS vital_targets (
+            id TEXT PRIMARY KEY, vtype TEXT NOT NULL,
+            target_min REAL DEFAULT NULL, target_max REAL DEFAULT NULL,
+            updated_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1129,6 +1145,7 @@ DATA_TABLES = [
     'allergies',
     'meal_plans',
     'med_taper_steps',
+    'vital_targets',
     'dependents',
     'dependent_records',
 ]
@@ -1186,6 +1203,7 @@ def init_db():
     migrate_add_allergies()
     migrate_add_meal_plans()
     migrate_add_med_tapers()
+    migrate_add_vital_targets()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()
