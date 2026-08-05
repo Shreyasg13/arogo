@@ -409,6 +409,11 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Med budget': 'दवा बजट', 'What your medicines cost each month, and when each one runs out': 'आपकी दवाइयों का मासिक खर्च, और हर एक कब खत्म होगी',
+    'per month': 'प्रति माह', 'per year': 'प्रति वर्ष', 'priced meds': 'मूल्यांकित दवाएँ',
+    'Add a monthly cost to your medicines to see the budget here.': 'बजट देखने के लिए अपनी दवाइयों में मासिक लागत जोड़ें।',
+    'Track pill counts on your medicines to forecast run-out dates.': 'खत्म होने की तिथि जानने के लिए अपनी दवाइयों की गोली गिनती ट्रैक करें।',
+    'Runs out': 'खत्म होगी', '%1 days left': '%1 दिन शेष', 'runs out %1': '%1 को खत्म',
     'Dose taper': 'खुराक टेपर', "Step a medicine's dose down (or up) over time — the current dose is highlighted": 'समय के साथ दवा की खुराक घटाएँ (या बढ़ाएँ) — वर्तमान खुराक हाइलाइट होती है',
     'Add a dose step': 'खुराक चरण जोड़ें', 'Dose (e.g. 20mg)': 'खुराक (जैसे 20mg)', 'Note (optional)': 'नोट (वैकल्पिक)', 'Add step': 'चरण जोड़ें',
     'The step with the most recent start date on or before today is your current dose.': 'आज या उससे पहले की सबसे हाल की आरंभ तिथि वाला चरण आपकी वर्तमान खुराक है।',
@@ -2240,6 +2245,7 @@ function switchView(view) {
   if (view === 'upcoming')      loadUpcoming();
   if (view === 'meal-plan')     loadMealPlan();
   if (view === 'taper')         loadTaper();
+  if (view === 'med-budget')    loadMedBudget();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -12480,6 +12486,46 @@ async function loadGrocery() {
     return `<div class="mp-grocery-row"><span>${escHtml(i.item)}</span><span class="mp-grocery-qty">${qty}</span></div>`;
   }).join('');
   box.innerHTML = `<div class="mp-grocery-head">🛒 ${tformat('Grocery list · %1 items', d.total)}</div>${rows}`;
+}
+
+// ── Med budget & run-out forecast ────────────────────────────────────────────
+// Run-out DATE per tracked medicine + monthly/yearly cost projection. All from
+// the user's own pill counts and per-med costs.
+async function loadMedBudget() {
+  const el = document.getElementById('med-budget-content');
+  if (!el) return;
+  const d = await fetch('/api/medicines/forecast', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="panel" style="padding:20px">${t('Could not load')}</div>`; return; }
+  el.innerHTML = renderMedBudget(d);
+}
+
+function renderMedBudget(d) {
+  const cost = d.priced_count ? `<div class="panel mb-hero" style="padding:18px 20px;margin-bottom:16px">
+      <div class="mb-hero-grid">
+        <div><div class="mb-hero-n">${_rupee(d.monthly_cost)}</div><div class="mb-hero-l">${t('per month')}</div></div>
+        <div><div class="mb-hero-n">${_rupee(d.yearly_cost)}</div><div class="mb-hero-l">${t('per year')}</div></div>
+        <div><div class="mb-hero-n">${d.priced_count}</div><div class="mb-hero-l">${t('priced meds')}</div></div>
+      </div>
+      ${(d.cost_items || []).length ? `<div class="mb-cost-list">${d.cost_items.map(i =>
+        `<div class="mb-cost-row"><span>${escHtml(i.icon || '💊')} ${escHtml(i.name)}</span><span>${_rupee(i.cost)}/mo</span></div>`).join('')}</div>` : ''}
+    </div>` : `<div class="panel" style="padding:16px 20px;margin-bottom:16px;font-size:13px;color:var(--gray-400)">${t('Add a monthly cost to your medicines to see the budget here.')}</div>`;
+
+  let runouts;
+  if (!(d.run_outs || []).length) {
+    runouts = `<div class="panel" style="padding:22px;text-align:center;color:var(--gray-400);font-size:13px">${t('Track pill counts on your medicines to forecast run-out dates.')}</div>`;
+  } else {
+    const rows = d.run_outs.map(r => {
+      const dt = new Date(r.run_out + 'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+      return `<div class="mb-run-row${r.low ? ' mb-run-low' : ''}">
+          <span class="mb-run-name">${escHtml(r.icon || '💊')} ${escHtml(r.name)}</span>
+          <span class="mb-run-days">${tformat('%1 days left', Math.round(r.days_left))}</span>
+          <span class="mb-run-date">${tformat('runs out %1', dt)}</span>
+        </div>`;
+    }).join('');
+    runouts = `<div class="panel" style="padding:16px 20px"><h2 class="panel-title" style="margin-bottom:10px">${t('Runs out')}</h2>${rows}</div>`;
+  }
+  return cost + runouts;
 }
 
 // ── Medication dose taper ────────────────────────────────────────────────────

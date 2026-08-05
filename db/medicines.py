@@ -881,6 +881,42 @@ def get_monthly_med_cost() -> dict:
     return {'total': round(total, 2), 'items': items, 'count': len(items)}
 
 
+def get_med_forecast() -> dict:
+    """Forward view of medication logistics: for each tracked medicine, the DATE
+    it runs out (today + real days-of-supply), plus the monthly/yearly cost
+    projection from the per-med costs. All derived from the user's own data."""
+    import datetime as dt
+    try:
+        today = dt.date.fromisoformat(user_today())
+    except ValueError:
+        today = dt.date.today()
+    run_outs, monthly = [], 0.0
+    for m in list_medicines():
+        if not m['active']:
+            continue
+        if m.get('cost') is not None:
+            monthly += float(m['cost'])
+        dl = _days_of_supply(m)
+        if dl is not None:
+            run_outs.append({
+                'id': m['id'], 'name': m['name'], 'icon': m.get('icon') or '💊',
+                'days_left': dl, 'run_out': (today + dt.timedelta(days=int(dl))).isoformat(),
+                'pill_count': m.get('pill_count'),
+                'threshold': m.get('refill_threshold') or 7,
+                'low': dl < (m.get('refill_threshold') or 7),
+            })
+    run_outs.sort(key=lambda x: x['days_left'])
+    cost = get_monthly_med_cost()
+    return {
+        'run_outs': run_outs,
+        'next_runout': run_outs[0] if run_outs else None,
+        'monthly_cost': round(monthly, 2),
+        'yearly_cost': round(monthly * 12, 2),
+        'cost_items': cost['items'],
+        'priced_count': cost['count'],
+    }
+
+
 def get_refill_list():
     """Every active medicine that needs attention on a pharmacy run: running low,
     out of stock, or already marked ordered (on the way). Worst first."""

@@ -61,6 +61,13 @@ def snooze(mid):
         return jsonify({'success': False, 'error': 'Unknown medicine'}), 404
     return jsonify({'success': True, **res})
 
+@bp.route('/api/medicines/forecast')
+@require_auth
+def medicines_forecast():
+    """Run-out dates per medicine + monthly/yearly cost projection."""
+    return jsonify(get_med_forecast())
+
+
 @bp.route('/api/medicines/<mid>/reminder-lead', methods=['POST'])
 @require_auth
 def set_med_reminder_lead(mid):
