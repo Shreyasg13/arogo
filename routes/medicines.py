@@ -46,13 +46,31 @@ def take_now(mid):
 @bp.route('/api/medicines/<mid>/snooze', methods=['POST'])
 @require_auth
 def snooze(mid):
-    """Snooze a dose reminder — the scheduler re-pushes when the delay elapses."""
+    """Snooze a dose reminder — the scheduler re-pushes when the delay elapses.
+    If the client doesn't specify a length, use the user's configured default."""
     d = request.json or {}
-    res = snooze_dose(mid, str(d.get('time', ''))[:5],
-                      to_int(d.get('minutes', 15), 15, lo=1, hi=180))
+    if d.get('minutes') is not None:
+        minutes = to_int(d.get('minutes'), 15, lo=1, hi=180)
+    else:
+        from db.core import execute, current_user_id
+        row = execute("SELECT default_snooze_min FROM reminder_settings WHERE user_id=? LIMIT 1",
+                      (current_user_id(),), fetchone=True)
+        minutes = to_int(row['default_snooze_min'], 10, lo=1, hi=180) if row and row['default_snooze_min'] is not None else 10
+    res = snooze_dose(mid, str(d.get('time', ''))[:5], minutes)
     if not res:
         return jsonify({'success': False, 'error': 'Unknown medicine'}), 404
     return jsonify({'success': True, **res})
+
+@bp.route('/api/medicines/<mid>/reminder-lead', methods=['POST'])
+@require_auth
+def set_med_reminder_lead(mid):
+    """Adjust how many minutes early this medicine's reminder fires."""
+    d = request.json or {}
+    m = set_reminder_lead(mid, d.get('minutes', 0))
+    if not m:
+        return jsonify({'success': False, 'error': 'Unknown medicine'}), 404
+    return jsonify({'success': True, 'medicine': m})
+
 
 @bp.route('/api/medicines/parse-rx', methods=['POST'])
 @require_auth

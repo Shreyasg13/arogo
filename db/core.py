@@ -571,6 +571,7 @@ CREATE TABLE IF NOT EXISTS reminder_settings (
     quiet_start TEXT DEFAULT '22:00',
     quiet_end TEXT DEFAULT '07:00',
     low_key INTEGER DEFAULT 0,
+    default_snooze_min INTEGER DEFAULT 10,
     updated_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS caregiver_contacts (
@@ -764,6 +765,14 @@ def migrate_add_reminder_lead():
     """Add the per-medicine reminder lead-time column."""
     try:
         execute("ALTER TABLE medicines ADD COLUMN reminder_lead_min INTEGER DEFAULT 0")
+    except Exception:
+        pass
+
+
+def migrate_add_default_snooze():
+    """Add the account-wide default snooze length to reminder_settings."""
+    try:
+        execute("ALTER TABLE reminder_settings ADD COLUMN default_snooze_min INTEGER DEFAULT 10")
     except Exception:
         pass
 
@@ -1033,6 +1042,7 @@ def init_db():
     migrate_add_dose_timing()
     migrate_add_quiet_hours()
     migrate_add_reminder_lead()
+    migrate_add_default_snooze()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

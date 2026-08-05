@@ -1997,6 +1997,33 @@
         </div>
       </div>
 
+      <!-- Medication reminders: default snooze + per-medicine lead time -->
+      <div class="rs-section">
+        <div class="rs-section-head">
+          <div class="rs-section-icon">💊</div>
+          <div class="rs-section-info">
+            <div class="rs-section-title" data-i18n="Medication reminders">Medication reminders</div>
+            <div class="rs-section-sub" data-i18n="How long 'snooze' waits, and how early each medicine reminds you">How long 'snooze' waits, and how early each medicine reminds you</div>
+          </div>
+        </div>
+        <div class="rs-section-body">
+          <div class="rs-row">
+            <label class="rs-label" data-i18n="Snooze for">Snooze for</label>
+            <select class="form-input rs-select" id="rs-default-snooze" data-ev-change="saveReminderSettings()">
+              <option value="5">5 min</option>
+              <option value="10" selected>10 min</option>
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+              <option value="30">30 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+            </select>
+          </div>
+          <div class="rs-hint" data-i18n="Used when you tap Snooze on a dose reminder.">Used when you tap Snooze on a dose reminder.</div>
+          <div id="rs-med-leads" style="margin-top:12px"></div>
+        </div>
+      </div>
+
       <!-- Low-key mode: mute the non-essential nudges, keep meds -->
       <div class="rs-section">
         <div class="rs-section-head">

@@ -15,7 +15,7 @@ from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_
                           timing_label, TIMING_LABELS,
                           update_medicine_stock, decrement_pill_count, get_low_stock_medicines,
                           get_refill_list, get_monthly_med_cost,
-                          mark_refill_ordered, set_pharmacy_note,
+                          mark_refill_ordered, set_pharmacy_note, set_reminder_lead,
                           snooze_dose, get_due_snoozes, mark_snooze_notified,
                           log_prn_dose)
 from .fitness     import (insert_activity, list_activities, delete_activity, fitness_stats,
@@ -60,7 +60,7 @@ __all__ = [
     "timing_label", "TIMING_LABELS",
     "update_medicine_stock", "decrement_pill_count", "get_low_stock_medicines", "get_refill_list",
     "get_monthly_med_cost",
-    "mark_refill_ordered", "set_pharmacy_note",
+    "mark_refill_ordered", "set_pharmacy_note", "set_reminder_lead",
     "snooze_dose", "get_due_snoozes", "mark_snooze_notified", "log_prn_dose",
     "insert_activity", "list_activities", "delete_activity", "fitness_stats",
     "save_token", "get_token", "list_tokens", "delete_token", "update_last_sync",

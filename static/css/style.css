@@ -4467,6 +4467,9 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .rs-select { width: 140px !important; padding: 6px 10px !important; font-size: 12.5px !important; }
 .rs-time   { width: 110px !important; padding: 6px 10px !important; font-size: 12.5px !important; }
 .rs-hint   { font-size: 11.5px; color: var(--gray-400); font-style: italic; }
+.rs-lead-head { font-size: 12px; font-weight: 600; color: var(--gray-500); margin-bottom: 6px; }
+.rs-lead-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 0; }
+.rs-lead-name { font-size: 13px; color: var(--gray-700); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Toggle switch */
 .rs-toggle        { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }

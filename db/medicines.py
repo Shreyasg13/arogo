@@ -712,6 +712,22 @@ def set_pharmacy_note(mid: str, note: str) -> dict:
     return _fmt_med(r) if r else {}
 
 
+def set_reminder_lead(mid: str, minutes) -> dict:
+    """How many minutes before a scheduled dose to fire its reminder (0–120).
+    Editable from the reminders panel without re-adding the medicine."""
+    uid = current_user_id()
+    try:
+        m = max(0, min(int(minutes), 120))
+    except (TypeError, ValueError):
+        m = 0
+    if not execute("SELECT id FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True):
+        return {}
+    execute("UPDATE medicines SET reminder_lead_min=? WHERE id=? AND user_id=?",
+            (m, mid, uid), commit=True)
+    r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    return _fmt_med(r) if r else {}
+
+
 # ── Dose snooze (a real "remind me later") ───────────────────────────────────
 
 def snooze_dose(med_id: str, time_key: str, minutes: int = 15) -> dict:

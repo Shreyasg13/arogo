@@ -1061,6 +1061,7 @@ def api_save_reminder_settings():
     quiet_start     = _time('quiet_start', '22:00')
     quiet_end       = _time('quiet_end', '07:00')
     low_key         = _bool('low_key', 0)
+    snooze_default  = to_int(d.get('default_snooze_min', 10), 10, lo=1, hi=180)
 
     row = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
     if row:
@@ -1079,6 +1080,7 @@ def api_save_reminder_settings():
             sleep_reminder_enabled=?, sleep_reminder_time=?,
             mood_reminder_enabled=?, mood_reminder_time=?,
             quiet_enabled=?, quiet_start=?, quiet_end=?, low_key=?,
+            default_snooze_min=?,
             weekly_digest_enabled=?, caregiver_digest_enabled=?, updated_at=?
             WHERE id=?""",
             (water_enabled, water_interval, water_start, water_end,
@@ -1086,6 +1088,7 @@ def api_save_reminder_settings():
              sleep_enabled, sleep_time,
              mood_enabled, mood_time,
              quiet_enabled, quiet_start, quiet_end, low_key,
+             snooze_default,
              digest_flag, cg_digest_flag,
              now_iso(), row['id']), commit=True)
     else:
