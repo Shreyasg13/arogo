@@ -360,6 +360,43 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .fast-hist-target { font-size:12px; color:var(--gray-400); }
 .fast-note { font-size:12px; color:var(--gray-400); margin-top:14px; line-height:1.5; }
 
+/* Health ID card */
+.hid-card { max-width:440px; border:1px solid var(--gray-100,#e5e7eb); border-radius:18px; overflow:hidden;
+  background:var(--gray-0,#fff); box-shadow:var(--shadow-sm); }
+.hid-brand { background:linear-gradient(135deg,var(--teal-600),var(--teal-700)); color:#fff;
+  font-size:12px; font-weight:600; letter-spacing:.04em; padding:10px 18px; }
+.hid-name { font-family:'EB Garamond',serif; font-size:26px; font-weight:600; color:var(--gray-800); padding:16px 18px 0; }
+.hid-sub { font-size:13px; color:var(--gray-500); padding:2px 18px 0; }
+.hid-body { padding:14px 18px 4px; }
+.hid-row { display:flex; gap:12px; padding:8px 0; border-bottom:1px solid var(--gray-50); align-items:baseline; }
+.hid-row:last-child { border-bottom:none; }
+.hid-label { width:110px; flex-shrink:0; font-size:11px; font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; color:var(--gray-400); }
+.hid-value { flex:1; font-size:14px; color:var(--gray-800); }
+.hid-blood { font-weight:700; color:var(--teal-700); }
+.hid-alert { color:#B4443A; font-weight:600; }
+.hid-meds { flex:1; margin:0; padding-left:16px; font-size:14px; color:var(--gray-800); }
+.hid-meds li { margin:1px 0; }
+.hid-emergency { background:#FBF0EE; margin:6px -18px 0; padding:10px 18px; border-bottom:none; }
+.hid-contacts { flex:1; }
+.hid-contact { display:flex; justify-content:space-between; gap:10px; font-size:14px; padding:2px 0; }
+.hid-tel { color:var(--teal-700); font-weight:600; text-decoration:none; }
+.hid-foot { font-size:10.5px; color:var(--gray-400); padding:6px 18px 14px; line-height:1.4; }
+.hid-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.hid-empty-note, .fast-note.hid-empty-note { font-size:12.5px; color:var(--gray-400); margin-top:12px; }
+
+/* Print: hide everything, reveal only the ID card. This subtree-visibility
+   pattern doesn't depend on the app's wrapper class names. */
+@media print {
+  body.printing-health-id { background:#fff; }
+  body.printing-health-id * { visibility:hidden !important; }
+  body.printing-health-id #health-id-card,
+  body.printing-health-id #health-id-card * { visibility:visible !important; }
+  body.printing-health-id #health-id-card {
+    position:absolute; left:0; top:0; margin:12mm; box-shadow:none;
+    border:1px solid #999; max-width:none; width:auto; }
+}
+
 /* ── DASHBOARD ── */
 .dash-hero-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
 .hero-card { position:relative; border-radius:var(--r-xl); padding:22px 20px; overflow:hidden; border:1px solid transparent; }
