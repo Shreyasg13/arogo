@@ -2666,6 +2666,27 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .vital-flag.high   { background: #FEE2E2; color: #DC2626; }
 .vital-flag.low    { background: #EDF2F5; color: #5E8299; }
 
+/* Glucose logbook — meal-context chips + grouped stats */
+.gl-ctx-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.gl-ctx-chip {
+  font-size: 12px; padding: 5px 12px; border-radius: 99px; cursor: pointer;
+  background: var(--surface, #fff); border: 1px solid var(--border, #E2E8F0);
+  color: var(--gray-600, #475569); font-weight: 500; transition: all .12s;
+}
+.gl-ctx-chip:hover { border-color: var(--teal-600, #0D9488); }
+.gl-ctx-chip.selected { background: var(--teal-600, #0D9488); border-color: var(--teal-600, #0D9488); color: #fff; }
+.gl-stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.gl-stat { background: var(--surface-2, #F8FAFC); border: 1px solid var(--border, #E2E8F0); border-radius: 12px; padding: 10px 12px; }
+.gl-stat-ctx { font-size: 11px; font-weight: 600; color: var(--gray-500, #64748B); text-transform: uppercase; letter-spacing: .03em; }
+.gl-stat-avg { font-size: 22px; font-weight: 700; color: var(--gray-800, #1E293B); margin-top: 2px; }
+.gl-stat-unit { font-size: 11px; font-weight: 500; color: var(--gray-400, #94A3B8); }
+.gl-stat-meta { font-size: 11px; color: var(--gray-500, #64748B); margin-top: 4px; }
+.gl-log-list { display: flex; flex-direction: column; gap: 2px; }
+.gl-row { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--border-light, #F1F5F9); font-size: 13px; }
+.gl-row-val { font-weight: 700; }
+.gl-row-ctx { color: var(--gray-600, #475569); }
+.gl-row-date { color: var(--gray-400, #94A3B8); font-size: 12px; }
+
 /* ════════════════════════════════════
    EMERGENCY HEALTH CARD
    ════════════════════════════════════ */

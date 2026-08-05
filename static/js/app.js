@@ -415,6 +415,10 @@ const I18N = {
     'no target set': 'कोई लक्ष्य नहीं', 'target %1': 'लक्ष्य %1', 'Set target': 'लक्ष्य तय करें',
     'latest %1 · below': 'नवीनतम %1 · नीचे', 'latest %1 · above': 'नवीनतम %1 · ऊपर', 'latest %1 · in range': 'नवीनतम %1 · सीमा में',
     'Target set 🎯': 'लक्ष्य तय हुआ 🎯', 'Give a low, a high, or both': 'न्यूनतम, अधिकतम, या दोनों दें', 'min': 'न्यून', 'max': 'अधिक',
+    'When was this taken?': 'यह कब लिया गया?', 'Fasting': 'खाली पेट', 'Before meal': 'भोजन से पहले', 'After meal': 'भोजन के बाद',
+    'Bedtime': 'सोने से पहले', 'Random': 'कभी भी', 'Glucose logbook': 'ग्लूकोज़ लॉगबुक', 'avg': 'औसत',
+    'Your target': 'आपका लक्ष्य', 'Set a blood-sugar target to flag out-of-range readings': 'सीमा-बाहर रीडिंग चिह्नित करने के लिए ब्लड-शुगर लक्ष्य तय करें',
+    '%1 high': '%1 उच्च', '%1 low': '%1 निम्न', '%1 readings': '%1 रीडिंग',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
     'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
@@ -8192,6 +8196,18 @@ async function loadWellnessStrip() {
 
 let sleepQuality = 3;
 let selectedVitalType = 'blood_pressure';
+// Meal context for a glucose reading. 'random' = no particular relation to a
+// meal; the user picks fasting/before/after/bedtime when it matters. Only sent
+// when the selected vital is blood_sugar.
+let selectedGlucoseContext = 'random';
+const GLUCOSE_CTX = [
+  {id:'fasting',   label:'Fasting'},
+  {id:'pre_meal',  label:'Before meal'},
+  {id:'post_meal', label:'After meal'},
+  {id:'bedtime',   label:'Bedtime'},
+  {id:'random',    label:'Random'},
+];
+const GLUCOSE_CTX_LABEL = GLUCOSE_CTX.reduce((m,c)=>{m[c.id]=c.label;return m;},{});
 let selectedHabitColor = '#4F8D74';
 
 function switchWellnessTab(tab) {
@@ -8705,7 +8721,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -9191,11 +9207,64 @@ function renderVitalFields() {
   const catHtml = cfg.categories ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">` +
     cfg.categories.map(c => `<span style="font-size:10.5px;padding:2px 8px;border-radius:99px;background:${c.color}18;color:${c.color};font-weight:600">${c.label}: ${c.range}</span>`).join('') +
     `</div>` : '';
+  // A glucose number means little without knowing when it was taken — a fasting
+  // 95 and a post-meal 95 are read very differently. Ask, so the logbook can
+  // group readings the way a clinician would.
+  const ctxHtml = selectedVitalType === 'blood_sugar'
+    ? `<div class="form-group" style="margin-bottom:8px"><label class="form-label">${t('When was this taken?')}</label>
+        <div class="gl-ctx-chips">` +
+        GLUCOSE_CTX.map(c => `<button type="button" class="gl-ctx-chip${c.id===selectedGlucoseContext?' selected':''}" data-ctx="${c.id}" data-ev-click="selectGlucoseContext('${c.id}')">${t(c.label)}</button>`).join('') +
+      `</div></div>`
+    : '';
   el.innerHTML = `<div class="form-row" style="margin-bottom:8px">` +
     cfg.fields.map(f => `<div class="form-group"><label class="form-label">${f.label}</label>
       <input type="number" class="form-input" id="${f.id}" placeholder="${f.ph}" step="0.1"></div>`).join('') +
-    `</div>` +
+    `</div>` + ctxHtml +
     (cfg.reference ? `<div class="vital-ref-range">📊 ${cfg.reference}${catHtml}</div>` : '');
+}
+
+function selectGlucoseContext(ctx) {
+  selectedGlucoseContext = ctx;
+  document.querySelectorAll('.gl-ctx-chip').forEach(b => b.classList.toggle('selected', b.dataset.ctx === ctx));
+}
+
+const GL_FLAG_COLOR = { above:'#EF4444', below:'#3B82F6', in:'#22C55E' };
+
+async function loadGlucoseLogbook() {
+  const el = document.getElementById('glucose-logbook');
+  if (!el) return;
+  const d = await fetch('/api/glucose/logbook?days=30').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }   // no sugar readings → panel stays hidden
+  const tgt = d.target;
+  const tgtLine = tgt
+    ? `${t('Your target')}: ${tgt.target_min != null ? tgt.target_min : '–'}–${tgt.target_max != null ? tgt.target_max : '–'} mg/dL`
+    : t('Set a blood-sugar target to flag out-of-range readings');
+  const cards = d.summary.map(g => {
+    const flags = [];
+    if (g.high) flags.push(`<span style="color:${GL_FLAG_COLOR.above};font-weight:600">${tformat('%1 high', g.high)}</span>`);
+    if (g.low)  flags.push(`<span style="color:${GL_FLAG_COLOR.below};font-weight:600">${tformat('%1 low', g.low)}</span>`);
+    return `<div class="gl-stat">
+      <div class="gl-stat-ctx">${t(GLUCOSE_CTX_LABEL[g.context] || g.context)}</div>
+      <div class="gl-stat-avg">${g.avg}<span class="gl-stat-unit"> mg/dL ${t('avg')}</span></div>
+      <div class="gl-stat-meta">${tformat('%1 readings', g.count)} · ${g.min}–${g.max}${flags.length ? ' · ' + flags.join(' · ') : ''}</div>
+    </div>`;
+  }).join('');
+  const rows = d.readings.slice(0, 40).map(r => {
+    const col = r.flag ? GL_FLAG_COLOR[r.flag] : 'var(--gray-400)';
+    return `<div class="gl-row">
+      <span class="gl-row-val" style="color:${col}">${r.value}</span>
+      <span class="gl-row-ctx">${t(GLUCOSE_CTX_LABEL[r.context] || r.context)}</span>
+      <span class="gl-row-date">${r.date_key}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="margin-top:12px">
+    <div class="panel-header"><h2 class="panel-title">🩸 ${t('Glucose logbook')}</h2></div>
+    <div style="padding:0 4px 8px">
+      <div style="font-size:12px;color:var(--gray-500);margin-bottom:10px">${escHtml(tgtLine)}</div>
+      <div class="gl-stat-grid">${cards}</div>
+      <div class="gl-log-list">${rows}</div>
+    </div>
+  </div>`;
 }
 
 async function logVital() {
@@ -9211,6 +9280,7 @@ async function logVital() {
     // path sends localToday(); this one didn't.
     body: JSON.stringify({ type:selectedVitalType, value1:v1, value2:v2||null,
       unit:cfg.unit, date_key: localToday(),
+      context: selectedVitalType === 'blood_sugar' ? selectedGlucoseContext : '',
       notes:document.getElementById('vital-notes')?.value||'' })
   }).then(r => r.json());
   if (r.success) {
@@ -9218,6 +9288,7 @@ async function logVital() {
     document.getElementById('vf1').value = '';
     if (document.getElementById('vf2')) document.getElementById('vf2').value = '';
     loadVitals();
+    if (selectedVitalType === 'blood_sugar') loadGlucoseLogbook();
   } else {
     showToast(r.error || 'Could not save reading', 'error');
   }

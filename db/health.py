@@ -246,14 +246,83 @@ def log_vital(data: dict) -> dict:
         if not math.isfinite(value2):
             raise ValueError('Reading must be a number')
     _check_vital_range(vtype, value1, value2)
+    # Meal context only carries meaning for blood_sugar; ignore it elsewhere so a
+    # stray tag can't attach itself to a BP reading.
+    context = ''
+    if vtype == 'blood_sugar':
+        c = str(data.get('context', '') or '').strip().lower()
+        context = c if c in GLUCOSE_CONTEXTS else ''
     vid = new_id()
-    execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,notes,logged_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+    execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,notes,context,logged_at,user_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (vid, data.get('date_key', today_iso()), vtype,
              value1, value2,
-             data.get('unit',''), data.get('notes',''), now_iso(),
+             data.get('unit',''), data.get('notes',''), context, now_iso(),
              current_user_id()), commit=True)
     return dict(execute("SELECT * FROM vitals WHERE id=?", (vid,), fetchone=True))
+
+
+# Meal contexts for a glucose reading — the label a clinician reads a sugar
+# against. 'random' = no particular relation to a meal.
+GLUCOSE_CONTEXTS = ('fasting', 'pre_meal', 'post_meal', 'bedtime', 'random')
+
+
+def get_glucose_logbook(days: int = 30) -> dict:
+    """Blood-sugar readings grouped by meal context, with per-context stats and
+    (if the user set a blood_sugar target) an in/below/above flag on each row.
+
+    A fasting 95 and a post-meal 160 are both 'normal' — but only once you know
+    which is which. This view keeps that context attached so the numbers read the
+    way a doctor would read them, instead of one undifferentiated sugar average.
+    """
+    import datetime as dt
+    from db.vital_targets import get_targets, flag
+    start = (dt.date.today() - dt.timedelta(days=max(1, days))).isoformat()
+    rows = execute("""SELECT * FROM vitals WHERE type='blood_sugar' AND date_key >= ? AND user_id=?
+                      ORDER BY logged_at DESC""",
+                   (start, current_user_id()), fetchall=True)
+    target = get_targets().get('blood_sugar')
+    groups = {}
+    readings = []
+    for r in rows:
+        d = dict(r)
+        ctx = d.get('context') or 'random'
+        if ctx not in GLUCOSE_CONTEXTS:
+            ctx = 'random'
+        val = d['value1']
+        f = flag('blood_sugar', val, {'blood_sugar': target}) if target else None
+        item = {'id': d['id'], 'value': val, 'context': ctx,
+                'date_key': d['date_key'], 'logged_at': d['logged_at'],
+                'notes': d.get('notes', ''), 'flag': f}
+        readings.append(item)
+        g = groups.setdefault(ctx, {'context': ctx, 'values': [], 'high': 0, 'low': 0})
+        g['values'].append(val)
+        if f == 'above':
+            g['high'] += 1
+        elif f == 'below':
+            g['low'] += 1
+    summary = []
+    for ctx in GLUCOSE_CONTEXTS:
+        g = groups.get(ctx)
+        if not g:
+            continue
+        vals = g['values']
+        summary.append({
+            'context': ctx,
+            'count': len(vals),
+            'avg': round(sum(vals) / len(vals), 1),
+            'min': min(vals),
+            'max': max(vals),
+            'high': g['high'],
+            'low': g['low'],
+        })
+    return {
+        'days': days,
+        'target': target,        # {'target_min','target_max'} or None
+        'summary': summary,      # per-context roll-up, only contexts with data
+        'readings': readings,    # newest-first flat list
+        'has_data': bool(readings),
+    }
 
 def get_vitals(vtype: str = None, days: int = 30) -> list:
     import datetime as dt

@@ -904,6 +904,13 @@ def api_del_vital(vid):
     delete_vital(vid)
     return jsonify({'success': True})
 
+@bp.route('/api/glucose/logbook')
+@require_auth
+def api_glucose_logbook():
+    from db.health import get_glucose_logbook
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=3650)
+    return jsonify(get_glucose_logbook(days))
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Emergency Info Routes
 # ══════════════════════════════════════════════════════════════════════════════

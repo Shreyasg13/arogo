@@ -909,6 +909,14 @@ def migrate_add_vital_targets():
         pass
 
 
+def migrate_add_vital_context():
+    """Add a meal-context tag to vitals (fasting/pre/post-meal) for the glucose logbook."""
+    try:
+        execute("ALTER TABLE vitals ADD COLUMN context TEXT DEFAULT ''")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1204,6 +1212,7 @@ def init_db():
     migrate_add_meal_plans()
     migrate_add_med_tapers()
     migrate_add_vital_targets()
+    migrate_add_vital_context()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()
