@@ -489,6 +489,11 @@ CREATE TABLE IF NOT EXISTS allergies (
     severity TEXT DEFAULT 'moderate', date_noted TEXT DEFAULT NULL,
     notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS meal_plans (
+    id TEXT PRIMARY KEY, date TEXT NOT NULL, meal_type TEXT DEFAULT 'lunch',
+    item TEXT NOT NULL, quantity REAL DEFAULT NULL, unit TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -861,6 +866,17 @@ def migrate_add_allergies():
         pass
 
 
+def migrate_add_meal_plans():
+    """Create the meal-planner table on existing databases."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS meal_plans (
+            id TEXT PRIMARY KEY, date TEXT NOT NULL, meal_type TEXT DEFAULT 'lunch',
+            item TEXT NOT NULL, quantity REAL DEFAULT NULL, unit TEXT DEFAULT '',
+            created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_claims():
     """Create the insurance-claims table on existing databases."""
     try:
@@ -1095,6 +1111,7 @@ DATA_TABLES = [
     'prescriptions',
     'claims',
     'allergies',
+    'meal_plans',
     'dependents',
     'dependent_records',
 ]
@@ -1150,6 +1167,7 @@ def init_db():
     migrate_add_claims()
     migrate_add_appt_reminder_days()
     migrate_add_allergies()
+    migrate_add_meal_plans()
     migrate_add_med_cost()
     migrate_add_doctor_questions()
     migrate_add_medicine_events()

@@ -409,6 +409,13 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Meal plan': 'भोजन योजना', "Plan the week's meals, then turn them into a grocery list": 'सप्ताह के भोजन की योजना बनाएँ, फिर उन्हें किराना सूची में बदलें',
+    'Add to the plan': 'योजना में जोड़ें', 'Food (e.g. Toor dal, Roti)': 'भोजन (जैसे तूर दाल, रोटी)', 'Qty': 'मात्रा', 'unit': 'इकाई',
+    'Breakfast': 'नाश्ता', 'Lunch': 'दोपहर का भोजन', 'Dinner': 'रात का खाना', 'Snack': 'नाश्ता',
+    'Grocery list': 'किराना सूची', 'Hide grocery list': 'किराना सूची छिपाएँ',
+    'Nothing planned': 'कुछ योजनाबद्ध नहीं', 'Enter a food': 'एक भोजन दर्ज करें', 'Remove': 'हटाएँ',
+    'Plan some meals and your grocery list builds itself.': 'कुछ भोजन की योजना बनाएँ और आपकी किराना सूची अपने आप बन जाएगी।',
+    'Grocery list · %1 items': 'किराना सूची · %1 वस्तुएँ',
     'Upcoming': 'आगामी',
     'Everything coming up — appointments, rechecks, renewals and vaccines, for you and your family': 'आने वाला सब कुछ — अपॉइंटमेंट, दोबारा जाँच, नवीनीकरण और टीके, आपके और परिवार के लिए',
     'Nothing coming up': 'कुछ आगामी नहीं',
@@ -2224,6 +2231,7 @@ function switchView(view) {
   if (view === 'claims')        loadClaims();
   if (view === 'allergies')     loadAllergies();
   if (view === 'upcoming')      loadUpcoming();
+  if (view === 'meal-plan')     loadMealPlan();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -12342,6 +12350,116 @@ function renderUpcoming(d) {
   }).join('');
 
   return summary + sections;
+}
+
+// ── Meal planner + grocery list ──────────────────────────────────────────────
+// Plan items to a day + meal for the week ahead, then roll the plan up into a
+// grocery list that sums the same item across days. Free-text items; quantities
+// optional. Distinct from the food LOG (what was eaten).
+const MEAL_SLOTS = {
+  breakfast: {icon:'🌅', label:'Breakfast'},
+  lunch:     {icon:'🍛', label:'Lunch'},
+  dinner:    {icon:'🌙', label:'Dinner'},
+  snack:     {icon:'🍎', label:'Snack'},
+};
+let _showGrocery = false;
+
+async function loadMealPlan() {
+  const el = document.getElementById('meal-plan-content');
+  if (!el) return;
+  const d = await fetch('/api/meal-plan?days=7', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {days:[]}).catch(() => ({days:[]}));
+  el.innerHTML = renderMealPlan(d);
+  if (_showGrocery) loadGrocery();
+}
+
+function renderMealPlan(d) {
+  const today = localToday();
+  const mealOpts = Object.entries(MEAL_SLOTS).map(([k, v]) => `<option value="${k}">${v.icon} ${t(v.label)}</option>`).join('');
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add to the plan')}</h2>
+      <div class="mp-form">
+        <input type="text" id="mp-item" class="form-input" placeholder="${t('Food (e.g. Toor dal, Roti)')}" style="flex:2;min-width:170px">
+        <input type="number" step="any" min="0" id="mp-qty" class="form-input" placeholder="${t('Qty')}" style="max-width:80px">
+        <input type="text" id="mp-unit" class="form-input" placeholder="${t('unit')}" style="max-width:80px" value="g">
+        <input type="date" id="mp-date" class="form-input" value="${today}" style="max-width:150px">
+        <select id="mp-meal" class="form-input" style="max-width:150px">${mealOpts}</select>
+        <button class="btn-primary" data-ev-click="addMealItem()">${t('Add')}</button>
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn-outline" data-ev-click="toggleGrocery()">🛒 ${_showGrocery ? t('Hide grocery list') : t('Grocery list')}</button>
+      </div>
+    </div>`;
+
+  const grocery = _showGrocery ? `<div id="mp-grocery" class="panel" style="padding:16px 20px;margin-bottom:16px">
+      <div style="font-size:13px;color:var(--gray-400)">${t('Loading…')}</div></div>` : '';
+
+  const anyPlanned = (d.days || []).some(day => Object.values(day.meals).some(arr => arr.length));
+  const daysHtml = (d.days || []).map(day => {
+    const dt = new Date(day.date + 'T12:00:00');
+    const isToday = day.date === today;
+    const dayLbl = dt.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'});
+    const slots = Object.entries(MEAL_SLOTS).map(([k, v]) => {
+      const items = day.meals[k] || [];
+      if (!items.length) return '';
+      const rows = items.map(i => {
+        const qty = i.quantity != null ? ` · ${i.quantity}${i.unit || ''}` : '';
+        return `<div class="mp-item"><span>${escHtml(i.item)}${qty}</span>
+          <button class="btn-icon" title="${t('Remove')}" data-ev-click="deleteMealItem('${i.id}')" style="color:var(--gray-300);font-size:12px">✕</button></div>`;
+      }).join('');
+      return `<div class="mp-slot"><div class="mp-slot-head">${v.icon} ${t(v.label)}</div>${rows}</div>`;
+    }).join('');
+    const empty = slots ? '' : `<div class="mp-day-empty">${t('Nothing planned')}</div>`;
+    return `<div class="panel mp-day${isToday ? ' mp-day--today' : ''}" style="padding:14px 18px;margin-bottom:12px">
+        <div class="mp-day-head">${dayLbl}${isToday ? ` · <span class="mp-today-tag">${t('today')}</span>` : ''}</div>
+        ${slots}${empty}
+      </div>`;
+  }).join('');
+
+  return form + grocery + daysHtml;
+}
+
+async function addMealItem() {
+  const item = document.getElementById('mp-item')?.value?.trim();
+  if (!item) { showToast(t('Enter a food'), 'error'); return; }
+  const body = {
+    item,
+    quantity: document.getElementById('mp-qty')?.value || null,
+    unit: document.getElementById('mp-unit')?.value || '',
+    date: document.getElementById('mp-date')?.value || localToday(),
+    meal_type: document.getElementById('mp-meal')?.value || 'lunch',
+  };
+  const r = await fetch('/api/meal-plan', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(t('Added to plan'));
+    const it = document.getElementById('mp-item'); if (it) it.value = '';
+    loadMealPlan();
+  } else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function deleteMealItem(id) {
+  await fetch('/api/meal-plan/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadMealPlan();
+}
+
+function toggleGrocery() { _showGrocery = !_showGrocery; loadMealPlan(); }
+
+async function loadGrocery() {
+  const box = document.getElementById('mp-grocery');
+  if (!box) return;
+  const d = await fetch('/api/meal-plan/grocery?days=7', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {items:[]}).catch(() => ({items:[]}));
+  if (!(d.items || []).length) {
+    box.innerHTML = `<div class="mp-grocery-head">🛒 ${t('Grocery list')}</div>
+      <div style="font-size:13px;color:var(--gray-400)">${t('Plan some meals and your grocery list builds itself.')}</div>`;
+    return;
+  }
+  const rows = d.items.map(i => {
+    const qty = i.quantity != null ? `${i.quantity}${i.unit || ''}` : (i.count > 1 ? `×${i.count}` : '');
+    return `<div class="mp-grocery-row"><span>${escHtml(i.item)}</span><span class="mp-grocery-qty">${qty}</span></div>`;
+  }).join('');
+  box.innerHTML = `<div class="mp-grocery-head">🛒 ${tformat('Grocery list · %1 items', d.total)}</div>${rows}`;
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────
