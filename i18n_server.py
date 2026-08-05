@@ -190,9 +190,19 @@ MESSAGES: dict[str, dict[str, str]] = {
 }
 
 
+# Languages the server can localize outgoing text (emails, push) into. English
+# is always available; a code earns a place here once MESSAGES carries its
+# translations. Kept in sync with the client's SUPPORTED_LANGS — add a code to
+# both when a real pack lands. Scaffolded (not yet translated): 'ta','te','bn','mr'.
+SERVER_LANGS = ('en', 'hi')
+
+
 def normalize_lang(lang) -> str:
-    """Clamp to a supported language code; anything unknown → 'en'."""
-    return 'hi' if lang == 'hi' else 'en'
+    """Clamp an arbitrary stored code to a supported language; unknown → 'en'.
+    user_profile.language may hold any code the client set, so this is the single
+    gate that keeps the mailer/scheduler from trying to render an absent pack."""
+    code = str(lang or '').strip().lower()[:5]
+    return code if code in SERVER_LANGS else 'en'
 
 
 def tr(lang, key: str, **kw) -> str:

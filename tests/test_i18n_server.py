@@ -63,6 +63,11 @@ def test_normalize_lang():
     assert i18n_server.normalize_lang('en') == 'en'
     assert i18n_server.normalize_lang(None) == 'en'
     assert i18n_server.normalize_lang('garbage') == 'en'
+    # Clamp to the supported set: case/whitespace tolerated, unsupported → 'en'.
+    assert i18n_server.normalize_lang('  HI ') == 'hi'
+    assert i18n_server.normalize_lang('ta') == 'en'     # scaffolded, no pack yet → English
+    assert i18n_server.normalize_lang('') == 'en'
+    assert all(i18n_server.normalize_lang(c) == c for c in i18n_server.SERVER_LANGS)
 
 
 def test_language_persists_on_profile_and_reads_back(app):

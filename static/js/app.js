@@ -447,7 +447,7 @@ const I18N = {
     'Health snapshot': 'स्वास्थ्य स्नैपशॉट', 'active': 'सक्रिय', 'expired': 'समाप्त', 'revoked': 'रद्द',
     'Copy': 'कॉपी', 'Copied ✓': 'कॉपी हुआ ✓', 'Turn off': 'बंद करें', 'Link turned off': 'लिंक बंद हुआ',
     'This link is no longer active.': 'यह लिंक अब सक्रिय नहीं है।', 'expires %1': '%1 को समाप्त',
-    '%1 views': '%1 बार देखा', 'Could not update': 'अपडेट नहीं हुआ',
+    '%1 views': '%1 बार देखा', 'Could not update': 'अपडेट नहीं हुआ', 'Choose language': 'भाषा चुनें',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -984,7 +984,33 @@ const I18N = {
     '🎉 You’re all set up!': '🎉 सब तैयार है!',
   },
 };
-function _lang() { try { return localStorage.getItem('arogo_lang') || 'en'; } catch (e) { return 'en'; } }
+// Languages the app offers. English is the base (keys ARE English, so it needs
+// no pack). Any other code appears in the picker only once I18N[code] exists —
+// so a half-built pack can't be selected. To add Tamil etc.: write I18N.ta = {…}
+// then add {code:'ta', native:'தமிழ்', english:'Tamil'} here (mirror SERVER_LANGS
+// in i18n_server.py for emails/push). Scaffolded, not yet translated: ta/te/bn/mr.
+const SUPPORTED_LANGS = [
+  { code: 'en', native: 'English',  english: 'English' },
+  { code: 'hi', native: 'हिन्दी',   english: 'Hindi'   },
+  // { code: 'ta', native: 'தமிழ்',   english: 'Tamil'   },   // add I18N.ta first
+  // { code: 'te', native: 'తెలుగు',  english: 'Telugu'  },
+  // { code: 'bn', native: 'বাংলা',   english: 'Bengali' },
+  // { code: 'mr', native: 'मराठी',   english: 'Marathi' },
+];
+// Only offer a language that is English (the base) or actually has a pack.
+function _availableLangs() {
+  return SUPPORTED_LANGS.filter(l => l.code === 'en' || (I18N[l.code] && Object.keys(I18N[l.code]).length));
+}
+function _langMeta(code) { return SUPPORTED_LANGS.find(l => l.code === code) || SUPPORTED_LANGS[0]; }
+
+function _lang() {
+  try {
+    const v = localStorage.getItem('arogo_lang') || 'en';
+    // A stored code with no pack (e.g. left over from a removed language) falls
+    // back to English rather than showing untranslated keys as if localized.
+    return _availableLangs().some(l => l.code === v) ? v : 'en';
+  } catch (e) { return 'en'; }
+}
 function t(s) { const d = I18N[_lang()]; return (d && d[s]) || s; }
 // Interpolating translate: the key carries %1, %2… placeholders that are
 // filled from the trailing arguments AFTER translation. In English mode t()
@@ -1005,16 +1031,20 @@ function applyLang() {
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
     el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph')));
   });
+  // The nav control shows the CURRENT language's own name; tapping it opens the
+  // picker (rather than blindly flipping to a single "other" language).
   const lbl = document.getElementById('lang-toggle-label');
-  if (lbl) lbl.textContent = lang === 'hi' ? 'English' : 'हिन्दी';
+  if (lbl) lbl.textContent = _langMeta(lang).native;
 }
 function _activeViewName() {
   const el = document.querySelector('.view.active');
   return el ? el.id.replace(/^view-/, '') : null;
 }
-function toggleLanguage() {
-  const next = _lang() === 'hi' ? 'en' : 'hi';
-  try { localStorage.setItem('arogo_lang', next); } catch (e) {}
+function setLanguage(code) {
+  const avail = _availableLangs();
+  if (!avail.some(l => l.code === code)) return;   // never switch to a pack-less language
+  try { localStorage.setItem('arogo_lang', code); } catch (e) {}
+  closeLanguagePicker();
   applyLang();
   // Static [data-i18n] nodes are swept by applyLang; JS-rendered content only
   // re-localizes when its view re-renders, so re-run the active view's loader.
@@ -1026,10 +1056,38 @@ function toggleLanguage() {
   try {
     fetch('/api/food/profile', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin', body: JSON.stringify({ language: next }),
+      credentials: 'same-origin', body: JSON.stringify({ language: code }),
     }).catch(() => {});
   } catch (e) {}
 }
+
+function openLanguagePicker() {
+  const langs = _availableLangs();
+  // With a single language available there's nothing to pick — no menu.
+  if (langs.length < 2) return;
+  closeLanguagePicker();
+  const cur = _lang();
+  const ov = document.createElement('div');
+  ov.className = 'lang-picker-overlay';
+  ov.id = 'lang-picker-overlay';
+  ov.setAttribute('data-ev-click', "langPickerBackdrop(event)");
+  ov.innerHTML = `<div class="lang-picker" role="menu">
+    <div class="lang-picker-head">${t('Choose language')}</div>
+    ${langs.map(l => `<button class="lang-opt${l.code === cur ? ' selected' : ''}" role="menuitemradio"
+        aria-checked="${l.code === cur}" data-ev-click="setLanguage('${l.code}')">
+        <span class="lang-opt-native">${escHtml(l.native)}</span>
+        <span class="lang-opt-en">${escHtml(l.english)}</span>
+        ${l.code === cur ? '<span class="lang-opt-check">✓</span>' : ''}
+      </button>`).join('')}
+  </div>`;
+  document.body.appendChild(ov);
+}
+function langPickerBackdrop(ev) { if (ev.target && ev.target.id === 'lang-picker-overlay') closeLanguagePicker(); }
+function closeLanguagePicker() { const el = document.getElementById('lang-picker-overlay'); if (el) el.remove(); }
+
+// Back-compat: the nav control used to call toggleLanguage(); now it opens the
+// picker. With only two languages this still feels like a quick switch.
+function toggleLanguage() { openLanguagePicker(); }
 document.addEventListener('DOMContentLoaded', applyLang);
 
 // ── Simple View (senior / large-type mode) ────────────────────────
