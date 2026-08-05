@@ -64,3 +64,21 @@ def test_as_needed_med_never_marks_a_day_missed(app):
     # No scheduled doses at all → every day is 'none', never 'missed'.
     days = c.get("/api/medicines/calendar?days=7").get_json()["days"]
     assert all(d["status"] == "none" for d in days)
+
+
+def test_year_window_spans_full_range_and_marks_taken(app):
+    # The clamp was raised from 120 to 366 so the year heatmap covers a full year.
+    c = app.test_client()
+    c.post("/auth/register", json={"email": "cal3@medeasy.test", "password": PW})
+    start = (dt.date.today() - dt.timedelta(days=200)).isoformat()
+    m = c.post("/api/medicines", json={
+        "name": "Vit D", "frequency": "once_daily", "times": ["09:00"],
+        "start_date": start}).get_json()["medicine"]
+    long_ago = (dt.date.today() - dt.timedelta(days=150)).isoformat()   # >120, inside a year
+    c.post(f"/api/medicines/{m['id']}/log", json={"date": long_ago, "time": "09:00", "taken": True})
+
+    days = c.get("/api/medicines/calendar?days=364").get_json()["days"]
+    assert len(days) == 364                                  # not clamped to 120
+    by_date = {d["date"]: d for d in days}
+    assert by_date[long_ago]["status"] == "all"             # batch lookup found the old dose
+    assert days[0]["date"] < long_ago < days[-1]["date"]

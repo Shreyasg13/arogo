@@ -401,10 +401,21 @@ def get_dose_calendar(days: int = 35) -> list:
     they never make a day count as missed."""
     from datetime import date, timedelta
     uid = current_user_id()
-    days = max(1, min(int(days or 35), 120))
+    days = max(1, min(int(days or 35), 366))
     meds = [m for m in list_medicines()
             if m['active'] and m.get('frequency') != 'as_needed' and m.get('times')]
     anchor = date.fromisoformat(user_today())
+    start = (anchor - timedelta(days=days - 1)).isoformat()
+
+    # One query for the whole window instead of one per dose-slot per day — at a
+    # year's span with several meds that was thousands of round-trips. Build a set
+    # of the taken (med, date, time) slots and read from it in the loop.
+    taken_set = set()
+    for r in (execute("""SELECT medicine_id, date_key, time_key FROM dose_logs
+                         WHERE user_id=? AND taken=1 AND date_key>=?""",
+                      (uid, start), fetchall=True) or []):
+        taken_set.add((r['medicine_id'], r['date_key'], r['time_key']))
+
     out = []
     for i in range(days - 1, -1, -1):
         d = (anchor - timedelta(days=i)).isoformat()
@@ -414,10 +425,7 @@ def get_dose_calendar(days: int = 35) -> list:
                 continue
             for t in m['times']:
                 total += 1
-                log = execute("""SELECT taken FROM dose_logs
-                                 WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?""",
-                              (m['id'], d, t, uid), fetchone=True)
-                if log and log['taken']:
+                if (m['id'], d, t) in taken_set:
                     taken += 1
         status = ('none' if total == 0 else 'all' if taken == total
                   else 'missed' if taken == 0 else 'partial')

@@ -439,6 +439,7 @@ const I18N = {
     'Estimated ovulation has passed for this cycle': 'इस चक्र में अनुमानित ओव्यूलेशन बीत चुका है',
     'Estimated ovulation in ~%1 days': '~%1 दिनों में अनुमानित ओव्यूलेशन', 'ovulation': 'ओव्यूलेशन',
     'An estimate from your average cycle — not a method of contraception.': 'आपके औसत चक्र से एक अनुमान — गर्भनिरोधक का तरीका नहीं।',
+    '5 weeks': '5 सप्ताह', 'Year': 'वर्ष', 'last year': 'पिछला वर्ष', 'last 5 weeks': 'पिछले 5 सप्ताह',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
     'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
@@ -4331,24 +4332,25 @@ function renderMissedDoses(d) {
 }
 
 // ── Dose calendar (month heatmap of taken vs missed) ────────────────
+let _calRange = 35;   // 35 = 5-week grid; 364 = year heatmap
+
+function setDoseCalRange(days) {
+  _calRange = days;
+  loadDoseCalendar();
+}
+
+const _CAL_COLOR = { all: 'var(--teal-500)', partial: '#F59E0B', missed: '#EF4444', none: 'var(--gray-100)' };
+
 async function loadDoseCalendar() {
   const el = document.getElementById('med-calendar-section');
   if (!el) return;
-  const d = await fetch('/api/medicines/calendar?days=35', { credentials: 'same-origin' })
+  const isYear = _calRange >= 300;
+  const d = await fetch('/api/medicines/calendar?days=' + _calRange, { credentials: 'same-origin' })
     .then(r => r.json()).catch(() => ({ days: [] }));
   const days = d.days || [];
   // Nothing scheduled anywhere in the window → don't show an empty grid.
   if (!days.length || days.every(x => x.status === 'none')) { el.innerHTML = ''; return; }
-  const COLOR = { all: 'var(--teal-500)', partial: '#F59E0B', missed: '#EF4444', none: 'var(--gray-100)' };
   const LABEL = { all: t('All taken'), partial: t('Some'), missed: t('Missed'), none: t('None due') };
-  const first = new Date(days[0].date + 'T00:00:00');
-  const cells = [];
-  for (let i = 0; i < first.getDay(); i++) cells.push('<div class="cal-cell cal-cell--empty"></div>');
-  for (const day of days) {
-    const dt = new Date(day.date + 'T00:00:00');
-    const tip = `${dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} — ${day.total ? `${day.taken}/${day.total} taken` : 'nothing scheduled'}`;
-    cells.push(`<div class="cal-cell" style="background:${COLOR[day.status]}" title="${tip}" data-ev-click="showCalDay('${day.date}',${day.taken},${day.total})"></div>`);
-  }
 
   // Motivational streak — consecutive perfect days (every scheduled dose taken).
   const s = d.streak || {};
@@ -4361,15 +4363,49 @@ async function loadDoseCalendar() {
       <button class="adh-streak-share" title="${t('Share')}" data-ev-click="shareStreak(${s.streak})">${t('Share')}</button></div>`;
   }
 
+  const toggle = `<div class="cal-range-toggle">
+      <button class="cal-range${!isYear ? ' selected' : ''}" data-ev-click="setDoseCalRange(35)">${t('5 weeks')}</button>
+      <button class="cal-range${isYear ? ' selected' : ''}" data-ev-click="setDoseCalRange(364)">${t('Year')}</button>
+    </div>`;
+
+  const grid = isYear ? _renderCalYear(days) : _renderCalWeeks(days);
+  const badge = isYear ? t('last year') : t('last 5 weeks');
+
   el.innerHTML =
     `<div class="panel" style="padding:18px 20px">
-       <div class="panel-header"><h2 class="panel-title">${t('📅 Dose calendar')}</h2><span class="panel-badge">${t('last 5 weeks')}</span></div>
+       <div class="panel-header"><h2 class="panel-title">${t('📅 Dose calendar')}</h2>${toggle}</div>
        ${streakBanner}
-       <div class="cal-weekdays">${['S','M','T','W','T','F','S'].map(w => `<span>${w}</span>`).join('')}</div>
-       <div class="cal-grid">${cells.join('')}</div>
+       ${grid}
        <div id="cal-day-detail" class="cal-detail"></div>
-       <div class="cal-legend">${Object.entries(LABEL).map(([k, l]) => `<span class="cal-leg"><i style="background:${COLOR[k]}"></i>${l}</span>`).join('')}</div>
+       <div class="cal-legend"><span class="cal-leg-badge">${badge}</span>${Object.entries(LABEL).map(([k, l]) => `<span class="cal-leg"><i style="background:${_CAL_COLOR[k]}"></i>${l}</span>`).join('')}</div>
      </div>`;
+}
+
+function _renderCalWeeks(days) {
+  const first = new Date(days[0].date + 'T00:00:00');
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push('<div class="cal-cell cal-cell--empty"></div>');
+  for (const day of days) {
+    const dt = new Date(day.date + 'T00:00:00');
+    const tip = `${dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} — ${day.total ? `${day.taken}/${day.total} taken` : 'nothing scheduled'}`;
+    cells.push(`<div class="cal-cell" style="background:${_CAL_COLOR[day.status]}" title="${tip}" data-ev-click="showCalDay('${day.date}',${day.taken},${day.total})"></div>`);
+  }
+  return `<div class="cal-weekdays">${['S','M','T','W','T','F','S'].map(w => `<span>${w}</span>`).join('')}</div>
+     <div class="cal-grid">${cells.join('')}</div>`;
+}
+
+// GitHub-style year heatmap: 7 rows (Sun–Sat), one column per week, filled
+// column-major. Leading blanks pad the first partial week.
+function _renderCalYear(days) {
+  const first = new Date(days[0].date + 'T00:00:00');
+  const cells = [];
+  for (let i = 0; i < first.getDay(); i++) cells.push('<div class="caly-cell caly-cell--empty"></div>');
+  for (const day of days) {
+    const dt = new Date(day.date + 'T00:00:00');
+    const tip = `${dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} — ${day.total ? `${day.taken}/${day.total} taken` : 'nothing scheduled'}`;
+    cells.push(`<div class="caly-cell" style="background:${_CAL_COLOR[day.status]}" title="${tip}" data-ev-click="showCalDay('${day.date}',${day.taken},${day.total})"></div>`);
+  }
+  return `<div class="caly-scroll"><div class="caly-grid">${cells.join('')}</div></div>`;
 }
 
 function showCalDay(date, taken, total) {
