@@ -47,7 +47,7 @@ from .health      import (list_habits, create_habit, delete_habit, toggle_habit_
 from .insights    import (add_notification, get_notifications, mark_notification_read,
                           mark_all_notifications_read, unread_notification_count,
                           generate_weekly_report, generate_health_review,
-                          global_search, get_goal_progress)
+                          global_search, get_goal_progress, get_visit_prep)
 from .cycle       import (log_period_start, log_period_end, delete_cycle, get_cycle_summary,
                           log_symptoms, get_symptom_day, get_symptom_summary)
 
@@ -92,6 +92,7 @@ __all__ = [
     "add_notification", "get_notifications", "mark_notification_read",
     "mark_all_notifications_read", "unread_notification_count",
     "generate_weekly_report", "generate_health_review", "global_search", "get_goal_progress",
+    "get_visit_prep",
     "log_period_start", "log_period_end", "delete_cycle", "get_cycle_summary",
     "log_symptoms", "get_symptom_day", "get_symptom_summary",
 ]

@@ -40,6 +40,79 @@ def unread_notification_count() -> int:
 
 # ── Weekly health report ──────────────────────────────────────────────────────
 
+def get_visit_prep() -> dict:
+    """"Since your last doctor visit" pack for the doctor-summary page.
+
+    Anchors on the most recent PAST appointment with kind='doctor', then shows
+    what has actually changed since: vitals that moved (baseline nearest the
+    visit vs latest), labs recorded after it, and medicines started/stopped.
+    Everything is the user's own data; nothing is computed if the anchor or a
+    comparison point is missing (returns None/empty, never a fabricated delta).
+    """
+    uid = current_user_id()
+    today = today_iso()
+
+    row = execute("""SELECT date, title FROM appointments
+                     WHERE user_id=? AND kind='doctor' AND date <= ?
+                     ORDER BY date DESC LIMIT 1""", (uid, today), fetchone=True)
+    if not row:
+        return {'last_visit': None, 'vitals_changes': [], 'new_labs': [],
+                'med_changes': [], 'has_data': False}
+    visit = row['date']
+
+    # Vitals that moved: per type, the reading nearest on-or-before the visit
+    # (baseline) vs the newest reading. Only report when there's a genuinely
+    # newer reading than the baseline — otherwise there's no "change since".
+    vrows = execute("""SELECT type, value1, value2, unit, date_key FROM vitals
+                       WHERE user_id=? ORDER BY date_key DESC, logged_at DESC""",
+                    (uid,), fetchall=True) or []
+    latest, baseline = {}, {}
+    for r in vrows:
+        vt = r['type']
+        if vt not in latest:
+            latest[vt] = dict(r)
+        # newest reading on-or-before the visit = baseline (rows are newest-first)
+        if vt not in baseline and r['date_key'] <= visit:
+            baseline[vt] = dict(r)
+    vitals_changes = []
+    for vt, late in latest.items():
+        base = baseline.get(vt)
+        if not base or base['date_key'] >= late['date_key']:
+            continue        # no earlier anchor, or nothing newer since the visit
+        vitals_changes.append({
+            'type': vt, 'unit': late.get('unit'),
+            'from': {'value1': base['value1'], 'value2': base.get('value2'), 'date': base['date_key']},
+            'to':   {'value1': late['value1'], 'value2': late.get('value2'), 'date': late['date_key']},
+        })
+
+    # Labs recorded since the visit.
+    try:
+        from .labs import get_latest_by_test
+        new_labs = [{'name': l.get('name'), 'value': l.get('value'), 'unit': l.get('unit'),
+                     'date': l.get('date_key'), 'status': l.get('status')}
+                    for l in get_latest_by_test() if (l.get('date_key') or '') >= visit]
+    except Exception:
+        new_labs = []
+
+    # Medicines started/stopped since the visit.
+    try:
+        from .medicines import get_medicine_events
+        med_changes = [{'name': e.get('med_name'), 'kind': e.get('kind'), 'date': (e.get('at') or '')[:10]}
+                       for e in get_medicine_events(days=3650)
+                       if e.get('kind') in ('started', 'stopped', 'deleted')
+                       and (e.get('at') or '')[:10] >= visit]
+    except Exception:
+        med_changes = []
+
+    return {
+        'last_visit': {'date': visit, 'title': row['title']},
+        'vitals_changes': vitals_changes,
+        'new_labs': new_labs,
+        'med_changes': med_changes,
+        'has_data': bool(vitals_changes or new_labs or med_changes),
+    }
+
+
 def generate_weekly_report() -> dict:
     import datetime as dt
     uid = current_user_id()

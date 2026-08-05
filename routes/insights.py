@@ -71,6 +71,7 @@ def api_doctor_summary():
         'symptoms': symptoms,
         'questions': questions,
         'adherence_30d': get_adherence_stats(30),
+        'visit_prep': get_visit_prep(),
     })
 
 # ══════════════════════════════════════════════════════════════════════════════
