@@ -881,6 +881,31 @@ def get_monthly_med_cost() -> dict:
     return {'total': round(total, 2), 'items': items, 'count': len(items)}
 
 
+def get_timing_conflicts() -> list:
+    """Medicines scheduled at the SAME time with conflicting food instructions —
+    one 'with food' and another 'on an empty stomach'/'before food' at, say,
+    09:00. This is timing HYGIENE only (spacing/food), never a drug-interaction
+    or safety claim; the user decides what to do about it."""
+    WITH = {'with_food'}
+    WITHOUT = {'empty_stomach', 'before_food'}
+    by_time = {}
+    for m in list_medicines():
+        if not m['active'] or m.get('frequency') == 'as_needed':
+            continue
+        tk = (m.get('timing') or '').strip()
+        if tk not in WITH and tk not in WITHOUT:
+            continue
+        for t in (m.get('times') or []):
+            by_time.setdefault(t, []).append({'name': m['name'], 'icon': m.get('icon') or '💊', 'timing': tk})
+    conflicts = []
+    for t, meds in sorted(by_time.items()):
+        withs = [x for x in meds if x['timing'] in WITH]
+        withouts = [x for x in meds if x['timing'] in WITHOUT]
+        if withs and withouts:
+            conflicts.append({'time': t, 'with_food': withs, 'without_food': withouts})
+    return conflicts
+
+
 def get_med_forecast() -> dict:
     """Forward view of medication logistics: for each tracked medicine, the DATE
     it runs out (today + real days-of-supply), plus the monthly/yearly cost

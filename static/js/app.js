@@ -409,6 +409,9 @@ const I18N = {
     'Remind me ahead of each dose': 'हर खुराक से पहले याद दिलाएँ',
     'On time': 'समय पर', '%1 min early': '%1 मिनट पहले',
     'Reminder timing updated': 'अनुस्मारक समय अपडेट हुआ',
+    'Timing worth a glance': 'ध्यान देने योग्य समय',
+    '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
+    'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
     'Med budget': 'दवा बजट', 'What your medicines cost each month, and when each one runs out': 'आपकी दवाइयों का मासिक खर्च, और हर एक कब खत्म होगी',
     'per month': 'प्रति माह', 'per year': 'प्रति वर्ष', 'priced meds': 'मूल्यांकित दवाएँ',
     'Add a monthly cost to your medicines to see the budget here.': 'बजट देखने के लिए अपनी दवाइयों में मासिक लागत जोड़ें।',
@@ -4162,6 +4165,30 @@ async function loadMedicines() {
   loadMissedDoses();
   loadMedCost();
   loadDoseCalendar();
+  loadTimingConflicts();
+}
+
+// Timing hygiene: flag same-time meds with conflicting food instructions.
+async function loadTimingConflicts() {
+  const el = document.getElementById('timing-conflicts-banner');
+  if (!el) return;
+  const d = await fetch('/api/medicines/timing-conflicts', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {conflicts:[]}).catch(() => ({conflicts:[]}));
+  const conflicts = d.conflicts || [];
+  if (!conflicts.length) { el.innerHTML = ''; return; }
+  const rows = conflicts.map(c => {
+    const w = c.with_food.map(m => escHtml(m.name)).join(', ');
+    const wo = c.without_food.map(m => escHtml(m.name)).join(', ');
+    return `<div class="tc-row">
+        <span class="tc-time">${escHtml(c.time)}</span>
+        <span class="tc-detail">${tformat('%1 (with food) vs %2 (empty stomach)', w, wo)}</span>
+      </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel tc-panel" style="padding:14px 18px;margin-bottom:14px">
+      <div class="tc-head">⏱️ ${t('Timing worth a glance')}</div>
+      ${rows}
+      <div class="tc-note">${t('These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.')}</div>
+    </div>`;
 }
 
 // ── Monthly medicine cost ──

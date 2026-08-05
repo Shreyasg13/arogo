@@ -68,6 +68,13 @@ def medicines_forecast():
     return jsonify(get_med_forecast())
 
 
+@bp.route('/api/medicines/timing-conflicts')
+@require_auth
+def medicines_timing_conflicts():
+    """Same-time meds with conflicting food instructions (timing hygiene only)."""
+    return jsonify({'conflicts': get_timing_conflicts()})
+
+
 @bp.route('/api/medicines/<mid>/reminder-lead', methods=['POST'])
 @require_auth
 def set_med_reminder_lead(mid):
