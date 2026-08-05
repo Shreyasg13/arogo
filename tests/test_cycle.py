@@ -94,3 +94,35 @@ def test_api_round_trip(app):
     assert r["has_data"] is True and r["ongoing"] is True
     # bad date rejected
     assert c.post("/api/cycle/start", json={"start_date": "not-a-date"}).status_code == 400
+
+
+def test_fertile_window_needs_two_cycles(app):
+    _, uid = _uid(app, "cyc7@medeasy.test")
+    with user_context(uid):
+        s = log_period_start(_day(2))          # single cycle → no prediction, no fertility
+    assert s["fertility"] is None
+
+
+def test_fertile_window_estimate(app):
+    _, uid = _uid(app, "cyc8@medeasy.test")
+    with user_context(uid):
+        log_period_start(_day(30))
+        s = log_period_start(_day(2))          # 28-day cycle, last start 2 days ago
+    f = s["fertility"]
+    assert f is not None and f["estimate_only"] is True
+    # next start ≈ today+26; ovulation = next−14 ≈ today+12
+    next_d = dt.date.fromisoformat(s["predicted_next_start"])
+    assert f["ovulation"] == (next_d - dt.timedelta(days=14)).isoformat()
+    assert f["window_start"] == (next_d - dt.timedelta(days=19)).isoformat()   # ovulation−5
+    assert f["window_end"] == (next_d - dt.timedelta(days=13)).isoformat()     # ovulation+1
+    assert f["days_to_ovulation"] == pytest.approx(12, abs=1)
+    assert f["in_window"] is False             # ovulation ~12 days out
+
+
+def test_fertile_window_suppressed_for_short_cycles(app):
+    _, uid = _uid(app, "cyc9@medeasy.test")
+    with user_context(uid):
+        log_period_start(_day(38))
+        s = log_period_start(_day(20))         # 18-day cycle (<21) → suppressed
+    assert s["cycle_length"] == 18
+    assert s["fertility"] is None              # −14 model is nonsense here; honest None

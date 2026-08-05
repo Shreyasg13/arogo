@@ -218,8 +218,30 @@ def get_cycle_summary() -> dict:
         regularity = {'min': lo, 'max': hi, 'spread': spread,
                       'cycles_compared': len(recent_gaps) + 1, 'irregular': irregular}
 
+    # Estimated fertile window — a planning aid, NEVER contraception. Uses the
+    # standard fixed-luteal-phase model: ovulation ≈ next period − 14 days, with
+    # the fertile window running 5 days before to 1 day after ovulation (sperm
+    # survival + egg viability). It's only as good as the next-start estimate, so
+    # it's offered on the same footing (≥2 cycles) and suppressed for very short
+    # typical cycles (<21d), where the −14 model puts ovulation implausibly early.
+    fertility = None
+    if predicted_next_start and cycle_length and cycle_length >= 21:
+        nxt_d = _dt.date.fromisoformat(predicted_next_start)
+        ovulation = nxt_d - _dt.timedelta(days=14)
+        fw_start = ovulation - _dt.timedelta(days=5)
+        fw_end = ovulation + _dt.timedelta(days=1)
+        fertility = {
+            'ovulation': ovulation.isoformat(),
+            'window_start': fw_start.isoformat(),
+            'window_end': fw_end.isoformat(),
+            'days_to_ovulation': (ovulation - today).days,
+            'in_window': fw_start <= today <= fw_end,
+            'ovulation_passed': today > ovulation,
+            'estimate_only': True,     # planning aid, not contraception
+        }
+
     return {'has_data': True, 'history': history[:12],
             'cycle_length': cycle_length, 'period_length': period_length,
             'predicted_next_start': predicted_next_start, 'days_until_next': days_until_next,
             'current_day': current_day, 'ongoing': ongoing, 'ongoing_day': ongoing_day,
-            'regularity': regularity}
+            'regularity': regularity, 'fertility': fertility}

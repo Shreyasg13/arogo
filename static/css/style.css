@@ -795,6 +795,11 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .cycle-stat { flex:1; min-width:90px; background:var(--gray-50,#F7F5F2); border-radius:10px; padding:9px 12px; text-align:center; }
 .cycle-stat b { display:block; font-size:16px; color:var(--gray-900,#1a1a1a); }
 .cycle-stat span { font-size:11px; color:var(--gray-500,#6B7280); }
+.cycle-fertile { background:#F0F7F1; border:1px solid #D6E9D8; border-radius:12px; padding:11px 14px; margin:0 0 14px; }
+.cycle-fertile--now { background:#E7F5E9; border-color:#9FD3A6; }
+.cycle-fertile-head { font-size:14px; font-weight:700; color:#2F7A3E; }
+.cycle-fertile-range { font-size:12.5px; color:var(--gray-600,#475569); margin-top:2px; }
+.cycle-fertile-disc { font-size:11px; color:var(--gray-500,#6B7280); margin-top:5px; font-style:italic; }
 .cycle-actions { display:flex; flex-direction:column; gap:8px; }
 .cycle-log-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .cycle-history { margin-top:14px; border-top:1px solid var(--gray-100,#EEE); padding-top:10px; }

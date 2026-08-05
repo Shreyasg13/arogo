@@ -435,6 +435,10 @@ const I18N = {
     'Enter reps': 'दोहराव दर्ज करें', 'BW': 'शारीरिक', 'est. 1RM': 'अनु. 1RM', 'no change': 'कोई बदलाव नहीं', 'Best': 'सर्वश्रेष्ठ',
     'No sets logged yet. Log your first set to start tracking progress.': 'अभी तक कोई सेट लॉग नहीं। प्रगति ट्रैक करने के लिए अपना पहला सेट लॉग करें।',
     'volume %1%2': 'आयतन %1%2', 'top %1%2': 'शीर्ष %1%2', 'over %1 session(s)': '%1 सत्र में',
+    'Estimated fertile window — now': 'अनुमानित उपजाऊ अवधि — अभी', 'Estimated fertile window': 'अनुमानित उपजाऊ अवधि',
+    'Estimated ovulation has passed for this cycle': 'इस चक्र में अनुमानित ओव्यूलेशन बीत चुका है',
+    'Estimated ovulation in ~%1 days': '~%1 दिनों में अनुमानित ओव्यूलेशन', 'ovulation': 'ओव्यूलेशन',
+    'An estimate from your average cycle — not a method of contraception.': 'आपके औसत चक्र से एक अनुमान — गर्भनिरोधक का तरीका नहीं।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
     'These are scheduled at the same time with opposite food instructions — you may want to space them out or ask your pharmacist. Not a safety warning.': 'ये एक ही समय पर विपरीत भोजन निर्देशों के साथ निर्धारित हैं — आप इन्हें अलग-अलग कर सकते हैं या फार्मासिस्ट से पूछ सकते हैं। यह सुरक्षा चेतावनी नहीं है।',
@@ -13849,6 +13853,23 @@ async function loadCycle() {
   loadCycleSymptoms();
 }
 
+// Estimated fertile window. Framed hard as a planning aid — never contraception,
+// which the disclaimer states plainly. Null when there's no reliable estimate.
+function _cycleFertilityNote(f) {
+  if (!f) return '';
+  let head;
+  if (f.in_window) head = t('Estimated fertile window — now');
+  else if (f.ovulation_passed) head = t('Estimated ovulation has passed for this cycle');
+  else if (f.days_to_ovulation != null && f.days_to_ovulation >= 0)
+    head = tformat('Estimated ovulation in ~%1 days', f.days_to_ovulation);
+  else head = t('Estimated fertile window');
+  return `<div class="cycle-fertile${f.in_window ? ' cycle-fertile--now' : ''}">
+    <div class="cycle-fertile-head">🌱 ${escHtml(head)}</div>
+    <div class="cycle-fertile-range">${_fmtShortDate(f.window_start)} – ${_fmtShortDate(f.window_end)} · ${t('ovulation')} ~${_fmtShortDate(f.ovulation)}</div>
+    <div class="cycle-fertile-disc">${t('An estimate from your average cycle — not a method of contraception.')}</div>
+  </div>`;
+}
+
 function renderCycle(d) {
   const esc = escHtml;
   const today = localToday();
@@ -13889,6 +13910,7 @@ function renderCycle(d) {
     <div class="privacy-note">🔒 ${t('Only you can see this. Never shared with family — not even someone managing your account.')}</div>
     ${status}
     ${stats}
+    ${_cycleFertilityNote(d.fertility)}
     <div class="cycle-actions">
       <div class="cycle-log-row">
         <input type="date" id="cycle-start-date" class="form-input" value="${today}" max="${today}" style="max-width:170px">
