@@ -369,6 +369,16 @@ const I18N = {
     'Goal set 🎯': 'लक्ष्य तय हुआ 🎯', 'Enter a target': 'एक लक्ष्य दर्ज करें',
     'Weight': 'वज़न', 'Body fat': 'शरीर की चर्बी', 'HbA1c': 'HbA1c', 'LDL cholesterol': 'LDL कोलेस्ट्रॉल',
     'Fasting glucose': 'उपवास ग्लूकोज़', 'Systolic BP': 'सिस्टोलिक बीपी', 'Daily steps': 'रोज़ के कदम', 'Custom goal': 'अपना लक्ष्य',
+    'Fasting': 'उपवास', 'Track an eating window — the clock counts from when you started': 'खाने की अवधि ट्रैक करें — घड़ी शुरुआत से गिनती है',
+    'Start a fast': 'उपवास शुरू करें', 'Start fast': 'उपवास शुरू', 'End fast': 'उपवास समाप्त करें',
+    'Custom hours': 'अपने घंटे', 'Enter hours': 'घंटे दर्ज करें',
+    '%1 h fast': '%1 घं उपवास', '%1 h': '%1 घं', '%1 to go': '%1 शेष',
+    '🎉 Target reached — end whenever you like': '🎉 लक्ष्य पूरा — जब चाहें समाप्त करें',
+    'Started %1': 'शुरू %1', 'Fast started ⏱️': 'उपवास शुरू ⏱️', 'Fast ended': 'उपवास समाप्त',
+    'Could not start': 'शुरू नहीं हो सका', 'Could not end': 'समाप्त नहीं हो सका', 'Could not load': 'लोड नहीं हो सका',
+    'fasts logged': 'उपवास दर्ज', 'average': 'औसत', 'longest': 'सबसे लंबा',
+    'target %1 h': 'लक्ष्य %1 घं',
+    'This is a simple log, not medical advice. If food or fasting feels hard to control, talking to a doctor or counsellor can help.': 'यह एक साधारण लॉग है, चिकित्सा सलाह नहीं। यदि भोजन या उपवास को नियंत्रित करना कठिन लगे, तो डॉक्टर या काउंसलर से बात करना मदद कर सकता है।',
     'Your whole health story in one place — the thing to scroll through with a doctor': 'आपकी पूरी स्वास्थ्य कहानी एक जगह — डॉक्टर के साथ देखने लायक',
     'Clear': 'साफ़ करें', 'Nothing here yet': 'अभी यहाँ कुछ नहीं',
     'As you log medicines, vitals, labs, visits and vaccines, they appear here in order.': 'जैसे-जैसे आप दवाइयाँ, वाइटल्स, लैब, विज़िट और टीके दर्ज करते हैं, वे यहाँ क्रम में दिखते हैं।',
@@ -2114,6 +2124,7 @@ function switchView(view) {
   if (view === 'immunizations') loadImmunizations();
   if (view === 'timeline')      loadTimeline();
   if (view === 'goals')         loadGoals();
+  if (view === 'fasting')       loadFasting();
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
@@ -11204,6 +11215,144 @@ async function markGoal(id, status) {
 async function deleteGoal(id) {
   await fetch('/api/goals/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   loadGoals();
+}
+
+// ── Fasting tracker ──────────────────────────────────────────────────────────
+// A neutral eating-window log: start a fast, watch the clock, end it when you
+// eat. The live timer ticks from the recorded start; nothing is invented.
+// Deliberately un-gamified — no streaks, plus a soft support note.
+let _fastTimer = null;
+let _activeFast = null;
+
+function _fastFmt(h) {
+  if (h == null) return '—';
+  const total = Math.max(0, Math.round(h * 60));
+  const hh = Math.floor(total / 60), mm = total % 60;
+  return hh + 'h ' + String(mm).padStart(2, '0') + 'm';
+}
+
+async function loadFasting() {
+  if (_fastTimer) { clearInterval(_fastTimer); _fastTimer = null; }
+  const el = document.getElementById('fasting-view-content');
+  if (!el) return;
+  const d = await fetch('/api/fasting', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="panel" style="padding:20px">${t('Could not load')}</div>`; return; }
+  _activeFast = d.active ? {start_at: d.active.start_at, target: d.active.target_hours} : null;
+  el.innerHTML = renderFasting(d);
+  if (_activeFast) {
+    _tickFast();
+    _fastTimer = setInterval(_tickFast, 1000 * 30);   // 30s is plenty for h:m
+  }
+}
+
+function _tickFast() {
+  if (!_activeFast) return;
+  const box = document.getElementById('fast-elapsed');
+  if (!box) { if (_fastTimer) { clearInterval(_fastTimer); _fastTimer = null; } return; }
+  const elapsed = (Date.now() - Date.parse(_activeFast.start_at)) / 3600000;
+  const target = _activeFast.target || 0;
+  box.textContent = _fastFmt(elapsed);
+  const rem = document.getElementById('fast-remaining');
+  const fill = document.getElementById('fast-fill');
+  if (target > 0) {
+    const reached = elapsed >= target;
+    if (rem) rem.textContent = reached ? t('🎉 Target reached — end whenever you like')
+                                       : tformat('%1 to go', _fastFmt(target - elapsed));
+    if (fill) {
+      fill.style.width = Math.max(0, Math.min(elapsed / target, 1)) * 100 + '%';
+      fill.classList.toggle('goal-fill--done', reached);
+    }
+  }
+}
+
+function renderFasting(d) {
+  let top;
+  if (d.active) {
+    const started = new Date(Date.parse(d.active.start_at));
+    const startLbl = started.toLocaleString([], {weekday:'short', hour:'2-digit', minute:'2-digit'});
+    top = `<div class="panel fast-live" style="padding:26px 22px;text-align:center;margin-bottom:16px">
+        <div class="fast-target-lbl">${tformat('%1 h fast', d.active.target_hours)}</div>
+        <div id="fast-elapsed" class="fast-clock">${_fastFmt(d.active.elapsed_hours)}</div>
+        <div id="fast-remaining" class="fast-remaining">${
+          d.active.reached_target ? t('🎉 Target reached — end whenever you like')
+          : tformat('%1 to go', _fastFmt(d.active.remaining_hours))}</div>
+        <div class="goal-bar" style="max-width:320px;margin:14px auto 4px">
+          <div id="fast-fill" class="goal-fill${d.active.reached_target ? ' goal-fill--done' : ''}"
+               style="width:${Math.round((d.active.progress || 0) * 100)}%"></div></div>
+        <div class="fast-started">${tformat('Started %1', startLbl)}</div>
+        <button class="btn-primary" style="margin-top:16px" data-ev-click="endFast()">${t('End fast')}</button>
+      </div>`;
+  } else {
+    const presets = (d.presets || []).map(p =>
+      `<button class="fast-preset" data-ev-click="startFast(${p.hours})">
+         <div class="fast-preset-lbl">${p.label}</div>
+         <div class="fast-preset-h">${tformat('%1 h', p.hours)}</div></button>`).join('');
+    top = `<div class="panel" style="padding:22px;margin-bottom:16px">
+        <h2 class="panel-title" style="margin-bottom:14px">${t('Start a fast')}</h2>
+        <div class="fast-presets">${presets}</div>
+        <div class="fast-custom">
+          <input type="number" id="fast-custom-h" class="form-input" min="1" max="48" step="1"
+                 placeholder="${t('Custom hours')}" style="max-width:140px">
+          <button class="btn-outline" data-ev-click="startFast()">${t('Start')}</button>
+        </div>
+      </div>`;
+  }
+
+  const s = d.stats || {};
+  const stats = s.completed ? `<div class="fast-stats">
+      <div class="fast-stat"><div class="fast-stat-n">${s.completed}</div><div class="fast-stat-l">${t('fasts logged')}</div></div>
+      <div class="fast-stat"><div class="fast-stat-n">${s.avg_hours != null ? s.avg_hours + 'h' : '—'}</div><div class="fast-stat-l">${t('average')}</div></div>
+      <div class="fast-stat"><div class="fast-stat-n">${s.longest_hours != null ? s.longest_hours + 'h' : '—'}</div><div class="fast-stat-l">${t('longest')}</div></div>
+    </div>` : '';
+
+  let history = '';
+  if ((d.history || []).length) {
+    const rows = d.history.map(h => {
+      const dt = new Date(Date.parse(h.start_at));
+      const day = dt.toLocaleDateString([], {month:'short', day:'numeric'});
+      const hit = h.reached_target ? '<span class="fast-hit">✓</span>' : '';
+      return `<div class="fast-hist-row">
+          <div class="fast-hist-day">${day}</div>
+          <div class="fast-hist-dur">${_fastFmt(h.duration_hours)} ${hit}</div>
+          <div class="fast-hist-target">${tformat('target %1 h', h.target_hours)}</div>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteFast('${h.id}')" style="color:var(--gray-300)">✕</button>
+        </div>`;
+    }).join('');
+    history = `<div class="panel" style="padding:16px 20px"><h2 class="panel-title" style="margin-bottom:8px">${t('History')}</h2>${rows}</div>`;
+  }
+
+  const note = `<p class="fast-note">${t('This is a simple log, not medical advice. If food or fasting feels hard to control, talking to a doctor or counsellor can help.')}</p>`;
+  return top + stats + history + note;
+}
+
+async function startFast(hours) {
+  let target = hours;
+  if (target == null) {
+    const v = document.getElementById('fast-custom-h')?.value;
+    target = v ? Number(v) : null;
+    if (!target || target <= 0) { showToast(t('Enter hours'), 'error'); return; }
+  }
+  const r = await fetch('/api/fasting/start', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({target_hours: target})})
+    .then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Fast started ⏱️')); loadFasting(); }
+  else showToast((r && r.error) || t('Could not start'), 'error');
+}
+
+async function endFast() {
+  const r = await fetch('/api/fasting/end', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({})}).then(x => x.json()).catch(() => null);
+  if (r && r.success) {
+    if (r.fast && r.fast.reached_target) { try { celebrate && celebrate(); } catch (e) {} }
+    showToast(t('Fast ended'));
+    loadFasting();
+  } else showToast((r && r.error) || t('Could not end'), 'error');
+}
+
+async function deleteFast(id) {
+  await fetch('/api/fasting/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadFasting();
 }
 
 // ── Dependents / family profiles ─────────────────────────────────────────────

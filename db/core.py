@@ -450,6 +450,11 @@ CREATE TABLE IF NOT EXISTS health_goals (
     start_value REAL DEFAULT NULL, deadline TEXT DEFAULT NULL,
     status TEXT DEFAULT 'active', created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS fasting_sessions (
+    id TEXT PRIMARY KEY, start_at TEXT NOT NULL, end_at TEXT DEFAULT NULL,
+    target_hours REAL DEFAULT 16, status TEXT DEFAULT 'active',
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS dependents (
     id TEXT PRIMARY KEY, name TEXT NOT NULL, relationship TEXT DEFAULT 'other',
     birthdate TEXT DEFAULT NULL, notes TEXT DEFAULT '',
@@ -972,6 +977,7 @@ DATA_TABLES = [
     'health_expenses',
     'immunizations',
     'health_goals',
+    'fasting_sessions',
     'dependents',
     'dependent_records',
 ]

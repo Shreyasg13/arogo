@@ -54,6 +54,7 @@ def create_app(config=Config):
     from routes.expenses  import bp as expenses_bp
     from routes.dependents import bp as dependents_bp
     from routes.goals     import bp as goals_bp
+    from routes.fasting   import bp as fasting_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -69,6 +70,7 @@ def create_app(config=Config):
     app.register_blueprint(expenses_bp)
     app.register_blueprint(dependents_bp)
     app.register_blueprint(goals_bp)
+    app.register_blueprint(fasting_bp)
 
     @app.before_request
     def _reject_non_object_json():
