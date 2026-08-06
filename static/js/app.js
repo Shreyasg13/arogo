@@ -466,6 +466,9 @@ const I18N = {
     'Allow pop-ups to open the printable schedule': 'प्रिंट करने योग्य शेड्यूल खोलने के लिए पॉप-अप की अनुमति दें',
     'Take each medicine in its time row, on each day it appears. As-needed medicines are not shown here.': 'हर दवा को उसकी समय-पंक्ति में लें, जिस दिन वह दिखे। ज़रूरत अनुसार दवाइयाँ यहाँ नहीं दिखाई जातीं।',
     'Generated from your own schedule in Arogo. Not a prescription.': 'Arogo में आपके अपने शेड्यूल से बना। यह नुस्खा नहीं है।',
+    'Call %1': '%1 को कॉल करें', 'pharmacy': 'फार्मेसी', 'Copy refill note': 'रिफिल नोट कॉपी करें', 'Pharmacy': 'फार्मेसी',
+    'Add pharmacy': 'फार्मेसी जोड़ें', 'Your pharmacy': 'आपकी फार्मेसी', 'Pharmacy name': 'फार्मेसी का नाम', 'Phone': 'फ़ोन',
+    'Pharmacy saved': 'फार्मेसी सहेजी गई',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -3612,7 +3615,60 @@ async function openRefillList() {
   el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--gray-400)">Loading…</div>';
   modal.style.display = 'flex';
   const d = await fetch('/api/medicines/refill-list').then(r => r.json()).catch(() => null);
-  el.innerHTML = d ? renderRefillList(d.items || []) : '<div style="padding:20px;color:#DC2626">Could not load the list.</div>';
+  el.innerHTML = d ? renderRefillList(d) : '<div style="padding:20px;color:#DC2626">Could not load the list.</div>';
+}
+
+// Pharmacy quick-actions: call the saved pharmacy and copy a ready refill note.
+function _pharmacyBar(d) {
+  const ph = d.pharmacy || {};
+  const msg = d.refill_message || '';
+  const callable = ph.phone
+    ? `<a class="btn-primary btn-sm" href="tel:${escAttrPhone(ph.phone)}">📞 ${tformat('Call %1', escHtml(ph.name || t('pharmacy')))}</a>`
+    : '';
+  const copyBtn = msg
+    ? `<button class="btn-outline btn-sm" data-ev-click="copyRefillMessage()">📋 ${t('Copy refill note')}</button>` : '';
+  const editBtn = `<button class="btn-outline btn-sm" data-ev-click="openPharmacyEditor()">${ph.has_pharmacy ? '✎ ' + t('Pharmacy') : '+ ' + t('Add pharmacy')}</button>`;
+  window._refillMessage = msg;
+  return (callable || copyBtn || editBtn)
+    ? `<div class="rf-pharmacy">${callable}${copyBtn}${editBtn}</div>` : '';
+}
+// Phone is server-sanitized to [0-9+-() space]; strip spaces/() for the tel: URI.
+function escAttrPhone(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
+
+function copyRefillMessage() {
+  const msg = window._refillMessage || '';
+  if (!msg) return;
+  if (navigator.clipboard) navigator.clipboard.writeText(msg).then(() => showToast(t('Copied ✓'))).catch(() => showToast(msg));
+  else showToast(msg);
+}
+
+function openPharmacyEditor() {
+  fetch('/api/pharmacy').then(r => r.json()).then(ph => {
+    closeSkipPicker();
+    const ov = document.createElement('div');
+    ov.className = 'lang-picker-overlay'; ov.id = 'pharmacy-editor';
+    ov.setAttribute('data-ev-click', 'pharmacyEditorBackdrop(event)');
+    ov.innerHTML = `<div class="lang-picker" style="max-width:320px;padding:16px">
+      <div class="lang-picker-head">${t('Your pharmacy')}</div>
+      <input type="text" id="pharmacy-name" class="form-input" placeholder="${t('Pharmacy name')}" value="${escHtml(ph.name || '')}" style="margin-bottom:8px">
+      <input type="tel" id="pharmacy-phone" class="form-input" placeholder="${t('Phone')}" value="${escHtml(ph.phone || '')}" style="margin-bottom:12px">
+      <button class="btn-primary" style="width:100%" data-ev-click="savePharmacy()">${t('Save')}</button>
+    </div>`;
+    document.body.appendChild(ov);
+  }).catch(() => {});
+}
+function pharmacyEditorBackdrop(ev) { if (ev.target && ev.target.id === 'pharmacy-editor') closePharmacyEditor(); }
+function closePharmacyEditor() { const el = document.getElementById('pharmacy-editor'); if (el) el.remove(); }
+
+async function savePharmacy() {
+  const name = document.getElementById('pharmacy-name')?.value || '';
+  const phone = document.getElementById('pharmacy-phone')?.value || '';
+  const r = await fetch('/api/pharmacy', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, phone })
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) { showToast(t('Pharmacy saved')); closePharmacyEditor(); openRefillList(); }
+  else showToast(t('Could not save'), 'error');
 }
 function closeRefillList() { const m = document.getElementById('refill-modal'); if (m) m.style.display = 'none'; }
 
@@ -3623,10 +3679,11 @@ function _refillStatusLabel(it) {
   return '';
 }
 
-function renderRefillList(items) {
+function renderRefillList(d) {
   const esc = escHtml;
+  const items = (d && d.items) || [];
   if (!items.length) {
-    return `<div class="rf-empty">✅ Nothing to refill — every tracked medicine has enough on hand.</div>`;
+    return `<div class="rf-empty">✅ Nothing to refill — every tracked medicine has enough on hand.</div>` + _pharmacyBar(d || {});
   }
   const rows = items.map((it, i) => `
     <label class="rf-row">
@@ -3637,7 +3694,7 @@ function renderRefillList(items) {
         ${it.pharmacy_note ? `<div class="rf-note">📍 ${esc(it.pharmacy_note)}</div>` : ''}
       </div>
     </label>`).join('');
-  return `<div class="rf-list">${rows}</div>
+  return _pharmacyBar(d) + `<div class="rf-list">${rows}</div>
     <p class="rf-hint">Tick items as you go. Ordered ones sit at the bottom.</p>`;
 }
 

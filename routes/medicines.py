@@ -199,7 +199,18 @@ def dose_calendar():
 @require_auth
 def refill_list():
     """Everything to pick up on a pharmacy run — low, out, or on the way."""
-    return jsonify({'items': get_refill_list()})
+    from db.pharmacy import get_pharmacy, refill_message
+    return jsonify({'items': get_refill_list(),
+                    'pharmacy': get_pharmacy(), 'refill_message': refill_message()})
+
+@bp.route('/api/pharmacy', methods=['GET', 'POST'])
+@require_auth
+def pharmacy():
+    from db.pharmacy import get_pharmacy, set_pharmacy
+    if request.method == 'POST':
+        data = request.json or {}
+        return jsonify({'success': True, 'pharmacy': set_pharmacy(data.get('name', ''), data.get('phone', ''))})
+    return jsonify(get_pharmacy())
 
 @bp.route('/api/medicines/cost')
 @require_auth

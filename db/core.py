@@ -937,6 +937,16 @@ def migrate_add_workout_sets():
         pass
 
 
+def migrate_add_pharmacy():
+    """Add a default pharmacy (name + phone) to the profile for one-tap refills."""
+    for stmt in ("ALTER TABLE user_profile ADD COLUMN pharmacy_name TEXT DEFAULT ''",
+                 "ALTER TABLE user_profile ADD COLUMN pharmacy_phone TEXT DEFAULT ''"):
+        try:
+            execute(stmt)
+        except Exception:
+            pass
+
+
 def migrate_add_dose_skip_reason():
     """Add an optional reason tag to a skipped dose (forgot / away / side-effect / out)."""
     try:
@@ -1258,6 +1268,7 @@ def init_db():
     migrate_add_vital_context()
     migrate_add_sleep_goal()
     migrate_add_workout_sets()
+    migrate_add_pharmacy()
     migrate_add_dose_skip_reason()
     migrate_add_share_snapshots()
     migrate_add_med_cost()
