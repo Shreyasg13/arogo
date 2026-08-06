@@ -909,6 +909,20 @@ def api_symptom_correlations():
         days = 60
     return jsonify(get_symptom_correlations(days))
 
+@bp.route('/api/metrics/options')
+@require_auth
+def api_metric_options():
+    from db.metric_insights import get_correlatable_metrics
+    return jsonify(get_correlatable_metrics())
+
+@bp.route('/api/metrics/correlation')
+@require_auth
+def api_metric_correlation():
+    from db.metric_insights import get_metric_correlation
+    a = request.args.get('a', ''); b = request.args.get('b', '')
+    days = int(request.args.get('days', 90)) if str(request.args.get('days', 90)).isdigit() else 90
+    return jsonify(get_metric_correlation(a, b, days))
+
 @bp.route('/api/symptoms/med-effect')
 @require_auth
 def api_symptom_med_effect():

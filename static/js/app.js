@@ -466,6 +466,11 @@ const I18N = {
     'Worth a mention': 'ध्यान देने योग्य', 'above': 'ऊपर', 'below': 'नीचे', 'risen': 'बढ़ा है', 'fallen': 'घटा है',
     'Spend over time': 'समय के साथ खर्च', 'last 12 months': 'पिछले 12 महीने', 'this month': 'इस माह', 'this year': 'इस वर्ष', 'projected/yr': 'अनुमानित/वर्ष',
     'An estimate: costs are taken at their current value; deleted medicines are not counted.': 'एक अनुमान: लागत वर्तमान मूल्य पर ली गई है; हटाई गई दवाइयाँ नहीं गिनी जातीं।',
+    'Do these move together?': 'क्या ये साथ चलते हैं?', 'vs': 'बनाम', 'Pick two different metrics.': 'दो अलग मीट्रिक चुनें।',
+    'Blood pressure (systolic)': 'रक्तचाप (सिस्टोलिक)', 'Blood sugar': 'ब्लड शुगर', 'Resting heart rate': 'विश्राम हृदय गति', 'Sleep hours': 'नींद के घंटे', 'Water': 'पानी',
+    'tend to move together': 'साथ-साथ बदलते हैं', 'tend to move in opposite directions': 'विपरीत दिशा में बदलते हैं', 'show no clear link': 'कोई स्पष्ट संबंध नहीं दिखाते',
+    '%1 and %2 ': '%1 और %2 ', 'over %1 shared days': '%1 साझा दिनों में', '(%1 shared days)': '(%1 साझा दिन)', 'not enough shared days yet': 'अभी पर्याप्त साझा दिन नहीं',
+    'Not enough data yet.': 'अभी पर्याप्त डेटा नहीं।', 'A pattern in your logs, not proof one causes the other.': 'आपके लॉग में एक पैटर्न, यह प्रमाण नहीं कि एक दूसरे का कारण है।',
     'Reading categories': 'रीडिंग श्रेणियाँ', 'last 90 days': 'पिछले 90 दिन', 'Elevated': 'बढ़ा हुआ', 'Stage 1': 'चरण 1', 'Stage 2': 'चरण 2', 'Crisis': 'संकट', 'Low': 'कम', 'High': 'उच्च',
     'Standard categories for a single reading — not a diagnosis, which needs repeated readings.': 'एक रीडिंग के लिए मानक श्रेणियाँ — निदान नहीं, जिसके लिए बार-बार रीडिंग चाहिए।',
     'Last %1 readings were %2 your target': 'पिछली %1 रीडिंग आपके लक्ष्य से %2 थीं', 'Has %1 over the last %2 readings': 'पिछली %2 रीडिंग में %1',
@@ -9436,7 +9441,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -14915,6 +14920,58 @@ async function loadVitalsAnomalies() {
       ${rows}
       <div class="vanom-disc">${t('A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.')}</div>
     </div>`;
+}
+
+// Two-metric correlation explorer — pick two, see if they move together.
+let _corrMetrics = [];
+async function loadCorrelationExplorer() {
+  const el = document.getElementById('correlation-explorer');
+  if (!el) return;
+  const d = await fetch('/api/metrics/options').then(r => r.json()).catch(() => null);
+  _corrMetrics = (d && d.metrics) || [];
+  if (_corrMetrics.length < 2) { el.innerHTML = ''; return; }   // need 2 metrics with data
+  const opts = extra => _corrMetrics.map(m => `<option value="${m.key}">${escHtml(t(m.label))}</option>`).join('');
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-bottom:16px">
+      <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">🔗 ${t('Do these move together?')}</h2></div>
+      <div class="corr-picker">
+        <select class="form-input" id="corr-a" data-ev-change="compareMetrics()">${opts()}</select>
+        <span class="corr-vs">${t('vs')}</span>
+        <select class="form-input" id="corr-b" data-ev-change="compareMetrics()">${opts()}</select>
+      </div>
+      <div id="corr-result"></div>
+    </div>`;
+  // default: pick the first two distinct metrics
+  const b = document.getElementById('corr-b');
+  if (b && b.options.length > 1) b.selectedIndex = 1;
+  compareMetrics();
+}
+
+async function compareMetrics() {
+  const a = document.getElementById('corr-a')?.value;
+  const b = document.getElementById('corr-b')?.value;
+  const out = document.getElementById('corr-result');
+  if (!out || !a || !b) return;
+  if (a === b) { out.innerHTML = `<div class="corr-msg">${t('Pick two different metrics.')}</div>`; return; }
+  const d = await fetch(`/api/metrics/correlation?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}&days=90`)
+    .then(r => r.json()).catch(() => null);
+  if (!d) { out.innerHTML = ''; return; }
+  if (!d.has_data) {
+    out.innerHTML = `<div class="corr-msg">${d.reason ? escHtml(t(d.reason)) : t('Not enough data yet.')} ${d.n ? tformat('(%1 shared days)', d.n) : ''}</div>`;
+    return;
+  }
+  const DIR = {
+    together: { icon: '↗↗', color: '#22C55E', word: 'tend to move together' },
+    opposite: { icon: '↗↘', color: '#F59E0B', word: 'tend to move in opposite directions' },
+    no_link:  { icon: '≈',  color: 'var(--gray-400)', word: 'show no clear link' },
+  };
+  const m = DIR[d.direction] || DIR.no_link;
+  const rTxt = d.r == null ? '' : ` · r = ${d.r}`;
+  out.innerHTML = `<div class="corr-verdict" style="color:${m.color}">
+      <span class="corr-icon">${m.icon}</span>
+      <span>${tformat('%1 and %2 ', escHtml(t(d.a_label)), escHtml(t(d.b_label)))}${t(m.word)}</span>
+    </div>
+    <div class="corr-detail">${tformat('over %1 shared days', d.n)}${rTxt}</div>
+    <div class="corr-disc">${t('A pattern in your logs, not proof one causes the other.')}</div>`;
 }
 
 // BP & resting-HR categories — standard published bands, per reading + spread.
