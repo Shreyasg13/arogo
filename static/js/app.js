@@ -461,6 +461,11 @@ const I18N = {
     'Health calculators': 'स्वास्थ्य कैलकुलेटर', 'Underweight': 'कम वज़न', 'Normal': 'सामान्य', 'Overweight': 'अधिक वज़न', 'Obese': 'मोटापा',
     'Asia-Pacific: %1': 'एशिया-प्रशांत: %1', 'Add %1 to see BMI and more': 'BMI आदि देखने के लिए %1 जोड़ें',
     'height and weight in your profile': 'अपनी प्रोफ़ाइल में लंबाई और वज़न', 'a blood-pressure reading': 'एक रक्तचाप रीडिंग',
+    'Week schedule': 'साप्ताहिक शेड्यूल', 'Weekly medication schedule': 'साप्ताहिक दवा शेड्यूल', 'Print': 'प्रिंट',
+    'Could not build the schedule': 'शेड्यूल नहीं बना', 'Add a scheduled medicine first': 'पहले एक निर्धारित दवा जोड़ें',
+    'Allow pop-ups to open the printable schedule': 'प्रिंट करने योग्य शेड्यूल खोलने के लिए पॉप-अप की अनुमति दें',
+    'Take each medicine in its time row, on each day it appears. As-needed medicines are not shown here.': 'हर दवा को उसकी समय-पंक्ति में लें, जिस दिन वह दिखे। ज़रूरत अनुसार दवाइयाँ यहाँ नहीं दिखाई जातीं।',
+    'Generated from your own schedule in Arogo. Not a prescription.': 'Arogo में आपके अपने शेड्यूल से बना। यह नुस्खा नहीं है।',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -3541,6 +3546,55 @@ async function openMedCard() {
   // CSP, which would block an inline onclick in the written document.
   const btn = win.document.querySelector('.mc-print-btn');
   if (btn) btn.addEventListener('click', () => win.print());
+}
+
+// Printable week grid: what to take in each time slot across the next 7 days.
+// Built from the same planner the app uses; a fridge sheet, print-friendly.
+async function openWeekSchedule() {
+  const d = await fetch('/api/medicines/planner?days=7').then(r => r.json()).catch(() => null);
+  if (!d) { showToast(t('Could not build the schedule'), 'error'); return; }
+  if (!d.has_schedule) { showToast(t('Add a scheduled medicine first'), 'error'); return; }
+  const win = window.open('', '_blank', 'width=900,height=760');
+  if (!win) { showToast(t('Allow pop-ups to open the printable schedule'), 'error'); return; }
+  win.document.write(buildWeekScheduleHtml(d));
+  win.document.close();
+  const btn = win.document.querySelector('.ws-print-btn');
+  if (btn) btn.addEventListener('click', () => win.print());
+}
+
+function buildWeekScheduleHtml(d) {
+  const esc = escapeHtml;
+  const head = d.days.map(day =>
+    `<th class="${day.is_today ? 'ws-today' : ''}"><div class="ws-wd">${esc(day.weekday)}</div><div class="ws-dn">${esc(String(day.day))}</div></th>`).join('');
+  const rows = d.rows.map(r => {
+    const cells = r.cells.map((due, i) => {
+      const items = (due || []).map(m =>
+        `<div class="ws-med"><span>${esc(m.icon || '💊')}</span> ${esc(m.name)}${m.dose ? ` <span class="ws-dose">${esc(m.dose)}</span>` : ''}</div>`).join('');
+      return `<td class="${d.days[i] && d.days[i].is_today ? 'ws-today' : ''}">${items || '<span class="ws-dash">–</span>'}</td>`;
+    }).join('');
+    return `<tr><th class="ws-time">${esc(_mc12h(r.time))}<div class="ws-slot">${esc(t(r.label))}</div></th>${cells}</tr>`;
+  }).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${t('Week schedule')} — Arogo</title>
+    <style>
+      body{font:14px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;color:#243027;margin:0;padding:26px}
+      h1{font-size:20px;margin:0 0 2px} .sub{color:#7A867C;font-size:12px;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;table-layout:fixed}
+      th,td{border:1px solid #E1E7E0;padding:7px 8px;vertical-align:top;text-align:left}
+      thead th{background:#F2F6F1;text-align:center;font-size:12px}
+      .ws-wd{font-weight:700}.ws-dn{color:#7A867C;font-size:11px}
+      .ws-time{width:96px;background:#FAFBF9;font-weight:700}.ws-slot{font-weight:400;color:#7A867C;font-size:11px}
+      .ws-today{background:#EAF5EC}
+      .ws-med{font-size:12px;margin:2px 0}.ws-dose{color:#7A867C}.ws-dash{color:#C7CFC8}
+      .ws-print-btn{position:fixed;top:16px;right:16px;padding:9px 16px;background:#5A9E70;color:#fff;border:none;border-radius:9px;font-weight:600;cursor:pointer}
+      .foot{margin-top:14px;color:#9AA69C;font-size:11px}
+      @media print{.ws-print-btn{display:none}}
+    </style></head><body>
+    <button class="ws-print-btn">🖨 ${t('Print')}</button>
+    <h1>🌱 ${t('Weekly medication schedule')}</h1>
+    <div class="sub">${t('Take each medicine in its time row, on each day it appears. As-needed medicines are not shown here.')}</div>
+    <table><thead><tr><th class="ws-time"></th>${head}</tr></thead><tbody>${rows}</tbody></table>
+    <div class="foot">${t('Generated from your own schedule in Arogo. Not a prescription.')}</div>
+    </body></html>`;
 }
 
 // Human timing label for a medicine/dose object. Backend supplies timing_text;
