@@ -479,6 +479,8 @@ const I18N = {
     '📉 Fat loss — waist %1cm, weight %2kg': '📉 वसा घटी — कमर %1सेमी, वज़न %2किग्रा',
     'Getting ready for your visit': 'अपनी विज़िट की तैयारी', 'Refills to sort before you go': 'जाने से पहले रिफिल करने हेतु',
     'Labs due for a recheck': 'दोबारा जाँच हेतु लैब', 'out of stock': 'स्टॉक में नहीं', 'due now': 'अभी देय',
+    'Symptoms around a medicine change': 'दवा बदलने के आसपास लक्षण', 'Since starting %1': '%1 शुरू करने के बाद से', 'Since stopping %1': '%1 बंद करने के बाद से',
+    'less often': 'कम बार', 'more often': 'अधिक बार', 'about the same': 'लगभग समान', '%1/wk → %2/wk': '%1/सप्ताह → %2/सप्ताह', 'severity %1 → %2': 'गंभीरता %1 → %2',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -15993,7 +15995,39 @@ function renderSymptomCorrelations(corr) {
     </div>`;
 }
 
+// Symptom before/after a medicine change — an observation, never a cause.
+async function loadSymptomMedEffect() {
+  const el = document.getElementById('symptom-med-effect-panel');
+  if (!el) return;
+  const d = await fetch('/api/symptoms/med-effect', { cache: 'no-store' }).then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const DIR = {
+    improved:     { icon: '📉', color: '#22C55E', word: 'less often' },
+    worse:        { icon: '📈', color: '#EF4444', word: 'more often' },
+    little_change:{ icon: '→',  color: 'var(--gray-400)', word: 'about the same' },
+  };
+  const rows = d.findings.map(f => {
+    const m = DIR[f.direction] || DIR.little_change;
+    const verb = f.event === 'started' ? t('Since starting %1') : t('Since stopping %1');
+    const sev = (f.before_severity && f.after_severity)
+      ? ` · ${tformat('severity %1 → %2', f.before_severity, f.after_severity)}` : '';
+    return `<div class="sme-row">
+      <span class="sme-icon" style="color:${m.color}">${m.icon}</span>
+      <div class="sme-body">
+        <div class="sme-lead">${tformat(verb, escHtml(f.medicine))}, <b>${escHtml(f.symptom)}</b> ${t(m.word)}</div>
+        <div class="sme-detail">${tformat('%1/wk → %2/wk', f.before_per_week, f.after_per_week)}${sev}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-top:16px">
+      <div class="panel-header" style="padding:0 0 6px"><h2 class="panel-title">💊 ${t('Symptoms around a medicine change')}</h2></div>
+      ${rows}
+      <div class="sme-disc">${escHtml(d.note)}</div>
+    </div>`;
+}
+
 async function loadSymptomPatterns() {
+  loadSymptomMedEffect();
   const panel = document.getElementById('symptom-patterns-panel');
   if (!panel) return;
 

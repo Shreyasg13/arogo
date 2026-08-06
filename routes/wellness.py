@@ -909,6 +909,14 @@ def api_symptom_correlations():
         days = 60
     return jsonify(get_symptom_correlations(days))
 
+@bp.route('/api/symptoms/med-effect')
+@require_auth
+def api_symptom_med_effect():
+    """Before-vs-after a medicine change, for each symptom — an observation from
+    the user's own logs, never a proven cause."""
+    from db.symptom_insights import get_symptom_med_effectiveness
+    return jsonify(get_symptom_med_effectiveness())
+
 
 
 # ── Vitals ────────────────────────────────────────────────────────────────────

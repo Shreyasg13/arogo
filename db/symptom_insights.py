@@ -16,7 +16,7 @@ from collections import defaultdict
 from .core import execute, current_user_id
 from .health import get_symptoms
 from .wellness import get_sleep_logs
-from .medicines import list_medicines
+from .medicines import list_medicines, get_medicine_events
 from .conditions import _acting_as_someone
 
 MIN_OCCURRENCES = 3          # don't infer a pattern from one or two logs
@@ -27,6 +27,90 @@ CYCLE_SHARE = 0.6            # this fraction of a symptom's days in one phase to
 
 def _dkey(s):
     return (s or '')[:10]
+
+
+EFFECT_WINDOW = 28          # 4 weeks each side of a med change
+EFFECT_MIN_BEFORE = 2       # need a real baseline before the change to compare
+
+
+def get_symptom_med_effectiveness(window: int = EFFECT_WINDOW) -> dict:
+    """Before-vs-after view of a symptom around a medicine starting or stopping:
+    "since starting X, headaches went from 5/wk to 2/wk". An OBSERVATION from the
+    user's own logs — explicitly not proof the medicine caused the change.
+
+    Guards that keep it honest: the after-window must have fully elapsed (so the
+    'after' rate isn't half-counted); the symptom needs a real baseline
+    (>= EFFECT_MIN_BEFORE occurrences before); and only a clear shift (>=30%
+    fewer/more) is labelled improved/worse, otherwise 'little change'.
+    """
+    from datetime import timedelta
+    from .core import user_today
+    window = max(7, min(int(window or EFFECT_WINDOW), 90))
+    weeks = window / 7.0
+    try:
+        today = _dt.date.fromisoformat(user_today())
+    except ValueError:
+        today = _dt.date.today()
+
+    by_name = defaultdict(list)
+    for s in get_symptoms(days=400):
+        try:
+            d = _dt.date.fromisoformat(_dkey(s['date_key']))
+        except ValueError:
+            continue
+        by_name[s['name']].append((d, s.get('severity')))
+
+    events = []
+    for e in get_medicine_events(days=400):
+        if e.get('kind') not in ('started', 'stopped'):
+            continue
+        try:
+            ed = _dt.date.fromisoformat((e.get('at') or '')[:10])
+        except ValueError:
+            continue
+        events.append((ed, e['kind'], e.get('med_name') or ''))
+    events.sort(key=lambda x: x[0], reverse=True)      # newest first
+
+    seen, out = set(), []
+    for ed, kind, med_name in events:
+        if ed + timedelta(days=window) > today:        # after-window not complete yet
+            continue
+        before_lo = ed - timedelta(days=window)
+        for name, logs in by_name.items():
+            key = (med_name.lower(), name.lower(), kind)
+            if key in seen:
+                continue
+            before = [sev for (d, sev) in logs if before_lo <= d < ed]
+            after = [sev for (d, sev) in logs if ed <= d < ed + timedelta(days=window)]
+            if len(before) < EFFECT_MIN_BEFORE:
+                continue
+            seen.add(key)
+            bc, ac = len(before), len(after)
+            if ac <= bc * 0.7:
+                direction = 'improved'
+            elif ac >= bc * 1.3:
+                direction = 'worse'
+            else:
+                direction = 'little_change'
+
+            def _sev(vals):
+                real = [v for v in vals if v]
+                return round(sum(real) / len(real), 1) if real else None
+
+            out.append({
+                'medicine': med_name, 'event': kind, 'symptom': name,
+                'event_date': ed.isoformat(),
+                'before_per_week': round(bc / weeks, 1), 'after_per_week': round(ac / weeks, 1),
+                'before_count': bc, 'after_count': ac,
+                'before_severity': _sev(before), 'after_severity': _sev(after),
+                'direction': direction,
+            })
+
+    return {
+        'window': window, 'findings': out, 'has_data': bool(out),
+        'note': 'A before-and-after view of your own logs, not proof the medicine '
+                'caused the change. Worth discussing with your doctor.',
+    }
 
 
 def get_symptom_correlations(days=60) -> dict:
