@@ -939,6 +939,11 @@ def api_hr_zones():
 def api_today_glance():
     return jsonify(get_today_glance())
 
+@bp.route('/api/profile/completeness')
+@require_auth
+def api_profile_completeness():
+    return jsonify(get_profile_completeness())
+
 @bp.route('/api/visit-checklist')
 @require_auth
 def api_visit_checklist():

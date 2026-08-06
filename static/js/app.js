@@ -484,6 +484,9 @@ const I18N = {
     'Pharmacy saved': 'फार्मेसी सहेजी गई',
     'dose left': 'खुराक बाकी', 'doses left': 'खुराकें बाकी', 'to refill': 'रिफिल करने हेतु', 'Measure: %1': 'मापें: %1',
     'today': 'आज', 'tomorrow': 'कल', 'BP': 'रक्तचाप', 'Sugar': 'शुगर', 'Heart rate': 'हृदय गति', 'Weight': 'वज़न', 'Temp': 'तापमान',
+    'Your health profile is %1% complete': 'आपकी स्वास्थ्य प्रोफ़ाइल %1% पूर्ण है', 'Still to add': 'अभी जोड़ना है',
+    'Your name': 'आपका नाम', 'Age': 'आयु', 'Sex': 'लिंग', 'Height': 'लंबाई', 'Blood type': 'रक्त समूह',
+    'Emergency contact': 'आपातकालीन संपर्क', 'Conditions': 'स्थितियाँ', 'Allergies': 'एलर्जी',
     'Body measurements': 'शारीरिक माप', 'last 6 months': 'पिछले 6 महीने', 'Waist': 'कमर', 'Hip': 'कूल्हा', 'Chest': 'छाती', 'Arm': 'भुजा', 'Log': 'दर्ज करें',
     'Training heart-rate zones': 'प्रशिक्षण हृदय-गति क्षेत्र', 'max ~%1 bpm': 'अधि. ~%1 bpm', 'For age %1 · %2': 'आयु %1 के लिए · %2',
     'Warm-up': 'वार्म-अप', 'Fat burn': 'वसा दहन', 'Cardio': 'कार्डियो', 'Hard': 'कठिन', 'Peak': 'शिखर',
@@ -2991,6 +2994,7 @@ async function loadDashboard() {
   try { loadNextAppointment(); } catch (e) {}
   try { loadAtRiskDose(); }     catch (e) {}
   try { loadTodayGlance(); }    catch (e) {}
+  try { loadProfileCompleteness(); } catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -3181,6 +3185,34 @@ async function readDailyBriefing() {
     fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []),
   ]);
   speakText(composeSpokenBriefing(doses, low, new Date().getHours()));
+}
+
+// Health-profile completeness — a gentle bar that only shows while incomplete,
+// prompting the specific gaps (a weight unlocks BMI; blood type + a contact make
+// the emergency card useful).
+async function loadProfileCompleteness() {
+  const el = document.getElementById('dash-profile-complete');
+  if (!el) return;
+  const d = await fetch('/api/profile/completeness').then(r => r.json()).catch(() => null);
+  if (!d || d.complete || d.pct >= 100) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  const chips = d.missing.map(m => `<span class="pcx-chip" data-ev-click="gotoProfileGap('${m.where}')">${t(m.label)}</span>`).join('');
+  el.innerHTML = `<div class="panel pcx-card">
+    <div class="pcx-top">
+      <div class="pcx-title">🩺 ${tformat('Your health profile is %1% complete', d.pct)}</div>
+      <div class="pcx-count">${d.done}/${d.total}</div>
+    </div>
+    <div class="pcx-bar"><div class="pcx-fill" style="width:${d.pct}%"></div></div>
+    <div class="pcx-missing">${t('Still to add')}: ${chips}</div>
+  </div>`;
+}
+function gotoProfileGap(where) {
+  if (where === 'emergency') {
+    switchView('reports'); setTimeout(() => { try { switchMedTab('emergency'); } catch (e) {} }, 80);
+  } else {
+    // Profile basics (name/age/sex/height/weight) live in the profile modal.
+    try { openProfileModal(); } catch (e) {}
+  }
 }
 
 // Today at a glance — a compact chip row of what stands today. Each chip only

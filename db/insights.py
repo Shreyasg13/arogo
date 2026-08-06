@@ -72,6 +72,41 @@ def get_visit_checklist() -> dict:
     }
 
 
+def get_profile_completeness() -> dict:
+    """How complete the health profile is, as a % + a checklist of what's filled
+    and what's missing — so the gaps that make other features work (a weight for
+    BMI, a blood type + contact for the emergency card) are easy to close.
+    Everything reads the user's own profile/emergency row."""
+    from .food import get_profile
+    from .health import get_emergency_info
+    p = get_profile() or {}
+    e = get_emergency_info() or {}
+
+    def _has(v):
+        return v not in (None, '', 0)
+
+    items = [
+        {'key': 'name',      'label': 'Your name',          'done': _has((p.get('name') or '').strip()), 'where': 'profile'},
+        {'key': 'age',       'label': 'Age',                'done': _has(p.get('age')),        'where': 'profile'},
+        {'key': 'gender',    'label': 'Sex',                'done': _has(p.get('gender')),     'where': 'profile'},
+        {'key': 'height',    'label': 'Height',             'done': _has(p.get('height_cm')),  'where': 'profile'},
+        {'key': 'weight',    'label': 'Weight',             'done': _has(p.get('weight_kg')),  'where': 'profile'},
+        {'key': 'blood',     'label': 'Blood type',         'done': _has((e.get('blood_type') or '').strip()), 'where': 'emergency'},
+        {'key': 'contact',   'label': 'Emergency contact',  'done': _has((e.get('contact1_name') or '').strip()) or _has((e.get('contact1_phone') or '').strip()), 'where': 'emergency'},
+        {'key': 'conditions','label': 'Conditions',         'done': _has((e.get('conditions') or '').strip()), 'where': 'emergency'},
+        {'key': 'allergies', 'label': 'Allergies',          'done': _has((e.get('allergies') or '').strip()),  'where': 'emergency'},
+    ]
+    done = sum(1 for it in items if it['done'])
+    total = len(items)
+    return {
+        'pct': round(done / total * 100),
+        'done': done, 'total': total,
+        'items': items,
+        'missing': [it for it in items if not it['done']],
+        'complete': done == total,
+    }
+
+
 def get_today_glance() -> dict:
     """A one-line "where things stand today": doses still to take, the soonest
     appointment, how many meds are low, and whether a vital is due to be
