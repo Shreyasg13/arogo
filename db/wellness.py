@@ -499,6 +499,9 @@ def log_body_metric(data: dict) -> dict:
     h_cm = _opt_num(data.get('height_cm'),    lo=0, hi=300)
     bf   = _opt_num(data.get('body_fat_pct'), lo=0, hi=100)
     waist= _opt_num(data.get('waist_cm'),     lo=0, hi=500)
+    hip  = _opt_num(data.get('hip_cm'),       lo=0, hi=500)
+    chest= _opt_num(data.get('chest_cm'),     lo=0, hi=500)
+    arm  = _opt_num(data.get('arm_cm'),       lo=0, hi=200)
 
     w = _plausible_weight(data.get('weight_kg'), w)
 
@@ -517,10 +520,11 @@ def log_body_metric(data: dict) -> dict:
     date_key = data.get('date_key')
     if not valid_date(date_key):
         date_key = user_today()
-    execute("""INSERT INTO body_metrics (id,date_key,weight_kg,body_fat_pct,waist_cm,bmi,notes,created_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+    execute("""INSERT INTO body_metrics
+                 (id,date_key,weight_kg,body_fat_pct,waist_cm,hip_cm,chest_cm,arm_cm,bmi,notes,created_at,user_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (bid, date_key, w, bf,
-             waist, bmi, str(data.get('notes','') or ''), now_iso(),
+             waist, hip, chest, arm, bmi, str(data.get('notes','') or ''), now_iso(),
              current_user_id()), commit=True)
 
     # Logging your weight should move the things that depend on your weight.
@@ -547,3 +551,56 @@ def get_body_metrics(days: int = 30) -> list:
     rows = execute("SELECT * FROM body_metrics WHERE date_key >= ? AND user_id=? ORDER BY date_key",
                    (start, current_user_id()), fetchall=True)
     return [dict(r) for r in rows]
+
+
+# Girth measurements we trend, in display order.
+_MEASURE_FIELDS = [('waist_cm', 'Waist'), ('hip_cm', 'Hip'), ('chest_cm', 'Chest'), ('arm_cm', 'Arm')]
+
+
+def get_measurement_trends(days: int = 180) -> dict:
+    """Change over the window for each body measurement (waist/hip/chest/arm) and
+    weight — first logged value vs latest, plus a recomposition read.
+
+    Recomposition = losing inches while holding or gaining weight (fat down,
+    muscle up). We only claim it when BOTH a weight series and a waist series
+    have >=2 points spanning the window; otherwise recomp is None, not guessed.
+    All values are the user's own; a measurement absent from every entry is
+    simply omitted.
+    """
+    import datetime as dt
+    uid = current_user_id()
+    start = (dt.date.today() - dt.timedelta(days=max(1, days))).isoformat()
+    rows = execute("""SELECT * FROM body_metrics WHERE date_key >= ? AND user_id=?
+                      ORDER BY date_key ASC, created_at ASC""",
+                   (start, uid), fetchall=True) or []
+
+    def _series(field):
+        pts = [(r['date_key'], r[field]) for r in rows if r[field] is not None]
+        return pts
+
+    trends = []
+    for field, label in _MEASURE_FIELDS + [('weight_kg', 'Weight')]:
+        pts = _series(field)
+        if len(pts) < 2:
+            continue
+        first_v, last_v = pts[0][1], pts[-1][1]
+        change = round(last_v - first_v, 1)
+        unit = 'kg' if field == 'weight_kg' else 'cm'
+        trends.append({'field': field, 'label': label, 'unit': unit,
+                       'first': round(first_v, 1), 'latest': round(last_v, 1),
+                       'change': change, 'points': len(pts),
+                       'from_date': pts[0][0], 'to_date': pts[-1][0]})
+
+    # Recomposition read — needs both weight and waist series.
+    recomp = None
+    wser, waister = _series('weight_kg'), _series('waist_cm')
+    if len(wser) >= 2 and len(waister) >= 2:
+        dw = wser[-1][1] - wser[0][1]
+        dwaist = waister[-1][1] - waister[0][1]
+        if dwaist <= -1 and dw >= -0.5:
+            # waist down meaningfully while weight held or rose
+            recomp = {'kind': 'recomp', 'weight_change': round(dw, 1), 'waist_change': round(dwaist, 1)}
+        elif dwaist <= -1 and dw <= -1:
+            recomp = {'kind': 'fat_loss', 'weight_change': round(dw, 1), 'waist_change': round(dwaist, 1)}
+
+    return {'days': days, 'trends': trends, 'recomp': recomp, 'has_data': bool(trends)}

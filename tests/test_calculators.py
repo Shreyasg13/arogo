@@ -61,6 +61,17 @@ def test_asia_pacific_category_differs(app):
     assert bmi["asia_category"] == "Overweight"   # >=23 under Asia-Pacific too
 
 
+def test_waist_to_height(app):
+    _, uid = _uid(app, "calc7@medeasy.test")
+    from db.wellness import log_body_metric
+    with user_context(uid):
+        update_profile({"weight_kg": 70, "height_cm": 175})
+        log_body_metric({"waist_cm": 80})            # WHtR = 80/175 ≈ 0.46 → Healthy
+        whtr = _get(get_health_calculators()["calculators"], "whtr")
+    assert whtr["value"] == round(80 / 175, 2) == 0.46
+    assert whtr["category"] == "Healthy"
+
+
 def test_map_from_bp(app):
     _, uid = _uid(app, "calc4@medeasy.test")
     with user_context(uid):

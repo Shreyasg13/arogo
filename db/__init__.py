@@ -34,7 +34,7 @@ from .wellness    import (get_thoughts, save_thought, update_thought, delete_tho
                           log_hydration, get_hydration_day, delete_hydration_log, get_hydration_week,
                           log_sleep, get_sleep_logs, delete_sleep_log,
                           get_sleep_target, set_sleep_target, get_sleep_insights,
-                          log_body_metric, get_body_metrics)
+                          log_body_metric, get_body_metrics, get_measurement_trends)
 from .health      import (list_habits, create_habit, delete_habit, toggle_habit_log, get_habit_stats,
                           log_symptom, get_symptoms, delete_symptom, get_symptom_med_timeline,
                           log_vital, get_vitals, delete_vital,
@@ -83,7 +83,7 @@ __all__ = [
     "log_hydration", "get_hydration_day", "delete_hydration_log", "get_hydration_week",
     "log_sleep", "get_sleep_logs", "delete_sleep_log",
     "get_sleep_target", "set_sleep_target", "get_sleep_insights",
-    "log_body_metric", "get_body_metrics",
+    "log_body_metric", "get_body_metrics", "get_measurement_trends",
     "list_habits", "create_habit", "delete_habit", "toggle_habit_log", "get_habit_stats",
     "log_symptom", "get_symptoms", "delete_symptom", "get_symptom_med_timeline",
     "log_vital", "get_vitals", "delete_vital",

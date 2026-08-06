@@ -438,6 +438,12 @@ def api_sleep_trend():
 def api_body_metrics():
     return jsonify(get_body_metrics())
 
+@bp.route('/api/body-metrics/measurements')
+@require_auth
+def api_measurement_trends():
+    days = int(request.args.get('days', 180))
+    return jsonify(get_measurement_trends(days))
+
 @bp.route('/api/body-metrics', methods=['POST'])
 @require_auth
 def api_log_body():

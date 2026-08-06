@@ -10,7 +10,7 @@ is worse than no number.
 from __future__ import annotations
 import math
 
-from .core import current_user_id, to_num
+from .core import current_user_id, to_num, execute
 from .food import get_profile
 
 
@@ -60,6 +60,23 @@ def get_health_calculators() -> dict:
             'key': 'bsa', 'label': 'Body-surface area', 'value': bsa, 'unit': 'm²',
             'note': 'Used by clinicians for some medication dosing.',
             'formula': '√(height × weight ÷ 3600) — Mosteller',
+        })
+
+    # Waist-to-height ratio — a simple central-adiposity marker. Needs a logged
+    # waist measurement (from the body-measurements feature) + height.
+    waist = None
+    wrow = execute("""SELECT waist_cm FROM body_metrics WHERE user_id=? AND waist_cm IS NOT NULL
+                      ORDER BY date_key DESC, created_at DESC LIMIT 1""",
+                   (current_user_id(),), fetchone=True)
+    if wrow and wrow['waist_cm'] and h and h > 0:
+        waist = to_num(wrow['waist_cm'], 0) or None
+    if waist:
+        whtr = round(waist / h, 2)
+        cat = 'Healthy' if whtr < 0.5 else 'Increased' if whtr < 0.6 else 'High'
+        items.append({
+            'key': 'whtr', 'label': 'Waist-to-height', 'value': whtr, 'unit': '',
+            'category': cat, 'note': f'From a {int(waist)} cm waist. Keeping it under 0.5 is a common goal.',
+            'formula': 'waist ÷ height',
         })
 
     # Mean arterial pressure — from the most recent BP reading (needs both numbers).

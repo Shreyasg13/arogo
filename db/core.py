@@ -937,6 +937,16 @@ def migrate_add_workout_sets():
         pass
 
 
+def migrate_add_body_measurements():
+    """Add hip/chest/arm girths to body_metrics (waist already exists) for the
+    measurement-trends view."""
+    for col in ('hip_cm', 'chest_cm', 'arm_cm'):
+        try:
+            execute(f"ALTER TABLE body_metrics ADD COLUMN {col} REAL DEFAULT NULL")
+        except Exception:
+            pass
+
+
 def migrate_add_pharmacy():
     """Add a default pharmacy (name + phone) to the profile for one-tap refills."""
     for stmt in ("ALTER TABLE user_profile ADD COLUMN pharmacy_name TEXT DEFAULT ''",
@@ -1268,6 +1278,7 @@ def init_db():
     migrate_add_vital_context()
     migrate_add_sleep_goal()
     migrate_add_workout_sets()
+    migrate_add_body_measurements()
     migrate_add_pharmacy()
     migrate_add_dose_skip_reason()
     migrate_add_share_snapshots()

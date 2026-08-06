@@ -460,6 +460,7 @@ const I18N = {
     'A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.': 'आपकी अपनी रीडिंग से एक संकेत — निदान नहीं। डॉक्टर से चर्चा करने योग्य।',
     'Health calculators': 'स्वास्थ्य कैलकुलेटर', 'Underweight': 'कम वज़न', 'Normal': 'सामान्य', 'Overweight': 'अधिक वज़न', 'Obese': 'मोटापा',
     'Asia-Pacific: %1': 'एशिया-प्रशांत: %1', 'Add %1 to see BMI and more': 'BMI आदि देखने के लिए %1 जोड़ें',
+    'Healthy': 'स्वस्थ', 'Increased': 'बढ़ा हुआ', 'High': 'उच्च',
     'height and weight in your profile': 'अपनी प्रोफ़ाइल में लंबाई और वज़न', 'a blood-pressure reading': 'एक रक्तचाप रीडिंग',
     'Week schedule': 'साप्ताहिक शेड्यूल', 'Weekly medication schedule': 'साप्ताहिक दवा शेड्यूल', 'Print': 'प्रिंट',
     'Could not build the schedule': 'शेड्यूल नहीं बना', 'Add a scheduled medicine first': 'पहले एक निर्धारित दवा जोड़ें',
@@ -471,6 +472,11 @@ const I18N = {
     'Pharmacy saved': 'फार्मेसी सहेजी गई',
     'dose left': 'खुराक बाकी', 'doses left': 'खुराकें बाकी', 'to refill': 'रिफिल करने हेतु', 'Measure: %1': 'मापें: %1',
     'today': 'आज', 'tomorrow': 'कल', 'BP': 'रक्तचाप', 'Sugar': 'शुगर', 'Heart rate': 'हृदय गति', 'Weight': 'वज़न', 'Temp': 'तापमान',
+    'Body measurements': 'शारीरिक माप', 'last 6 months': 'पिछले 6 महीने', 'Waist': 'कमर', 'Hip': 'कूल्हा', 'Chest': 'छाती', 'Arm': 'भुजा', 'Log': 'दर्ज करें',
+    'Measurements logged 📏': 'माप दर्ज हुए 📏', 'Enter at least one measurement': 'कम से कम एक माप दर्ज करें',
+    'Log measurements over time to see change and recomposition.': 'बदलाव और रीकंपोज़िशन देखने के लिए समय के साथ माप दर्ज करें।',
+    '💪 Looks like recomposition — waist %1cm while weight held': '💪 रीकंपोज़िशन जैसा — वज़न स्थिर रहते कमर %1सेमी',
+    '📉 Fat loss — waist %1cm, weight %2kg': '📉 वसा घटी — कमर %1सेमी, वज़न %2किग्रा',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -5542,6 +5548,69 @@ async function loadFitness() {
 
   // ── Personal Records ──
   loadFitnessPRs();
+
+  // ── Body measurements + recomposition ──
+  loadMeasurements();
+}
+
+// Body-measurement trends (waist/hip/chest/arm/weight) + a recomposition read,
+// with a compact inline logger. All the user's own numbers.
+const _MEAS_INPUTS = [
+  { id: 'meas-waist', field: 'waist_cm', label: 'Waist' },
+  { id: 'meas-hip',   field: 'hip_cm',   label: 'Hip' },
+  { id: 'meas-chest', field: 'chest_cm', label: 'Chest' },
+  { id: 'meas-arm',   field: 'arm_cm',   label: 'Arm' },
+];
+
+async function loadMeasurements() {
+  const el = document.getElementById('measurements-section');
+  if (!el) return;
+  const d = await fetch('/api/body-metrics/measurements?days=180').then(r => r.json()).catch(() => null);
+  const form = `<div class="meas-form">
+      ${_MEAS_INPUTS.map(m => `<div class="meas-field"><label>${t(m.label)}</label>
+        <input type="number" id="${m.id}" step="0.1" min="0" placeholder="cm"></div>`).join('')}
+      <button class="btn-primary btn-sm" data-ev-click="saveMeasurements()">${t('Log')}</button>
+    </div>`;
+  let body = '';
+  if (d && d.has_data) {
+    const recomp = d.recomp ? `<div class="meas-recomp">${d.recomp.kind === 'recomp'
+        ? tformat('💪 Looks like recomposition — waist %1cm while weight held', d.recomp.waist_change)
+        : tformat('📉 Fat loss — waist %1cm, weight %2kg', d.recomp.waist_change, d.recomp.weight_change)}</div>` : '';
+    const rows = d.trends.map(tr => {
+      const dir = tr.change < 0 ? '↓' : tr.change > 0 ? '↑' : '→';
+      const col = tr.change < 0 ? '#22C55E' : tr.change > 0 ? '#F59E0B' : 'var(--gray-400)';
+      return `<div class="meas-row">
+        <span class="meas-label">${t(tr.label)}</span>
+        <span class="meas-vals">${tr.first} → <b>${tr.latest}</b> ${tr.unit}</span>
+        <span class="meas-change" style="color:${col}">${dir} ${Math.abs(tr.change)}${tr.unit}</span>
+      </div>`;
+    }).join('');
+    body = `${recomp}<div class="meas-list">${rows}</div>`;
+  } else {
+    body = `<div style="font-size:12.5px;color:var(--gray-400);padding:4px 0">${t('Log measurements over time to see change and recomposition.')}</div>`;
+  }
+  el.innerHTML = `<div class="panel" style="padding:16px 18px">
+      <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">📏 ${t('Body measurements')}</h2><span class="panel-badge">${t('last 6 months')}</span></div>
+      ${form}${body}
+    </div>`;
+}
+
+async function saveMeasurements() {
+  const payload = { date_key: localToday() };
+  let any = false;
+  for (const m of _MEAS_INPUTS) {
+    const v = parseFloat(document.getElementById(m.id)?.value);
+    if (v > 0) { payload[m.field] = v; any = true; }
+  }
+  if (!any) { showToast(t('Enter at least one measurement'), 'error'); return; }
+  const r = await fetch('/api/body-metrics', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  }).then(r => r.json()).catch(() => null);
+  if (r?.success) {
+    showToast(t('Measurements logged 📏'));
+    _MEAS_INPUTS.forEach(m => { const el = document.getElementById(m.id); if (el) el.value = ''; });
+    loadMeasurements();
+  } else showToast(t('Could not save'), 'error');
 }
 
 function renderFitnessNutritionStrip(foodDay, targets) {
@@ -14637,7 +14706,8 @@ async function loadVitalsAnomalies() {
 }
 
 // Derived numbers from data the user already gave us — each shows its formula.
-const _CALC_CAT_COLOR = { Underweight: '#3B82F6', Normal: '#22C55E', Overweight: '#F59E0B', Obese: '#EF4444' };
+const _CALC_CAT_COLOR = { Underweight: '#3B82F6', Normal: '#22C55E', Overweight: '#F59E0B', Obese: '#EF4444',
+                          Healthy: '#22C55E', Increased: '#F59E0B', High: '#EF4444' };
 async function loadCalculators() {
   const el = document.getElementById('calculators-panel');
   if (!el) return;
