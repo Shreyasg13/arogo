@@ -119,10 +119,10 @@ def api_delete_measurement_reminder(rid):
     delete_measurement_reminder(rid)
     return jsonify({'success': True})
 
-@bp.route('/api/medicines/adherence')
-@require_auth
-def api_med_adherence():
-    return jsonify({'medicines': list_medicines()})
+# NOTE: GET /api/medicines/adherence lives in routes/medicines.py (registered
+# first, so it owns the URL — it returns adherence stats). This duplicate
+# returned a different shape ({medicines: [...]}) and was dead code; removed.
+
 @bp.route('/api/medicines/streaks')
 @require_auth
 def api_medicine_streaks():
@@ -436,7 +436,8 @@ def api_sleep_trend():
 @bp.route('/api/body-metrics')
 @require_auth
 def api_body_metrics():
-    return jsonify(get_body_metrics())
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=3650)
+    return jsonify(get_body_metrics(days))
 
 @bp.route('/api/body-metrics/measurements')
 @require_auth

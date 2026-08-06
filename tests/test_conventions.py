@@ -87,6 +87,25 @@ class TestPwaRoutes:
             assert client.get(f"/static/icons/{icon}").status_code == 200, icon
 
 
+# ── Route-map hygiene ───────────────────────────────────────────────────────────
+
+class TestNoDuplicateRoutes:
+    def test_no_duplicate_path_method(self, app):
+        """No two blueprints may register the same (path, method): the loser is
+        dead code and the two handlers can silently diverge (the bug that left a
+        fabricated height_cm=170 fallback shadowing the honest body-metrics
+        handler). Regression guard for the 2026-08 route-dedup cleanup."""
+        seen = {}
+        dupes = []
+        for rule in app.url_map.iter_rules():
+            for method in (rule.methods or set()) - {"HEAD", "OPTIONS"}:
+                key = (rule.rule, method)
+                if key in seen and seen[key] != rule.endpoint:
+                    dupes.append(f"{method} {rule.rule}: {seen[key]} vs {rule.endpoint}")
+                seen[key] = rule.endpoint
+        assert not dupes, "Duplicate route registrations (one is dead code):\n" + "\n".join(dupes)
+
+
 # ── Codebase regression guards ─────────────────────────────────────────────────
 
 FRONTEND_FILES = ["templates/index.html", "templates/oauth_result.html",

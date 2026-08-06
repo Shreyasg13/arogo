@@ -728,182 +728,33 @@ def api_export():
                         headers={'Content-Disposition': f'attachment; filename={fname_base}.json'})
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Hydration Routes
-# ══════════════════════════════════════════════════════════════════════════════
+# NOTE: /api/hydration (day/week/POST/DELETE) and /api/sleep (GET/POST/DELETE)
+# live in routes/wellness.py — the duplicate definitions here were dead code
+# (wellness registers first, so its rules own the URL map). Removed. See the
+# no-duplicate-route guard in tests/test_conventions.py.
 
-@bp.route('/api/hydration/<date_key>')
-@require_auth
-def api_hydration_day(date_key):
-    data = get_hydration_day(date_key)
-    profile = get_profile()
-    goal_ml = round(float(profile.get('weight_kg', 70)) * 35)
-    data['goal_ml'] = goal_ml
-    data['pct'] = min(round(data['total_ml'] / goal_ml * 100), 100) if goal_ml else 0
-    return jsonify(data)
+# NOTE: GET/POST /api/body-metrics live in routes/wellness.py — the duplicate
+# definitions here were dead code (wellness registers first, so its rules win),
+# and the dead POST even carried a fabricated height_cm=170 fallback the project
+# forbids. Removed; wellness's log_body_metric handles the date/height defaults
+# honestly (BMI stays None without a real height).
 
-@bp.route('/api/hydration', methods=['POST'])
-@require_auth
-def api_log_hydration():
-    data = request.json or {}
-    log = log_hydration(int(data.get('amount_ml', 250)), data.get('drink_type','water'),
-                        data.get('date_key', today_iso(get_user_timezone())))
-    return jsonify({'success': True, 'log': log})
+# NOTE: /api/habits (GET/POST/DELETE and the /<hid>/toggle) live in
+# routes/wellness.py — the duplicate definitions here were dead code (wellness
+# registers first) and were removed.
 
-@bp.route('/api/hydration/<lid>', methods=['DELETE'])
-@require_auth
-def api_del_hydration(lid):
-    delete_hydration_log(lid)
-    return jsonify({'success': True})
-
-@bp.route('/api/hydration/week')
-@require_auth
-def api_hydration_week():
-    profile = get_profile()
-    goal_ml = round(float(profile.get('weight_kg', 70)) * 35)
-    week = get_hydration_week(7)
-    for d in week: d['goal_ml'] = goal_ml
-    return jsonify(week)
+# NOTE: /api/symptoms (GET/POST) and /api/symptoms/<sid> (DELETE) live in
+# routes/wellness.py — the duplicate definitions here were dead code (wellness
+# registers first). Its POST wraps log_symptom's ValueError into a 400 (which
+# fires on a missing name too), so no validation is lost. Removed.
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Sleep Routes
+# Vitals Routes — the derived/insight endpoints only.
+# NOTE: /api/vitals (GET/POST/DELETE CRUD) lives in routes/wellness.py; the
+# duplicate CRUD here was dead code (wellness registers first) and was removed.
+# The analytics below (glucose logbook, anomalies, categories, calculators, …)
+# are unique to this blueprint.
 # ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/sleep')
-@require_auth
-def api_get_sleep():
-    days = int(request.args.get('days', 14))
-    return jsonify(get_sleep_logs(days))
-
-@bp.route('/api/sleep', methods=['POST'])
-@require_auth
-def api_log_sleep():
-    data = request.json or {}
-    if not data.get('bedtime') or not data.get('wake_time'):
-        return jsonify({'success': False, 'error': 'bedtime and wake_time required'}), 400
-    # Calculate duration
-    import datetime as dt
-    try:
-        bed  = dt.datetime.fromisoformat(data['bedtime'])
-        wake = dt.datetime.fromisoformat(data['wake_time'])
-        if wake < bed: wake += dt.timedelta(days=1)
-        dur = round((wake - bed).total_seconds() / 3600, 2)
-        data['duration_h'] = dur
-        data.setdefault('date_key', wake.date().isoformat())
-    except Exception:
-        return jsonify({'success': False, 'error': 'Invalid datetime format'}), 400
-    s = log_sleep(data)
-    return jsonify({'success': True, 'sleep': s})
-
-@bp.route('/api/sleep/<lid>', methods=['DELETE'])
-@require_auth
-def api_del_sleep(lid):
-    delete_sleep_log(lid)
-    return jsonify({'success': True})
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Body Metrics Routes
-# ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/body-metrics')
-@require_auth
-def api_get_body_metrics():
-    days = int(request.args.get('days', 30))
-    return jsonify(get_body_metrics(days))
-
-@bp.route('/api/body-metrics', methods=['POST'])
-@require_auth
-def api_log_body_metric():
-    data = request.json or {}
-    data.setdefault('date_key', today_iso(get_user_timezone()))
-    profile = get_profile()
-    data.setdefault('height_cm', profile.get('height_cm', 170))
-    m = log_body_metric(data)
-    return jsonify({'success': True, 'metric': m})
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Habits Routes
-# ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/habits')
-@require_auth
-def api_get_habits():
-    return jsonify(get_habit_stats())
-
-@bp.route('/api/habits', methods=['POST'])
-@require_auth
-def api_create_habit():
-    data = request.json or {}
-    if not data.get('name','').strip():
-        return jsonify({'success': False, 'error': 'Name required'}), 400
-    h = create_habit(data)
-    return jsonify({'success': True, 'habit': h})
-
-@bp.route('/api/habits/<hid>', methods=['DELETE'])
-@require_auth
-def api_delete_habit(hid):
-    delete_habit(hid)
-    return jsonify({'success': True})
-
-# NOTE: /api/habits/<hid>/toggle lives in routes/wellness.py — a duplicate
-# definition here was dead code (wellness registers first) and was removed.
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Symptoms Routes
-# ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/symptoms')
-@require_auth
-def api_get_symptoms():
-    days = to_int(request.args.get('days', 14), 14, lo=1, hi=3650)
-    return jsonify(get_symptoms(days))
-
-@bp.route('/api/symptoms', methods=['POST'])
-@require_auth
-def api_log_symptom():
-    data = request.json or {}
-    if not str(data.get('name', '')).strip():
-        return jsonify({'success': False, 'error': 'Symptom name required'}), 400
-    try:
-        s = log_symptom(data)
-    except ValueError as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
-    return jsonify({'success': True, 'symptom': s})
-
-@bp.route('/api/symptoms/<sid>', methods=['DELETE'])
-@require_auth
-def api_del_symptom(sid):
-    delete_symptom(sid)
-    return jsonify({'success': True})
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Vitals Routes
-# ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/vitals')
-@require_auth
-def api_get_vitals():
-    vtype = request.args.get('type')
-    days  = to_int(request.args.get('days', 30), 30, lo=1, hi=3650)
-    return jsonify(get_vitals(vtype, days))
-
-@bp.route('/api/vitals', methods=['POST'])
-@require_auth
-def api_log_vital():
-    data = request.json or {}
-    if not data.get('type') or data.get('value1') is None:
-        return jsonify({'success': False, 'error': 'type and value1 required'}), 400
-    try:
-        v = log_vital(data)
-    except ValueError as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
-    return jsonify({'success': True, 'vital': v})
-
-@bp.route('/api/vitals/<vid>', methods=['DELETE'])
-@require_auth
-def api_del_vital(vid):
-    delete_vital(vid)
-    return jsonify({'success': True})
 
 @bp.route('/api/glucose/logbook')
 @require_auth
@@ -960,44 +811,9 @@ def api_profile_completeness():
 def api_visit_checklist():
     return jsonify(get_visit_checklist())
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Emergency Info Routes
-# ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/emergency')
-@require_auth
-def api_get_emergency():
-    return jsonify(get_emergency_info())
-
-@bp.route('/api/emergency', methods=['POST'])
-@require_auth
-def api_save_emergency():
-    data = request.json or {}
-    info = save_emergency_info(data)
-    return jsonify({'success': True, 'info': info})
-
-# ══════════════════════════════════════════════════════════════════════════════
-# Unified wellness summary (for dashboard sync)
-# ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/wellness/today')
-@require_auth
-def api_wellness_today():
-    day = today_iso(get_user_timezone())
-    hydration = get_hydration_day(day)
-    profile   = get_profile()
-    goal_ml   = round(float(profile.get('weight_kg', 70)) * 35)
-    sleeps    = get_sleep_logs(1)
-    habits    = get_habit_stats()
-    symptoms  = get_symptoms(1)
-    return jsonify({
-        'hydration': {'total_ml': hydration['total_ml'], 'goal_ml': goal_ml,
-                      'pct': min(round(hydration['total_ml']/goal_ml*100),100) if goal_ml else 0},
-        'sleep':     sleeps[0] if sleeps and sleeps[0].get('date_key') == day else None,
-        'habits':    {'total': len(habits['habits']),
-                      'done': sum(1 for h in habits['habits'] if h['done_today'])},
-        'symptoms':  [s for s in symptoms if s['date_key'] == day],
-    })
+# NOTE: /api/emergency (GET/POST) and /api/wellness/today live in
+# routes/wellness.py — the duplicate definitions here were dead code (wellness
+# registers first) and were removed.
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Thoughts (Daily Journal) Routes
@@ -1014,52 +830,7 @@ def api_wellness_today():
 def api_thoughts_week():
     return jsonify(get_thoughts_range(7))
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Todos Routes
-# ══════════════════════════════════════════════════════════════════════════════
-
-@bp.route('/api/todos')
-@require_auth
-def api_list_todos():
-    status = request.args.get('status')
-    todos = list_todos(status)
-    pending = [t for t in todos if t['status'] == 'pending']
-    done    = [t for t in todos if t['status'] == 'done']
-    return jsonify({'todos': todos, 'pending_count': len(pending), 'done_count': len(done)})
-
-@bp.route('/api/todos', methods=['POST'])
-@require_auth
-def api_create_todo():
-    data = request.json or {}
-    if not data.get('title', '').strip():
-        return jsonify({'success': False, 'error': 'Title required'}), 400
-    todo = create_todo(data)
-    return jsonify({'success': True, 'todo': todo})
-
-@bp.route('/api/todos/<tid>', methods=['PUT'])
-@require_auth
-def api_update_todo(tid):
-    data = request.json or {}
-    todo = update_todo(tid, data)
-    return jsonify({'success': True, 'todo': todo})
-
-@bp.route('/api/todos/<tid>/toggle', methods=['POST'])
-@require_auth
-def api_toggle_todo(tid):
-    todo = toggle_todo(tid)
-    return jsonify({'success': True, 'todo': todo})
-
-@bp.route('/api/todos/<tid>', methods=['DELETE'])
-@require_auth
-def api_delete_todo(tid):
-    delete_todo(tid)
-    return jsonify({'success': True})
-
-@bp.route('/api/todos/reminders/due')
-@require_auth
-def api_due_reminders():
-    reminders = get_due_reminders()
-    for r in reminders:
-        mark_reminder_sent(r['id'])
-    return jsonify({'reminders': reminders})
+# NOTE: /api/todos (GET/POST/PUT/DELETE, /<tid>/toggle, /reminders/due) live in
+# routes/wellness.py — the duplicate definitions here were dead code (wellness
+# registers first) and were removed.
 

@@ -383,16 +383,13 @@ class TestAdherenceAndStreaks:
         doses = alice.get("/api/medicines/today").get_json()
         assert all(d["med_name"] != "Expired" for d in doses)
 
-    def test_adherence_route_registered_twice(self, app, alice):
-        """ROUTE COLLISION (documented): routes/medicines.py AND
-        routes/wellness.py both register GET /api/medicines/adherence.
-        The medicines blueprint wins (registered first); the wellness
-        handler at routes/wellness.py:25 is unreachable dead code and
-        returns a DIFFERENT shape ({'medicines': [...]}) if it ever wins."""
+    def test_adherence_route_registered_once(self, app, alice):
+        """RESOLVED (2026-08 route-dedup): the dead wellness duplicate of GET
+        /api/medicines/adherence (which returned a different {'medicines': [...]}
+        shape) was removed. Now a single registration serves the stats dict."""
         rules = [r for r in app.url_map.iter_rules()
                  if str(r) == "/api/medicines/adherence"]
-        assert len(rules) == 2, "collision resolved? update this test + docstring"
-        # The shape actually served today is the stats dict:
+        assert len(rules) == 1
         d = alice.get("/api/medicines/adherence").get_json()
         assert set(d.keys()) == {"total", "taken", "pct"}
 
