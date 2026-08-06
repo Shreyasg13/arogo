@@ -965,6 +965,14 @@ def migrate_add_pharmacy():
             pass
 
 
+def migrate_add_condition_focus():
+    """Add the condition the daily check-in is tailored for (diabetes/hypertension)."""
+    try:
+        execute("ALTER TABLE user_profile ADD COLUMN condition_focus TEXT DEFAULT ''")
+    except Exception:
+        pass
+
+
 def migrate_add_dose_skip_reason():
     """Add an optional reason tag to a skipped dose (forgot / away / side-effect / out)."""
     try:
@@ -1289,6 +1297,7 @@ def init_db():
     migrate_add_workout_sets()
     migrate_add_body_measurements()
     migrate_add_pharmacy()
+    migrate_add_condition_focus()
     migrate_add_dose_skip_reason()
     migrate_add_share_snapshots()
     migrate_add_med_cost()

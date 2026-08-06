@@ -347,6 +347,73 @@ def delete_vital(vid: str):
             (vid, current_user_id()), commit=True)
 
 
+# ── Condition-tailored daily check-in ────────────────────────────────────────
+# Each focus maps to the specific readings worth capturing daily. Diabetes uses
+# the fasting/post-meal glucose contexts (from the logbook feature); hypertension
+# is a single daily BP. Kept small on purpose — a focused ask beats a long form.
+CONDITION_FOCUSES = {
+    'diabetes': {
+        'label': 'Diabetes',
+        'prompts': [
+            {'key': 'sugar_fasting', 'label': 'Fasting sugar', 'type': 'blood_sugar', 'context': 'fasting', 'unit': 'mg/dL'},
+            {'key': 'sugar_post',    'label': 'After-meal sugar', 'type': 'blood_sugar', 'context': 'post_meal', 'unit': 'mg/dL'},
+        ],
+    },
+    'hypertension': {
+        'label': 'Blood pressure',
+        'prompts': [
+            {'key': 'bp', 'label': "Today's blood pressure", 'type': 'blood_pressure', 'context': '', 'unit': 'mmHg'},
+        ],
+    },
+}
+
+
+def get_condition_focus():
+    r = execute("SELECT condition_focus FROM user_profile WHERE user_id=? LIMIT 1",
+                (current_user_id(),), fetchone=True)
+    f = (r or {}).get('condition_focus') if r else None
+    return f if f in CONDITION_FOCUSES else None
+
+
+def set_condition_focus(focus):
+    from .food import get_profile
+    uid = current_user_id()
+    get_profile()          # ensure a row
+    f = str(focus or '').strip().lower()
+    if f not in CONDITION_FOCUSES:
+        f = ''
+    execute("UPDATE user_profile SET condition_focus=? WHERE user_id=?", (f, uid), commit=True)
+    return f or None
+
+
+def get_condition_checkin() -> dict:
+    """Today's tailored check-in for the user's chosen condition: which of its
+    readings are already logged today and which are still open. None focus →
+    empty, so the dashboard shows nothing until the user opts in."""
+    focus = get_condition_focus()
+    if not focus:
+        return {'focus': None, 'prompts': [], 'options': [
+            {'key': k, 'label': v['label']} for k, v in CONDITION_FOCUSES.items()]}
+    today = today_iso()
+    uid = current_user_id()
+    prompts = []
+    for p in CONDITION_FOCUSES[focus]['prompts']:
+        if p['type'] == 'blood_sugar' and p['context']:
+            row = execute("""SELECT value1 FROM vitals WHERE user_id=? AND type='blood_sugar'
+                             AND context=? AND date_key=? ORDER BY logged_at DESC LIMIT 1""",
+                          (uid, p['context'], today), fetchone=True)
+        else:
+            row = execute("""SELECT value1, value2 FROM vitals WHERE user_id=? AND type=?
+                             AND date_key=? ORDER BY logged_at DESC LIMIT 1""",
+                          (uid, p['type'], today), fetchone=True)
+        prompts.append({**p, 'done': bool(row),
+                        'value': (dict(row).get('value1') if row else None)})
+    return {'focus': focus, 'focus_label': CONDITION_FOCUSES[focus]['label'],
+            'prompts': prompts,
+            'all_done': all(p['done'] for p in prompts),
+            'options': [{'key': k, 'label': v['label']} for k, v in CONDITION_FOCUSES.items()]}
+
+
 # ── Blood-pressure & resting-HR classification ───────────────────────────────
 # Standard, published bands (ACC/AHA 2017 for BP; common adult resting-HR
 # ranges). These describe a single reading — a category, not a diagnosis; a

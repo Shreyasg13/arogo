@@ -493,6 +493,9 @@ const I18N = {
     'dose left': 'खुराक बाकी', 'doses left': 'खुराकें बाकी', 'to refill': 'रिफिल करने हेतु', 'Measure: %1': 'मापें: %1',
     'today': 'आज', 'tomorrow': 'कल', 'BP': 'रक्तचाप', 'Sugar': 'शुगर', 'Heart rate': 'हृदय गति', 'Weight': 'वज़न', 'Temp': 'तापमान',
     'Your health profile is %1% complete': 'आपकी स्वास्थ्य प्रोफ़ाइल %1% पूर्ण है', 'Still to add': 'अभी जोड़ना है',
+    'Daily check-in for a condition?': 'किसी स्थिति के लिए दैनिक जाँच?', 'Not now': 'अभी नहीं', '%1 check-in': '%1 जाँच', 'Change': 'बदलें',
+    'Diabetes': 'मधुमेह', 'Fasting sugar': 'खाली पेट शुगर', 'After-meal sugar': 'भोजन के बाद शुगर', "Today's blood pressure": 'आज का रक्तचाप',
+    'Logged ✓': 'दर्ज हुआ ✓', 'Enter a reading': 'एक रीडिंग दर्ज करें', 'Enter both numbers': 'दोनों संख्याएँ दर्ज करें',
     'Your name': 'आपका नाम', 'Age': 'आयु', 'Sex': 'लिंग', 'Height': 'लंबाई', 'Blood type': 'रक्त समूह',
     'Emergency contact': 'आपातकालीन संपर्क', 'Conditions': 'स्थितियाँ', 'Allergies': 'एलर्जी',
     'Body measurements': 'शारीरिक माप', 'last 6 months': 'पिछले 6 महीने', 'Waist': 'कमर', 'Hip': 'कूल्हा', 'Chest': 'छाती', 'Arm': 'भुजा', 'Log': 'दर्ज करें',
@@ -3003,6 +3006,7 @@ async function loadDashboard() {
   try { loadAtRiskDose(); }     catch (e) {}
   try { loadTodayGlance(); }    catch (e) {}
   try { loadProfileCompleteness(); } catch (e) {}
+  try { loadConditionCheckin(); } catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -3193,6 +3197,76 @@ async function readDailyBriefing() {
     fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []),
   ]);
   speakText(composeSpokenBriefing(doses, low, new Date().getHours()));
+}
+
+// Condition-tailored daily check-in — a focused capture for the user's chosen
+// condition (diabetes → fasting/post-meal sugar; hypertension → today's BP).
+async function loadConditionCheckin() {
+  const el = document.getElementById('dash-condition-checkin');
+  if (!el) return;
+  const d = await fetch('/api/condition-checkin').then(r => r.json()).catch(() => null);
+  if (!d) { el.style.display = 'none'; return; }
+  if (!d.focus) {
+    // Offer to set one up — unless the user waved it off this session.
+    try { if (sessionStorage.getItem('cchk_dismissed')) { el.style.display = 'none'; return; } } catch (e) {}
+    const opts = (d.options || []).map(o => `<button class="cchk-opt" data-ev-click="setConditionFocus('${o.key}')">${t(o.label)}</button>`).join('');
+    if (!opts) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.innerHTML = `<div class="panel cchk-card cchk-setup">
+      <span class="cchk-setup-lbl">🩺 ${t('Daily check-in for a condition?')}</span>${opts}
+      <button class="cchk-opt cchk-dismiss" data-ev-click="dismissConditionSetup()">${t('Not now')}</button>
+    </div>`;
+    return;
+  }
+  if (d.all_done) { el.style.display = 'none'; return; }   // nothing left to capture today
+  el.style.display = '';
+  const rows = d.prompts.filter(p => !p.done).map(p => {
+    if (p.type === 'blood_pressure') {
+      return `<div class="cchk-row"><label>${t(p.label)}</label>
+        <input type="number" class="cchk-in" id="cchk-${p.key}-s" placeholder="120" min="30" max="400">
+        <span>/</span>
+        <input type="number" class="cchk-in" id="cchk-${p.key}-d" placeholder="80" min="10" max="300">
+        <button class="btn-primary btn-sm" data-ev-click="logConditionBP('${p.key}')">${t('Log')}</button></div>`;
+    }
+    return `<div class="cchk-row"><label>${t(p.label)}</label>
+      <input type="number" class="cchk-in" id="cchk-${p.key}" placeholder="${p.unit}" min="5" max="2000">
+      <button class="btn-primary btn-sm" data-ev-click="logConditionSugar('${p.context}','${p.key}')">${t('Log')}</button></div>`;
+  }).join('');
+  const done = d.prompts.filter(p => p.done);
+  const doneChips = done.map(p => `<span class="cchk-done">✓ ${t(p.label)} ${escHtml(String(p.value))}</span>`).join('');
+  el.innerHTML = `<div class="panel cchk-card">
+    <div class="cchk-head">🩺 ${tformat('%1 check-in', escHtml(t(d.focus_label)))}
+      <button class="cchk-gear" title="${t('Change')}" data-ev-click="changeConditionFocus()">⚙</button></div>
+    ${rows}${doneChips ? `<div class="cchk-done-row">${doneChips}</div>` : ''}
+  </div>`;
+}
+
+async function setConditionFocus(focus) {
+  await fetch('/api/condition-focus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ focus }) }).catch(() => {});
+  loadConditionCheckin();
+}
+function dismissConditionSetup() { const el = document.getElementById('dash-condition-checkin'); if (el) { el.style.display = 'none'; } try { sessionStorage.setItem('cchk_dismissed', '1'); } catch (e) {} }
+async function changeConditionFocus() { await setConditionFocus(''); }
+
+async function logConditionSugar(context, key) {
+  const v = parseFloat(document.getElementById('cchk-' + key)?.value);
+  if (!v) { showToast(t('Enter a reading'), 'error'); return; }
+  const r = await fetch('/api/vitals', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'blood_sugar', value1: v, context, unit: 'mg/dL', date_key: localToday() }) })
+    .then(r => r.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Logged ✓')); loadConditionCheckin(); loadTodayGlance(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function logConditionBP(key) {
+  const s = parseFloat(document.getElementById(`cchk-${key}-s`)?.value);
+  const dia = parseFloat(document.getElementById(`cchk-${key}-d`)?.value);
+  if (!s || !dia) { showToast(t('Enter both numbers'), 'error'); return; }
+  const r = await fetch('/api/vitals', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'blood_pressure', value1: s, value2: dia, unit: 'mmHg', date_key: localToday() }) })
+    .then(r => r.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Logged ✓')); loadConditionCheckin(); loadTodayGlance(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
 }
 
 // Health-profile completeness — a gentle bar that only shows while incomplete,

@@ -924,6 +924,17 @@ def api_vital_categories():
     days = to_int(request.args.get('days', 90), 90, lo=1, hi=3650)
     return jsonify(get_vital_categories(days))
 
+@bp.route('/api/condition-checkin')
+@require_auth
+def api_condition_checkin():
+    return jsonify(get_condition_checkin())
+
+@bp.route('/api/condition-focus', methods=['POST'])
+@require_auth
+def api_set_condition_focus():
+    focus = set_condition_focus((request.json or {}).get('focus'))
+    return jsonify({'success': True, 'focus': focus})
+
 @bp.route('/api/health/calculators')
 @require_auth
 def api_health_calculators():
