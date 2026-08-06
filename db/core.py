@@ -925,6 +925,14 @@ def migrate_add_sleep_goal():
         pass
 
 
+def migrate_add_adherence_goal():
+    """Add the monthly adherence-% target to reminder_settings (for the forecast)."""
+    try:
+        execute("ALTER TABLE reminder_settings ADD COLUMN adherence_goal_pct INTEGER DEFAULT NULL")
+    except Exception:
+        pass
+
+
 def migrate_add_workout_sets():
     """Create the strength-training set log (exercise/reps/weight per set)."""
     try:
@@ -1277,6 +1285,7 @@ def init_db():
     migrate_add_vital_targets()
     migrate_add_vital_context()
     migrate_add_sleep_goal()
+    migrate_add_adherence_goal()
     migrate_add_workout_sets()
     migrate_add_body_measurements()
     migrate_add_pharmacy()

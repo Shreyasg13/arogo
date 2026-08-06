@@ -448,6 +448,11 @@ const I18N = {
     'Copy': 'कॉपी', 'Copied ✓': 'कॉपी हुआ ✓', 'Turn off': 'बंद करें', 'Link turned off': 'लिंक बंद हुआ',
     'This link is no longer active.': 'यह लिंक अब सक्रिय नहीं है।', 'expires %1': '%1 को समाप्त',
     '%1 views': '%1 बार देखा', 'Could not update': 'अपडेट नहीं हुआ', 'Choose language': 'भाषा चुनें',
+    'This month': 'इस माह', 'so far': 'अब तक', 'At this rate: ~%1% by month-end': 'इस दर पर: माह-अंत तक ~%1%',
+    '%1 of %2 doses taken · %3 left this month': '%2 में से %1 खुराक ली · इस माह %3 शेष', 'Set a monthly goal to track it': 'इसे ट्रैक करने के लिए मासिक लक्ष्य तय करें',
+    'On track for your %1% goal': 'आपके %1% लक्ष्य की राह पर', 'room to miss %1 more': '%1 और चूकने की गुंजाइश',
+    'Behind your %1% goal': 'आपके %1% लक्ष्य से पीछे', 'take every remaining dose': 'हर शेष खुराक लें',
+    'Goal': 'लक्ष्य', 'Goal set 🎯': 'लक्ष्य तय हुआ 🎯', 'Goal cleared': 'लक्ष्य हटाया गया',
     'When you miss doses': 'आप खुराक कब चूकते हैं', 'Morning': 'सुबह', 'Afternoon': 'दोपहर', 'Evening': 'शाम', 'Night': 'रात',
     'Your %1 doses are the easiest to miss.': 'आपकी %1 की खुराकें सबसे आसानी से छूट जाती हैं।',
     'morning': 'सुबह', 'afternoon': 'दोपहर', 'evening': 'शाम', 'night': 'रात',
@@ -4554,6 +4559,7 @@ async function loadMedicines() {
   const mc = document.getElementById('med-count');
   if (mc) mc.textContent = `${meds.filter(m=>m.active).length} active`;
   loadMedAdherence();
+  loadAdherenceForecast();
   loadMissedDoses();
   loadAdherenceTimeOfDay();
   loadSkipReasons();
@@ -4606,6 +4612,54 @@ async function loadMissedDoses() {
   const d = await fetch('/api/medicines/adherence-breakdown?days=30')
     .then(r => r.json()).catch(() => null);
   el.innerHTML = d ? renderMissedDoses(d) : '';
+}
+
+// ── Adherence goal + month-end forecast ──
+async function loadAdherenceForecast() {
+  const el = document.getElementById('adherence-forecast-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/adherence/forecast').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const cur = d.current_pct != null ? d.current_pct : 0;
+  const goalVal = d.goal_pct != null ? d.goal_pct : '';
+  let statusLine;
+  if (d.goal_pct == null) {
+    statusLine = `<div class="afc-status">${t('Set a monthly goal to track it')}</div>`;
+  } else if (d.on_track) {
+    statusLine = `<div class="afc-status afc-ok">✓ ${tformat('On track for your %1% goal', d.goal_pct)}${d.misses_allowed != null ? ` · ${tformat('room to miss %1 more', d.misses_allowed)}` : ''}</div>`;
+  } else {
+    statusLine = `<div class="afc-status afc-behind">${tformat('Behind your %1% goal', d.goal_pct)}${d.misses_allowed === 0 ? ' · ' + t('take every remaining dose') : ''}</div>`;
+  }
+  const ringColor = d.goal_pct != null && !d.on_track ? '#F59E0B' : 'var(--teal-500,#14B8A6)';
+  el.innerHTML = `<div class="panel afc-panel" style="padding:16px 18px">
+      <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">🎯 ${t('This month')}</h2></div>
+      <div class="afc-body">
+        <div class="afc-ring" style="background:conic-gradient(${ringColor} ${cur * 3.6}deg, var(--gray-100,#F0EDE6) 0)">
+          <div class="afc-ring-in"><b>${cur}%</b><span>${t('so far')}</span></div>
+        </div>
+        <div class="afc-info">
+          <div class="afc-proj">${tformat('At this rate: ~%1% by month-end', d.projected_pct != null ? d.projected_pct : cur)}</div>
+          <div class="afc-sub">${tformat('%1 of %2 doses taken · %3 left this month', d.taken_to_date, d.scheduled_to_date, d.remaining_scheduled)}</div>
+          ${statusLine}
+          <div class="afc-goal-row">
+            <label>${t('Goal')}</label>
+            <input type="number" id="afc-goal-input" class="form-input" min="1" max="100" value="${goalVal}" placeholder="90" style="width:70px">
+            <span>%</span>
+            <button class="btn-outline btn-sm" data-ev-click="saveAdherenceGoal()">${t('Save')}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveAdherenceGoal() {
+  const raw = document.getElementById('afc-goal-input')?.value;
+  const r = await fetch('/api/medicines/adherence/goal', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pct: raw === '' ? null : parseInt(raw, 10) })
+  }).then(r => r.json()).catch(() => null);
+  if (r && r.success) { showToast(r.goal_pct ? t('Goal set 🎯') : t('Goal cleared')); loadAdherenceForecast(); }
+  else showToast(t('Could not save'), 'error');
 }
 
 // ── Adherence by part of day (coarser, cross-medicine lens) ──

@@ -188,6 +188,22 @@ def adherence_timeofday():
 def at_risk_dose():
     return jsonify({'at_risk': get_at_risk_dose_today()})
 
+@bp.route('/api/medicines/adherence/forecast')
+@require_auth
+def adherence_forecast():
+    return jsonify(get_adherence_forecast())
+
+@bp.route('/api/medicines/adherence/goal', methods=['GET', 'POST'])
+@require_auth
+def adherence_goal():
+    if request.method == 'POST':
+        try:
+            g = set_adherence_goal((request.json or {}).get('pct'))
+        except ValueError as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': True, 'goal_pct': g})
+    return jsonify({'goal_pct': get_adherence_goal()})
+
 @bp.route('/api/medicines/calendar')
 @require_auth
 def dose_calendar():

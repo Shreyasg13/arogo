@@ -667,6 +667,106 @@ def get_skip_reasons(days: int = 30) -> dict:
             'top': counts[0]['reason'] if counts else None, 'has_data': bool(counts)}
 
 
+def get_adherence_goal():
+    """The user's monthly adherence-% target, or None if unset."""
+    r = execute("SELECT adherence_goal_pct FROM reminder_settings WHERE user_id=? LIMIT 1",
+                (current_user_id(),), fetchone=True)
+    g = (r or {}).get('adherence_goal_pct') if r else None
+    try:
+        return int(g) if g not in (None, '') else None
+    except (TypeError, ValueError):
+        return None
+
+
+def set_adherence_goal(pct):
+    """Set (or clear with None/0) the monthly adherence target, clamped 1–100."""
+    uid = current_user_id()
+    exists = execute("SELECT id FROM reminder_settings WHERE user_id=? LIMIT 1", (uid,), fetchone=True)
+    if not exists:
+        execute("INSERT INTO reminder_settings (id, user_id, updated_at) VALUES (?,?,?)",
+                (new_id(), uid, now_iso()), commit=True)
+    if pct in (None, '', 0, '0'):
+        execute("UPDATE reminder_settings SET adherence_goal_pct=NULL WHERE user_id=?", (uid,), commit=True)
+        return None
+    try:
+        p = max(1, min(int(pct), 100))
+    except (TypeError, ValueError):
+        raise ValueError('Adherence goal must be a number')
+    execute("UPDATE reminder_settings SET adherence_goal_pct=? WHERE user_id=?", (p, uid), commit=True)
+    return p
+
+
+def get_adherence_forecast() -> dict:
+    """This calendar month's adherence so far and where it's heading. Projection
+    assumes the rest of the month is taken at the same rate you've kept to date
+    (so 'projected' == your current rate) — honest, not optimistic. Also: how
+    many more doses you can miss and still hit your goal.
+
+    None goal → the goal-relative fields are None; the month-to-date numbers are
+    always real."""
+    import datetime as dt
+    uid = current_user_id()
+    try:
+        today = dt.date.fromisoformat(user_today())
+    except ValueError:
+        today = dt.date.today()
+    month_start = today.replace(day=1)
+    # last day of month
+    if today.month == 12:
+        month_end = dt.date(today.year, 12, 31)
+    else:
+        month_end = dt.date(today.year, today.month + 1, 1) - dt.timedelta(days=1)
+
+    meds = [m for m in list_medicines() if m['active'] and m.get('frequency') != 'as_needed' and m.get('times')]
+    taken_set = set()
+    for r in (execute("""SELECT medicine_id, date_key, time_key FROM dose_logs
+                         WHERE user_id=? AND taken=1 AND date_key>=? AND date_key<=?""",
+                      (uid, month_start.isoformat(), month_end.isoformat()), fetchall=True) or []):
+        taken_set.add((r['medicine_id'], r['date_key'], r['time_key']))
+
+    scheduled_to_date = taken_to_date = remaining_scheduled = 0
+    d = month_start
+    while d <= month_end:
+        ds = d.isoformat()
+        for m in meds:
+            if not _scheduled_on_day(m, ds):
+                continue
+            for tkey in m['times']:
+                if d <= today:
+                    scheduled_to_date += 1
+                    if (m['id'], ds, tkey) in taken_set:
+                        taken_to_date += 1
+                else:
+                    remaining_scheduled += 1
+        d += dt.timedelta(days=1)
+
+    total_month = scheduled_to_date + remaining_scheduled
+    current_pct = round(taken_to_date / scheduled_to_date * 100, 1) if scheduled_to_date else None
+    projected_pct = current_pct       # taking the rest at the same rate lands here
+
+    goal = get_adherence_goal()
+    on_track = misses_allowed = None
+    if goal is not None and total_month:
+        # doses that must be taken over the whole month to hit the goal
+        import math as _m
+        need_taken = _m.ceil(goal / 100 * total_month)
+        can_miss_total = total_month - need_taken
+        already_missed = scheduled_to_date - taken_to_date
+        misses_allowed = max(0, can_miss_total - already_missed)
+        on_track = (projected_pct is not None and projected_pct >= goal)
+
+    return {
+        'month': today.strftime('%Y-%m'),
+        'goal_pct': goal,
+        'current_pct': current_pct,
+        'projected_pct': projected_pct,
+        'taken_to_date': taken_to_date, 'scheduled_to_date': scheduled_to_date,
+        'remaining_scheduled': remaining_scheduled, 'total_month': total_month,
+        'on_track': on_track, 'misses_allowed': misses_allowed,
+        'has_data': scheduled_to_date > 0,
+    }
+
+
 def get_at_risk_dose_today(history_days: int = 30, min_history: int = 4, risk_threshold: int = 25):
     """Of today's STILL-PENDING doses, the one the user most often misses — a
     forward-looking "don't forget this one today" rather than a backward report.
