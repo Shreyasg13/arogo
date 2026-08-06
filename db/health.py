@@ -347,6 +347,53 @@ def delete_vital(vid: str):
             (vid, current_user_id()), commit=True)
 
 
+# ── Emergency QR (for the health-ID card) ────────────────────────────────────
+
+def _emergency_qr_text() -> str:
+    """A compact, offline-readable emergency summary — what a first responder
+    needs at a glance. Built from the user's own emergency + profile rows; no
+    URL, so it works without a network."""
+    from .food import get_profile
+    e = get_emergency_info() or {}
+    p = get_profile() or {}
+    urow = execute("SELECT name FROM users WHERE id=? LIMIT 1", (current_user_id(),), fetchone=True)
+    name = (p.get('name') or (urow['name'] if urow else '') or '').strip()
+    lines = ['EMERGENCY' + (f' - {name}' if name else '')]
+    if e.get('blood_type'):
+        lines.append(f"Blood: {e['blood_type']}")
+    if e.get('allergies'):
+        lines.append(f"Allergies: {e['allergies']}")
+    if e.get('conditions'):
+        lines.append(f"Conditions: {e['conditions']}")
+    c1n, c1p = (e.get('contact1_name') or '').strip(), (e.get('contact1_phone') or '').strip()
+    if c1n or c1p:
+        lines.append(f"ICE: {c1n} {c1p}".strip())
+    # QR capacity is finite — keep the payload sane.
+    return '\n'.join(lines)[:600]
+
+
+def build_emergency_qr() -> dict:
+    """A self-contained SVG QR of the emergency summary. `available` is False
+    (with no svg) when the optional `segno` library isn't installed or there's
+    nothing worth encoding — the UI then simply omits the QR."""
+    text = _emergency_qr_text()
+    # Only worth a QR once there's more than the bare "EMERGENCY" header.
+    if '\n' not in text:
+        return {'available': False, 'reason': 'no_emergency_info', 'svg': None}
+    try:
+        import segno
+    except ImportError:
+        return {'available': False, 'reason': 'qr_lib_missing', 'svg': None}
+    try:
+        import io
+        qr = segno.make(text, error='m')
+        buf = io.StringIO()
+        qr.save(buf, kind='svg', scale=4, border=2, dark='#243027')
+        return {'available': True, 'svg': buf.getvalue(), 'text': text}
+    except Exception:
+        return {'available': False, 'reason': 'qr_error', 'svg': None}
+
+
 # ── Condition-tailored daily check-in ────────────────────────────────────────
 # Each focus maps to the specific readings worth capturing daily. Diabetes uses
 # the fasting/post-meal glucose contexts (from the logbook feature); hypertension

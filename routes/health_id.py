@@ -9,6 +9,7 @@ acting-as returns the managed member's card, not the caregiver's.
 from flask import Blueprint, jsonify
 from auth import require_auth
 from db.health_id import get_health_id
+from db.health import build_emergency_qr
 
 bp = Blueprint('health_id', __name__)
 
@@ -17,3 +18,11 @@ bp = Blueprint('health_id', __name__)
 @require_auth
 def api_health_id():
     return jsonify(get_health_id())
+
+
+@bp.route('/api/health-id/qr')
+@require_auth
+def api_health_id_qr():
+    """Self-contained SVG QR of the emergency summary for the ID card.
+    `available:false` when segno isn't installed or there's nothing to encode."""
+    return jsonify(build_emergency_qr())

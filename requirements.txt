@@ -16,6 +16,10 @@ schedule
 # (see observability.py); PII/health data is scrubbed before any event is sent.
 sentry-sdk
 
+# Optional — QR code for the emergency health-ID card (pure-Python, no deps).
+# The QR simply doesn't render without it; nothing else is affected.
+segno
+
 # Optional — Web Push reminders (push disabled gracefully without it)
 pywebpush
 # pywebpush pulls in aiohttp; floor it past a batch of 2026 CVEs
