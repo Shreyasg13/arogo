@@ -5,7 +5,7 @@ All queries are scoped to the authenticated user via current_user_id().
 """
 import math
 
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id, to_num, to_int, valid_date
+from .core import execute, executemany, jdump, jload, now_iso, today_iso, user_today, new_id, current_user_id, to_num, to_int, valid_date
 
 
 def list_habits() -> list:
@@ -441,20 +441,22 @@ def get_condition_checkin() -> dict:
     if not focus:
         return {'focus': None, 'prompts': [], 'options': [
             {'key': k, 'label': v['label']} for k, v in CONDITION_FOCUSES.items()]}
-    today = today_iso()
+    today = user_today()      # the USER's day, matching how the client stamps date_key
     uid = current_user_id()
     prompts = []
     for p in CONDITION_FOCUSES[focus]['prompts']:
         if p['type'] == 'blood_sugar' and p['context']:
-            row = execute("""SELECT value1 FROM vitals WHERE user_id=? AND type='blood_sugar'
+            row = execute("""SELECT value1, value2 FROM vitals WHERE user_id=? AND type='blood_sugar'
                              AND context=? AND date_key=? ORDER BY logged_at DESC LIMIT 1""",
                           (uid, p['context'], today), fetchone=True)
         else:
             row = execute("""SELECT value1, value2 FROM vitals WHERE user_id=? AND type=?
                              AND date_key=? ORDER BY logged_at DESC LIMIT 1""",
                           (uid, p['type'], today), fetchone=True)
+        r = dict(row) if row else None
         prompts.append({**p, 'done': bool(row),
-                        'value': (dict(row).get('value1') if row else None)})
+                        'value': (r.get('value1') if r else None),
+                        'value2': (r.get('value2') if r else None)})
     return {'focus': focus, 'focus_label': CONDITION_FOCUSES[focus]['label'],
             'prompts': prompts,
             'all_done': all(p['done'] for p in prompts),

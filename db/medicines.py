@@ -691,6 +691,11 @@ def get_reminder_responsiveness(days: int = 30) -> dict:
         tk = str(r['time_key'] or '')
         if len(tk) < 4 or tk[2] != ':':
             continue
+        # PRN (as-needed) doses stamp a HH:MM:SS time_key at log time, so their
+        # "delay" is ~0 by construction and would inflate on-time %. They have no
+        # scheduled due-time — skip anything longer than HH:MM.
+        if len(tk) > 5:
+            continue
         try:
             sched = dt.datetime.fromisoformat(f"{r['date_key']}T{tk[:5]}:00")
             logged = dt.datetime.fromisoformat(str(r['taken_at'])[:19])

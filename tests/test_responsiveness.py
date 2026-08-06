@@ -68,6 +68,17 @@ def test_backfill_excluded(app):
     assert d["has_data"] is False
 
 
+def test_prn_seconds_time_key_excluded(app):
+    _, uid = _uid(app, "resp5@medeasy.test")
+    day = dt.date.today().isoformat()
+    with user_context(uid):
+        mid = insert_medicine({"name": "PRN", "frequency": "as_needed"})["id"]
+        # a PRN dose logs a HH:MM:SS time_key at the moment taken (delay ~0)
+        _dose(uid, mid, day, "14:30:22", f"{day}T14:30:22")
+        d = get_reminder_responsiveness()
+    assert d["has_data"] is False   # the seconds-marked PRN slot is not counted
+
+
 def test_api(app):
     c, uid = _uid(app, "resp4@medeasy.test")
     day = dt.date.today().isoformat()

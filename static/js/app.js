@@ -3234,7 +3234,10 @@ async function loadConditionCheckin() {
       <button class="btn-primary btn-sm" data-ev-click="logConditionSugar('${p.context}','${p.key}')">${t('Log')}</button></div>`;
   }).join('');
   const done = d.prompts.filter(p => p.done);
-  const doneChips = done.map(p => `<span class="cchk-done">✓ ${t(p.label)} ${escHtml(String(p.value))}</span>`).join('');
+  const doneChips = done.map(p => {
+    const val = p.value2 != null ? `${p.value}/${p.value2}` : p.value;
+    return `<span class="cchk-done">✓ ${t(p.label)} ${escHtml(String(val))}</span>`;
+  }).join('');
   el.innerHTML = `<div class="panel cchk-card">
     <div class="cchk-head">🩺 ${tformat('%1 check-in', escHtml(t(d.focus_label)))}
       <button class="cchk-gear" title="${t('Change')}" data-ev-click="changeConditionFocus()">⚙</button></div>

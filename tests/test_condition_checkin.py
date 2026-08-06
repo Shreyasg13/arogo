@@ -67,6 +67,29 @@ def test_hypertension_single_bp_prompt(app):
         assert d["prompts"][0]["done"] is True and d["all_done"] is True
 
 
+def test_done_uses_user_today_and_client_date_key(app):
+    # The client stamps date_key with the user's local day; the check-in must
+    # look it up the same way (user_today), not the server date. Simulate the
+    # client by passing an explicit date_key = user's today.
+    from db.core import user_today
+    _, uid = _uid(app, "cci6@medeasy.test")
+    with user_context(uid):
+        set_condition_focus("diabetes")
+        log_vital({"type": "blood_sugar", "value1": 92, "context": "fasting",
+                   "date_key": user_today()})
+        done = {p["key"]: p["done"] for p in get_condition_checkin()["prompts"]}
+    assert done["sugar_fasting"] is True
+
+
+def test_bp_prompt_returns_diastolic(app):
+    _, uid = _uid(app, "cci7@medeasy.test")
+    with user_context(uid):
+        set_condition_focus("hypertension")
+        log_vital({"type": "blood_pressure", "value1": 120, "value2": 80})
+        p = get_condition_checkin()["prompts"][0]
+    assert p["done"] is True and p["value"] == 120 and p["value2"] == 80
+
+
 def test_api(app):
     c, uid = _uid(app, "cci5@medeasy.test")
     assert c.post("/api/condition-focus", json={"focus": "diabetes"}).get_json()["focus"] == "diabetes"
