@@ -1137,6 +1137,17 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .cal-range.selected { background:var(--teal-600,#0D9488); color:#fff; }
 .cal-leg-badge { font-size:11px; color:var(--gray-400,#94A3B8); margin-right:8px; }
 
+/* Derived health calculators (G4) */
+.calc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(170px, 1fr)); gap:10px; }
+.calc-card { background:var(--surface-2,#F8FAFC); border:1px solid var(--border,#E2E8F0); border-radius:12px; padding:12px 14px; }
+.calc-top { display:flex; justify-content:space-between; align-items:center; gap:6px; }
+.calc-label { font-size:12px; font-weight:600; color:var(--gray-500,#64748B); }
+.calc-cat { font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:99px; }
+.calc-value { font-size:26px; font-weight:700; color:var(--gray-800,#1E293B); margin-top:4px; line-height:1.1; }
+.calc-unit { font-size:12px; font-weight:500; color:var(--gray-400,#94A3B8); }
+.calc-note { font-size:11px; color:var(--gray-500,#64748B); margin-top:4px; }
+.calc-formula { font-size:10.5px; color:var(--gray-400,#94A3B8); margin-top:6px; font-style:italic; }
+
 /* Vitals anomaly flags (G3) */
 .vanom-panel { border:1px solid #FDE68A; background:#FFFBEB; }
 .vanom-row { display:flex; gap:10px; align-items:flex-start; padding:7px 0; }

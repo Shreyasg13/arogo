@@ -918,6 +918,11 @@ def api_vitals_anomalies():
     days = to_int(request.args.get('days', 60), 60, lo=7, hi=3650)
     return jsonify(get_vitals_anomalies(days))
 
+@bp.route('/api/health/calculators')
+@require_auth
+def api_health_calculators():
+    return jsonify(get_health_calculators())
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Emergency Info Routes
 # ══════════════════════════════════════════════════════════════════════════════

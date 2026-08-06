@@ -458,6 +458,9 @@ const I18N = {
     'Worth a mention': 'ध्यान देने योग्य', 'above': 'ऊपर', 'below': 'नीचे', 'risen': 'बढ़ा है', 'fallen': 'घटा है',
     'Last %1 readings were %2 your target': 'पिछली %1 रीडिंग आपके लक्ष्य से %2 थीं', 'Has %1 over the last %2 readings': 'पिछली %2 रीडिंग में %1',
     'A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.': 'आपकी अपनी रीडिंग से एक संकेत — निदान नहीं। डॉक्टर से चर्चा करने योग्य।',
+    'Health calculators': 'स्वास्थ्य कैलकुलेटर', 'Underweight': 'कम वज़न', 'Normal': 'सामान्य', 'Overweight': 'अधिक वज़न', 'Obese': 'मोटापा',
+    'Asia-Pacific: %1': 'एशिया-प्रशांत: %1', 'Add %1 to see BMI and more': 'BMI आदि देखने के लिए %1 जोड़ें',
+    'height and weight in your profile': 'अपनी प्रोफ़ाइल में लंबाई और वज़न', 'a blood-pressure reading': 'एक रक्तचाप रीडिंग',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -9049,7 +9052,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadCalculators(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -14471,6 +14474,37 @@ async function loadVitalsAnomalies() {
       <div class="panel-header" style="padding:0 0 6px"><h2 class="panel-title">📈 ${t('Worth a mention')}</h2></div>
       ${rows}
       <div class="vanom-disc">${t('A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.')}</div>
+    </div>`;
+}
+
+// Derived numbers from data the user already gave us — each shows its formula.
+const _CALC_CAT_COLOR = { Underweight: '#3B82F6', Normal: '#22C55E', Overweight: '#F59E0B', Obese: '#EF4444' };
+async function loadCalculators() {
+  const el = document.getElementById('calculators-panel');
+  if (!el) return;
+  const d = await fetch('/api/health/calculators').then(r => r.json()).catch(() => null);
+  if (!d) { el.innerHTML = ''; return; }
+  if (!d.has_data) {
+    const need = (d.missing || []).map(m => escHtml(t(m))).join(' · ');
+    el.innerHTML = need ? `<div class="panel" style="padding:14px 18px;margin-bottom:16px;font-size:13px;color:var(--gray-500)">🧮 ${tformat('Add %1 to see BMI and more', need)}</div>` : '';
+    return;
+  }
+  const cards = d.calculators.map(c => {
+    const cat = c.category
+      ? `<span class="calc-cat" style="background:${_CALC_CAT_COLOR[c.category] || '#94A3B8'}22;color:${_CALC_CAT_COLOR[c.category] || '#64748B'}">${t(c.category)}</span>`
+      : '';
+    const asia = c.asia_category && c.asia_category !== c.category
+      ? `<div class="calc-note">${tformat('Asia-Pacific: %1', t(c.asia_category))}</div>` : '';
+    return `<div class="calc-card">
+      <div class="calc-top"><span class="calc-label">${t(c.label)}</span>${cat}</div>
+      <div class="calc-value">${escHtml(String(c.value))}<span class="calc-unit"> ${escHtml(c.unit || '')}</span></div>
+      ${c.note ? `<div class="calc-note">${escHtml(c.note)}</div>` : ''}${asia}
+      <div class="calc-formula">${escHtml(c.formula || '')}</div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-bottom:16px">
+      <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">🧮 ${t('Health calculators')}</h2></div>
+      <div class="calc-grid">${cards}</div>
     </div>`;
 }
 

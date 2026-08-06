@@ -49,6 +49,7 @@ from .insights    import (add_notification, get_notifications, mark_notification
                           mark_all_notifications_read, unread_notification_count,
                           generate_weekly_report, generate_health_review,
                           global_search, get_goal_progress, get_visit_prep, get_vitals_anomalies)
+from .calculators import get_health_calculators
 from .cycle       import (log_period_start, log_period_end, delete_cycle, get_cycle_summary,
                           log_symptoms, get_symptom_day, get_symptom_summary)
 
@@ -94,7 +95,7 @@ __all__ = [
     "add_notification", "get_notifications", "mark_notification_read",
     "mark_all_notifications_read", "unread_notification_count",
     "generate_weekly_report", "generate_health_review", "global_search", "get_goal_progress",
-    "get_visit_prep", "get_vitals_anomalies",
+    "get_visit_prep", "get_vitals_anomalies", "get_health_calculators",
     "log_period_start", "log_period_end", "delete_cycle", "get_cycle_summary",
     "log_symptoms", "get_symptom_day", "get_symptom_summary",
 ]
