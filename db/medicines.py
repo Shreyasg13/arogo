@@ -1046,6 +1046,81 @@ def _days_of_supply(m):
     return round(pc / max(per_day, 0.01), 1)
 
 
+def get_med_spend_timeline(months: int = 12) -> dict:
+    """Estimated medicine spend per month over the last N months, from each med's
+    monthly cost and the span it was on your list (start_date → stop event, or
+    still active). Plus this year's total and a projected annual at the current
+    run-rate.
+
+    Honest caveats baked in: costs are treated as constant at their CURRENT value
+    (there's no cost-history), and DELETED meds are gone from the list so their
+    past cost isn't counted — so it's clearly an estimate, labelled as such.
+    """
+    import datetime as dt
+    uid = current_user_id()
+    months = max(1, min(int(months or 12), 36))
+    try:
+        today = dt.date.fromisoformat(user_today())
+    except ValueError:
+        today = dt.date.today()
+
+    meds = [m for m in list_medicines() if m.get('cost') is not None]
+    # Stop date per med (earliest stop/delete event) for inactive meds.
+    stop_date = {}
+    for e in get_medicine_events(days=3650):
+        if e.get('kind') in ('stopped', 'deleted'):
+            d = (e.get('at') or '')[:10]
+            mid = e.get('medicine_id')
+            if mid and d and (mid not in stop_date or d < stop_date[mid]):
+                stop_date[mid] = d
+
+    def _month_start(y, mo):
+        return dt.date(y, mo, 1)
+
+    # Build the last `months` month anchors, oldest → newest.
+    anchors = []
+    y, mo = today.year, today.month
+    for _ in range(months):
+        anchors.append((y, mo))
+        mo -= 1
+        if mo == 0:
+            mo = 12; y -= 1
+    anchors.reverse()
+
+    timeline = []
+    for (yy, mm) in anchors:
+        m_start = _month_start(yy, mm)
+        m_end = _month_start(yy + (mm // 12), (mm % 12) + 1) - dt.timedelta(days=1)
+        spend = 0.0
+        for m in meds:
+            try:
+                start = dt.date.fromisoformat((m.get('start_date') or m.get('created_at') or '')[:10])
+            except (ValueError, TypeError):
+                start = None
+            if not start or start > m_end:
+                continue                     # not started yet this month
+            sd = stop_date.get(m['id'])
+            if not m['active'] and sd:
+                try:
+                    if dt.date.fromisoformat(sd) < m_start:
+                        continue             # already stopped before this month
+                except ValueError:
+                    pass
+            elif not m['active'] and not sd:
+                # inactive with no recorded stop date — only count up to today's month
+                if m_start > today.replace(day=1):
+                    continue
+            spend += float(m['cost'])
+        timeline.append({'month': f'{yy:04d}-{mm:02d}', 'spend': round(spend, 2)})
+
+    current_monthly = timeline[-1]['spend'] if timeline else 0.0
+    ytd = round(sum(t['spend'] for t in timeline if t['month'][:4] == str(today.year)), 2)
+    projected_annual = round(current_monthly * 12, 2)
+    return {'months': months, 'timeline': timeline, 'current_monthly': current_monthly,
+            'ytd': ytd, 'projected_annual': projected_annual,
+            'has_data': any(t['spend'] > 0 for t in timeline)}
+
+
 def get_monthly_med_cost() -> dict:
     """Total monthly spend across active medicines that have a cost set, plus a
     per-medicine breakdown (dearest first). Medicines with no cost are omitted —

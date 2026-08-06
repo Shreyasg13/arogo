@@ -456,6 +456,8 @@ const I18N = {
     'Dose skipped': 'खुराक छोड़ी गई', 'Why doses get skipped': 'खुराकें क्यों छूटती हैं',
     'Forgot': 'भूल गए', 'Was away': 'बाहर थे', 'Side effect': 'दुष्प्रभाव', 'Ran out': 'खत्म हो गई', 'Felt fine': 'ठीक महसूस हुआ', 'Other': 'अन्य',
     'Worth a mention': 'ध्यान देने योग्य', 'above': 'ऊपर', 'below': 'नीचे', 'risen': 'बढ़ा है', 'fallen': 'घटा है',
+    'Spend over time': 'समय के साथ खर्च', 'last 12 months': 'पिछले 12 महीने', 'this month': 'इस माह', 'this year': 'इस वर्ष', 'projected/yr': 'अनुमानित/वर्ष',
+    'An estimate: costs are taken at their current value; deleted medicines are not counted.': 'एक अनुमान: लागत वर्तमान मूल्य पर ली गई है; हटाई गई दवाइयाँ नहीं गिनी जातीं।',
     'Reading categories': 'रीडिंग श्रेणियाँ', 'last 90 days': 'पिछले 90 दिन', 'Elevated': 'बढ़ा हुआ', 'Stage 1': 'चरण 1', 'Stage 2': 'चरण 2', 'Crisis': 'संकट', 'Low': 'कम', 'High': 'उच्च',
     'Standard categories for a single reading — not a diagnosis, which needs repeated readings.': 'एक रीडिंग के लिए मानक श्रेणियाँ — निदान नहीं, जिसके लिए बार-बार रीडिंग चाहिए।',
     'Last %1 readings were %2 your target': 'पिछली %1 रीडिंग आपके लक्ष्य से %2 थीं', 'Has %1 over the last %2 readings': 'पिछली %2 रीडिंग में %1',
@@ -13315,7 +13317,33 @@ async function loadMedBudget() {
   const d = await fetch('/api/medicines/forecast', {credentials:'same-origin'})
     .then(r => r.ok ? r.json() : null).catch(() => null);
   if (!d) { el.innerHTML = `<div class="panel" style="padding:20px">${t('Could not load')}</div>`; return; }
-  el.innerHTML = renderMedBudget(d);
+  el.innerHTML = renderMedBudget(d) + '<div id="med-spend-timeline"></div>';
+  loadMedSpendTimeline();
+}
+
+// Estimated medicine spend per month + YTD + projected annual.
+async function loadMedSpendTimeline() {
+  const el = document.getElementById('med-spend-timeline');
+  if (!el) return;
+  const d = await fetch('/api/medicines/spend-timeline?months=12').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const max = Math.max(...d.timeline.map(t => t.spend), 1);
+  const bars = d.timeline.map(t => {
+    const h = Math.round(t.spend / max * 70);
+    const mlabel = new Date(t.month + '-01T12:00:00').toLocaleDateString([], { month: 'short' });
+    return `<div class="mst-col" title="${t.month}: ${_rupee(t.spend)}">
+      <div class="mst-bar" style="height:${h}px"></div><div class="mst-x">${mlabel}</div></div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-top:16px">
+      <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">📈 ${t('Spend over time')}</h2><span class="panel-badge">${t('last 12 months')}</span></div>
+      <div class="mst-stats">
+        <div><div class="mst-n">${_rupee(d.current_monthly)}</div><div class="mst-l">${t('this month')}</div></div>
+        <div><div class="mst-n">${_rupee(d.ytd)}</div><div class="mst-l">${t('this year')}</div></div>
+        <div><div class="mst-n">${_rupee(d.projected_annual)}</div><div class="mst-l">${t('projected/yr')}</div></div>
+      </div>
+      <div class="mst-chart">${bars}</div>
+      <div class="mst-disc">${t('An estimate: costs are taken at their current value; deleted medicines are not counted.')}</div>
+    </div>`;
 }
 
 function renderMedBudget(d) {

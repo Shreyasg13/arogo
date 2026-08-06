@@ -218,6 +218,12 @@ def monthly_cost():
     """Total monthly medicine spend + per-medicine breakdown."""
     return jsonify(get_monthly_med_cost())
 
+@bp.route('/api/medicines/spend-timeline')
+@require_auth
+def spend_timeline():
+    months = to_int(request.args.get('months', 12), 12, lo=1, hi=36)
+    return jsonify(get_med_spend_timeline(months))
+
 @bp.route('/api/medicines/history')
 @require_auth
 def medicine_history():
