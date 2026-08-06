@@ -193,6 +193,12 @@ def at_risk_dose():
 def adherence_forecast():
     return jsonify(get_adherence_forecast())
 
+@bp.route('/api/medicines/adherence/responsiveness')
+@require_auth
+def adherence_responsiveness():
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=366)
+    return jsonify(get_reminder_responsiveness(days))
+
 @bp.route('/api/medicines/adherence/goal', methods=['GET', 'POST'])
 @require_auth
 def adherence_goal():

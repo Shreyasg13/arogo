@@ -453,6 +453,9 @@ const I18N = {
     'On track for your %1% goal': 'आपके %1% लक्ष्य की राह पर', 'room to miss %1 more': '%1 और चूकने की गुंजाइश',
     'Behind your %1% goal': 'आपके %1% लक्ष्य से पीछे', 'take every remaining dose': 'हर शेष खुराक लें',
     'Goal': 'लक्ष्य', 'Goal set 🎯': 'लक्ष्य तय हुआ 🎯', 'Goal cleared': 'लक्ष्य हटाया गया',
+    'How quickly you log doses': 'आप खुराक कितनी जल्दी दर्ज करते हैं', 'Early': 'जल्दी', 'On time': 'समय पर', 'Late': 'देर से', 'Very late': 'बहुत देर से',
+    '%1% logged on time': '%1% समय पर दर्ज', 'You usually log doses right on time or early.': 'आप आमतौर पर खुराक समय पर या जल्दी दर्ज करते हैं।',
+    'You usually log a dose about %1 min after it’s due.': 'आप आमतौर पर खुराक देय होने के लगभग %1 मिनट बाद दर्ज करते हैं।',
     'When you miss doses': 'आप खुराक कब चूकते हैं', 'Morning': 'सुबह', 'Afternoon': 'दोपहर', 'Evening': 'शाम', 'Night': 'रात',
     'Your %1 doses are the easiest to miss.': 'आपकी %1 की खुराकें सबसे आसानी से छूट जाती हैं।',
     'morning': 'सुबह', 'afternoon': 'दोपहर', 'evening': 'शाम', 'night': 'रात',
@@ -4562,6 +4565,7 @@ async function loadMedicines() {
   loadAdherenceForecast();
   loadMissedDoses();
   loadAdherenceTimeOfDay();
+  loadResponsiveness();
   loadSkipReasons();
   loadMedCost();
   loadDoseCalendar();
@@ -4612,6 +4616,31 @@ async function loadMissedDoses() {
   const d = await fetch('/api/medicines/adherence-breakdown?days=30')
     .then(r => r.json()).catch(() => null);
   el.innerHTML = d ? renderMissedDoses(d) : '';
+}
+
+// ── Reminder responsiveness (how fast you log after a dose is due) ──
+const _RESP_COLOR = { early:'#3B82F6', ontime:'#22C55E', late:'#F59E0B', very_late:'#EF4444' };
+async function loadResponsiveness() {
+  const el = document.getElementById('responsiveness-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/adherence/responsiveness?days=30').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data || d.count < 3) { el.innerHTML = ''; return; }   // too few to say anything
+  const withCount = d.buckets.filter(b => b.count > 0);
+  const bars = withCount.map(b =>
+    `<div class="resp-seg" style="flex:${b.count};background:${_RESP_COLOR[b.key]}" title="${t(b.label)}: ${b.count}"></div>`).join('');
+  const legend = withCount.map(b =>
+    `<span class="resp-leg"><i style="background:${_RESP_COLOR[b.key]}"></i>${t(b.label)} ${b.count}</span>`).join('');
+  const median = d.median_delay_min;
+  const medLine = median == null ? '' : (median <= 0
+    ? t('You usually log doses right on time or early.')
+    : tformat('You usually log a dose about %1 min after it’s due.', median));
+  el.innerHTML = `<div class="panel" style="padding:16px 18px">
+      <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">⏱️ ${t('How quickly you log doses')}</h2><span class="panel-badge">${t('last 30 days')}</span></div>
+      ${d.ontime_pct != null ? `<div class="resp-head">${tformat('%1% logged on time', d.ontime_pct)}</div>` : ''}
+      <div class="resp-bar">${bars}</div>
+      <div class="resp-legend">${legend}</div>
+      ${medLine ? `<div class="resp-median">${escHtml(medLine)}</div>` : ''}
+    </div>`;
 }
 
 // ── Adherence goal + month-end forecast ──

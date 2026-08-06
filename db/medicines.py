@@ -667,6 +667,68 @@ def get_skip_reasons(days: int = 30) -> dict:
             'top': counts[0]['reason'] if counts else None, 'has_data': bool(counts)}
 
 
+def get_reminder_responsiveness(days: int = 30) -> dict:
+    """How soon you log a dose after it's due — from taken_at vs the scheduled
+    time. Buckets each taken dose into early / on-time (≤30 min) / late (≤3 h) /
+    very late, and reports the median delay and the on-time share.
+
+    Honest caveat: taken_at is the log time (server clock) and the scheduled time
+    is your local HH:MM, so on a self-hosted box in one timezone they line up,
+    but the delays are approximate. Same-day backfills far from the slot are
+    excluded from the median as noise."""
+    import datetime as dt
+    import statistics
+    uid = current_user_id()
+    days = max(1, min(int(days or 30), 366))
+    start = (dt.date.today() - dt.timedelta(days=days)).isoformat()
+    rows = execute("""SELECT date_key, time_key, taken_at FROM dose_logs
+                      WHERE user_id=? AND taken=1 AND taken_at IS NOT NULL AND date_key>=?""",
+                   (uid, start), fetchall=True) or []
+
+    delays = []                      # minutes; +ve = logged after the scheduled time
+    buckets = {'early': 0, 'ontime': 0, 'late': 0, 'very_late': 0}
+    for r in rows:
+        tk = str(r['time_key'] or '')
+        if len(tk) < 4 or tk[2] != ':':
+            continue
+        try:
+            sched = dt.datetime.fromisoformat(f"{r['date_key']}T{tk[:5]}:00")
+            logged = dt.datetime.fromisoformat(str(r['taken_at'])[:19])
+        except ValueError:
+            continue
+        delta_min = (logged - sched).total_seconds() / 60.0
+        # Exclude far-off backfills (|Δ| > 2 days) from the median — they're
+        # catch-up logging, not "how fast did you respond".
+        if abs(delta_min) > 2 * 24 * 60:
+            continue
+        delays.append(delta_min)
+        if delta_min < 0:
+            buckets['early'] += 1
+        elif delta_min <= 30:
+            buckets['ontime'] += 1
+        elif delta_min <= 180:
+            buckets['late'] += 1
+        else:
+            buckets['very_late'] += 1
+
+    n = len(delays)
+    median_delay = round(statistics.median(delays)) if delays else None
+    within = buckets['early'] + buckets['ontime']
+    ontime_pct = round(within / n * 100) if n else None
+    return {
+        'days': days, 'count': n,
+        'median_delay_min': median_delay,
+        'ontime_pct': ontime_pct,
+        'buckets': [
+            {'key': 'early',     'label': 'Early',     'count': buckets['early']},
+            {'key': 'ontime',    'label': 'On time',   'count': buckets['ontime']},
+            {'key': 'late',      'label': 'Late',      'count': buckets['late']},
+            {'key': 'very_late', 'label': 'Very late', 'count': buckets['very_late']},
+        ],
+        'has_data': n > 0,
+    }
+
+
 def get_adherence_goal():
     """The user's monthly adherence-% target, or None if unset."""
     r = execute("SELECT adherence_goal_pct FROM reminder_settings WHERE user_id=? LIMIT 1",
