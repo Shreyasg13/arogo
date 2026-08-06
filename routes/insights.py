@@ -928,6 +928,11 @@ def api_health_calculators():
 def api_today_glance():
     return jsonify(get_today_glance())
 
+@bp.route('/api/visit-checklist')
+@require_auth
+def api_visit_checklist():
+    return jsonify(get_visit_checklist())
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Emergency Info Routes
 # ══════════════════════════════════════════════════════════════════════════════

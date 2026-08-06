@@ -477,6 +477,8 @@ const I18N = {
     'Log measurements over time to see change and recomposition.': 'बदलाव और रीकंपोज़िशन देखने के लिए समय के साथ माप दर्ज करें।',
     '💪 Looks like recomposition — waist %1cm while weight held': '💪 रीकंपोज़िशन जैसा — वज़न स्थिर रहते कमर %1सेमी',
     '📉 Fat loss — waist %1cm, weight %2kg': '📉 वसा घटी — कमर %1सेमी, वज़न %2किग्रा',
+    'Getting ready for your visit': 'अपनी विज़िट की तैयारी', 'Refills to sort before you go': 'जाने से पहले रिफिल करने हेतु',
+    'Labs due for a recheck': 'दोबारा जाँच हेतु लैब', 'out of stock': 'स्टॉक में नहीं', 'due now': 'अभी देय',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -10047,7 +10049,37 @@ const _origLoadReports = loadReports;
 loadReports = async function() {
   await _origLoadReports.apply(this, arguments);
   loadSymptoms();
+  loadVisitChecklist();
 };
+
+// "Getting ready" checklist for the next doctor visit — unasked questions,
+// refills to sort, labs due. Shown only when a doctor visit is booked and
+// there's something to prepare.
+async function loadVisitChecklist() {
+  const el = document.getElementById('visit-checklist-panel');
+  if (!el) return;
+  const d = await fetch('/api/visit-checklist').then(r => r.json()).catch(() => null);
+  if (!d || !d.next_visit || !d.has_items) { el.innerHTML = ''; return; }
+  const when = _glanceWhen(d.next_visit.date);
+  const sections = [];
+  if (d.questions.length) {
+    sections.push(`<div class="vck-group"><div class="vck-h">❓ ${t('Questions to ask')}</div>
+      ${d.questions.map(q => `<label class="vck-item"><input type="checkbox"> <span>${escHtml(q)}</span></label>`).join('')}</div>`);
+  }
+  if (d.refills.length) {
+    sections.push(`<div class="vck-group"><div class="vck-h">🛒 ${t('Refills to sort before you go')}</div>
+      ${d.refills.map(r => `<label class="vck-item"><input type="checkbox"> <span>${escHtml(r.name)}${r.out ? ' — ' + t('out of stock') : ''}</span></label>`).join('')}</div>`);
+  }
+  if (d.labs_due.length) {
+    sections.push(`<div class="vck-group"><div class="vck-h">🧪 ${t('Labs due for a recheck')}</div>
+      ${d.labs_due.map(l => `<label class="vck-item"><input type="checkbox"> <span>${escHtml(l.name)}${l.status === 'due' ? ' — ' + t('due now') : ''}</span></label>`).join('')}</div>`);
+  }
+  el.innerHTML = `<div class="panel vck-panel">
+      <div class="vck-top"><span class="vck-eyebrow">🩺 ${t('Getting ready for your visit')}</span>
+        <span class="vck-when">${escHtml(d.next_visit.title)} · ${escHtml(when)}</span></div>
+      ${sections.join('')}
+    </div>`;
+}
 
 // Patch loadThoughts to init sleep defaults
 const _origLoadThoughts = loadThoughts;

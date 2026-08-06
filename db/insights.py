@@ -40,6 +40,38 @@ def unread_notification_count() -> int:
 
 # ── Weekly health report ──────────────────────────────────────────────────────
 
+def get_visit_checklist() -> dict:
+    """A forward-looking "getting ready" checklist for the NEXT doctor visit:
+    unasked questions, refills to sort before you go, and labs due for a recheck.
+    Anchored on the soonest upcoming doctor appointment (None if none booked).
+    All the user's own data; each list is real or empty, never padded."""
+    from .health import get_next_appointment, list_doctor_questions
+    from .medicines import get_refill_list
+    from .labs import get_lab_rechecks
+    from .core import execute as _ex, current_user_id, user_today
+
+    appt = _ex("""SELECT title, date, time FROM appointments
+                  WHERE user_id=? AND kind='doctor' AND date >= ?
+                  ORDER BY date, time LIMIT 1""",
+               (current_user_id(), user_today()), fetchone=True)
+    next_visit = {'title': appt['title'], 'date': appt['date'], 'time': appt['time']} if appt else None
+
+    questions = [q['question'] for q in (list_doctor_questions() or []) if not q.get('asked')]
+    refills = [{'name': r['name'], 'out': r.get('out')} for r in (get_refill_list() or [])
+               if not r.get('ordered')]
+    labs_due = [{'name': x['name'], 'status': x['status']}
+                for x in (get_lab_rechecks() or {}).get('rechecks', [])
+                if x['status'] in ('due', 'soon')]
+
+    return {
+        'next_visit': next_visit,
+        'questions': questions,
+        'refills': refills,
+        'labs_due': labs_due,
+        'has_items': bool(questions or refills or labs_due),
+    }
+
+
 def get_today_glance() -> dict:
     """A one-line "where things stand today": doses still to take, the soonest
     appointment, how many meds are low, and whether a vital is due to be
