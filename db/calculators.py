@@ -96,6 +96,8 @@ def get_health_calculators() -> dict:
                 'formula': 'diastolic + (systolic − diastolic) ÷ 3',
             })
 
+    # (hr-zones lives in its own function below)
+
     # What's still needed, so the UI can nudge instead of just showing blanks.
     missing = []
     if not (w and h):
@@ -104,3 +106,29 @@ def get_health_calculators() -> dict:
         missing.append('a blood-pressure reading')
 
     return {'calculators': items, 'has_data': bool(items), 'missing': missing}
+
+
+# Standard 5-zone model as %-of-max-HR bands.
+_HR_ZONES = [
+    ('warmup',    'Warm-up',   50, 60),
+    ('fatburn',   'Fat burn',  60, 70),
+    ('cardio',    'Cardio',    70, 80),
+    ('anaerobic', 'Hard',      80, 90),
+    ('peak',      'Peak',      90, 100),
+]
+
+
+def get_hr_zones() -> dict:
+    """Target heart-rate training zones from the user's age. Max HR uses the
+    Tanaka formula (208 − 0.7·age), more accurate across ages than 220−age.
+    Returns has_data False (with the reason) when age is unknown — never guessed."""
+    p = get_profile() or {}
+    age = to_num(p.get('age'), 0) or None
+    if not age or age < 5 or age > 120:
+        return {'has_data': False, 'reason': 'your age in your profile'}
+    max_hr = round(208 - 0.7 * age)
+    zones = [{'key': k, 'label': lbl, 'lo_pct': lo, 'hi_pct': hi,
+              'lo_bpm': round(max_hr * lo / 100), 'hi_bpm': round(max_hr * hi / 100)}
+             for (k, lbl, lo, hi) in _HR_ZONES]
+    return {'has_data': True, 'age': int(age), 'max_hr': max_hr,
+            'formula': '208 − 0.7 × age (Tanaka)', 'zones': zones}

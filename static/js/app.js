@@ -475,6 +475,9 @@ const I18N = {
     'dose left': 'खुराक बाकी', 'doses left': 'खुराकें बाकी', 'to refill': 'रिफिल करने हेतु', 'Measure: %1': 'मापें: %1',
     'today': 'आज', 'tomorrow': 'कल', 'BP': 'रक्तचाप', 'Sugar': 'शुगर', 'Heart rate': 'हृदय गति', 'Weight': 'वज़न', 'Temp': 'तापमान',
     'Body measurements': 'शारीरिक माप', 'last 6 months': 'पिछले 6 महीने', 'Waist': 'कमर', 'Hip': 'कूल्हा', 'Chest': 'छाती', 'Arm': 'भुजा', 'Log': 'दर्ज करें',
+    'Training heart-rate zones': 'प्रशिक्षण हृदय-गति क्षेत्र', 'max ~%1 bpm': 'अधि. ~%1 bpm', 'For age %1 · %2': 'आयु %1 के लिए · %2',
+    'Warm-up': 'वार्म-अप', 'Fat burn': 'वसा दहन', 'Cardio': 'कार्डियो', 'Hard': 'कठिन', 'Peak': 'शिखर',
+    'Add %1 to see your training heart-rate zones': 'अपने प्रशिक्षण हृदय-गति क्षेत्र देखने के लिए %1 जोड़ें', 'your age': 'अपनी आयु',
     'Measurements logged 📏': 'माप दर्ज हुए 📏', 'Enter at least one measurement': 'कम से कम एक माप दर्ज करें',
     'Log measurements over time to see change and recomposition.': 'बदलाव और रीकंपोज़िशन देखने के लिए समय के साथ माप दर्ज करें।',
     '💪 Looks like recomposition — waist %1cm while weight held': '💪 रीकंपोज़िशन जैसा — वज़न स्थिर रहते कमर %1सेमी',
@@ -5557,6 +5560,36 @@ async function loadFitness() {
 
   // ── Body measurements + recomposition ──
   loadMeasurements();
+
+  // ── Exercise heart-rate zones ──
+  loadHrZones();
+}
+
+// Target HR training zones from age (Tanaka max-HR). Shows nothing but a gentle
+// nudge when age is unknown.
+const _HR_ZONE_COLOR = { warmup:'#3B82F6', fatburn:'#14B8A6', cardio:'#22C55E', anaerobic:'#F59E0B', peak:'#EF4444' };
+async function loadHrZones() {
+  const el = document.getElementById('hr-zones-section');
+  if (!el) return;
+  const d = await fetch('/api/health/hr-zones').then(r => r.json()).catch(() => null);
+  if (!d) { el.innerHTML = ''; return; }
+  if (!d.has_data) {
+    el.innerHTML = `<div class="panel" style="padding:14px 18px;font-size:13px;color:var(--gray-500)">💓 ${tformat('Add %1 to see your training heart-rate zones', escHtml(t(d.reason || 'your age')))}</div>`;
+    return;
+  }
+  const rows = d.zones.map(z => `
+    <div class="hrz-row">
+      <span class="hrz-dot" style="background:${_HR_ZONE_COLOR[z.key] || '#888'}"></span>
+      <span class="hrz-name">${t(z.label)}</span>
+      <span class="hrz-pct">${z.lo_pct}–${z.hi_pct}%</span>
+      <span class="hrz-bpm"><b>${z.lo_bpm}–${z.hi_bpm}</b> bpm</span>
+    </div>`).join('');
+  el.innerHTML = `<div class="panel" style="padding:16px 18px">
+      <div class="panel-header" style="padding:0 0 4px"><h2 class="panel-title">💓 ${t('Training heart-rate zones')}</h2>
+        <span class="panel-badge">${tformat('max ~%1 bpm', d.max_hr)}</span></div>
+      <div class="hrz-sub">${tformat('For age %1 · %2', d.age, escHtml(d.formula))}</div>
+      ${rows}
+    </div>`;
 }
 
 // Body-measurement trends (waist/hip/chest/arm/weight) + a recomposition read,

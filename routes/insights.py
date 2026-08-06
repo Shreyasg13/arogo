@@ -929,6 +929,11 @@ def api_vital_categories():
 def api_health_calculators():
     return jsonify(get_health_calculators())
 
+@bp.route('/api/health/hr-zones')
+@require_auth
+def api_hr_zones():
+    return jsonify(get_hr_zones())
+
 @bp.route('/api/today/glance')
 @require_auth
 def api_today_glance():
