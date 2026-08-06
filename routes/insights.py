@@ -923,6 +923,11 @@ def api_vitals_anomalies():
 def api_health_calculators():
     return jsonify(get_health_calculators())
 
+@bp.route('/api/today/glance')
+@require_auth
+def api_today_glance():
+    return jsonify(get_today_glance())
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Emergency Info Routes
 # ══════════════════════════════════════════════════════════════════════════════

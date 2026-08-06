@@ -40,6 +40,45 @@ def unread_notification_count() -> int:
 
 # ── Weekly health report ──────────────────────────────────────────────────────
 
+def get_today_glance() -> dict:
+    """A one-line "where things stand today": doses still to take, the soonest
+    appointment, how many meds are low, and whether a vital is due to be
+    measured. Pure aggregation of the user's own data for a single round-trip —
+    each number is real or absent, never padded."""
+    from .medicines import get_today_doses, get_low_stock_medicines
+    from .health import get_next_appointment, list_measurement_reminders
+
+    doses = get_today_doses() or []
+    doses_left = sum(1 for d in doses if not d.get('taken'))
+
+    appt = get_next_appointment()
+    next_appt = {'title': appt['title'], 'date': appt['date'], 'kind': appt.get('kind')} if appt else None
+
+    low = get_low_stock_medicines() or []
+
+    # A measurement is "due" if the user set a reminder for it and hasn't logged
+    # that vital today — a nudge, not an alarm.
+    from .core import current_user_id, user_today
+    today = user_today()
+    measure_due = []
+    for r in (list_measurement_reminders() or []):
+        if not r.get('enabled'):
+            continue
+        logged = execute("""SELECT 1 FROM vitals WHERE user_id=? AND type=? AND date_key=? LIMIT 1""",
+                         (current_user_id(), r['kind'], today), fetchone=True)
+        if not logged:
+            measure_due.append(r['kind'])
+
+    return {
+        'doses_left': doses_left,
+        'doses_total': len(doses),
+        'next_appointment': next_appt,
+        'low_stock_count': len(low),
+        'measurements_due': measure_due,
+        'has_anything': bool(doses_left or next_appt or low or measure_due),
+    }
+
+
 def get_visit_prep() -> dict:
     """"Since your last doctor visit" pack for the doctor-summary page.
 

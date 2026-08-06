@@ -469,6 +469,8 @@ const I18N = {
     'Call %1': '%1 को कॉल करें', 'pharmacy': 'फार्मेसी', 'Copy refill note': 'रिफिल नोट कॉपी करें', 'Pharmacy': 'फार्मेसी',
     'Add pharmacy': 'फार्मेसी जोड़ें', 'Your pharmacy': 'आपकी फार्मेसी', 'Pharmacy name': 'फार्मेसी का नाम', 'Phone': 'फ़ोन',
     'Pharmacy saved': 'फार्मेसी सहेजी गई',
+    'dose left': 'खुराक बाकी', 'doses left': 'खुराकें बाकी', 'to refill': 'रिफिल करने हेतु', 'Measure: %1': 'मापें: %1',
+    'today': 'आज', 'tomorrow': 'कल', 'BP': 'रक्तचाप', 'Sugar': 'शुगर', 'Heart rate': 'हृदय गति', 'Weight': 'वज़न', 'Temp': 'तापमान',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -2963,6 +2965,7 @@ async function loadDashboard() {
   try { loadLowStock(); }       catch (e) {}
   try { loadNextAppointment(); } catch (e) {}
   try { loadAtRiskDose(); }     catch (e) {}
+  try { loadTodayGlance(); }    catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -3153,6 +3156,51 @@ async function readDailyBriefing() {
     fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []),
   ]);
   speakText(composeSpokenBriefing(doses, low, new Date().getHours()));
+}
+
+// Today at a glance — a compact chip row of what stands today. Each chip only
+// appears when it has something real to say; the strip hides when all is quiet.
+const _MEASURE_LABEL = { blood_pressure: 'BP', blood_sugar: 'Sugar', heart_rate: 'Heart rate',
+                         weight: 'Weight', spo2: 'SpO2', temperature: 'Temp' };
+
+async function loadTodayGlance() {
+  const el = document.getElementById('dash-glance');
+  if (!el) return;
+  const d = await fetch('/api/today/glance').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_anything) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const chips = [];
+  if (d.doses_left > 0) {
+    chips.push(`<button class="glance-chip" data-ev-click="switchView('medicines')">
+      💊 <b>${d.doses_left}</b> ${d.doses_left === 1 ? t('dose left') : t('doses left')}</button>`);
+  }
+  if (d.next_appointment) {
+    const when = _glanceWhen(d.next_appointment.date);
+    chips.push(`<button class="glance-chip" data-ev-click="switchView('reports')">
+      📅 ${escHtml(d.next_appointment.title)} <span class="glance-sub">${escHtml(when)}</span></button>`);
+  }
+  if (d.low_stock_count > 0) {
+    chips.push(`<button class="glance-chip glance-chip--warn" data-ev-click="openRefillList()">
+      🛒 <b>${d.low_stock_count}</b> ${t('to refill')}</button>`);
+  }
+  if ((d.measurements_due || []).length) {
+    const names = d.measurements_due.map(k => t(_MEASURE_LABEL[k] || k)).join(', ');
+    chips.push(`<button class="glance-chip" data-ev-click="switchView('medicines');setTimeout(()=>switchMedTab&&switchMedTab('vitals'),60)">
+      📏 ${tformat('Measure: %1', escHtml(names))}</button>`);
+  }
+  if (!chips.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = `<div class="glance-strip">${chips.join('')}</div>`;
+}
+// Friendly relative date for a glance chip: Today / Tomorrow / weekday / date.
+function _glanceWhen(iso) {
+  try {
+    const d = new Date(iso + 'T12:00:00'), today = new Date(); today.setHours(12, 0, 0, 0);
+    const diff = Math.round((d - today) / 86400000);
+    if (diff === 0) return t('today');
+    if (diff === 1) return t('tomorrow');
+    if (diff > 1 && diff < 7) return d.toLocaleDateString([], { weekday: 'long' });
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch (e) { return iso; }
 }
 
 // A gentle, forward-looking heads-up: of today's still-pending doses, the one
