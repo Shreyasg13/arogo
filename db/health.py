@@ -346,6 +346,96 @@ def delete_vital(vid: str):
     execute("DELETE FROM vitals WHERE id=? AND user_id=?",
             (vid, current_user_id()), commit=True)
 
+
+# ── Blood-pressure & resting-HR classification ───────────────────────────────
+# Standard, published bands (ACC/AHA 2017 for BP; common adult resting-HR
+# ranges). These describe a single reading — a category, not a diagnosis; a
+# clinic diagnoses hypertension off repeated readings, not one.
+_BP_BANDS = ['normal', 'elevated', 'stage1', 'stage2', 'crisis']
+_BP_LABEL = {'normal': 'Normal', 'elevated': 'Elevated', 'stage1': 'Stage 1',
+             'stage2': 'Stage 2', 'crisis': 'Crisis'}
+_HR_LABEL = {'low': 'Low', 'normal': 'Normal', 'high': 'High'}
+
+
+def classify_bp(systolic, diastolic):
+    """Return (band, label) for a BP reading using the worse of the two numbers,
+    or (None, None) if either is missing/invalid."""
+    try:
+        s = float(systolic); d = float(diastolic)
+    except (TypeError, ValueError):
+        return None, None
+    if not (math.isfinite(s) and math.isfinite(d)):
+        return None, None
+    if s > 180 or d > 120:
+        band = 'crisis'
+    elif s >= 140 or d >= 90:
+        band = 'stage2'
+    elif s >= 130 or d >= 80:
+        band = 'stage1'
+    elif s >= 120:
+        band = 'elevated'
+    else:
+        band = 'normal'
+    return band, _BP_LABEL[band]
+
+
+def classify_hr(bpm):
+    """Return (band, label) for a resting heart rate. 'low' is framed neutrally —
+    trained people sit below 60 without concern — so the UI never alarms on it."""
+    try:
+        b = float(bpm)
+    except (TypeError, ValueError):
+        return None, None
+    if not math.isfinite(b):
+        return None, None
+    band = 'low' if b < 60 else 'high' if b > 100 else 'normal'
+    return band, _HR_LABEL[band]
+
+
+def get_vital_categories(days: int = 90) -> dict:
+    """Recent BP and resting-HR readings, each tagged with its standard category,
+    plus a per-category distribution — so the user sees where their readings sit
+    at a glance. Only their own data; empty sections are omitted."""
+    import datetime as dt
+    uid = current_user_id()
+    start = (dt.date.today() - dt.timedelta(days=max(1, days))).isoformat()
+
+    bp_rows = execute("""SELECT value1, value2, date_key FROM vitals
+                         WHERE type='blood_pressure' AND user_id=? AND date_key>=?
+                         ORDER BY date_key DESC, logged_at DESC""",
+                      (uid, start), fetchall=True) or []
+    bp_readings, bp_dist = [], {b: 0 for b in _BP_BANDS}
+    for r in bp_rows:
+        band, label = classify_bp(r['value1'], r['value2'])
+        if not band:
+            continue
+        bp_dist[band] += 1
+        bp_readings.append({'systolic': r['value1'], 'diastolic': r['value2'],
+                            'date': r['date_key'], 'band': band, 'label': label})
+
+    hr_rows = execute("""SELECT value1, date_key FROM vitals
+                         WHERE type='heart_rate' AND user_id=? AND date_key>=?
+                         ORDER BY date_key DESC, logged_at DESC""",
+                      (uid, start), fetchall=True) or []
+    hr_readings, hr_dist = [], {'low': 0, 'normal': 0, 'high': 0}
+    for r in hr_rows:
+        band, label = classify_hr(r['value1'])
+        if not band:
+            continue
+        hr_dist[band] += 1
+        hr_readings.append({'bpm': r['value1'], 'date': r['date_key'], 'band': band, 'label': label})
+
+    return {
+        'days': days,
+        'bp': {'latest': bp_readings[0] if bp_readings else None,
+               'distribution': [{'band': b, 'label': _BP_LABEL[b], 'count': bp_dist[b]} for b in _BP_BANDS],
+               'total': len(bp_readings)},
+        'hr': {'latest': hr_readings[0] if hr_readings else None,
+               'distribution': [{'band': b, 'label': _HR_LABEL[b], 'count': hr_dist[b]} for b in ('low', 'normal', 'high')],
+               'total': len(hr_readings)},
+        'has_data': bool(bp_readings or hr_readings),
+    }
+
 # ── Emergency Info ────────────────────────────────────────────────────────────
 
 def get_emergency_info() -> dict:

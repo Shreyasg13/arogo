@@ -1187,6 +1187,18 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .calc-note { font-size:11px; color:var(--gray-500,#64748B); margin-top:4px; }
 .calc-formula { font-size:10.5px; color:var(--gray-400,#94A3B8); margin-top:6px; font-style:italic; }
 
+/* BP & HR reading categories (H1) */
+.vcat-block { margin-bottom:14px; }
+.vcat-head { font-size:14px; font-weight:600; color:var(--gray-800,#1E293B); margin-bottom:6px; }
+.vcat-latest { color:var(--gray-500,#64748B); font-weight:500; }
+.vcat-badge { font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; margin-left:6px; }
+.vcat-bar-row { display:grid; grid-template-columns:88px 1fr auto; align-items:center; gap:10px; padding:3px 0; }
+.vcat-bar-lbl { font-size:12px; color:var(--gray-600,#475569); }
+.vcat-bar-wrap { height:8px; background:var(--gray-100,#F0EDE6); border-radius:99px; overflow:hidden; }
+.vcat-bar { height:100%; border-radius:99px; transition:width .3s; }
+.vcat-bar-n { font-size:12px; font-weight:600; color:var(--gray-500,#64748B); }
+.vcat-disc { font-size:11px; color:var(--gray-500,#64748B); font-style:italic; margin-top:6px; }
+
 /* Vitals anomaly flags (G3) */
 .vanom-panel { border:1px solid #FDE68A; background:#FFFBEB; }
 .vanom-row { display:flex; gap:10px; align-items:flex-start; padding:7px 0; }

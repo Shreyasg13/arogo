@@ -456,6 +456,8 @@ const I18N = {
     'Dose skipped': 'खुराक छोड़ी गई', 'Why doses get skipped': 'खुराकें क्यों छूटती हैं',
     'Forgot': 'भूल गए', 'Was away': 'बाहर थे', 'Side effect': 'दुष्प्रभाव', 'Ran out': 'खत्म हो गई', 'Felt fine': 'ठीक महसूस हुआ', 'Other': 'अन्य',
     'Worth a mention': 'ध्यान देने योग्य', 'above': 'ऊपर', 'below': 'नीचे', 'risen': 'बढ़ा है', 'fallen': 'घटा है',
+    'Reading categories': 'रीडिंग श्रेणियाँ', 'last 90 days': 'पिछले 90 दिन', 'Elevated': 'बढ़ा हुआ', 'Stage 1': 'चरण 1', 'Stage 2': 'चरण 2', 'Crisis': 'संकट', 'Low': 'कम', 'High': 'उच्च',
+    'Standard categories for a single reading — not a diagnosis, which needs repeated readings.': 'एक रीडिंग के लिए मानक श्रेणियाँ — निदान नहीं, जिसके लिए बार-बार रीडिंग चाहिए।',
     'Last %1 readings were %2 your target': 'पिछली %1 रीडिंग आपके लक्ष्य से %2 थीं', 'Has %1 over the last %2 readings': 'पिछली %2 रीडिंग में %1',
     'A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.': 'आपकी अपनी रीडिंग से एक संकेत — निदान नहीं। डॉक्टर से चर्चा करने योग्य।',
     'Health calculators': 'स्वास्थ्य कैलकुलेटर', 'Underweight': 'कम वज़न', 'Normal': 'सामान्य', 'Overweight': 'अधिक वज़न', 'Obese': 'मोटापा',
@@ -9284,7 +9286,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadCalculators(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -14736,6 +14738,35 @@ async function loadVitalsAnomalies() {
       <div class="panel-header" style="padding:0 0 6px"><h2 class="panel-title">📈 ${t('Worth a mention')}</h2></div>
       ${rows}
       <div class="vanom-disc">${t('A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.')}</div>
+    </div>`;
+}
+
+// BP & resting-HR categories — standard published bands, per reading + spread.
+const _BP_COLOR = { normal:'#22C55E', elevated:'#F59E0B', stage1:'#F97316', stage2:'#EF4444', crisis:'#B91C1C' };
+const _HR_COLOR = { low:'#3B82F6', normal:'#22C55E', high:'#EF4444' };
+async function loadVitalCategories() {
+  const el = document.getElementById('vital-categories-panel');
+  if (!el) return;
+  const d = await fetch('/api/vitals/categories?days=90').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const section = (title, data, colors) => {
+    if (!data.total) return '';
+    const lat = data.latest;
+    const latBadge = lat ? `<span class="vcat-badge" style="background:${colors[lat.band]}22;color:${colors[lat.band]}">${t(lat.label)}</span>` : '';
+    const bars = data.distribution.filter(x => x.count > 0).map(x =>
+      `<div class="vcat-bar-row"><span class="vcat-bar-lbl">${t(x.label)}</span>
+        <div class="vcat-bar-wrap"><div class="vcat-bar" style="width:${Math.round(x.count / data.total * 100)}%;background:${colors[x.band]}"></div></div>
+        <span class="vcat-bar-n">${x.count}</span></div>`).join('');
+    return `<div class="vcat-block"><div class="vcat-head">${title} ${latBadge}</div>${bars}</div>`;
+  };
+  const bpTitle = d.bp.latest ? `❤️ ${t('Blood pressure')} <span class="vcat-latest">${d.bp.latest.systolic}/${d.bp.latest.diastolic}</span>` : `❤️ ${t('Blood pressure')}`;
+  const hrTitle = d.hr.latest ? `💓 ${t('Resting heart rate')} <span class="vcat-latest">${d.hr.latest.bpm} bpm</span>` : `💓 ${t('Resting heart rate')}`;
+  const blocks = section(bpTitle, d.bp, _BP_COLOR) + section(hrTitle, d.hr, _HR_COLOR);
+  if (!blocks) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-bottom:16px">
+      <div class="panel-header" style="padding:0 0 8px"><h2 class="panel-title">📊 ${t('Reading categories')}</h2><span class="panel-badge">${t('last 90 days')}</span></div>
+      ${blocks}
+      <div class="vcat-disc">${t('Standard categories for a single reading — not a diagnosis, which needs repeated readings.')}</div>
     </div>`;
 }
 
