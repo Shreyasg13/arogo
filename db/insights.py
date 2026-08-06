@@ -336,6 +336,83 @@ def _fmt_num(v):
         return str(v)
 
 
+# Per-type "meaningful move" thresholds and labels for the anomaly flags. A
+# trend must clear the epsilon end-to-end so a 0.1 wiggle never reads as a trend.
+_ANOMALY_SPECS = {
+    'blood_pressure': {'label': 'Blood pressure', 'unit': 'mmHg', 'eps': 6},
+    'blood_sugar':    {'label': 'Blood sugar',    'unit': 'mg/dL', 'eps': 12},
+    'heart_rate':     {'label': 'Resting heart rate', 'unit': 'bpm', 'eps': 5},
+    'weight':         {'label': 'Weight', 'unit': 'kg', 'eps': 1.5},
+    'spo2':           {'label': 'SpO2', 'unit': '%', 'eps': 2},
+    'temperature':    {'label': 'Temperature', 'unit': '', 'eps': 0.6},
+}
+
+
+def get_vitals_anomalies(lookback_days: int = 60, min_run: int = 3, min_trend: int = 4) -> dict:
+    """Flag vitals that are on a RUN worth a glance — never a diagnosis:
+
+      • out-of-band: the last >= min_run readings all sit above (or all below)
+        the user's own target band (from vital_targets), or
+      • trend: the last >= min_trend readings move monotonically one way by more
+        than a per-type epsilon end-to-end.
+
+    Only the user's own readings, newest-first per type. Nothing is flagged
+    without enough readings, and the copy stays direction-only ("worth
+    mentioning"), leaving any judgement to a clinician.
+    """
+    from db.vital_targets import get_targets, flag
+    uid = current_user_id()
+    lookback_days = max(7, min(int(lookback_days or 60), 3650))
+    import datetime as dt
+    start = (dt.date.today() - dt.timedelta(days=lookback_days)).isoformat()
+    targets = get_targets()
+    flags = []
+
+    for vtype, spec in _ANOMALY_SPECS.items():
+        rows = execute("""SELECT value1 FROM vitals WHERE type=? AND user_id=? AND date_key>=?
+                          ORDER BY date_key DESC, logged_at DESC""",
+                       (vtype, uid, start), fetchall=True) or []
+        series = [r['value1'] for r in rows if r['value1'] is not None]   # newest-first
+        if len(series) < min_run:
+            continue
+
+        # (a) Out-of-band run against the user's target band.
+        tgt = targets.get(vtype)
+        if tgt:
+            run, kind = 0, None
+            for v in series:
+                f = flag(vtype, v, {vtype: tgt})
+                if f in ('above', 'below') and (kind is None or f == kind):
+                    kind = f
+                    run += 1
+                else:
+                    break
+            if run >= min_run:
+                flags.append({'type': vtype, 'label': spec['label'], 'unit': spec['unit'],
+                              'kind': 'out_of_band', 'direction': kind, 'run': run,
+                              'latest': _fmt_num(series[0])})
+                continue        # one flag per vital is enough; band beats trend
+
+        # (b) Monotonic trend run (newest-first: diff>0 means the newer reading
+        # is higher, i.e. rising over time).
+        run, direction = 1, None
+        for i in range(1, len(series)):
+            d = series[i - 1] - series[i]
+            step = 'up' if d > 0 else 'down' if d < 0 else None
+            if step is None or (direction and step != direction):
+                break
+            direction = direction or step
+            run += 1
+        if run >= min_trend:
+            net = abs(series[0] - series[run - 1])
+            if net >= spec['eps']:
+                flags.append({'type': vtype, 'label': spec['label'], 'unit': spec['unit'],
+                              'kind': 'trend', 'direction': direction, 'run': run,
+                              'latest': _fmt_num(series[0]), 'net': round(net, 1)})
+
+    return {'flags': flags, 'has_data': bool(flags)}
+
+
 # ── Weekly digest ─────────────────────────────────────────────────────────────
 
 def _hydration_goal_ml() -> int:

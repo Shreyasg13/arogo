@@ -912,6 +912,12 @@ def api_glucose_logbook():
     days = to_int(request.args.get('days', 30), 30, lo=1, hi=3650)
     return jsonify(get_glucose_logbook(days))
 
+@bp.route('/api/vitals/anomalies')
+@require_auth
+def api_vitals_anomalies():
+    days = to_int(request.args.get('days', 60), 60, lo=7, hi=3650)
+    return jsonify(get_vitals_anomalies(days))
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Emergency Info Routes
 # ══════════════════════════════════════════════════════════════════════════════

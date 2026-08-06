@@ -441,7 +441,14 @@ def get_adherence_by_timeofday(days: int = 30) -> dict:
     uid = current_user_id()
     days = max(1, min(int(days or 30), 366))
     meds = [m for m in list_medicines() if m['active'] and m.get('times')]
-    start = (date.today() - timedelta(days=days - 1)).isoformat()
+    # Anchor on the USER's day, not the server's — same rule the dose rows, the
+    # calendar, and get_at_risk_dose_today follow — so an IST user near a UTC
+    # midnight doesn't see today's taken doses counted as missed.
+    try:
+        anchor = date.fromisoformat(user_today())
+    except ValueError:
+        anchor = date.today()
+    start = (anchor - timedelta(days=days - 1)).isoformat()
 
     taken_set = set()
     for r in (execute("""SELECT medicine_id, date_key, time_key FROM dose_logs
@@ -452,7 +459,7 @@ def get_adherence_by_timeofday(days: int = 30) -> dict:
     agg = {key: {'bucket': key, 'label': lbl, 'total': 0, 'taken': 0}
            for key, lbl, _lo, _hi in _TOD_BUCKETS}
     for i in range(days):
-        d = (date.today() - timedelta(days=i)).isoformat()
+        d = (anchor - timedelta(days=i)).isoformat()
         for m in meds:
             if not _scheduled_on_day(m, d):
                 continue

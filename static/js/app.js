@@ -455,6 +455,9 @@ const I18N = {
     'Skip': 'छोड़ें', 'Skip this dose': 'यह खुराक छोड़ें', 'Why are you skipping this?': 'आप इसे क्यों छोड़ रहे हैं?', 'Just skip': 'बस छोड़ें',
     'Dose skipped': 'खुराक छोड़ी गई', 'Why doses get skipped': 'खुराकें क्यों छूटती हैं',
     'Forgot': 'भूल गए', 'Was away': 'बाहर थे', 'Side effect': 'दुष्प्रभाव', 'Ran out': 'खत्म हो गई', 'Felt fine': 'ठीक महसूस हुआ', 'Other': 'अन्य',
+    'Worth a mention': 'ध्यान देने योग्य', 'above': 'ऊपर', 'below': 'नीचे', 'risen': 'बढ़ा है', 'fallen': 'घटा है',
+    'Last %1 readings were %2 your target': 'पिछली %1 रीडिंग आपके लक्ष्य से %2 थीं', 'Has %1 over the last %2 readings': 'पिछली %2 रीडिंग में %1',
+    'A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.': 'आपकी अपनी रीडिंग से एक संकेत — निदान नहीं। डॉक्टर से चर्चा करने योग्य।',
     'A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.': 'एक निजी, समय-सीमित, केवल-पढ़ने वाला लिंक: आपकी दवाइयाँ, नवीनतम वाइटल्स, स्थितियाँ, एलर्जी और पालन। इसमें आपकी डायरी, चक्र या मूड कभी शामिल नहीं होता।',
     'Timing worth a glance': 'ध्यान देने योग्य समय',
     '%1 (with food) vs %2 (empty stomach)': '%1 (भोजन के साथ) बनाम %2 (खाली पेट)',
@@ -9046,7 +9049,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }
@@ -14438,6 +14441,39 @@ async function loadVitalsView() {
 
 // ── Personal vital target ranges ─────────────────────────────────────────────
 // The band your doctor set; the latest reading is flagged in/below/above it.
+// Vitals on a run worth a glance (out-of-band or trending). Direction-only,
+// framed as "worth mentioning" — never a diagnosis. Hidden when nothing flags.
+async function loadVitalsAnomalies() {
+  const el = document.getElementById('vitals-anomaly-panel');
+  if (!el) return;
+  const d = await fetch('/api/vitals/anomalies?days=60').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const rows = d.flags.map(f => {
+    let msg;
+    if (f.kind === 'out_of_band') {
+      const dir = f.direction === 'above' ? t('above') : t('below');
+      msg = tformat('Last %1 readings were %2 your target', f.run, dir);
+    } else {
+      const dir = f.direction === 'up' ? t('risen') : t('fallen');
+      msg = tformat('Has %1 over the last %2 readings', dir, f.run);
+    }
+    const arrow = (f.direction === 'above' || f.direction === 'up') ? '↑' : '↓';
+    const col = (f.direction === 'above' || f.direction === 'up') ? '#EF4444' : '#3B82F6';
+    return `<div class="vanom-row">
+      <span class="vanom-arrow" style="color:${col}">${arrow}</span>
+      <div class="vanom-body">
+        <div class="vanom-label">${t(f.label)} <span class="vanom-latest">${escHtml(String(f.latest))}${f.unit ? ' ' + escHtml(f.unit) : ''}</span></div>
+        <div class="vanom-msg">${escHtml(msg)}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel vanom-panel" style="padding:16px 18px;margin-bottom:16px">
+      <div class="panel-header" style="padding:0 0 6px"><h2 class="panel-title">📈 ${t('Worth a mention')}</h2></div>
+      ${rows}
+      <div class="vanom-disc">${t('A heads-up from your own readings — not a diagnosis. Worth raising with your doctor.')}</div>
+    </div>`;
+}
+
 const VT_LABEL = { blood_pressure:'Blood pressure (systolic)', blood_sugar:'Blood sugar', heart_rate:'Resting heart rate',
   weight:'Weight', spo2:'SpO₂', temperature:'Temperature' };
 const VT_UNIT = { blood_pressure:'mmHg', blood_sugar:'mg/dL', heart_rate:'bpm', weight:'kg', spo2:'%', temperature:'°C' };
