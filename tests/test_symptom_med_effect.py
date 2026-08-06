@@ -79,6 +79,21 @@ def test_incomplete_after_window_skipped(app):
     assert not any(x["symptom"] == "Dizziness" for x in d["findings"])
 
 
+def test_before_window_covered_for_old_event(app):
+    # A med change ~1 year ago: its before-window (28d earlier) must still be
+    # loaded, so the baseline isn't understated. Event at 380d; before at
+    # 384/390/400, after at 360/365.
+    _, uid = _uid(app, "sme5@medeasy.test")
+    _event(uid, "OldMed", "started", 380)
+    for d in (384, 390, 400):
+        _symptom(uid, "Backache", d, severity=6)
+    _symptom(uid, "Backache", 360, severity=6)
+    with user_context(uid):
+        d = get_symptom_med_effectiveness()
+    f = next((x for x in d["findings"] if x["symptom"] == "Backache"), None)
+    assert f is not None and f["before_count"] == 3    # all 3 baseline days loaded
+
+
 def test_api(app):
     c, uid = _uid(app, "sme4@medeasy.test")
     body = c.get("/api/symptoms/med-effect").get_json()

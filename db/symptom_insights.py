@@ -52,8 +52,14 @@ def get_symptom_med_effectiveness(window: int = EFFECT_WINDOW) -> dict:
     except ValueError:
         today = _dt.date.today()
 
+    # Symptoms are fetched with a `window` margin beyond the 400-day event span:
+    # a med change up to 400 days ago has a before-window reaching back
+    # 400 + window days, and without the margin those baseline days would be
+    # missing — understating the "before" count and mislabelling a stable
+    # symptom as worse (or dropping a valid finding).
+    EVENT_MAX_AGE = 400
     by_name = defaultdict(list)
-    for s in get_symptoms(days=400):
+    for s in get_symptoms(days=EVENT_MAX_AGE + window):
         try:
             d = _dt.date.fromisoformat(_dkey(s['date_key']))
         except ValueError:
@@ -61,7 +67,7 @@ def get_symptom_med_effectiveness(window: int = EFFECT_WINDOW) -> dict:
         by_name[s['name']].append((d, s.get('severity')))
 
     events = []
-    for e in get_medicine_events(days=400):
+    for e in get_medicine_events(days=EVENT_MAX_AGE):
         if e.get('kind') not in ('started', 'stopped'):
             continue
         try:
