@@ -466,6 +466,9 @@ const I18N = {
     'Worth a mention': 'ध्यान देने योग्य', 'above': 'ऊपर', 'below': 'नीचे', 'risen': 'बढ़ा है', 'fallen': 'घटा है',
     'Spend over time': 'समय के साथ खर्च', 'last 12 months': 'पिछले 12 महीने', 'this month': 'इस माह', 'this year': 'इस वर्ष', 'projected/yr': 'अनुमानित/वर्ष',
     'An estimate: costs are taken at their current value; deleted medicines are not counted.': 'एक अनुमान: लागत वर्तमान मूल्य पर ली गई है; हटाई गई दवाइयाँ नहीं गिनी जातीं।',
+    'Print log': 'लॉग प्रिंट करें', 'Symptom log': 'लक्षण लॉग', 'Could not build the log': 'लॉग नहीं बना', 'No symptoms logged yet': 'अभी तक कोई लक्षण दर्ज नहीं',
+    'Allow pop-ups to open the printable log': 'प्रिंट करने योग्य लॉग खोलने के लिए पॉप-अप की अनुमति दें', '%1 entries · last 90 days': '%1 प्रविष्टियाँ · पिछले 90 दिन',
+    'Date': 'तारीख', 'Symptom': 'लक्षण', 'Severity': 'गंभीरता', 'When': 'कब', 'Notes': 'नोट्स', 'Self-tracked in Arogo. Not an official medical record.': 'Arogo में स्वयं ट्रैक किया गया। आधिकारिक चिकित्सा रिकॉर्ड नहीं।',
     'Do these move together?': 'क्या ये साथ चलते हैं?', 'vs': 'बनाम', 'Pick two different metrics.': 'दो अलग मीट्रिक चुनें।',
     'Blood pressure (systolic)': 'रक्तचाप (सिस्टोलिक)', 'Blood sugar': 'ब्लड शुगर', 'Resting heart rate': 'विश्राम हृदय गति', 'Sleep hours': 'नींद के घंटे', 'Water': 'पानी',
     'tend to move together': 'साथ-साथ बदलते हैं', 'tend to move in opposite directions': 'विपरीत दिशा में बदलते हैं', 'show no clear link': 'कोई स्पष्ट संबंध नहीं दिखाते',
@@ -3707,6 +3710,49 @@ function buildWeekScheduleHtml(d) {
     <div class="sub">${t('Take each medicine in its time row, on each day it appears. As-needed medicines are not shown here.')}</div>
     <table><thead><tr><th class="ws-time"></th>${head}</tr></thead><tbody>${rows}</tbody></table>
     <div class="foot">${t('Generated from your own schedule in Arogo. Not a prescription.')}</div>
+    </body></html>`;
+}
+
+// Printable symptom log for a doctor — the user's symptom history, newest first,
+// as a clean table. Built from the same data the history panel shows.
+async function openSymptomLog() {
+  const rows = await fetch('/api/symptoms?days=90').then(r => r.json()).catch(() => null);
+  if (!Array.isArray(rows)) { showToast(t('Could not build the log'), 'error'); return; }
+  if (!rows.length) { showToast(t('No symptoms logged yet'), 'error'); return; }
+  const win = window.open('', '_blank', 'width=820,height=900');
+  if (!win) { showToast(t('Allow pop-ups to open the printable log'), 'error'); return; }
+  win.document.write(buildSymptomLogHtml(rows));
+  win.document.close();
+  const btn = win.document.querySelector('.sl-print-btn');
+  if (btn) btn.addEventListener('click', () => win.print());
+}
+
+function buildSymptomLogHtml(rows) {
+  const esc = escapeHtml;
+  const sorted = rows.slice().sort((a, b) => (b.date_key || '').localeCompare(a.date_key || '')
+    || (a.time_of_day || '').localeCompare(b.time_of_day || ''));
+  const body = sorted.map(s => {
+    const d = (() => { try { return new Date(s.date_key + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return s.date_key || ''; } })();
+    const sev = s.severity != null ? `${s.severity}/10` : '';
+    return `<tr><td>${esc(d)}</td><td>${esc(s.name || '')}</td><td>${esc(sev)}</td><td>${esc(s.time_of_day || '')}</td><td>${esc(s.notes || '')}</td></tr>`;
+  }).join('');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${t('Symptom log')} — Arogo</title>
+    <style>
+      body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#243027;margin:0;padding:26px}
+      h1{font-size:20px;margin:0 0 2px} .sub{color:#7A867C;font-size:12px;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{border:1px solid #E1E7E0;padding:7px 9px;text-align:left;vertical-align:top}
+      thead th{background:#F2F6F1;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#5A6B5E}
+      .sl-print-btn{position:fixed;top:16px;right:16px;padding:9px 16px;background:#5A9E70;color:#fff;border:none;border-radius:9px;font-weight:600;cursor:pointer}
+      .foot{margin-top:14px;color:#9AA69C;font-size:11px}
+      @media print{.sl-print-btn{display:none}}
+    </style></head><body>
+    <button class="sl-print-btn">🖨 ${t('Print')}</button>
+    <h1>🌱 ${t('Symptom log')}</h1>
+    <div class="sub">${tformat('%1 entries · last 90 days', sorted.length)}</div>
+    <table><thead><tr><th>${t('Date')}</th><th>${t('Symptom')}</th><th>${t('Severity')}</th><th>${t('When')}</th><th>${t('Notes')}</th></tr></thead>
+    <tbody>${body}</tbody></table>
+    <div class="foot">${t('Self-tracked in Arogo. Not an official medical record.')}</div>
     </body></html>`;
 }
 
