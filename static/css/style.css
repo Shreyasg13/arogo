@@ -5928,6 +5928,9 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   cursor: pointer; font-size: 13.5px; padding: 9px 14px; border-radius: 9px; min-height: 40px;
 }
 
+/* Inline one-liner hint / status text (travel planner, small async states). */
+.hint-inline { font-size: 13px; color: var(--gray-500); line-height: 1.5; }
+
 /* ── Guided iOS install (Share → Add to Home Screen) ── */
 .install-banner--ios .install-inner { flex-direction: column; gap: 0; }
 .ios-steps {

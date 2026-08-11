@@ -162,6 +162,25 @@ const I18N = {
     'Weekly digest email': 'साप्ताहिक सारांश ईमेल', 'Family care digest': 'परिवार देखभाल सारांश',
     'Quiet hours': 'शांत घंटे', 'Daily journal reminder': 'दैनिक डायरी रिमाइंडर',
     'Download everything': 'सब कुछ डाउनलोड करें', '💾 Backup & restore': '💾 बैकअप व पुनर्स्थापना',
+    '📅 Add to your calendar': '📅 अपने कैलेंडर में जोड़ें',
+    'Download an .ics file of your dose times, upcoming appointments and lab rechecks, then open it to add them to Google, Apple or Outlook calendar.':
+      'अपनी दवा के समय, आगामी अपॉइंटमेंट और लैब पुनःजाँच की .ics फ़ाइल डाउनलोड करें, फिर उसे खोलकर Google, Apple या Outlook कैलेंडर में जोड़ें।',
+    'Download calendar (.ics)': 'कैलेंडर डाउनलोड करें (.ics)',
+    '✈️ Travelling? Plan your supply': '✈️ यात्रा कर रहे हैं? अपनी आपूर्ति की योजना बनाएँ',
+    'Enter your trip dates to see how many pills to pack and what to refill before you go.':
+      'यह देखने के लिए अपनी यात्रा की तारीखें दर्ज करें कि कितनी गोलियाँ पैक करनी हैं और जाने से पहले क्या रिफिल करना है।',
+    'Leaving': 'प्रस्थान', 'Returning': 'वापसी', 'Plan supply': 'आपूर्ति योजना',
+    'Pick both dates.': 'दोनों तारीखें चुनें।', 'Working it out…': 'गणना हो रही है…',
+    'Return date is before you leave.': 'वापसी की तारीख प्रस्थान से पहले है।',
+    'That trip is over a year — pick a shorter range.': 'वह यात्रा एक वर्ष से अधिक है — छोटी अवधि चुनें।',
+    'Please check the dates.': 'कृपया तारीखें जाँचें।',
+    'No scheduled medicines to pack. (As-needed medicines aren’t counted.)':
+      'पैक करने के लिए कोई निर्धारित दवा नहीं। (आवश्यकतानुसार दवाएँ गिनी नहीं जातीं।)',
+    'to pack': 'पैक करें', 'stock not tracked': 'स्टॉक ट्रैक नहीं',
+    'you have enough': 'आपके पास पर्याप्त है', 'refill %1 more': '%1 और रिफिल करें',
+    '%1 medicine(s) need a refill before you leave.': 'जाने से पहले %1 दवा को रिफिल की ज़रूरत है।',
+    'You’re covered for the whole trip.': 'पूरी यात्रा के लिए आपके पास पर्याप्त है।',
+    '%1 days · %2 pills total': '%1 दिन · कुल %2 गोलियाँ',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -13619,6 +13638,51 @@ async function loadGrocery() {
 // ── Med budget & run-out forecast ────────────────────────────────────────────
 // Run-out DATE per tracked medicine + monthly/yearly cost projection. All from
 // the user's own pill counts and per-med costs.
+// I2: Travel supply planner — pills to pack + refill-before-you-go list.
+async function planTravelSupply() {
+  const start = document.getElementById('trip-start')?.value;
+  const end   = document.getElementById('trip-end')?.value;
+  const out   = document.getElementById('trip-plan-result');
+  if (!out) return;
+  if (!start || !end) { out.innerHTML = `<div class="hint-inline">${t('Pick both dates.')}</div>`; return; }
+  out.innerHTML = `<div class="hint-inline">${t('Working it out…')}</div>`;
+  const d = await fetch(`/api/medicines/travel-supply?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
+    {credentials:'same-origin'}).then(r => r.json()).catch(() => null);
+  if (!d || !d.ok) {
+    const msg = d && d.reason === 'end_before_start' ? t('Return date is before you leave.')
+              : d && d.reason === 'trip_too_long'    ? t('That trip is over a year — pick a shorter range.')
+              : t('Please check the dates.');
+    out.innerHTML = `<div class="hint-inline">${msg}</div>`; return;
+  }
+  if (!d.items.length) {
+    out.innerHTML = `<div class="hint-inline">${t('No scheduled medicines to pack. (As-needed medicines aren’t counted.)')}</div>`;
+    return;
+  }
+  const rows = d.items.map(it => {
+    const packBadge = `<b>${it.needed}</b> ${t('to pack')}`;
+    let status;
+    if (it.available === null) status = `<span style="color:var(--gray-400)">${t('stock not tracked')}</span>`;
+    else if (it.covered)       status = `<span style="color:var(--teal-600)">✓ ${t('you have enough')}</span>`;
+    else                       status = `<span style="color:#B45309;font-weight:600">${tformat('refill %1 more', it.shortfall)}</span>`;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;
+                 padding:10px 0;border-top:1px solid var(--gray-100);font-size:14px">
+              <span style="font-weight:600;color:var(--gray-800)">${escapeHtml(it.name)}</span>
+              <span style="text-align:right">${packBadge} · ${status}</span>
+            </div>`;
+  }).join('');
+  const banner = d.refill_needed.length
+    ? `<div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:12px 14px;
+           font-size:13.5px;color:#92400E;margin-bottom:12px">
+         ⚠️ ${tformat('%1 medicine(s) need a refill before you leave.', d.refill_needed.length)}</div>`
+    : `<div style="background:var(--teal-50);border:1px solid var(--teal-200);border-radius:10px;padding:12px 14px;
+           font-size:13.5px;color:var(--teal-700);margin-bottom:12px">
+         ✓ ${t('You’re covered for the whole trip.')}</div>`;
+  out.innerHTML = banner +
+    `<div style="font-size:12px;color:var(--gray-400);margin-bottom:2px">
+       ${tformat('%1 days · %2 pills total', d.trip_days, d.total_pills)}</div>` +
+    rows;
+}
+
 async function loadMedBudget() {
   const el = document.getElementById('med-budget-content');
   if (!el) return;

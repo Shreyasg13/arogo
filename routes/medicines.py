@@ -1,6 +1,8 @@
 """routes/medicines.py — Medicine CRUD, dose logging, stock."""
-from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from flask import Blueprint, request, jsonify, send_from_directory, current_app, Response
 from auth import require_auth
+from db.calendar_export import build_ics
+from db.travel import plan_travel_supply
 import os, json as json_mod
 from db import *
 from db.core import user_today
@@ -24,6 +26,30 @@ bp = Blueprint("medicines", __name__)
 @require_auth
 def get_medicines():
     return jsonify(list_medicines())
+
+
+@bp.route('/api/calendar.ics', methods=['GET'])
+@require_auth
+def calendar_ics():
+    """A downloadable iCalendar feed of the user's own dose times, upcoming
+    appointments, and labs due for a recheck — everything they entered, nothing
+    invented. Imports into Google/Apple/Outlook calendars."""
+    try:
+        days = int(request.args.get('days', 90))
+    except (TypeError, ValueError):
+        days = 90
+    body = build_ics(days_ahead=days)
+    return Response(body, mimetype='text/calendar; charset=utf-8', headers={
+        'Content-Disposition': 'attachment; filename="arogo-health.ics"'})
+
+
+@bp.route('/api/medicines/travel-supply', methods=['GET'])
+@require_auth
+def travel_supply():
+    """Pills needed per medicine for a trip, and what to refill before leaving.
+    From each med's own schedule + stock; PRN excluded."""
+    return jsonify(plan_travel_supply(request.args.get('start', ''),
+                                      request.args.get('end', '')))
 
 
 @bp.route('/api/medicines/drugs', methods=['GET'])

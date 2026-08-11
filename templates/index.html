@@ -2390,6 +2390,28 @@
       <p class="page-subtitle" data-i18n="What your medicines cost each month, and when each one runs out">What your medicines cost each month, and when each one runs out</p>
     </div>
   </div>
+  <!-- I2: Travel supply planner -->
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="✈️ Travelling? Plan your supply">✈️ Travelling? Plan your supply</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:14px"
+       data-i18n="Enter your trip dates to see how many pills to pack and what to refill before you go.">
+      Enter your trip dates to see how many pills to pack and what to refill before you go.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="Leaving">Leaving</label>
+        <input type="date" class="form-input" id="trip-start" style="min-width:150px">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="Returning">Returning</label>
+        <input type="date" class="form-input" id="trip-end" style="min-width:150px">
+      </div>
+      <button class="btn-primary" style="padding:11px 18px" data-ev-click="planTravelSupply()">
+        <span data-i18n="Plan supply">Plan supply</span>
+      </button>
+    </div>
+    <div id="trip-plan-result" style="margin-top:16px"></div>
+  </div>
+
   <div id="med-budget-content"></div>
 </div>
 
@@ -2492,6 +2514,19 @@
       A single file with <b>every record</b> Arogo holds about you, across all
       features — not just the range above. This is your data; take it anytime.</p>
     <button class="btn-outline" data-ev-click="downloadAllData()">Download all my data (JSON)</button>
+  </div>
+
+  <!-- Calendar export (.ics) -->
+  <div class="panel" style="padding:18px 20px;margin-top:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="📅 Add to your calendar">📅 Add to your calendar</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="Download an .ics file of your dose times, upcoming appointments and lab rechecks, then open it to add them to Google, Apple or Outlook calendar.">
+      Download an .ics file of your dose times, upcoming appointments and lab
+      rechecks, then open it to add them to Google, Apple or Outlook calendar.</p>
+    <a class="btn-outline" href="/api/calendar.ics" download="arogo-health.ics"
+       style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+      <span data-i18n="Download calendar (.ics)">Download calendar (.ics)</span> ⬇️
+    </a>
   </div>
 
   <!-- Backup & restore (for self-hosting) -->
