@@ -156,11 +156,16 @@ class TestSleep:
         after. Without an explicit date_key the server derives it from the wake
         date, so re-logging replaces rather than splitting into two rows."""
         c = _user(app, "sleep-wakekey@medeasy.test")
-        c.post("/api/sleep", json={"bedtime": "2026-07-24T23:00",   # 8h, bed on the 24th
-                                   "wake_time": "2026-07-25T07:00", "quality": 4})
-        c.post("/api/sleep", json={"bedtime": "2026-07-25T01:00",   # 6h, bed on the 25th
-                                   "wake_time": "2026-07-25T07:00", "quality": 3})
-        rows = [s for s in c.get("/api/sleep").get_json() if s["date_key"] == "2026-07-25"]
+        # Anchor to a recent morning so the row stays inside the default 14-day
+        # read window (GET /api/sleep) — fixed calendar dates silently age out.
+        wake_d = datetime.date.today() - datetime.timedelta(days=2)
+        wake   = wake_d.isoformat()
+        eve    = (wake_d - datetime.timedelta(days=1)).isoformat()
+        c.post("/api/sleep", json={"bedtime": eve + "T23:00",       # 8h, bed before midnight
+                                   "wake_time": wake + "T07:00", "quality": 4})
+        c.post("/api/sleep", json={"bedtime": wake + "T01:00",      # 6h, bed after midnight
+                                   "wake_time": wake + "T07:00", "quality": 3})
+        rows = [s for s in c.get("/api/sleep").get_json() if s["date_key"] == wake]
         assert len(rows) == 1, "same wake morning split into two rows"
         assert rows[0]["duration_h"] == 6   # the replacement won
 

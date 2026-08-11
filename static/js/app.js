@@ -163,6 +163,10 @@ const I18N = {
     'Quiet hours': 'शांत घंटे', 'Daily journal reminder': 'दैनिक डायरी रिमाइंडर',
     'Download everything': 'सब कुछ डाउनलोड करें', '💾 Backup & restore': '💾 बैकअप व पुनर्स्थापना',
     'Delete my account': 'मेरा खाता हटाएँ',
+    'How Arogo works': 'Arogo कैसे काम करता है',
+    'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
+      'कोई विज्ञापन नहीं, कोई डेटा बिक्री नहीं, और ऐप के हर आँकड़े की सरल भाषा में व्याख्या — और वह कहाँ से आता है।',
+    'Read our promises & number guide': 'हमारे वादे व आँकड़ा मार्गदर्शिका पढ़ें',
     '🛒 Refill shopping list': '🛒 रिफिल खरीद सूची', 'Upload Medical Report': 'मेडिकल रिपोर्ट अपलोड करें',
     '📄 Import from prescription': '📄 पर्ची से आयात करें', 'Update Pill Stock': 'गोली स्टॉक अपडेट करें',
     'Log Activity': 'गतिविधि दर्ज करें', 'Connect Fitness App': 'फिटनेस ऐप जोड़ें',
@@ -883,6 +887,16 @@ const I18N = {
     'Add manually instead': 'बजाय मैन्युअल जोड़ें', 'Start over': 'फिर से शुरू करें',
     'Add these medicines': 'ये दवाइयाँ जोड़ें', 'Turn on Simple View': 'सरल दृश्य चालू करें',
     'No thanks': 'नहीं धन्यवाद', 'Add to Home Screen': 'होम स्क्रीन में जोड़ें', 'Not now': 'अभी नहीं',
+    'Share': 'शेयर', 'Got it': 'समझ गया',
+    'Put Arogo on your home screen': 'Arogo को अपनी होम स्क्रीन पर लगाएँ',
+    'So dose reminders reach you even when the app is closed.':
+      'ताकि ऐप बंद होने पर भी दवा के रिमाइंडर आप तक पहुँचें।',
+    'In Safari, tap the Share icon': 'Safari में, शेयर आइकन पर टैप करें',
+    'Choose “Add to Home Screen”': '“होम स्क्रीन में जोड़ें” चुनें',
+    'Tap “Add” — that’s it': '“जोड़ें” पर टैप करें — बस हो गया',
+    'Never miss a reminder': 'कोई रिमाइंडर न चूकें',
+    'Add Arogo to your home screen so dose reminders reach you even when the app is closed.':
+      'Arogo को अपनी होम स्क्रीन पर जोड़ें ताकि ऐप बंद होने पर भी दवा के रिमाइंडर आप तक पहुँचें।',
     // Misc empty states
     'No reports found': 'कोई रिपोर्ट नहीं मिली', 'Upload your first medical report': 'अपनी पहली मेडिकल रिपोर्ट अपलोड करें',
     'Upload Report': 'रिपोर्ट अपलोड करें', 'No activities found': 'कोई गतिविधि नहीं मिली', 'Try changing your filters': 'अपने फ़िल्टर बदलकर देखें',
@@ -1545,32 +1559,68 @@ function maybeShowInstallPrompt() {
     setTimeout(maybeShowInstallPrompt, 4000); return;
   }
 
-  const steps = ios
-    ? 'Tap the Share button <b>&#x2191;</b> below, then <b>&ldquo;Add to Home Screen&rdquo;</b>.'
-    : 'One tap and Arogo lives on your home screen.';
-  const actionBtn = android
-    ? '<button class="install-yes" type="button">' + t('Add to Home Screen') + '</button>' : '';
-
   const card = document.createElement('div');
   card.id = 'install-banner';
   card.setAttribute('role', 'dialog');
   card.setAttribute('aria-label', 'Add Arogo to your home screen');
+
+  if (ios) {
+    // iOS has no programmatic install — Safari only offers it through the
+    // Share sheet. So instead of a dead button, we coach the exact taps with a
+    // numbered guide and the real Share glyph, and point down to the toolbar
+    // where that icon actually lives on iPhone.
+    card.classList.add('install-banner--ios');
+    const shareGlyph =
+      '<svg class="ios-share-glyph" viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
+        'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ' +
+        'aria-label="' + t('Share') + '">' +
+        '<path d="M12 3v12"/><path d="M8 7l4-4 4 4"/>' +
+        '<path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"/>' +
+      '</svg>';
+    card.innerHTML =
+      '<div class="install-inner">' +
+        '<div class="install-title">' + t('Put Arogo on your home screen') + '</div>' +
+        '<div class="install-text">' +
+          t('So dose reminders reach you even when the app is closed.') + '</div>' +
+        '<ol class="ios-steps">' +
+          '<li><span class="ios-step-n">1</span><span>' +
+            t('In Safari, tap the Share icon') + ' ' + shareGlyph + '</span></li>' +
+          '<li><span class="ios-step-n">2</span><span>' +
+            t('Choose “Add to Home Screen”') + '</span></li>' +
+          '<li><span class="ios-step-n">3</span><span>' +
+            t('Tap “Add” — that’s it') + '</span></li>' +
+        '</ol>' +
+        '<div class="install-actions">' +
+          '<button class="install-yes" type="button">' + t('Got it') + '</button>' +
+          '<button class="install-no" type="button">' + t('Not now') + '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="install-arrow" aria-hidden="true">▾</div>';
+    document.body.appendChild(card);
+    // "Got it" just dismisses (the user does the taps themselves); "Not now"
+    // is the same, but only "Got it" implies they'll follow through.
+    card.querySelector('.install-yes').addEventListener('click', () => { _markInstallSeen(); dismissInstallPrompt(); });
+    card.querySelector('.install-no').addEventListener('click', () => { _markInstallSeen(); dismissInstallPrompt(); });
+    return;
+  }
+
+  // Android / Chrome: real programmatic install behind one button.
   card.innerHTML =
     '<div class="install-inner">' +
       '<div class="install-ico">📲</div>' +
       '<div class="install-body">' +
-        '<div class="install-title">Never miss a reminder</div>' +
-        '<div class="install-text">Add Arogo to your home screen so dose reminders reach you ' +
-          'even when the app is closed. ' + steps + '</div>' +
-        '<div class="install-actions">' + actionBtn +
+        '<div class="install-title">' + t('Never miss a reminder') + '</div>' +
+        '<div class="install-text">' +
+          t('Add Arogo to your home screen so dose reminders reach you even when the app is closed.') + '</div>' +
+        '<div class="install-actions">' +
+          '<button class="install-yes" type="button">' + t('Add to Home Screen') + '</button>' +
           '<button class="install-no" type="button">' + t('Not now') + '</button>' +
         '</div>' +
       '</div>' +
     '</div>';
   document.body.appendChild(card);
   card.querySelector('.install-no').addEventListener('click', () => { _markInstallSeen(); dismissInstallPrompt(); });
-  const yes = card.querySelector('.install-yes');
-  if (yes) yes.addEventListener('click', doInstall);
+  card.querySelector('.install-yes').addEventListener('click', doInstall);
 }
 
 async function doInstall() {
