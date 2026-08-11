@@ -181,6 +181,10 @@ const I18N = {
     '%1 medicine(s) need a refill before you leave.': 'जाने से पहले %1 दवा को रिफिल की ज़रूरत है।',
     'You’re covered for the whole trip.': 'पूरी यात्रा के लिए आपके पास पर्याप्त है।',
     '%1 days · %2 pills total': '%1 दिन · कुल %2 गोलियाँ',
+    'Which day you miss': 'आप किस दिन चूकते हैं',
+    '%1 is your hardest day to keep up.': '%1 आपके लिए सबसे कठिन दिन है।',
+    'Monday': 'सोमवार', 'Tuesday': 'मंगलवार', 'Wednesday': 'बुधवार', 'Thursday': 'गुरुवार',
+    'Friday': 'शुक्रवार', 'Saturday': 'शनिवार', 'Sunday': 'रविवार',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -4795,6 +4799,7 @@ async function loadMedicines() {
   loadAdherenceForecast();
   loadMissedDoses();
   loadAdherenceTimeOfDay();
+  loadAdherenceWeekday();
   loadResponsiveness();
   loadSkipReasons();
   loadMedCost();
@@ -4948,6 +4953,36 @@ async function loadAdherenceTimeOfDay() {
     </div>`;
 }
 function _TOD_LABEL(bucket) { return { morning: 'morning', afternoon: 'afternoon', evening: 'evening', night: 'night' }[bucket] || bucket; }
+
+// I4: Adherence by weekday — the "weekends slip" cut the time-of-day view can't
+// show. 90-day window (more than the 30-day TOD view, so each weekday has enough
+// doses to mean something). Only renders days that actually had scheduled doses.
+async function loadAdherenceWeekday() {
+  const el = document.getElementById('med-weekday-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/adherence/weekday?days=90').then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const withDoses = d.weekdays.filter(b => b.total > 0);
+  if (!withDoses.length) { el.innerHTML = ''; return; }
+  const barColor = p => p == null ? 'var(--gray-200)' : p >= 90 ? 'var(--teal-500,#5A9E70)' : p >= 70 ? '#F59E0B' : '#EF4444';
+  const rows = withDoses.map(b => `
+    <div class="tod-row${b.weekday === d.worst ? ' tod-row--worst' : ''}">
+      <div class="tod-label">${t(b.label)}</div>
+      <div class="tod-bar-wrap"><div class="tod-bar" style="width:${b.pct == null ? 0 : b.pct}%;background:${barColor(b.pct)}"></div></div>
+      <div class="tod-stat">${b.pct == null ? '—' : b.pct + '%'}<span class="tod-sub">${b.taken}/${b.total}</span></div>
+    </div>`).join('');
+  const worstLine = d.worst != null
+    ? `<div class="tod-note">${tformat('%1 is your hardest day to keep up.', t(_WEEKDAY_NAME(d.worst)))}</div>`
+    : '';
+  el.innerHTML = `<div class="panel" style="padding:18px 20px">
+      <div class="panel-header"><h2 class="panel-title">📆 ${t('Which day you miss')}</h2><span class="panel-badge">${t('last 90 days')}</span></div>
+      ${rows}
+      ${worstLine}
+    </div>`;
+}
+function _WEEKDAY_NAME(i) {
+  return ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][i] || '';
+}
 
 // A timely, per-slot adherence nudge (last 7 days) — what's slipping NOW, above
 // the 30-day pattern. Localized from structured fields; '' when nothing to say.

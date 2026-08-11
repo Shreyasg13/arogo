@@ -483,6 +483,69 @@ def get_adherence_by_timeofday(days: int = 30) -> dict:
             'has_data': any(b['total'] for b in out)}
 
 
+_WEEKDAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday",
+                   "Friday", "Saturday", "Sunday"]
+_WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+
+def get_adherence_by_weekday(days: int = 90) -> dict:
+    """Per-weekday adherence over the window — the behavioural cut that shows
+    'weekends slip' where the time-of-day view can't. Same scheduling rules as
+    get_adherence_by_timeofday, grouped Mon–Sun by each day's weekday.
+
+    'worst' names the weekday with the lowest adherence among those with enough
+    scheduled doses to matter (>= _WD_MIN); None if none qualify — we don't crown
+    a worst day off one or two doses."""
+    from datetime import date, timedelta
+    uid = current_user_id()
+    days = max(1, min(int(days or 90), 366))
+    meds = [m for m in list_medicines() if m['active'] and m.get('times')]
+    try:
+        anchor = date.fromisoformat(user_today())
+    except ValueError:
+        anchor = date.today()
+    start = (anchor - timedelta(days=days - 1)).isoformat()
+
+    taken_set = set()
+    for r in (execute("""SELECT medicine_id, date_key, time_key FROM dose_logs
+                         WHERE user_id=? AND taken=1 AND date_key>=?""",
+                      (uid, start), fetchall=True) or []):
+        taken_set.add((r['medicine_id'], r['date_key'], r['time_key']))
+
+    agg = {i: {'weekday': i, 'label': _WEEKDAY_LABELS[i], 'short': _WEEKDAY_SHORT[i],
+               'total': 0, 'taken': 0} for i in range(7)}
+    for i in range(days):
+        day = anchor - timedelta(days=i)
+        d = day.isoformat()
+        wd = day.weekday()          # Mon=0 … Sun=6
+        for m in meds:
+            if not _scheduled_on_day(m, d):
+                continue
+            for t in m.get('times', []):
+                agg[wd]['total'] += 1
+                if (m['id'], d, t) in taken_set:
+                    agg[wd]['taken'] += 1
+
+    _WD_MIN = 4
+    out = []
+    for i in range(7):
+        b = agg[i]
+        b['missed'] = b['total'] - b['taken']
+        b['pct'] = round(b['taken'] / b['total'] * 100, 1) if b['total'] else None
+        out.append(b)
+    eligible = [b for b in out if b['total'] >= _WD_MIN]
+    worst = min(eligible, key=lambda b: b['pct']) if eligible else None
+    best = max(eligible, key=lambda b: b['pct']) if eligible else None
+    # Only name a "hardest day" when there's an actual miss to talk about —
+    # crowning a 100%-adherence day as "worst" would read as a false criticism.
+    if worst and worst['pct'] >= 100:
+        worst = None
+    return {'days': days, 'weekdays': out,
+            'worst': worst['weekday'] if worst else None,
+            'best': best['weekday'] if best else None,
+            'has_data': any(b['total'] for b in out)}
+
+
 def get_dose_calendar(days: int = 35) -> list:
     """Per-day scheduled-dose status for a heatmap, oldest→newest.
 
