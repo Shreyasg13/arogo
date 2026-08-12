@@ -215,6 +215,12 @@ def adherence_weekday():
     days = to_int(request.args.get('days', 90), 90, lo=1, hi=366)
     return jsonify(get_adherence_by_weekday(days))
 
+@bp.route('/api/medicines/new-med-watch')
+@require_auth
+def new_med_watch():
+    days = to_int(request.args.get('days', 45), 45, lo=1, hi=180)
+    return jsonify(get_new_med_watch(days))
+
 @bp.route('/api/medicines/at-risk')
 @require_auth
 def at_risk_dose():

@@ -37,7 +37,7 @@ def test_requires_auth(app):
 
 
 def test_content_type_and_envelope(app):
-    c, _ = _client(app, "cal1@medeasy.test")
+    c, _ = _client(app, "icsexp1@medeasy.test")
     r = c.get("/api/calendar.ics")
     assert r.status_code == 200
     assert "text/calendar" in r.headers.get("Content-Type", "")
@@ -49,7 +49,7 @@ def test_content_type_and_envelope(app):
 
 
 def test_scheduled_med_becomes_a_recurring_event(app):
-    c, uid = _client(app, "cal2@medeasy.test")
+    c, uid = _client(app, "icsexp2@medeasy.test")
     with user_context(uid):
         insert_medicine({"name": "Metformin", "dosage": "500", "unit": "mg",
                          "frequency": "twice_daily", "times": ["09:00", "21:00"]})
@@ -61,7 +61,7 @@ def test_scheduled_med_becomes_a_recurring_event(app):
 
 
 def test_prn_med_is_not_on_the_calendar(app):
-    c, uid = _client(app, "cal3@medeasy.test")
+    c, uid = _client(app, "icsexp3@medeasy.test")
     with user_context(uid):
         insert_medicine({"name": "Paracetamol", "frequency": "as_needed"})
     body = c.get("/api/calendar.ics").get_data(as_text=True)
@@ -69,7 +69,7 @@ def test_prn_med_is_not_on_the_calendar(app):
 
 
 def test_weekly_schedule_uses_byday(app):
-    c, uid = _client(app, "cal4@medeasy.test")
+    c, uid = _client(app, "icsexp4@medeasy.test")
     with user_context(uid):
         # Mon/Wed/Fri = weekday ints 0,2,4
         insert_medicine({"name": "Vitamin D", "frequency": "once_daily",
@@ -79,7 +79,7 @@ def test_weekly_schedule_uses_byday(app):
 
 
 def test_appointment_appears_as_event(app):
-    c, uid = _client(app, "cal5@medeasy.test")
+    c, uid = _client(app, "icsexp5@medeasy.test")
     future = (dt.date.today() + dt.timedelta(days=5)).isoformat()
     with user_context(uid):
         create_appointment({"title": "Dr. Rao, cardiology", "date": future, "time": "10:30"})
@@ -90,7 +90,7 @@ def test_appointment_appears_as_event(app):
 
 
 def test_all_day_appointment_without_time(app):
-    c, uid = _client(app, "cal6@medeasy.test")
+    c, uid = _client(app, "icsexp6@medeasy.test")
     future = (dt.date.today() + dt.timedelta(days=3)).isoformat()
     with user_context(uid):
         create_appointment({"title": "Fasting bloodwork", "date": future})
@@ -99,7 +99,7 @@ def test_all_day_appointment_without_time(app):
 
 
 def test_lab_recheck_due_date_is_an_event(app):
-    c, uid = _client(app, "cal7@medeasy.test")
+    c, uid = _client(app, "icsexp7@medeasy.test")
     with user_context(uid):
         # A result 100 days ago with a 90-day recheck → a next-due date exists.
         old = (dt.date.today() - dt.timedelta(days=100)).isoformat()

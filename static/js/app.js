@@ -185,6 +185,10 @@ const I18N = {
     '%1 is your hardest day to keep up.': '%1 आपके लिए सबसे कठिन दिन है।',
     'Monday': 'सोमवार', 'Tuesday': 'मंगलवार', 'Wednesday': 'बुधवार', 'Thursday': 'गुरुवार',
     'Friday': 'शुक्रवार', 'Saturday': 'शनिवार', 'Sunday': 'रविवार',
+    'Since starting a new medicine': 'नई दवा शुरू करने के बाद से',
+    'Symptoms you’ve logged since a recent medicine started. This is timing only — it does not mean the medicine caused them. Worth mentioning to your doctor.':
+      'हाल ही में दवा शुरू होने के बाद से आपने जो लक्षण दर्ज किए हैं। यह केवल समय-संयोग है — इसका मतलब यह नहीं कि दवा ने उन्हें पैदा किया। अपने डॉक्टर को बताना उचित है।',
+    'started %1 days ago': '%1 दिन पहले शुरू', 'started %1': '%1 को शुरू',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -4800,6 +4804,7 @@ async function loadMedicines() {
   loadMissedDoses();
   loadAdherenceTimeOfDay();
   loadAdherenceWeekday();
+  loadNewMedWatch();
   loadResponsiveness();
   loadSkipReasons();
   loadMedCost();
@@ -4982,6 +4987,40 @@ async function loadAdherenceWeekday() {
 }
 function _WEEKDAY_NAME(i) {
   return ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][i] || '';
+}
+
+// I5: New-medication side-effect watch. For meds started recently, shows the
+// symptoms logged since — explicitly framed as TIMING, not proof of cause, so
+// it's a "mention this to your doctor" prompt, never a diagnosis.
+async function loadNewMedWatch() {
+  const el = document.getElementById('new-med-watch-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/new-med-watch?days=45', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data || !d.meds.length) { el.innerHTML = ''; return; }
+  const cards = d.meds.map(m => {
+    const chips = m.symptoms.map(s => {
+      const times = s.count > 1 ? ` ·${s.count}×` : '';
+      return `<span class="nmw-chip">${escapeHtml(s.name)}${times}</span>`;
+    }).join('');
+    const since = m.days_since != null
+      ? tformat('started %1 days ago', m.days_since)
+      : tformat('started %1', m.start_date);
+    return `<div class="nmw-med">
+        <div class="nmw-med-head">
+          <span class="nmw-med-name">💊 ${escapeHtml(m.name)}</span>
+          <span class="nmw-med-since">${since}</span>
+        </div>
+        <div class="nmw-chips">${chips}</div>
+      </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel nmw-panel">
+      <div class="panel-header">
+        <h2 class="panel-title">🔎 ${t('Since starting a new medicine')}</h2>
+      </div>
+      <p class="nmw-note">${t('Symptoms you’ve logged since a recent medicine started. This is timing only — it does not mean the medicine caused them. Worth mentioning to your doctor.')}</p>
+      ${cards}
+    </div>`;
 }
 
 // A timely, per-slot adherence nudge (last 7 days) — what's slipping NOW, above

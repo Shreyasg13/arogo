@@ -5931,6 +5931,20 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 /* Inline one-liner hint / status text (travel planner, small async states). */
 .hint-inline { font-size: 13px; color: var(--gray-500); line-height: 1.5; }
 
+/* New-medication side-effect watch (I5) — timing view, never causal. */
+.nmw-panel { padding: 18px 20px; border-left: 3px solid var(--gray-200); }
+.nmw-note { font-size: 12.5px; color: var(--gray-500); line-height: 1.55; margin: 2px 0 14px; }
+.nmw-med { padding: 10px 0; border-top: 1px solid var(--gray-100); }
+.nmw-med:first-of-type { border-top: none; }
+.nmw-med-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 7px; }
+.nmw-med-name { font-size: 14.5px; font-weight: 600; color: var(--gray-800); }
+.nmw-med-since { font-size: 12px; color: var(--gray-400); white-space: nowrap; }
+.nmw-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.nmw-chip {
+  font-size: 12.5px; padding: 4px 10px; border-radius: 99px;
+  background: var(--gray-50); border: 1px solid var(--gray-150); color: var(--gray-700);
+}
+
 /* ── Guided iOS install (Share → Add to Home Screen) ── */
 .install-banner--ios .install-inner { flex-direction: column; gap: 0; }
 .ios-steps {

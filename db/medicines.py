@@ -6,7 +6,7 @@ All queries are scoped to the authenticated user via current_user_id().
 import re
 
 from .core import (execute, executemany, jdump, jload, now_iso, today_iso, user_today,
-                   new_id, current_user_id)
+                   valid_date, new_id, current_user_id)
 
 _TIME_RE = re.compile(r'^([01]?\d|2[0-3]):[0-5]\d$')
 
@@ -544,6 +544,69 @@ def get_adherence_by_weekday(days: int = 90) -> dict:
             'worst': worst['weekday'] if worst else None,
             'best': best['weekday'] if best else None,
             'has_data': any(b['total'] for b in out)}
+
+
+def get_new_med_watch(recent_days: int = 45) -> dict:
+    """For medicines started in the last `recent_days` days, list the symptoms
+    the user has logged since that start date. This is a TIMING view — a prompt
+    to mention new symptoms to a doctor — and deliberately NOT a causal claim:
+    Arogo can't and won't say a medicine caused a symptom. No invented data;
+    every symptom is one the user logged themselves.
+
+    A med appears only if it has at least one symptom logged on/after its start
+    date. Symptoms are grouped by name with a count and the worst severity seen."""
+    from datetime import date, timedelta
+    uid = current_user_id()
+    recent_days = max(1, min(int(recent_days or 45), 180))
+    try:
+        today = date.fromisoformat(user_today())
+    except ValueError:
+        today = date.today()
+    cutoff = (today - timedelta(days=recent_days)).isoformat()
+
+    started = []
+    for m in list_medicines():
+        if not m.get('active'):
+            continue
+        sd = m.get('start_date')
+        if not sd or not valid_date(sd) or sd < cutoff or sd > today.isoformat():
+            continue
+        started.append((m, sd))
+    if not started:
+        return {'has_data': False, 'meds': []}
+
+    out = []
+    for m, sd in started:
+        rows = execute("""SELECT name, severity, date_key FROM symptoms
+                          WHERE user_id=? AND date_key>=? ORDER BY date_key""",
+                       (uid, sd), fetchall=True) or []
+        if not rows:
+            continue
+        groups = {}
+        for r in rows:
+            nm = (r['name'] or '').strip() or 'Symptom'
+            g = groups.setdefault(nm, {'name': nm, 'count': 0, 'worst': None,
+                                       'first': r['date_key'], 'last': r['date_key']})
+            g['count'] += 1
+            sev = r['severity']
+            if isinstance(sev, (int, float)):
+                g['worst'] = sev if g['worst'] is None else max(g['worst'], sev)
+            if r['date_key'] < g['first']:
+                g['first'] = r['date_key']
+            if r['date_key'] > g['last']:
+                g['last'] = r['date_key']
+        symptoms = sorted(groups.values(), key=lambda x: -x['count'])
+        try:
+            days_since = (today - date.fromisoformat(sd)).days
+        except ValueError:
+            days_since = None
+        out.append({'id': m['id'], 'name': m.get('name') or 'Medicine',
+                    'start_date': sd, 'days_since': days_since,
+                    'symptom_count': sum(g['count'] for g in symptoms),
+                    'symptoms': symptoms})
+
+    out.sort(key=lambda x: (x['days_since'] if x['days_since'] is not None else 9999))
+    return {'has_data': bool(out), 'meds': out}
 
 
 def get_dose_calendar(days: int = 35) -> list:
