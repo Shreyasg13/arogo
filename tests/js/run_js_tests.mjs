@@ -307,5 +307,34 @@ test('tformat: fills %1/%2 placeholders after translation', () => {
   } finally { S.localStorage.getItem = orig; }
 });
 
+// ── I6: lab reference-band gauge (_labBandBar) ──
+function _bandMarkPct(html) {
+  const m = /lab-band-mark[^"]*"[^>]*left:([\d.]+)%/.exec(html);
+  return m ? parseFloat(m[1]) : null;
+}
+test('_labBandBar: value at range midpoint sits at 50%', () => {
+  const html = S._labBandBar({ name: 'HbA1c', value: 4.8, ref_low: 4.0, ref_high: 5.6, status: 'in_range' });
+  const pct = _bandMarkPct(html);
+  if (Math.abs(pct - 50) > 0.5) throw new Error('midpoint not centered: ' + pct);
+  if (!html.includes('lab-ok')) throw new Error('in-range should use lab-ok class');
+});
+test('_labBandBar: value above range marks past the zone and flags high', () => {
+  const html = S._labBandBar({ name: 'LDL', value: 190, ref_low: 0, ref_high: 100, status: 'high' });
+  const pct = _bandMarkPct(html);
+  if (!(pct > 60)) throw new Error('high value should sit right of centre: ' + pct);
+  if (!html.includes('lab-high')) throw new Error('high status should use lab-high class');
+});
+test('_labBandBar: renders nothing without a usable range', () => {
+  eq(S._labBandBar({ name: 'X', value: 5, ref_low: null, ref_high: null, status: null }), '');
+  eq(S._labBandBar({ name: 'X', value: 5, ref_low: 10, ref_high: 10, status: null }), '');   // degenerate
+  eq(S._labBandBar({ name: 'X', value: NaN, ref_low: 1, ref_high: 2, status: null }), '');
+});
+test('_labBandBar: far-out value is clamped to the track edge', () => {
+  const html = S._labBandBar({ name: 'TSH', value: 999, ref_low: 0.4, ref_high: 4.0, status: 'high' });
+  const pct = _bandMarkPct(html);
+  if (pct !== 100) throw new Error('should clamp to 100%: ' + pct);
+  if (!html.includes('lab-band-mark--edge')) throw new Error('edge marker class missing');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

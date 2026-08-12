@@ -5931,6 +5931,26 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 /* Inline one-liner hint / status text (travel planner, small async states). */
 .hint-inline { font-size: 13px; color: var(--gray-500); line-height: 1.5; }
 
+/* Lab reference-band gauge (I6) — where the latest value sits in the typical range. */
+.lab-band { margin-top: 7px; max-width: 260px; }
+.lab-band-track {
+  position: relative; height: 6px; border-radius: 99px;
+  background: var(--gray-100); overflow: visible;
+}
+.lab-band-zone {
+  position: absolute; top: 0; height: 6px; border-radius: 99px;
+  background: var(--teal-200);
+}
+.lab-band-mark {
+  position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 2px solid var(--gray-0);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.12);
+}
+.lab-band-mark.lab-ok   { background: var(--teal-600); }
+.lab-band-mark.lab-low  { background: #3B82F6; }
+.lab-band-mark.lab-high { background: #EF4444; }
+.lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
+
 /* New-medication side-effect watch (I5) — timing view, never causal. */
 .nmw-panel { padding: 18px 20px; border-left: 3px solid var(--gray-200); }
 .nmw-note { font-size: 12.5px; color: var(--gray-500); line-height: 1.55; margin: 2px 0 14px; }

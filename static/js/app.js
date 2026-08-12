@@ -14747,6 +14747,7 @@ function renderLabsView(results, catalog, rechecks) {
           <div class="lab-row-main">
             <div class="lab-name">${escHtml(r.name)} ${_labStatusBadge(r.status)}</div>
             <div class="lab-meta">${t('typical')}: ${rng} · ${_fmtShortDate(r.date_key)}</div>
+            ${_labBandBar(r)}
           </div>
           <div class="lab-value ${LAB_STATUS[r.status]?.cls || ''}">${r.value}<span class="lab-value-unit">${escHtml(r.unit||'')}</span></div>
           <button class="btn-outline" style="font-size:12px" data-ev-click="toggleLabTrend('${r.lab_key}')">${t('Trend')}</button>
@@ -14760,6 +14761,28 @@ function renderLabsView(results, catalog, rechecks) {
     </div>`).join('');
 
   return form + renderRecheckBanner(rechecks) + cards;
+}
+
+// I6: a reference-band gauge — shows where the latest value sits within the
+// typical range. Framing only, never a diagnosis. Renders nothing when the test
+// has no set range or a degenerate one.
+function _labBandBar(r) {
+  const lo = r.ref_low, hi = r.ref_high, v = Number(r.value);
+  if (lo == null || hi == null || !(hi > lo) || !Number.isFinite(v)) return '';
+  const span = hi - lo;
+  const dispLo = lo - span * 0.6, dispHi = hi + span * 0.6;   // pad so out-of-range values stay visible
+  const width = dispHi - dispLo;
+  const pos = x => Math.max(0, Math.min(100, ((x - dispLo) / width) * 100));
+  const zoneL = pos(lo), zoneR = pos(hi);
+  const markPct = pos(v);
+  const beyond = v < dispLo ? 'left' : v > dispHi ? 'right' : '';
+  const cls = LAB_STATUS[r.status]?.cls || 'lab-ok';
+  return `<div class="lab-band" role="img" aria-label="${escHtml(r.name)} ${v} — ${t(LAB_STATUS[r.status]?.label || 'In range')}">
+      <div class="lab-band-track">
+        <div class="lab-band-zone" style="left:${zoneL.toFixed(1)}%;width:${(zoneR - zoneL).toFixed(1)}%"></div>
+        <div class="lab-band-mark ${cls}${beyond ? ' lab-band-mark--edge' : ''}" style="left:${markPct.toFixed(1)}%"></div>
+      </div>
+    </div>`;
 }
 
 function onLabTestPick() {
