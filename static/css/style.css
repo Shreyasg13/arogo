@@ -5951,6 +5951,17 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .lab-band-mark.lab-high { background: #EF4444; }
 .lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
 
+/* Post-visit notes (J6). */
+.visit-notes-wrap { margin-top: 8px; }
+.visit-note { font-size: 13px; line-height: 1.5; color: var(--gray-700); margin-top: 6px;
+  background: var(--gray-50); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; }
+.visit-note-k { display: block; font-size: 11px; font-weight: 700; color: var(--gray-500);
+  text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.visit-notes-btn { margin-top: 8px; font-size: 12px; font-weight: 600; cursor: pointer;
+  background: none; border: 1px dashed var(--gray-300); border-radius: 8px; padding: 6px 12px;
+  color: var(--gray-600); font-family: inherit; }
+.visit-notes-btn:hover { border-color: var(--teal-400); color: var(--teal-700); }
+
 /* "Is it working?" effectiveness (J5). */
 .eff-row { display: grid; grid-template-columns: 1.3fr auto auto; align-items: center; gap: 14px;
   padding: 9px 0; border-top: 1px solid var(--gray-100); }

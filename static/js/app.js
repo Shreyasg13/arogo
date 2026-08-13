@@ -239,6 +239,11 @@ const I18N = {
       'हर दवा कितनी अच्छी तरह काम कर रही है, इसका आपका अपना अनुमान, 1–5। यह डॉक्टर के साथ साझा करने की स्व-जाँच है — दवा का माप नहीं।',
     'not rated yet': 'अभी रेट नहीं', 'avg %1': 'औसत %1', '%1 rating(s)': '%1 रेटिंग',
     'Rate %1/5': '%1/5 रेट करें', 'Rate %1 of 5': '5 में से %1 रेट करें', 'Rating saved': 'रेटिंग सहेजी गई',
+    'What the doctor said': 'डॉक्टर ने क्या कहा', 'Follow-ups': 'अनुवर्ती कार्य',
+    'Add post-visit notes': 'विज़िट के बाद के नोट्स जोड़ें', 'Edit visit notes': 'विज़िट नोट्स संपादित करें',
+    'Diagnosis, advice, changes…': 'निदान, सलाह, बदलाव…',
+    'Tests to book, next visit, things to watch…': 'बुक करने के टेस्ट, अगली विज़िट, ध्यान देने की बातें…',
+    'Visit notes saved': 'विज़िट नोट्स सहेजे गए',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -10342,6 +10347,7 @@ function renderAppointments(appts) {
           <span class="appt-rel${L.soon ? ' appt-rel--soon' : ''}">${L.rel}</span></div>
         ${a.notes ? `<div class="appt-notes">${escHtml(a.notes)}</div>` : ''}
         ${a.remind ? '' : '<div class="appt-notes" style="color:var(--gray-400)">🔕 Reminders off</div>'}
+        ${L.past ? _visitNotesBlock(a) : ''}
       </div>
       <div class="appt-actions">
         <button class="btn-icon" title="${t('Edit')}" data-ev-click="editAppointment('${a.id}')">
@@ -10356,6 +10362,50 @@ function renderAppointments(appts) {
   list.innerHTML =
     (upcoming.length ? `<div class="appt-group-label">Upcoming</div>${upcoming.map(card).join('')}` : '') +
     (past.length ? `<div class="appt-group-label" style="margin-top:16px">Past</div>${past.map(card).join('')}` : '');
+}
+
+// J6: post-visit notes — what the doctor said + follow-ups, kept on the past
+// appointment. The pre-visit prep pack covers "before"; this covers "after".
+function _visitNotesBlock(a) {
+  const hasNotes = (a.visit_summary || '').trim() || (a.follow_up || '').trim();
+  const view = hasNotes ? `
+    ${a.visit_summary ? `<div class="visit-note"><span class="visit-note-k">🩺 ${t('What the doctor said')}</span>${escHtml(a.visit_summary)}</div>` : ''}
+    ${a.follow_up ? `<div class="visit-note"><span class="visit-note-k">✅ ${t('Follow-ups')}</span>${escHtml(a.follow_up)}</div>` : ''}` : '';
+  return `<div class="visit-notes-wrap" id="visit-notes-${a.id}">
+      ${view}
+      <button class="visit-notes-btn" data-ev-click="openVisitNotes('${a.id}')">
+        📝 ${hasNotes ? t('Edit visit notes') : t('Add post-visit notes')}</button>
+    </div>`;
+}
+
+function openVisitNotes(id) {
+  const a = (_appts || []).find(x => x.id === id);
+  const box = document.getElementById('visit-notes-' + id);
+  if (!a || !box) return;
+  box.innerHTML = `
+    <div class="form-group" style="margin-bottom:8px">
+      <label class="form-label">${t('What the doctor said')}</label>
+      <textarea class="form-input" id="vn-summary-${id}" rows="3" placeholder="${t('Diagnosis, advice, changes…')}">${escapeHtml(a.visit_summary || '')}</textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:8px">
+      <label class="form-label">${t('Follow-ups')}</label>
+      <textarea class="form-input" id="vn-follow-${id}" rows="2" placeholder="${t('Tests to book, next visit, things to watch…')}">${escapeHtml(a.follow_up || '')}</textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" style="padding:8px 14px" data-ev-click="saveVisitNotes('${id}')">${t('Save')}</button>
+      <button class="btn-outline" style="padding:8px 14px" data-ev-click="loadAppointments()">${t('Cancel')}</button>
+    </div>`;
+}
+
+async function saveVisitNotes(id) {
+  const visit_summary = document.getElementById('vn-summary-' + id)?.value || '';
+  const follow_up = document.getElementById('vn-follow-' + id)?.value || '';
+  const r = await fetch('/api/appointments/' + id, {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({visit_summary, follow_up}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Visit notes saved'), 'success'); loadAppointments(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
 }
 
 // Load an existing appointment into the add-form for editing.

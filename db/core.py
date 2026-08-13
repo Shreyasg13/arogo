@@ -952,6 +952,17 @@ def migrate_add_adherence_goal():
         pass
 
 
+def migrate_add_visit_notes():
+    """Add post-visit capture to appointments (J6): what the doctor said and any
+    follow-ups. Complements the pre-visit prep pack. Both are the user's own free
+    text; '' until filled in."""
+    for col in ('visit_summary', 'follow_up'):
+        try:
+            execute(f"ALTER TABLE appointments ADD COLUMN {col} TEXT DEFAULT ''")
+        except Exception:
+            pass
+
+
 def migrate_add_med_effectiveness():
     """Create the medication effectiveness log (J5): a periodic subjective 1-5
     rating of how well a medicine seems to be working, in the patient's own view.
@@ -1362,6 +1373,7 @@ def init_db():
     migrate_add_injection_logs()
     migrate_add_action_plans()
     migrate_add_med_effectiveness()
+    migrate_add_visit_notes()
     migrate_add_body_measurements()
     migrate_add_pharmacy()
     migrate_add_condition_focus()

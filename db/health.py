@@ -691,11 +691,19 @@ def update_appointment(aid: str, data: dict) -> dict:
     remind = cur['remind'] if 'remind' not in data else (0 if data.get('remind') is False else 1)
     reminder_days = _clean_reminder_days(data['reminder_days'], cur.get('reminder_days', 1)) \
         if 'reminder_days' in data else cur.get('reminder_days', 1)
-    execute("""UPDATE appointments SET title=?, kind=?, date=?, time=?, location=?, notes=?, remind=?, reminder_days=?
+    # Post-visit capture (J6): what the doctor said + follow-ups. Only overwritten
+    # when explicitly supplied, so editing a reminder can't wipe visit notes.
+    visit_summary = str(data.get('visit_summary', cur.get('visit_summary', '')))[:2000] \
+        if 'visit_summary' in data else cur.get('visit_summary', '')
+    follow_up = str(data.get('follow_up', cur.get('follow_up', '')))[:2000] \
+        if 'follow_up' in data else cur.get('follow_up', '')
+    execute("""UPDATE appointments SET title=?, kind=?, date=?, time=?, location=?, notes=?, remind=?, reminder_days=?,
+               visit_summary=?, follow_up=?
                WHERE id=? AND user_id=?""",
             (title[:160], kind, date, time,
              str(data.get('location', cur['location']))[:200],
-             str(data.get('notes', cur['notes']))[:500], remind, reminder_days, aid, uid), commit=True)
+             str(data.get('notes', cur['notes']))[:500], remind, reminder_days,
+             visit_summary, follow_up, aid, uid), commit=True)
     return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?", (aid, uid), fetchone=True))
 
 
