@@ -5951,6 +5951,28 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .lab-band-mark.lab-high { background: #EF4444; }
 .lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
 
+/* Injection-site rotation (J1). */
+.inj-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.inj-site {
+  position: relative; border: 1px solid var(--gray-200); border-radius: 12px;
+  padding: 12px 10px; cursor: pointer; background: var(--gray-0); font-family: inherit;
+  display: flex; flex-direction: column; gap: 3px; text-align: left; min-height: 58px;
+}
+.inj-site:hover { border-color: var(--teal-400); }
+.inj-site--suggested { border-color: var(--teal-500); background: var(--teal-50); }
+.inj-site-name { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+.inj-site-last { font-size: 11.5px; color: var(--gray-400); }
+.inj-site-tag {
+  position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--teal-700);
+  background: var(--teal-100); border-radius: 99px; padding: 2px 7px;
+}
+.inj-recent { margin-top: 16px; }
+.inj-recent-title { font-size: 12px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.inj-recent-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--gray-100); font-size: 13px; }
+.inj-recent-row > span:first-child { flex: 1; }
+.inj-recent-date { color: var(--gray-400); font-size: 12px; }
+
 /* This week vs last (I10) — honest delta tiles. */
 .wow-panel { padding: 16px 18px; }
 .wow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }

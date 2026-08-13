@@ -205,6 +205,13 @@ const I18N = {
     '%1 medicine(s) have no price set — not counted.': '%1 दवा की कोई कीमत तय नहीं — गिनी नहीं गई।',
     'This week vs last': 'इस सप्ताह बनाम पिछला', '7 days': '7 दिन', 'was %1': '%1 था',
     'Adherence': 'पालन', 'Sleep': 'नींद', 'Weight': 'वज़न', 'BP (systolic)': 'रक्तचाप (सिस्टोलिक)',
+    'Injection sites': 'इंजेक्शन स्थल', '💉 Injection sites': '💉 इंजेक्शन स्थल',
+    'Rotating sites gives each spot time to recover. The highlighted site is the one you’ve used least recently.':
+      'स्थल बदलते रहने से हर जगह को ठीक होने का समय मिलता है। हाइलाइट किया गया स्थल वह है जिसे आपने सबसे कम हाल में इस्तेमाल किया।',
+    'Log an injection here': 'यहाँ इंजेक्शन दर्ज करें', 'Injection logged': 'इंजेक्शन दर्ज किया गया',
+    'use next': 'अगला उपयोग', 'never used': 'कभी नहीं', 'Recent injections': 'हाल के इंजेक्शन',
+    'Left arm': 'बायाँ हाथ', 'Right arm': 'दायाँ हाथ', 'Abdomen (L)': 'पेट (बायाँ)', 'Abdomen (R)': 'पेट (दायाँ)',
+    'Left thigh': 'बायाँ जांघ', 'Right thigh': 'दायाँ जांघ', 'Left buttock': 'बायाँ नितंब', 'Right buttock': 'दायाँ नितंब',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -5496,6 +5503,90 @@ async function removeMedPhoto(mid) {
   await fetch(`/api/medicines/${mid}/photo`, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   showToast(t('Photo removed'));
   loadMedicines();
+}
+
+// ── J1: injection-site rotation ─────────────────────────────────────────────
+// For injectable meds — log which site was used so the app can suggest the
+// least-recently-used one next. Sites/keys mirror db.injections.INJECTION_SITES.
+const INJECTION_SITES = [
+  { key: 'arm_left',      label: 'Left arm' },
+  { key: 'arm_right',     label: 'Right arm' },
+  { key: 'abdomen_left',  label: 'Abdomen (L)' },
+  { key: 'abdomen_right', label: 'Abdomen (R)' },
+  { key: 'thigh_left',    label: 'Left thigh' },
+  { key: 'thigh_right',   label: 'Right thigh' },
+  { key: 'buttock_left',  label: 'Left buttock' },
+  { key: 'buttock_right', label: 'Right buttock' },
+];
+
+function openInjectionSites() {
+  const m = document.getElementById('injection-modal');
+  if (m) m.style.display = 'flex';
+  loadInjectionSites();
+}
+function closeInjectionSites() {
+  const m = document.getElementById('injection-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function loadInjectionSites() {
+  const el = document.getElementById('injection-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/injections?days=30', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="hint-inline">${t('Could not load')}</div>`; return; }
+  const meta = Object.fromEntries(INJECTION_SITES.map(s => [s.key, s]));
+  const ago = last => {
+    if (!last) return t('never used');
+    const days = Math.round((Date.now() - new Date(last + 'T12:00:00').getTime()) / 86400000);
+    return days <= 0 ? t('today') : days === 1 ? t('yesterday') : tformat('%1 days ago', days);
+  };
+  const byKey = Object.fromEntries(d.sites.map(s => [s.site, s]));
+  const cell = key => {
+    const s = byKey[key] || {last_used:null, count:0};
+    const suggested = key === d.suggested_next;
+    return `<button type="button" class="inj-site${suggested ? ' inj-site--suggested' : ''}"
+        data-ev-click="pickInjectionSite('${key}')" title="${t('Log an injection here')}">
+        <span class="inj-site-name">${t(meta[key].label)}</span>
+        <span class="inj-site-last">${ago(s.last_used)}</span>
+        ${suggested ? `<span class="inj-site-tag">${t('use next')}</span>` : ''}
+      </button>`;
+  };
+  const grid = `<div class="inj-grid">
+      ${cell('arm_left')}${cell('arm_right')}
+      ${cell('abdomen_left')}${cell('abdomen_right')}
+      ${cell('thigh_left')}${cell('thigh_right')}
+      ${cell('buttock_left')}${cell('buttock_right')}
+    </div>`;
+  const recent = d.recent.length ? `
+    <div class="inj-recent">
+      <div class="inj-recent-title">${t('Recent injections')}</div>
+      ${d.recent.slice(0, 8).map(r => `
+        <div class="inj-recent-row">
+          <span>💉 ${t((meta[r.site]||{}).label || r.site)}</span>
+          <span class="inj-recent-date">${_fmtShortDate(r.date_key)}</span>
+          <button class="todo-act-btn del" data-ev-click="delInjection('${r.id}')" title="${t('Remove')}">✕</button>
+        </div>`).join('')}
+    </div>` : '';
+  el.innerHTML = `
+    <p style="font-size:13px;color:var(--gray-500);margin-bottom:14px">
+      ${t('Rotating sites gives each spot time to recover. The highlighted site is the one you’ve used least recently.')}</p>
+    ${grid}${recent}`;
+}
+
+async function pickInjectionSite(site) {
+  const r = await fetch('/api/injections', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({site, date_key: localToday()}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Injection logged'), 'success'); loadInjectionSites(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function delInjection(id) {
+  await fetch('/api/injections/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadInjectionSites();
 }
 
 function viewMedPhoto(encodedPath, name) {

@@ -952,6 +952,19 @@ def migrate_add_adherence_goal():
         pass
 
 
+def migrate_add_injection_logs():
+    """Create the injection-site log (J1). Each row is one injection at a body
+    site, so the app can suggest the least-recently-used site next and help the
+    user rotate. medicine_id is optional (freeform injections allowed)."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS injection_logs (
+            id TEXT PRIMARY KEY, medicine_id TEXT DEFAULT NULL, site TEXT NOT NULL,
+            date_key TEXT NOT NULL, notes TEXT DEFAULT '',
+            logged_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_workout_sets():
     """Create the strength-training set log (exercise/reps/weight per set)."""
     try:
@@ -1254,6 +1267,7 @@ DATA_TABLES = [
     'dependent_records',
     'workout_sets',
     'share_snapshots',
+    'injection_logs',
 ]
 
 
@@ -1316,6 +1330,7 @@ def init_db():
     migrate_add_sleep_goal()
     migrate_add_adherence_goal()
     migrate_add_workout_sets()
+    migrate_add_injection_logs()
     migrate_add_body_measurements()
     migrate_add_pharmacy()
     migrate_add_condition_focus()

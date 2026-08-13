@@ -6,6 +6,7 @@ from auth import require_auth
 from db.calendar_export import build_ics
 from db.travel import plan_travel_supply
 from db.medicines import set_medicine_photo, clear_medicine_photo
+from db.injections import log_injection, delete_injection, get_injection_state
 
 # Pill/pack identification photos are images only — no PDFs or other doc types
 # that the generic report uploader allows.
@@ -291,6 +292,28 @@ def new_med_watch():
 @require_auth
 def cost_per_day():
     return jsonify(get_cost_per_day())
+
+
+@bp.route('/api/injections', methods=['GET'])
+@require_auth
+def injections_state():
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=3650)
+    return jsonify(get_injection_state(days))
+
+@bp.route('/api/injections', methods=['POST'])
+@require_auth
+def injections_log():
+    try:
+        rec = log_injection(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    return jsonify({'success': True, 'injection': rec})
+
+@bp.route('/api/injections/<iid>', methods=['DELETE'])
+@require_auth
+def injections_delete(iid):
+    delete_injection(iid)
+    return jsonify({'success': True})
 
 @bp.route('/api/medicines/at-risk')
 @require_auth
