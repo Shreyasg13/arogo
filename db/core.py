@@ -724,6 +724,16 @@ def migrate_add_symptom_region():
         pass  # already exists
 
 
+def migrate_add_medicine_photo():
+    """Add an optional identification photo to medicines (I8). Stores the
+    uploaded file's name (served through the authenticated /uploads route with an
+    ownership check). '' = no photo."""
+    try:
+        execute("ALTER TABLE medicines ADD COLUMN photo_path TEXT DEFAULT ''")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_schedule_days():
     """Add schedule_days to medicines if missing. JSON list of weekday ints
     (Mon=0 … Sun=6, matching date.weekday()); NULL/empty means every day. Lets a
@@ -1294,6 +1304,7 @@ def init_db():
     migrate_add_care_team()
     migrate_add_lab_rechecks()
     migrate_add_symptom_region()
+    migrate_add_medicine_photo()
     migrate_add_prescriptions()
     migrate_add_claims()
     migrate_add_appt_reminder_days()

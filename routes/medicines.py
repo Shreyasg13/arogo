@@ -1,8 +1,23 @@
 """routes/medicines.py — Medicine CRUD, dose logging, stock."""
 from flask import Blueprint, request, jsonify, send_from_directory, current_app, Response
+from werkzeug.utils import secure_filename
+import uuid
 from auth import require_auth
 from db.calendar_export import build_ics
 from db.travel import plan_travel_supply
+from db.medicines import set_medicine_photo, clear_medicine_photo
+
+# Pill/pack identification photos are images only — no PDFs or other doc types
+# that the generic report uploader allows.
+_MED_PHOTO_EXTS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
+_MED_PHOTO_MAX = 8 * 1024 * 1024   # 8 MB
+
+
+def _med_photo_ext(filename):
+    if '.' not in (filename or ''):
+        return None
+    ext = filename.rsplit('.', 1)[1].lower()
+    return ext if ext in _MED_PHOTO_EXTS else None
 import os, json as json_mod
 from db import *
 from db.core import user_today
@@ -50,6 +65,57 @@ def travel_supply():
     From each med's own schedule + stock; PRN excluded."""
     return jsonify(plan_travel_supply(request.args.get('start', ''),
                                       request.args.get('end', '')))
+
+
+@bp.route('/api/medicines/<mid>/photo', methods=['POST'])
+@require_auth
+def upload_medicine_photo(mid):
+    """Attach an identification photo (of the pill or pack) to a medicine, so a
+    caregiver or an older user can recognise it. Images only; owner-checked."""
+    if not get_medicine(mid):          # user-scoped: None for missing/foreign
+        return jsonify({'success': False, 'error': 'Medicine not found'}), 404
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file'}), 400
+    f = request.files['file']
+    ext = _med_photo_ext(f.filename)
+    if not ext:
+        return jsonify({'success': False, 'error': 'Please upload an image (jpg, png, webp or gif).'}), 400
+    # Size guard: read the stream length without trusting Content-Length.
+    f.stream.seek(0, os.SEEK_END)
+    size = f.stream.tell()
+    f.stream.seek(0)
+    if size > _MED_PHOTO_MAX:
+        return jsonify({'success': False, 'error': 'Image is too large (max 8 MB).'}), 400
+
+    safe = secure_filename(f.filename)
+    if not safe or '.' not in safe:
+        safe = f"pill.{ext}"
+    unique_name = f"medphoto_{uuid.uuid4().hex}_{safe}"
+    f.save(os.path.join(current_app.config['UPLOAD_FOLDER'], unique_name))
+    prev = set_medicine_photo(mid, unique_name)   # owner already confirmed above
+    # Clean up a replaced photo so old files don't accumulate.
+    if prev:
+        try:
+            old = os.path.join(current_app.config['UPLOAD_FOLDER'], prev)
+            if os.path.exists(old):
+                os.remove(old)
+        except OSError:
+            pass
+    return jsonify({'success': True, 'photo_path': unique_name})
+
+
+@bp.route('/api/medicines/<mid>/photo', methods=['DELETE'])
+@require_auth
+def delete_medicine_photo(mid):
+    removed = clear_medicine_photo(mid)
+    if removed:
+        try:
+            fp = os.path.join(current_app.config['UPLOAD_FOLDER'], removed)
+            if os.path.exists(fp):
+                os.remove(fp)
+        except OSError:
+            pass
+    return jsonify({'success': True})
 
 
 @bp.route('/api/medicines/drugs', methods=['GET'])

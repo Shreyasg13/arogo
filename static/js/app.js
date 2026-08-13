@@ -197,6 +197,10 @@ const I18N = {
     'No symptoms logged in the last 14 days': 'पिछले 14 दिनों में कोई लक्षण दर्ज नहीं',
     'Head': 'सिर', 'Neck': 'गर्दन', 'Chest': 'छाती', 'Abdomen': 'पेट', 'Pelvis': 'श्रोणि',
     'Back': 'पीठ', 'Arms': 'बाहें', 'Legs': 'टांगें', 'Skin': 'त्वचा', 'General': 'सामान्य',
+    'Medicine photo': 'दवा की फ़ोटो', 'Add a photo': 'फ़ोटो जोड़ें', 'Change photo': 'फ़ोटो बदलें',
+    'Remove photo': 'फ़ोटो हटाएँ', 'Photo added': 'फ़ोटो जोड़ी गई', 'Photo removed': 'फ़ोटो हटाई गई',
+    'Uploading photo…': 'फ़ोटो अपलोड हो रही है…', 'Could not upload the photo': 'फ़ोटो अपलोड नहीं हो सकी',
+    'Image is too large (max 8 MB).': 'छवि बहुत बड़ी है (अधिकतम 8 MB)।',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -5376,7 +5380,9 @@ function renderMedicinesGrid(meds) {
 
     return `<div class="med-card med-card--${m.color}${isLow?' med-card--low-stock':''}">
       <div class="med-card-header">
-        <div class="med-card-icon">${m.icon}</div>
+        <div class="med-card-icon">${m.photo_path
+          ? `<img class="med-card-photo" src="/uploads/${encodeURIComponent(m.photo_path)}" alt="${t('Medicine photo')}" data-ev-click="viewMedPhoto('${encodeURIComponent(m.photo_path)}','${escapeHtml(m.name)}')">`
+          : m.icon}</div>
         <div class="med-card-info">
           <div class="med-card-name">${escHtml(m.name)}</div>
           <div class="med-card-dose">${m.dosage} ${m.unit} · ${freqLabel(m.frequency)}${scheduleLabel(m) ? ' · ' + scheduleLabel(m) : ''}</div>
@@ -5400,6 +5406,12 @@ function renderMedicinesGrid(meds) {
       <div class="med-card-footer">
         <span class="med-card-status ${m.active ? 'active' : ''}">● ${m.active ? t('Active') : t('Paused')}</span>
         <div class="med-card-actions">
+          <button class="btn-icon" title="${m.photo_path ? t('Change photo') : t('Add a photo')}" data-ev-click="openMedPhotoPicker('${m.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </button>
+          ${m.photo_path ? `<button class="btn-icon" title="${t('Remove photo')}" data-ev-click="removeMedPhoto('${m.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+          </button>` : ''}
           <button class="btn-icon" title="${m.active ? t('Pause') : t('Activate')}" data-ev-click="toggleMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${m.active ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}</svg>
           </button>
@@ -5410,6 +5422,56 @@ function renderMedicinesGrid(meds) {
       </div>
     </div>`;
   }).join('');
+}
+
+// ── I8: medicine identification photos ──────────────────────────────────────
+// A pill/pack photo helps a caregiver or an older user recognise the medicine.
+// Images only; served through the authenticated /uploads route with an owner check.
+function openMedPhotoPicker(mid) {
+  let inp = document.getElementById('med-photo-input');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.id = 'med-photo-input';
+    inp.style.display = 'none';
+    document.body.appendChild(inp);
+  }
+  inp.value = '';
+  inp.onchange = () => { const f = inp.files && inp.files[0]; if (f) uploadMedPhoto(mid, f); };
+  inp.click();
+}
+
+async function uploadMedPhoto(mid, file) {
+  // Guard client-side too so an oversized pick fails fast with a clear message.
+  if (file.size > 8 * 1024 * 1024) { showToast(t('Image is too large (max 8 MB).'), 'error'); return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  showToast(t('Uploading photo…'));
+  const r = await fetch(`/api/medicines/${mid}/photo`, {
+    method: 'POST', body: fd, credentials: 'same-origin',
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Photo added'), 'success'); loadMedicines(); }
+  else showToast((r && r.error) || t('Could not upload the photo'), 'error');
+}
+
+async function removeMedPhoto(mid) {
+  await fetch(`/api/medicines/${mid}/photo`, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  showToast(t('Photo removed'));
+  loadMedicines();
+}
+
+function viewMedPhoto(encodedPath, name) {
+  let ov = document.getElementById('med-photo-lightbox');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'med-photo-lightbox';
+    ov.className = 'med-photo-lightbox';
+    ov.setAttribute('role', 'dialog');
+    ov.addEventListener('click', () => { ov.style.display = 'none'; ov.innerHTML = ''; });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = `<figure><img src="/uploads/${encodedPath}" alt="${escapeHtml(name || '')}">
+    <figcaption>${escapeHtml(name || '')}</figcaption></figure>`;
+  ov.style.display = 'flex';
 }
 
 // ── Offline write queue (IndexedDB outbox) ──────────────────────────────────

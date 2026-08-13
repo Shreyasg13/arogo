@@ -114,12 +114,16 @@ def stats():
 @bp.route('/uploads/<filename>')
 @require_auth
 def uploaded_file(filename):
-    # Ownership check: the filename must belong to a report row owned by
-    # the requester. Without this, any logged-in user could fetch any
-    # other user's medical documents.
+    # Ownership check: the filename must belong to a report row OR a medicine
+    # identification photo (I8) owned by the requester. Without this, any logged-in
+    # user could fetch any other user's medical documents.
     from db.core import execute, current_user_id
+    uid = current_user_id()
     owned = execute("SELECT 1 FROM reports WHERE filename=? AND user_id=?",
-                    (filename, current_user_id()), fetchone=True)
+                    (filename, uid), fetchone=True)
+    if not owned:
+        owned = execute("SELECT 1 FROM medicines WHERE photo_path=? AND user_id=?",
+                        (filename, uid), fetchone=True)
     if not owned:
         return jsonify({'error': 'Not found'}), 404
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)

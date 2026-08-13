@@ -5951,6 +5951,22 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .lab-band-mark.lab-high { background: #EF4444; }
 .lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
 
+/* Medicine identification photo (I8) — thumbnail in the card + tap-to-zoom. */
+.med-card-photo {
+  width: 44px; height: 44px; object-fit: cover; border-radius: 10px; cursor: zoom-in;
+  display: block; border: 1px solid var(--gray-150);
+}
+.med-photo-lightbox {
+  display: none; position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,.82); align-items: center; justify-content: center; padding: 24px;
+  cursor: zoom-out;
+}
+.med-photo-lightbox figure { margin: 0; max-width: 92vw; max-height: 90vh; text-align: center; }
+.med-photo-lightbox img {
+  max-width: 92vw; max-height: 80vh; border-radius: 12px; box-shadow: 0 12px 48px rgba(0,0,0,.5);
+}
+.med-photo-lightbox figcaption { color: #fff; font-size: 14px; margin-top: 12px; font-weight: 600; }
+
 /* Symptom body-map (I7) — region picker chips + heat grid. */
 .region-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .region-chip {

@@ -546,6 +546,35 @@ def get_adherence_by_weekday(days: int = 90) -> dict:
             'has_data': any(b['total'] for b in out)}
 
 
+def set_medicine_photo(mid: str, filename: str) -> str:
+    """Attach an identification photo to the caller's medicine. Returns the
+    PREVIOUS filename (so the route can delete the old file), or '' if none/not
+    owned. Ownership is enforced by the user_id clause."""
+    uid = current_user_id()
+    row = execute("SELECT photo_path FROM medicines WHERE id=? AND user_id=?",
+                  (mid, uid), fetchone=True)
+    if not row:
+        return ''
+    prev = row['photo_path'] or ''
+    execute("UPDATE medicines SET photo_path=? WHERE id=? AND user_id=?",
+            (filename, mid, uid), commit=True)
+    return prev
+
+
+def clear_medicine_photo(mid: str) -> str:
+    """Remove the photo reference from the caller's medicine. Returns the removed
+    filename (for file cleanup), or '' if none/not owned."""
+    uid = current_user_id()
+    row = execute("SELECT photo_path FROM medicines WHERE id=? AND user_id=?",
+                  (mid, uid), fetchone=True)
+    if not row or not row['photo_path']:
+        return ''
+    prev = row['photo_path']
+    execute("UPDATE medicines SET photo_path='' WHERE id=? AND user_id=?",
+            (mid, uid), commit=True)
+    return prev
+
+
 def get_new_med_watch(recent_days: int = 45) -> dict:
     """For medicines started in the last `recent_days` days, list the symptoms
     the user has logged since that start date. This is a TIMING view — a prompt
