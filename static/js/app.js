@@ -220,6 +220,15 @@ const I18N = {
     'Green ≥ %1 · Yellow ≥ %2 · Red below': 'हरा ≥ %1 · पीला ≥ %2 · नीचे लाल',
     'Zones are % of your personal best': 'ज़ोन आपके व्यक्तिगत सर्वश्रेष्ठ का % हैं',
     'Enter a reading': 'एक रीडिंग दर्ज करें', 'Reading saved': 'रीडिंग सहेजी गई',
+    'Emergency action plans': 'आपातकालीन कार्य योजनाएँ',
+    'Write down what to do in an emergency — in your own words, from your doctor. Arogo never fills in the medical steps for you.':
+      'आपात स्थिति में क्या करना है, अपने शब्दों में अपने डॉक्टर से लिखें। Arogo आपके लिए चिकित्सा चरण कभी नहीं भरता।',
+    'No steps yet — tap edit to add them.': 'अभी कोई चरण नहीं — जोड़ने के लिए संपादित करें पर टैप करें।',
+    'Add a plan': 'योजना जोड़ें', 'New action plan': 'नई कार्य योजना', 'Edit action plan': 'कार्य योजना संपादित करें',
+    'What emergency is this for?': 'यह किस आपात स्थिति के लिए है?', 'e.g. Severe allergic reaction': 'जैसे गंभीर एलर्जी प्रतिक्रिया',
+    'Steps (one per line)': 'चरण (प्रति पंक्ति एक)', 'One step per line': 'प्रति पंक्ति एक चरण',
+    'Save plan': 'योजना सहेजें', 'Give the plan a title': 'योजना को एक शीर्षक दें',
+    'Plan saved': 'योजना सहेजी गई', 'Plan removed': 'योजना हटाई गई',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -10067,7 +10076,7 @@ function switchMedTab(tab) {
   });
   if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
   if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); }
-  if (tab === 'emergency') loadEmergencyCard();
+  if (tab === 'emergency') { loadEmergencyCard(); loadActionPlans(); }
   if (tab === 'appointments') loadAppointments();
 }
 
@@ -10710,6 +10719,107 @@ async function delVital(id) {
 // ════════════════════════════════════════════════════════════
 // EMERGENCY HEALTH CARD
 // ════════════════════════════════════════════════════════════
+
+// ── J3: emergency action plans ──────────────────────────────────────────────
+// A titled, ordered list of steps for a specific emergency, written by the user
+// (from their own doctor). Arogo supplies only blank title scaffolds — never the
+// medical steps.
+let _apEditing = null;   // null | plan object being edited | {isNew:true}
+
+async function loadActionPlans() {
+  const el = document.getElementById('action-plans-section');
+  if (!el) return;
+  const d = await fetch('/api/action-plans', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d) { el.innerHTML = ''; return; }
+  el._data = d;
+  renderActionPlans(el, d);
+}
+
+function renderActionPlans(el, d) {
+  if (_apEditing) { renderActionPlanEditor(el, d); return; }
+  const plans = d.plans || [];
+  const cards = plans.map(p => `
+    <div class="ap-card">
+      <div class="ap-card-head">
+        <div class="ap-title">🚑 ${escHtml(p.title)}</div>
+        <div class="ap-actions">
+          <button class="btn-icon" title="${t('Edit')}" data-ev-click="editActionPlan('${p.id}')">✏️</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteActionPlan('${p.id}')">✕</button>
+        </div>
+      </div>
+      ${p.steps.length
+        ? `<ol class="ap-steps">${p.steps.map(s => `<li>${escHtml(s)}</li>`).join('')}</ol>`
+        : `<div class="ap-empty-steps">${t('No steps yet — tap edit to add them.')}</div>`}
+    </div>`).join('');
+  el.innerHTML = `<div class="panel" style="padding:16px 18px">
+      <div class="panel-header"><h2 class="panel-title">🚨 ${t('Emergency action plans')}</h2></div>
+      <p style="font-size:12.5px;color:var(--gray-500);margin:0 0 12px">
+        ${t('Write down what to do in an emergency — in your own words, from your doctor. Arogo never fills in the medical steps for you.')}</p>
+      ${cards}
+      <button class="btn-outline" style="margin-top:${plans.length ? '12px' : '4px'}" data-ev-click="newActionPlan()">
+        + ${t('Add a plan')}</button>
+    </div>`;
+}
+
+function renderActionPlanEditor(el, d) {
+  const p = _apEditing;
+  const isNew = !!p.isNew;
+  const stepsText = (p.steps || []).join('\n');
+  const chips = isNew ? `<div class="ap-suggest">
+      ${(d.suggestions || []).map(s => `<button class="ap-suggest-chip" data-ev-click="apSuggest(this)" data-title="${escapeHtml(s)}">${escHtml(s)}</button>`).join('')}
+    </div>` : '';
+  el.innerHTML = `<div class="panel" style="padding:16px 18px">
+      <div class="panel-header"><h2 class="panel-title">${isNew ? t('New action plan') : t('Edit action plan')}</h2></div>
+      <div class="form-group">
+        <label class="form-label">${t('What emergency is this for?')}</label>
+        <input type="text" class="form-input" id="ap-title" value="${escapeHtml(p.title || '')}" placeholder="${t('e.g. Severe allergic reaction')}">
+        ${chips}
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t('Steps (one per line)')}</label>
+        <textarea class="form-input" id="ap-steps" rows="6" placeholder="${t('One step per line')}">${escapeHtml(stepsText)}</textarea>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" data-ev-click="saveActionPlan()">${t('Save plan')}</button>
+        <button class="btn-outline" data-ev-click="cancelActionPlan()">${t('Cancel')}</button>
+      </div>
+    </div>`;
+}
+
+function newActionPlan() { _apEditing = {isNew:true, title:'', steps:[]}; loadActionPlans(); }
+function editActionPlan(id) {
+  const el = document.getElementById('action-plans-section');
+  const p = (el && el._data && el._data.plans || []).find(x => x.id === id);
+  if (p) { _apEditing = {id: p.id, title: p.title, steps: p.steps.slice()}; renderActionPlans(el, el._data); }
+}
+function cancelActionPlan() { _apEditing = null; loadActionPlans(); }
+function apSuggest(btn) {
+  const inp = document.getElementById('ap-title');
+  if (inp) inp.value = btn.dataset.title || '';
+}
+
+async function saveActionPlan() {
+  const title = (document.getElementById('ap-title')?.value || '').trim();
+  const steps = (document.getElementById('ap-steps')?.value || '')
+    .split('\n').map(s => s.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean);
+  if (!title) { showToast(t('Give the plan a title'), 'error'); return; }
+  const editing = _apEditing || {};
+  const url = editing.id ? '/api/action-plans/' + editing.id : '/api/action-plans';
+  const method = editing.id ? 'PUT' : 'POST';
+  const r = await fetch(url, {
+    method, headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({title, steps}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { _apEditing = null; showToast(t('Plan saved'), 'success'); loadActionPlans(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function deleteActionPlan(id) {
+  await fetch('/api/action-plans/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  showToast(t('Plan removed'));
+  loadActionPlans();
+}
 
 async function loadEmergencyCard() {
   const r = await fetch('/api/emergency').then(r => r.json()).catch(() => null);

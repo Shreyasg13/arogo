@@ -952,6 +952,20 @@ def migrate_add_adherence_goal():
         pass
 
 
+def migrate_add_action_plans():
+    """Create emergency action plans (J3): a titled, ordered list of steps the
+    user writes down from their own doctor (anaphylaxis, asthma attack,
+    hypo/hyperglycemia, etc.). Steps are stored as a JSON list. Arogo never
+    supplies the medical steps — only the user (or their clinician) does."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS action_plans (
+            id TEXT PRIMARY KEY, title TEXT NOT NULL, steps TEXT DEFAULT '[]',
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_injection_logs():
     """Create the injection-site log (J1). Each row is one injection at a body
     site, so the app can suggest the least-recently-used site next and help the
@@ -1268,6 +1282,7 @@ DATA_TABLES = [
     'workout_sets',
     'share_snapshots',
     'injection_logs',
+    'action_plans',
 ]
 
 
@@ -1331,6 +1346,7 @@ def init_db():
     migrate_add_adherence_goal()
     migrate_add_workout_sets()
     migrate_add_injection_logs()
+    migrate_add_action_plans()
     migrate_add_body_measurements()
     migrate_add_pharmacy()
     migrate_add_condition_focus()

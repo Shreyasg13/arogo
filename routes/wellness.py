@@ -955,6 +955,41 @@ def api_peak_flow():
     days = to_int(request.args.get('days', 180), 180, lo=1, hi=3650)
     return jsonify(get_peak_flow_state(days))
 
+
+# ── Emergency action plans (J3) ─────────────────────────────────────────────
+@bp.route('/api/action-plans', methods=['GET'])
+@require_auth
+def api_action_plans():
+    from db.action_plans import list_action_plans, PLAN_SUGGESTIONS
+    return jsonify({'plans': list_action_plans(), 'suggestions': list(PLAN_SUGGESTIONS)})
+
+@bp.route('/api/action-plans', methods=['POST'])
+@require_auth
+def api_create_action_plan():
+    from db.action_plans import create_action_plan
+    try:
+        p = create_action_plan(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    return jsonify({'success': True, 'plan': p})
+
+@bp.route('/api/action-plans/<pid>', methods=['PUT'])
+@require_auth
+def api_update_action_plan(pid):
+    from db.action_plans import update_action_plan
+    try:
+        p = update_action_plan(pid, request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 404
+    return jsonify({'success': True, 'plan': p})
+
+@bp.route('/api/action-plans/<pid>', methods=['DELETE'])
+@require_auth
+def api_delete_action_plan(pid):
+    from db.action_plans import delete_action_plan
+    delete_action_plan(pid)
+    return jsonify({'success': True})
+
 @bp.route('/api/vitals', methods=['POST'])
 @require_auth
 def api_log_vital():

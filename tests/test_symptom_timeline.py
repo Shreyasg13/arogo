@@ -23,7 +23,7 @@ def no_rate_limit():
 @pytest.fixture(scope="module")
 def client(app):
     c = app.test_client()
-    c.post("/auth/register", json={"email": "tl@medeasy.test", "password": PW})
+    c.post("/auth/register", json={"email": "symtl1@medeasy.test", "password": PW})
     return c
 
 
@@ -49,7 +49,7 @@ def test_timeline_separates_new_meds_from_ongoing_and_sorts(client):
 
 def test_timeline_has_data_false_when_no_symptoms(app):
     c = app.test_client()
-    c.post("/auth/register", json={"email": "tl2@medeasy.test", "password": PW})
+    c.post("/auth/register", json={"email": "symtl2@medeasy.test", "password": PW})
     c.post("/api/medicines", json={"name": "Solo", "frequency": "once_daily", "times": ["09:00"]})
     tl = c.get("/api/symptoms/timeline").get_json()
     assert tl["has_data"] is False and tl["symptoms"] == []
@@ -58,7 +58,7 @@ def test_timeline_has_data_false_when_no_symptoms(app):
 def test_timeline_clamps_days_and_requires_auth(app):
     c = app.test_client()
     assert c.get("/api/symptoms/timeline").status_code == 401
-    c.post("/auth/register", json={"email": "tl3@medeasy.test", "password": PW})
+    c.post("/auth/register", json={"email": "symtl3@medeasy.test", "password": PW})
     # out-of-range days are clamped into [7, 365]
     assert c.get("/api/symptoms/timeline?days=9000").get_json()["range"]["days"] == 365
     assert c.get("/api/symptoms/timeline?days=1").get_json()["range"]["days"] == 7

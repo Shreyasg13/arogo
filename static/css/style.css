@@ -5951,6 +5951,19 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .lab-band-mark.lab-high { background: #EF4444; }
 .lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
 
+/* Emergency action plans (J3). */
+.ap-card { border: 1px solid var(--gray-150); border-left: 3px solid #DC2626; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.ap-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ap-title { font-size: 14.5px; font-weight: 700; color: var(--gray-900); }
+.ap-actions { display: flex; gap: 2px; }
+.ap-steps { margin: 8px 0 0; padding-left: 22px; }
+.ap-steps li { font-size: 13.5px; line-height: 1.6; color: var(--gray-700); }
+.ap-empty-steps { font-size: 12.5px; color: var(--gray-400); margin-top: 6px; }
+.ap-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ap-suggest-chip { font-size: 12px; padding: 5px 10px; border-radius: 99px; cursor: pointer;
+  background: var(--gray-50); border: 1px solid var(--gray-200); color: var(--gray-700); font-family: inherit; }
+.ap-suggest-chip:hover { border-color: var(--teal-400); }
+
 /* Peak-flow tracker (J2) — personal-best zoning. */
 .pf-latest { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; }
 .pf-latest-val { font-size: 30px; font-weight: 800; line-height: 1; }
