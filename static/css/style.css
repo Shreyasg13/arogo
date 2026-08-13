@@ -5951,6 +5951,19 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .lab-band-mark.lab-high { background: #EF4444; }
 .lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
 
+/* PRN / rescue-med frequency (J4). */
+.prn-row { display: grid; grid-template-columns: 1.4fr auto auto; align-items: center; gap: 14px;
+  padding: 10px 0; border-top: 1px solid var(--gray-100); }
+.prn-row:first-of-type { border-top: none; }
+.prn-name { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+.prn-flag { font-size: 11px; font-weight: 700; color: #B45309; background: #FEF3C7;
+  border-radius: 99px; padding: 2px 8px; margin-left: 4px; white-space: nowrap; }
+.prn-stat { text-align: right; font-size: 13px; color: var(--gray-600); }
+.prn-stat b { font-size: 17px; color: var(--gray-900); }
+.prn-base { display: block; font-size: 11px; color: var(--gray-400); }
+.spark-bars { display: flex; align-items: flex-end; gap: 2px; height: 22px; }
+.spark-bar { width: 5px; background: var(--teal-400); border-radius: 2px 2px 0 0; display: block; }
+
 /* Emergency action plans (J3). */
 .ap-card { border: 1px solid var(--gray-150); border-left: 3px solid #DC2626; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
 .ap-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }

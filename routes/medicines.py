@@ -293,6 +293,12 @@ def new_med_watch():
 def cost_per_day():
     return jsonify(get_cost_per_day())
 
+@bp.route('/api/medicines/prn-frequency')
+@require_auth
+def prn_frequency():
+    weeks = to_int(request.args.get('weeks', 8), 8, lo=2, hi=52)
+    return jsonify(get_prn_frequency(weeks))
+
 
 @bp.route('/api/injections', methods=['GET'])
 @require_auth

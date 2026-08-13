@@ -229,6 +229,11 @@ const I18N = {
     'Steps (one per line)': 'चरण (प्रति पंक्ति एक)', 'One step per line': 'प्रति पंक्ति एक चरण',
     'Save plan': 'योजना सहेजें', 'Give the plan a title': 'योजना को एक शीर्षक दें',
     'Plan saved': 'योजना सहेजी गई', 'Plan removed': 'योजना हटाई गई',
+    'As-needed medicine use': 'आवश्यकतानुसार दवा का उपयोग', 'last 8 weeks': 'पिछले 8 सप्ताह',
+    'How often you’ve reached for each as-needed medicine. A rise can be worth mentioning to your doctor.':
+      'आपने हर आवश्यकतानुसार दवा को कितनी बार लिया। बढ़ोतरी अपने डॉक्टर को बताने लायक हो सकती है।',
+    'more than usual': 'सामान्य से अधिक', 'this week': 'इस सप्ताह',
+    'usually ~%1/wk': 'आमतौर पर ~%1/सप्ताह', 'no baseline yet': 'अभी कोई आधार नहीं',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -4880,6 +4885,7 @@ async function loadMedicines() {
   loadAdherenceTimeOfDay();
   loadAdherenceWeekday();
   loadNewMedWatch();
+  loadPrnFrequency();
   loadResponsiveness();
   loadSkipReasons();
   loadMedCost();
@@ -5062,6 +5068,44 @@ async function loadAdherenceWeekday() {
 }
 function _WEEKDAY_NAME(i) {
   return ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][i] || '';
+}
+
+// J4: PRN / rescue-med frequency — how often you reach for an as-needed med,
+// by week, with a gentle "more than usual" flag. Own data; a prompt to mention
+// to a doctor, never a diagnosis.
+async function loadPrnFrequency() {
+  const el = document.getElementById('prn-frequency-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/prn-frequency?weeks=8', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const rows = d.meds.map(m => {
+    const spark = _miniSpark(m.weekly);
+    const base = m.baseline_per_week == null
+      ? t('no baseline yet')
+      : tformat('usually ~%1/wk', m.baseline_per_week);
+    const flag = m.elevated
+      ? `<span class="prn-flag">⚠️ ${t('more than usual')}</span>` : '';
+    return `<div class="prn-row">
+        <div class="prn-name">💊 ${escapeHtml(m.name)} ${flag}</div>
+        <div class="prn-spark">${spark}</div>
+        <div class="prn-stat"><b>${m.this_week}</b> ${t('this week')}<span class="prn-base">${base}</span></div>
+      </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="padding:18px 20px">
+      <div class="panel-header"><h2 class="panel-title">🌡️ ${t('As-needed medicine use')}</h2>
+        <span class="panel-badge">${t('last 8 weeks')}</span></div>
+      <p style="font-size:12px;color:var(--gray-500);margin:2px 0 12px">
+        ${t('How often you’ve reached for each as-needed medicine. A rise can be worth mentioning to your doctor.')}</p>
+      ${rows}
+    </div>`;
+}
+
+// A tiny inline bar sparkline from an array of counts.
+function _miniSpark(vals) {
+  const max = Math.max(...vals, 1);
+  return `<div class="spark-bars">` + vals.map(v =>
+    `<span class="spark-bar" style="height:${Math.max(2, Math.round(v / max * 20))}px" title="${v}"></span>`).join('') + `</div>`;
 }
 
 // I5: New-medication side-effect watch. For meds started recently, shows the

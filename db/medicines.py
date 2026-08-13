@@ -606,6 +606,70 @@ def get_cost_per_day() -> dict:
             'total_per_month': round(sum(i['monthly'] for i in items), 2)}
 
 
+def get_prn_frequency(weeks: int = 8) -> dict:
+    """How often the user reaches for each as-needed (PRN) medicine, by week,
+    with a gentle 'using more than usual' flag when this week runs well above the
+    recent baseline. Own dose logs only; a heads-up to mention to a doctor, never
+    a diagnosis.
+
+    this_week = doses in the last 7 days; baseline = mean weekly doses over the
+    PRIOR full weeks in the window. Flagged only with >=2 prior weeks of history,
+    this_week >= 3, and this_week >= 1.5x the baseline (so a normal week or a
+    first-ever use doesn't trip it)."""
+    from datetime import date, timedelta
+    uid = current_user_id()
+    weeks = max(2, min(int(weeks or 8), 52))
+    prn = [m for m in list_medicines()
+           if m['active'] and m.get('frequency') == 'as_needed']
+    if not prn:
+        return {'has_data': False, 'meds': []}
+
+    try:
+        today = date.fromisoformat(user_today())
+    except ValueError:
+        today = date.today()
+    start = (today - timedelta(days=weeks * 7 - 1)).isoformat()
+
+    out = []
+    for m in prn:
+        rows = execute("""SELECT date_key FROM dose_logs
+                          WHERE user_id=? AND medicine_id=? AND taken=1 AND date_key>=?""",
+                       (uid, m['id'], start), fetchall=True) or []
+        if not rows:
+            continue
+        # Bucket by week index back from today: 0 = last 7 days, 1 = the 7 before…
+        buckets = [0] * weeks
+        for r in rows:
+            try:
+                d = date.fromisoformat(r['date_key'])
+            except ValueError:
+                continue
+            wi = (today - d).days // 7
+            if 0 <= wi < weeks:
+                buckets[wi] += 1
+        this_week = buckets[0]
+        prior = buckets[1:]
+        prior_weeks_with_span = [c for c in prior]   # every prior week counts, even zeros
+        baseline = round(sum(prior_weeks_with_span) / len(prior_weeks_with_span), 1) if prior_weeks_with_span else None
+        # "More than usual" needs a usual to exist: require an established prior
+        # rate (baseline > 0). A first-ever burst has nothing to compare against,
+        # so it isn't flagged.
+        elevated = (baseline is not None and baseline > 0 and len(prior_weeks_with_span) >= 2
+                    and this_week >= 3 and this_week >= max(baseline * 1.5, baseline + 1))
+        out.append({
+            'id': m['id'], 'name': m.get('name') or 'Medicine',
+            'this_week': this_week,
+            'baseline_per_week': baseline,
+            'total': sum(buckets),
+            'weekly': list(reversed(buckets)),   # oldest→newest for a sparkline
+            'elevated': bool(elevated),
+        })
+
+    out.sort(key=lambda x: (not x['elevated'], -x['this_week']))
+    return {'has_data': bool(out), 'meds': out,
+            'any_elevated': any(x['elevated'] for x in out)}
+
+
 def get_new_med_watch(recent_days: int = 45) -> dict:
     """For medicines started in the last `recent_days` days, list the symptoms
     the user has logged since that start date. This is a TIMING view — a prompt
