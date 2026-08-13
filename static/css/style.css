@@ -6004,6 +6004,23 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   background: var(--gray-50); border: 1px solid var(--gray-200); color: var(--gray-700); font-family: inherit; }
 .ap-suggest-chip:hover { border-color: var(--teal-400); }
 
+/* Medication expiry (K1). */
+.med-expiry-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+  background: var(--gray-100); color: var(--gray-600); }
+.med-expiry-badge--soon { background: #FEF3C7; color: #92400E; }
+.med-expiry-badge--expired { background: #FEE2E2; color: #B91C1C; }
+.med-expiry-edit { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--gray-150); }
+.med-expiring-alert { display: flex; gap: 12px; align-items: flex-start;
+  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
+.mexp-icon { font-size: 20px; line-height: 1.2; }
+.mexp-body { font-size: 13px; line-height: 1.7; color: #78350F; }
+.mexp-item { display: inline-block; margin-right: 10px; }
+@media (prefers-color-scheme: dark) {
+  .med-expiring-alert { background: rgba(120,53,15,.25); border-color: rgba(253,230,138,.35); }
+  .mexp-body { color: #FCD34D; }
+}
+
 /* Personal baseline bands (J7) — "your own normal". */
 .pb-row { padding: 10px 0; border-top: 1px solid var(--gray-100); }
 .pb-row:first-of-type { border-top: none; }

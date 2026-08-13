@@ -122,10 +122,12 @@ def insert_medicine(data: dict) -> dict:
     raw_icon = str(data.get('icon') or '💊')
     icon = raw_icon[:8] if ('<' not in raw_icon and '>' not in raw_icon) else '💊'
     icon = icon or '💊'
+    expiry = data.get('expiry_date', '')
+    expiry = expiry if (expiry and valid_date(expiry)) else ''
     execute("""
         INSERT INTO medicines
-          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,schedule_days,interval_days,active,created_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
+          (id,name,dosage,unit,frequency,times,with_food,timing,reminder_lead_min,cost,notes,purpose,color,icon,start_date,end_date,schedule_days,interval_days,expiry_date,active,created_at,user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
     """, (mid, name[:120], str(data.get('dosage', '')).strip()[:60], data.get('unit','mg'),
           data.get('frequency','once_daily'),
           jdump([] if data.get('frequency') == 'as_needed'
@@ -134,7 +136,7 @@ def insert_medicine(data: dict) -> dict:
           str(data.get('purpose', '')).strip()[:120],
           data.get('color','teal'), icon,
           data.get('start_date', today_iso()), data.get('end_date',''),
-          jdump(sched) if sched else None, interval, now_iso(),
+          jdump(sched) if sched else None, interval, expiry, now_iso(),
           current_user_id()),
         commit=True)
     log_medicine_event(mid, 'started', name)
@@ -668,6 +670,54 @@ def get_prn_frequency(weeks: int = 8) -> dict:
     out.sort(key=lambda x: (not x['elevated'], -x['this_week']))
     return {'has_data': bool(out), 'meds': out,
             'any_elevated': any(x['elevated'] for x in out)}
+
+
+def set_medicine_expiry(mid: str, expiry_date) -> bool:
+    """Set (or clear, with '') the expiry date on the caller's medicine.
+    Owner-scoped; an invalid date is rejected."""
+    uid = current_user_id()
+    exp = str(expiry_date or '').strip()
+    if exp and not valid_date(exp):
+        raise ValueError('A valid date (YYYY-MM-DD) is required')
+    row = execute("SELECT 1 FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
+    if not row:
+        raise ValueError('Medicine not found')
+    execute("UPDATE medicines SET expiry_date=? WHERE id=? AND user_id=?",
+            (exp, mid, uid), commit=True)
+    return True
+
+
+def get_expiring_medicines(within_days: int = 60) -> dict:
+    """Active medicines that have expired or expire within `within_days`,
+    from the user's own entered expiry dates. Never invents a date."""
+    from datetime import date, timedelta
+    within_days = max(1, min(int(within_days or 60), 3650))
+    try:
+        today = date.fromisoformat(user_today())
+    except ValueError:
+        today = date.today()
+    expired, soon = [], []
+    for m in list_medicines():
+        if not m.get('active'):
+            continue
+        exp = m.get('expiry_date')
+        if not exp or not valid_date(exp):
+            continue
+        try:
+            ed = date.fromisoformat(exp)
+        except ValueError:
+            continue
+        days_left = (ed - today).days
+        item = {'id': m['id'], 'name': m.get('name') or 'Medicine',
+                'expiry_date': exp, 'days_left': days_left}
+        if days_left < 0:
+            expired.append(item)
+        elif days_left <= within_days:
+            soon.append(item)
+    expired.sort(key=lambda x: x['days_left'])
+    soon.sort(key=lambda x: x['days_left'])
+    return {'expired': expired, 'soon': soon,
+            'has_any': bool(expired or soon)}
 
 
 def get_new_med_watch(recent_days: int = 45) -> dict:

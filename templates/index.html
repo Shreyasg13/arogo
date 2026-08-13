@@ -989,6 +989,9 @@
     <button class="lsab-btn" data-ev-click="openRefillList()" title="See everything to pick up, as a checklist">🛒 Shopping list</button>
   </div>
 
+  <!-- K1: expiring/expired medicines banner -->
+  <div id="med-expiring-banner"></div>
+
   <div class="modal-overlay" id="refill-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeRefillList')">
     <div class="modal" id="refill-sheet">
       <div class="modal-head no-print">
@@ -2840,6 +2843,7 @@
       <div class="form-row">
         <div class="form-group"><label class="form-label" data-i18n="Start Date">Start Date</label><input type="date" class="form-input" name="start_date" id="med-start-date"></div>
         <div class="form-group"><label class="form-label" data-i18n="End Date (optional)">End Date (optional)</label><input type="date" class="form-input" name="end_date"></div>
+        <div class="form-group"><label class="form-label" data-i18n="Expires (optional)">Expires (optional)</label><input type="date" class="form-input" name="expiry_date" id="med-expiry-date"></div>
       </div>
       <div class="form-group">
         <label class="form-label" data-i18n="Icon &amp; Color">Icon & Color</label>

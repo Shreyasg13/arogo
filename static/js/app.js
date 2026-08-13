@@ -202,6 +202,11 @@ const I18N = {
     'Uploading photo…': 'फ़ोटो अपलोड हो रही है…', 'Could not upload the photo': 'फ़ोटो अपलोड नहीं हो सकी',
     'Image is too large (max 8 MB).': 'छवि बहुत बड़ी है (अधिकतम 8 MB)।',
     'Cost per day': 'प्रति दिन लागत', '%1/mo': '%1/माह', '%1/day total': 'कुल %1/दिन',
+    'Expires (optional)': 'समाप्ति (वैकल्पिक)', 'Expired': 'समाप्त', 'Expiring soon': 'जल्द समाप्त',
+    'Expires in %1d': '%1 दिन में समाप्त', 'Expires %1': '%1 को समाप्त',
+    'Set expiry date': 'समाप्ति तिथि सेट करें', 'Edit expiry date': 'समाप्ति तिथि संपादित करें',
+    'Expiry date saved': 'समाप्ति तिथि सहेजी गई', 'Expiry cleared': 'समाप्ति हटाई गई',
+    'Pick a date': 'तारीख चुनें', 'expired': 'समाप्त', '%1d left': '%1 दिन शेष',
     '%1 medicine(s) have no price set — not counted.': '%1 दवा की कोई कीमत तय नहीं — गिनी नहीं गई।',
     'This week vs last': 'इस सप्ताह बनाम पिछला', '7 days': '7 दिन', 'was %1': '%1 था',
     'Adherence': 'पालन', 'Sleep': 'नींद', 'Weight': 'वज़न', 'BP (systolic)': 'रक्तचाप (सिस्टोलिक)',
@@ -4901,6 +4906,7 @@ async function loadMedicines() {
   loadAdherenceTimeOfDay();
   loadAdherenceWeekday();
   loadNewMedWatch();
+  loadExpiringMeds();
   loadPrnFrequency();
   loadEffectiveness();
   loadResponsiveness();
@@ -5563,6 +5569,7 @@ function renderMedicinesGrid(meds) {
                 : (m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || '')}
         ${medTimingText(m) ? `<span class="med-food-badge">${m.timing === 'bedtime' ? '🌙' : m.timing === 'with_water' ? '💧' : m.timing === 'empty_stomach' ? '⏳' : '🍽️'} ${escHtml(medTimingText(m))}</span>` : ''}
         ${m.cost != null ? `<span class="med-cost-badge">₹${(Math.round(m.cost * 100) / 100).toLocaleString('en-IN')}/mo</span>` : ''}
+        ${_expiryBadge(m)}
       </div>
       ${isPRN ? `
       <div class="med-prn-row">
@@ -5585,13 +5592,71 @@ function renderMedicinesGrid(meds) {
           <button class="btn-icon" title="${m.active ? t('Pause') : t('Activate')}" data-ev-click="toggleMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${m.active ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}</svg>
           </button>
+          <button class="btn-icon" title="${m.expiry_date ? t('Edit expiry date') : t('Set expiry date')}" data-ev-click="editMedExpiry('${m.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </button>
           <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
           </button>
         </div>
       </div>
+      <div class="med-expiry-edit" id="med-expiry-edit-${m.id}" style="display:none">
+        <input type="date" class="form-input" id="med-expiry-input-${m.id}" value="${m.expiry_date || ''}" style="max-width:170px">
+        <button class="btn-primary" style="padding:8px 12px" data-ev-click="saveMedExpiry('${m.id}')">${t('Save')}</button>
+        ${m.expiry_date ? `<button class="btn-outline" style="padding:8px 12px" data-ev-click="clearMedExpiry('${m.id}')">${t('Clear')}</button>` : ''}
+      </div>
     </div>`;
   }).join('');
+}
+
+// K1: banner listing expired / soon-to-expire medicines (own entered dates).
+async function loadExpiringMeds() {
+  const el = document.getElementById('med-expiring-banner');
+  if (!el) return;
+  const d = await fetch('/api/medicines/expiring?days=60', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_any) { el.innerHTML = ''; return; }
+  const line = (m, expired) => `<span class="mexp-item">${escapeHtml(m.name)} — ${
+    expired ? t('expired') : tformat('%1d left', m.days_left)}</span>`;
+  const parts = [];
+  if (d.expired.length) parts.push(`⛔ <b>${t('Expired')}:</b> ` + d.expired.map(m => line(m, true)).join(' '));
+  if (d.soon.length)    parts.push(`📅 <b>${t('Expiring soon')}:</b> ` + d.soon.map(m => line(m, false)).join(' '));
+  el.innerHTML = `<div class="med-expiring-alert">
+      <div class="mexp-icon">🗓️</div>
+      <div class="mexp-body">${parts.join('<br>')}</div>
+    </div>`;
+}
+
+// K1: expiry badge + inline editor. Only from the user's own entered date.
+function _expiryBadge(m) {
+  const exp = m.expiry_date;
+  if (!exp) return '';
+  const days = Math.round((new Date(exp + 'T12:00:00').getTime() - Date.now()) / 86400000);
+  if (days < 0)  return `<span class="med-expiry-badge med-expiry-badge--expired">⛔ ${t('Expired')}</span>`;
+  if (days <= 60) return `<span class="med-expiry-badge med-expiry-badge--soon">📅 ${tformat('Expires in %1d', days)}</span>`;
+  return `<span class="med-expiry-badge">📅 ${tformat('Expires %1', _fmtShortDate(exp))}</span>`;
+}
+function editMedExpiry(id) {
+  const box = document.getElementById('med-expiry-edit-' + id);
+  if (box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
+}
+async function saveMedExpiry(id) {
+  const v = document.getElementById('med-expiry-input-' + id)?.value || '';
+  if (!v) { showToast(t('Pick a date'), 'error'); return; }
+  const r = await fetch(`/api/medicines/${id}/expiry`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({expiry_date: v}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Expiry date saved'), 'success'); loadMedicines(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+async function clearMedExpiry(id) {
+  await fetch(`/api/medicines/${id}/expiry`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({expiry_date: ''}),
+  }).catch(() => {});
+  showToast(t('Expiry cleared'));
+  loadMedicines();
 }
 
 // ── I8: medicine identification photos ──────────────────────────────────────
@@ -6175,6 +6240,7 @@ function setupMedForm() {
       purpose: form.purpose?.value || '',
       start_date: form.start_date.value,
       end_date: form.end_date.value,
+      expiry_date: form.expiry_date?.value || '',
       schedule_days: _collectScheduleDays(),
       interval_days: _collectInterval(),
       icon: selectedIcon,

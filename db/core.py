@@ -724,6 +724,15 @@ def migrate_add_symptom_region():
         pass  # already exists
 
 
+def migrate_add_medicine_expiry():
+    """Add an optional expiry date to medicines (K1) — when the physical
+    bottle/strip expires, distinct from running out of stock. '' = not set."""
+    try:
+        execute("ALTER TABLE medicines ADD COLUMN expiry_date TEXT DEFAULT ''")
+    except Exception:
+        pass
+
+
 def migrate_add_medicine_photo():
     """Add an optional identification photo to medicines (I8). Stores the
     uploaded file's name (served through the authenticated /uploads route with an
@@ -1359,6 +1368,7 @@ def init_db():
     migrate_add_lab_rechecks()
     migrate_add_symptom_region()
     migrate_add_medicine_photo()
+    migrate_add_medicine_expiry()
     migrate_add_prescriptions()
     migrate_add_claims()
     migrate_add_appt_reminder_days()

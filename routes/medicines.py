@@ -5,7 +5,7 @@ import uuid
 from auth import require_auth
 from db.calendar_export import build_ics
 from db.travel import plan_travel_supply
-from db.medicines import set_medicine_photo, clear_medicine_photo
+from db.medicines import set_medicine_photo, clear_medicine_photo, set_medicine_expiry, get_expiring_medicines
 from db.injections import log_injection, delete_injection, get_injection_state
 
 # Pill/pack identification photos are images only — no PDFs or other doc types
@@ -292,6 +292,23 @@ def new_med_watch():
 @require_auth
 def cost_per_day():
     return jsonify(get_cost_per_day())
+
+
+@bp.route('/api/medicines/expiring')
+@require_auth
+def medicines_expiring():
+    days = to_int(request.args.get('days', 60), 60, lo=1, hi=3650)
+    return jsonify(get_expiring_medicines(days))
+
+@bp.route('/api/medicines/<mid>/expiry', methods=['POST'])
+@require_auth
+def set_medicine_expiry_route(mid):
+    try:
+        set_medicine_expiry(mid, (request.json or {}).get('expiry_date', ''))
+    except ValueError as e:
+        code = 404 if 'not found' in str(e).lower() else 400
+        return jsonify({'success': False, 'error': str(e)}), code
+    return jsonify({'success': True})
 
 @bp.route('/api/medicines/prn-frequency')
 @require_auth
