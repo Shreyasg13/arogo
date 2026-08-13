@@ -189,6 +189,14 @@ const I18N = {
     'Symptoms you’ve logged since a recent medicine started. This is timing only — it does not mean the medicine caused them. Worth mentioning to your doctor.':
       'हाल ही में दवा शुरू होने के बाद से आपने जो लक्षण दर्ज किए हैं। यह केवल समय-संयोग है — इसका मतलब यह नहीं कि दवा ने उन्हें पैदा किया। अपने डॉक्टर को बताना उचित है।',
     'started %1 days ago': '%1 दिन पहले शुरू', 'started %1': '%1 को शुरू',
+    'Where on the body?': 'शरीर पर कहाँ?', 'Where your symptoms are': 'आपके लक्षण कहाँ हैं',
+    'Regions you tagged, by how often — tap one to see just those symptoms.':
+      'आपके द्वारा टैग किए गए क्षेत्र, बारंबारता के अनुसार — केवल वे लक्षण देखने के लिए किसी पर टैप करें।',
+    '%1 logged here': 'यहाँ %1 दर्ज', 'Showing %1': '%1 दिखा रहे हैं',
+    'No symptoms tagged to this region': 'इस क्षेत्र में कोई लक्षण टैग नहीं',
+    'No symptoms logged in the last 14 days': 'पिछले 14 दिनों में कोई लक्षण दर्ज नहीं',
+    'Head': 'सिर', 'Neck': 'गर्दन', 'Chest': 'छाती', 'Abdomen': 'पेट', 'Pelvis': 'श्रोणि',
+    'Back': 'पीठ', 'Arms': 'बाहें', 'Legs': 'टांगें', 'Skin': 'त्वचा', 'General': 'सामान्य',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -9665,15 +9673,16 @@ async function logSymptoms() {
   const severity  = +document.getElementById('symptom-severity').value;
   const timeOfDay = document.getElementById('symptom-time').value;
   const notes     = document.getElementById('symptom-notes')?.value || '';
+  const region    = _selectedSymptomRegion || '';
   const dateKey   = localToday();
   const btn = document.getElementById('log-symptoms-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
 
-  // Log each selected symptom individually
+  // Log each selected symptom individually (shared severity/time/region for the batch)
   const promises = [...selectedSymptoms].map(name =>
     fetch('/api/symptoms', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ name, severity, time_of_day: timeOfDay, notes, date_key: dateKey })
+      body: JSON.stringify({ name, severity, time_of_day: timeOfDay, notes, region, date_key: dateKey })
     }).then(r => r.json())
   );
   const results = await Promise.all(promises);
@@ -9689,7 +9698,9 @@ async function logSymptoms() {
     document.getElementById('symptom-notes').value = '';
     document.getElementById('symptom-severity').value = 5;
     updateSeverityLabel(5);
-    loadSymptoms(); loadSymptomPatterns();
+    _selectedSymptomRegion = '';
+    renderRegionChips();
+    loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap();
     loadWellnessStrip();
   } else {
     showToast('Some symptoms failed to save', 'error');
@@ -9702,12 +9713,80 @@ function updateSeverityLabel(v) {
   setText('severity-label', `${v} — ${labels[+v]||''}`);
 }
 
+// ── I7: symptom body regions ──────────────────────────────────────────────
+// Keys mirror db.health.BODY_REGIONS exactly; labels/emoji live here.
+const BODY_REGIONS = [
+  { key: 'head',    emoji: '🧠', label: 'Head' },
+  { key: 'neck',    emoji: '🧣', label: 'Neck' },
+  { key: 'chest',   emoji: '🫁', label: 'Chest' },
+  { key: 'abdomen', emoji: '🩹', label: 'Abdomen' },
+  { key: 'pelvis',  emoji: '🩲', label: 'Pelvis' },
+  { key: 'back',    emoji: '🔙', label: 'Back' },
+  { key: 'arms',    emoji: '💪', label: 'Arms' },
+  { key: 'legs',    emoji: '🦵', label: 'Legs' },
+  { key: 'skin',    emoji: '🧴', label: 'Skin' },
+  { key: 'general', emoji: '🌐', label: 'General' },
+];
+let _selectedSymptomRegion = '';
+
+function renderRegionChips() {
+  const el = document.getElementById('symptom-region-chips');
+  if (!el) return;
+  el.innerHTML = BODY_REGIONS.map(r =>
+    `<button type="button" class="region-chip${_selectedSymptomRegion === r.key ? ' selected' : ''}"
+       data-region="${r.key}" data-ev-click="pickSymptomRegion('${r.key}')">
+       <span>${r.emoji}</span> ${t(r.label)}</button>`).join('');
+}
+function pickSymptomRegion(key) {
+  // Toggle off if the same chip is tapped again — region is optional.
+  _selectedSymptomRegion = (_selectedSymptomRegion === key) ? '' : key;
+  renderRegionChips();
+}
+
+// The body-map: how many symptoms landed in each region over the window.
+// Purely descriptive of what the user logged — no interpretation.
+async function loadSymptomBodyMap() {
+  const el = document.getElementById('symptom-bodymap-panel');
+  if (!el) return;
+  const d = await fetch('/api/symptoms/by-region?days=90', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const maxCount = Math.max(...Object.values(d.counts), 1);
+  const meta = Object.fromEntries(BODY_REGIONS.map(r => [r.key, r]));
+  const cells = BODY_REGIONS.filter(r => d.counts[r.key]).map(r => {
+    const n = d.counts[r.key];
+    const intensity = 0.18 + 0.62 * (n / maxCount);   // heat by relative frequency
+    return `<button type="button" class="bodymap-cell" data-ev-click="filterSymptomsByRegion('${r.key}')"
+        style="background:rgba(180,68,58,${intensity.toFixed(2)})" title="${tformat('%1 logged here', n)}">
+        <span class="bodymap-emoji">${r.emoji}</span>
+        <span class="bodymap-label">${t(meta[r.key].label)}</span>
+        <span class="bodymap-count">${n}</span>
+      </button>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="padding:18px 20px">
+      <div class="panel-header">
+        <h2 class="panel-title">🧍 ${t('Where your symptoms are')}</h2>
+        <span class="panel-badge">${t('last 90 days')}</span>
+      </div>
+      <p style="font-size:12.5px;color:var(--gray-500);margin:2px 0 14px">
+        ${t('Regions you tagged, by how often — tap one to see just those symptoms.')}</p>
+      <div class="bodymap-grid">${cells}</div>
+    </div>`;
+}
+
+// Tapping a region filters the visible history to that region (client-side).
+function filterSymptomsByRegion(key) {
+  _symptomRegionFilter = (_symptomRegionFilter === key) ? '' : key;
+  loadSymptoms();
+}
+let _symptomRegionFilter = '';
+
 function switchMedTab(tab) {
   document.querySelectorAll('.medical-tabs .wellness-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   document.querySelectorAll('#view-reports .wellness-tab-content').forEach(c => {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
-  if (tab === 'symptoms') { loadSymptoms(); loadSymptomPatterns(); }
+  if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
   if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
@@ -10045,16 +10124,28 @@ async function logSymptom() {
 }
 
 async function loadSymptoms() {
-  const r = await fetch('/api/symptoms?days=14').then(r => r.json()).catch(() => []);
   const el = document.getElementById('symptoms-list');
   if (!el) return;
+  // When a body-map region is selected we widen to 90 days (the map's window)
+  // and filter, so the tapped region's history is actually visible.
+  const filtering = !!_symptomRegionFilter;
+  const days = filtering ? 90 : 14;
+  let r = await fetch(`/api/symptoms?days=${days}`).then(r => r.json()).catch(() => []);
+  if (filtering) r = r.filter(s => s.region === _symptomRegionFilter);
+
+  const regionMeta = Object.fromEntries((BODY_REGIONS || []).map(x => [x.key, x]));
+  const filterBanner = filtering
+    ? `<div class="sym-region-filter">
+         <span>${tformat('Showing %1', t((regionMeta[_symptomRegionFilter]||{}).label || _symptomRegionFilter))} · ${t('last 90 days')}</span>
+         <button type="button" data-ev-click="filterSymptomsByRegion('${_symptomRegionFilter}')">${t('Clear')}</button>
+       </div>` : '';
 
   if (!r.length) {
-    el.innerHTML = `<div class="sym-history-empty">
+    el.innerHTML = filterBanner + `<div class="sym-history-empty">
       <span style="font-size:28px">🩺</span>
-      <div>No symptoms logged in the last 14 days</div>
+      <div>${filtering ? t('No symptoms tagged to this region') : t('No symptoms logged in the last 14 days')}</div>
     </div>`;
-    loadSymptomTimeline();      // may still have symptoms in the wider 90-day window
+    if (!filtering) loadSymptomTimeline();
     return;
   }
 
@@ -10066,18 +10157,22 @@ async function loadSymptoms() {
   const byDate = {};
   r.forEach(s => { (byDate[s.date_key] = byDate[s.date_key]||[]).push(s); });
 
-  el.innerHTML = Object.entries(byDate).map(([date, syms]) => {
+  const regionMetaMap = Object.fromEntries((BODY_REGIONS || []).map(x => [x.key, x]));
+  el.innerHTML = filterBanner + Object.entries(byDate).map(([date, syms]) => {
     const d = new Date(date+'T12:00:00');
     const today = localToday();
     const dateLabel = date === today ? 'Today' :
       d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
 
-    const rows = syms.map(s => `
+    const rows = syms.map(s => {
+      const rm = s.region ? regionMetaMap[s.region] : null;
+      const regionTag = rm ? ` · ${rm.emoji} ${t(rm.label)}` : '';
+      return `
       <div class="symptom-row">
         <div class="symptom-dot" style="background:${sevColor(s.severity)}"></div>
         <div class="symptom-info">
           <div class="symptom-name-text">${escHtml(s.name)}</div>
-          <div class="symptom-meta">${TMAP[s.time_of_day]||s.time_of_day}${s.notes?' · '+escHtml(s.notes):''}</div>
+          <div class="symptom-meta">${TMAP[s.time_of_day]||s.time_of_day}${regionTag}${s.notes?' · '+escHtml(s.notes):''}</div>
         </div>
         <span class="symptom-severity-badge" style="background:${sevColor(s.severity)}1A;color:${sevColor(s.severity)}">
           ${s.severity}/10 · ${sevLabel(s.severity)}
@@ -10085,7 +10180,8 @@ async function loadSymptoms() {
         <button class="todo-act-btn del" data-ev-click="delSymptom('${s.id}')" title="Remove">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
         </button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     return `<div class="sym-date-group">
       <div class="sym-date-header">${dateLabel}</div>
@@ -10097,7 +10193,7 @@ async function loadSymptoms() {
 
 async function delSymptom(id) {
   await fetch(`/api/symptoms/${id}`, {method:'DELETE'});
-  loadSymptoms(); loadSymptomPatterns(); loadWellnessStrip();
+  loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); loadWellnessStrip();
 }
 
 // ════════════════════════════════════════════════════════════

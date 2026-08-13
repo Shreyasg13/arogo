@@ -23,7 +23,7 @@ def no_rate_limit():
 @pytest.fixture(scope="module")
 def client(app):
     c = app.test_client()
-    c.post("/auth/register", json={"email": "meas@medeasy.test", "password": PW})
+    c.post("/auth/register", json={"email": "measrem1@medeasy.test", "password": PW})
     return c
 
 
@@ -50,7 +50,7 @@ def test_validation(client):
 def test_scheduler_fires_at_the_set_time(app, monkeypatch):
     import scheduler, push
     c = app.test_client()
-    c.post("/auth/register", json={"email": "meas2@medeasy.test", "password": PW})
+    c.post("/auth/register", json={"email": "measrem2@medeasy.test", "password": PW})
     # a reminder timed to "now" so it lands in the 0–15 min window
     hhmm = dt.datetime.now().strftime("%H:%M")
     rid = c.post("/api/measurement-reminders",
@@ -76,7 +76,7 @@ def test_scheduler_fires_at_the_set_time(app, monkeypatch):
 def test_disabled_reminder_does_not_fire(app, monkeypatch):
     import scheduler, push
     c = app.test_client()
-    c.post("/auth/register", json={"email": "meas3@medeasy.test", "password": PW})
+    c.post("/auth/register", json={"email": "measrem3@medeasy.test", "password": PW})
     hhmm = dt.datetime.now().strftime("%H:%M")
     rid = c.post("/api/measurement-reminders",
                  json={"kind": "weight", "time": hhmm}).get_json()["reminder"]["id"]

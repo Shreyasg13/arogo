@@ -770,6 +770,13 @@
             </div>
           </div>
 
+          <!-- Body region (optional) — powers the body-map -->
+          <div class="sym-detail-group" style="margin-top:2px">
+            <label class="form-label"><span data-i18n="Where on the body?">Where on the body?</span>
+              <span style="color:var(--gray-400);font-weight:400" data-i18n="(optional)">(optional)</span></label>
+            <div id="symptom-region-chips" class="region-chip-row"></div>
+          </div>
+
           <!-- Action row -->
           <div class="sym-action-row">
             <div class="sym-hint" id="sym-log-hint">
@@ -792,6 +799,9 @@
         </div>
         <div id="symptoms-list" class="sym-history-list"></div>
       </div>
+
+      <!-- I7: Body-map — where symptoms cluster -->
+      <div id="symptom-bodymap-panel" style="margin-top:16px"></div>
 
       <!-- PATTERNS: full width, below history -->
       <div id="symptom-patterns-panel"></div>

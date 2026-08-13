@@ -38,7 +38,7 @@ from .wellness    import (get_thoughts, save_thought, update_thought, delete_tho
                           get_sleep_target, set_sleep_target, get_sleep_insights,
                           log_body_metric, get_body_metrics, get_measurement_trends)
 from .health      import (list_habits, create_habit, delete_habit, toggle_habit_log, get_habit_stats,
-                          log_symptom, get_symptoms, delete_symptom, get_symptom_med_timeline,
+                          log_symptom, get_symptoms, get_symptoms_by_region, delete_symptom, get_symptom_med_timeline,
                           log_vital, get_vitals, delete_vital, get_vital_categories,
                           get_condition_checkin, get_condition_focus, set_condition_focus,
                           build_emergency_qr,
@@ -91,7 +91,7 @@ __all__ = [
     "get_sleep_target", "set_sleep_target", "get_sleep_insights",
     "log_body_metric", "get_body_metrics", "get_measurement_trends",
     "list_habits", "create_habit", "delete_habit", "toggle_habit_log", "get_habit_stats",
-    "log_symptom", "get_symptoms", "delete_symptom", "get_symptom_med_timeline",
+    "log_symptom", "get_symptoms", "get_symptoms_by_region", "delete_symptom", "get_symptom_med_timeline",
     "log_vital", "get_vitals", "delete_vital", "get_vital_categories",
     "get_condition_checkin", "get_condition_focus", "set_condition_focus", "build_emergency_qr",
     "get_emergency_info", "save_emergency_info",

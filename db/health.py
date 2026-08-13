@@ -122,18 +122,52 @@ def get_habit_stats(days: int = 30) -> dict:
 
 # ── Symptoms ──────────────────────────────────────────────────────────────────
 
+# I7 body-map: a fixed set of body regions a symptom can be tagged to. Keys are
+# stored; labels/order live in the frontend. '' means unset / not localized.
+BODY_REGIONS = ('head', 'neck', 'chest', 'abdomen', 'pelvis', 'back',
+                'arms', 'legs', 'skin', 'general')
+
+
+def _clean_region(v) -> str:
+    r = str(v or '').strip().lower()
+    return r if r in BODY_REGIONS else ''
+
+
 def log_symptom(data: dict) -> dict:
     name = str(data.get('name', '')).strip()
     if not name:
         raise ValueError('Symptom name is required')
     sid = new_id()
-    execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,notes,logged_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?)""",
+    execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,notes,region,logged_at,user_id)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
             (sid, name[:120], to_int(data.get('severity', 5), 5, lo=1, hi=10),
              data.get('date_key', today_iso()),
-             data.get('time_of_day','morning'), data.get('notes',''), now_iso(),
+             data.get('time_of_day','morning'), data.get('notes',''),
+             _clean_region(data.get('region')), now_iso(),
              current_user_id()), commit=True)
     return dict(execute("SELECT * FROM symptoms WHERE id=?", (sid,), fetchone=True))
+
+
+def get_symptoms_by_region(days: int = 90) -> dict:
+    """Count symptoms per body region over the window, for the body-map. Only
+    the user's own logged symptoms; regions with none are omitted from `counts`
+    but the full region list is returned so the map can render every zone."""
+    import datetime as dt
+    start = (dt.date.today() - dt.timedelta(days=max(1, min(int(days or 90), 3650)))).isoformat()
+    rows = execute("""SELECT region, name, severity, date_key FROM symptoms
+                      WHERE user_id=? AND date_key>=? AND region!='' AND region IS NOT NULL
+                      ORDER BY date_key DESC""",
+                   (current_user_id(), start), fetchall=True) or []
+    counts, worst = {}, {}
+    for r in rows:
+        rg = r['region']
+        counts[rg] = counts.get(rg, 0) + 1
+        sev = r['severity'] if isinstance(r['severity'], (int, float)) else 0
+        worst[rg] = max(worst.get(rg, 0), sev)
+    return {'regions': list(BODY_REGIONS),
+            'counts': counts, 'worst': worst,
+            'total': sum(counts.values()),
+            'has_data': bool(counts)}
 
 def get_symptoms(days: int = 14) -> list:
     import datetime as dt
