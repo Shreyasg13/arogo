@@ -212,6 +212,14 @@ const I18N = {
     'use next': 'अगला उपयोग', 'never used': 'कभी नहीं', 'Recent injections': 'हाल के इंजेक्शन',
     'Left arm': 'बायाँ हाथ', 'Right arm': 'दायाँ हाथ', 'Abdomen (L)': 'पेट (बायाँ)', 'Abdomen (R)': 'पेट (दायाँ)',
     'Left thigh': 'बायाँ जांघ', 'Right thigh': 'दायाँ जांघ', 'Left buttock': 'बायाँ नितंब', 'Right buttock': 'दायाँ नितंब',
+    'Peak flow': 'पीक फ्लो', 'Peak flow (L/min)': 'पीक फ्लो (L/min)', 'Save reading': 'रीडिंग सहेजें',
+    'For asthma/COPD — log your peak flow and Arogo zones it against your personal best.':
+      'अस्थमा/COPD के लिए — अपना पीक फ्लो दर्ज करें और Arogo इसे आपके व्यक्तिगत सर्वश्रेष्ठ के आधार पर ज़ोन करता है।',
+    'Green — doing well': 'हरा — अच्छा चल रहा है', 'Yellow — caution': 'पीला — सावधानी',
+    'Red — get help': 'लाल — मदद लें', 'of best': 'सर्वश्रेष्ठ का', 'best %1': 'सर्वश्रेष्ठ %1',
+    'Green ≥ %1 · Yellow ≥ %2 · Red below': 'हरा ≥ %1 · पीला ≥ %2 · नीचे लाल',
+    'Zones are % of your personal best': 'ज़ोन आपके व्यक्तिगत सर्वश्रेष्ठ का % हैं',
+    'Enter a reading': 'एक रीडिंग दर्ज करें', 'Reading saved': 'रीडिंग सहेजी गई',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -5505,6 +5513,85 @@ async function removeMedPhoto(mid) {
   loadMedicines();
 }
 
+// ── J2: peak-flow / respiratory tracker ─────────────────────────────────────
+// PEF readings zoned green/yellow/red against the user's OWN personal best
+// (asthma-action-plan traffic lights). Framing only — never a diagnosis.
+const _PF_ZONE = {
+  green:  { color: '#16A34A', label: 'Green — doing well' },
+  yellow: { color: '#F59E0B', label: 'Yellow — caution' },
+  red:    { color: '#DC2626', label: 'Red — get help' },
+};
+
+async function loadPeakFlow() {
+  const el = document.getElementById('peak-flow-section');
+  if (!el) return;
+  const d = await fetch('/api/peak-flow?days=180', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  const logRow = `
+    <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-top:${d && d.has_data ? '14px' : '10px'}">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="Peak flow (L/min)">Peak flow (L/min)</label>
+        <input type="number" class="form-input" id="peak-flow-input" min="30" max="900" step="1"
+               style="width:130px" placeholder="e.g. 450">
+      </div>
+      <button class="btn-primary" style="padding:10px 16px" data-ev-click="logPeakFlow()">${t('Save reading')}</button>
+    </div>`;
+
+  if (!d || !d.has_data) {
+    el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-bottom:14px">
+        <div class="panel-header"><h2 class="panel-title">🫁 ${t('Peak flow')}</h2></div>
+        <p style="font-size:12.5px;color:var(--gray-500);margin:0">
+          ${t('For asthma/COPD — log your peak flow and Arogo zones it against your personal best.')}</p>
+        ${logRow}
+      </div>`;
+    return;
+  }
+
+  const z = _PF_ZONE[d.latest.zone] || _PF_ZONE.green;
+  const zoneBar = `
+    <div class="pf-zonebar" title="${t('Zones are % of your personal best')}">
+      <div class="pf-zone" style="flex:50;background:#FCA5A5"></div>
+      <div class="pf-zone" style="flex:30;background:#FCD34D"></div>
+      <div class="pf-zone" style="flex:20;background:#86EFAC"></div>
+      <div class="pf-marker" style="left:${Math.min(100, Math.round(d.latest.value / d.personal_best * 100))}%"></div>
+    </div>`;
+  const recent = d.readings.slice(0, 8).map(r => {
+    const zz = _PF_ZONE[r.zone] || _PF_ZONE.green;
+    return `<div class="pf-row">
+        <span class="pf-dot" style="background:${zz.color}"></span>
+        <span class="pf-val">${r.value} <span style="color:var(--gray-400);font-weight:400">L/min</span></span>
+        <span class="pf-pct">${r.pct_of_best}%</span>
+        <span class="pf-date">${_fmtShortDate(r.date)}</span>
+        <button class="todo-act-btn del" data-ev-click="delVital('${r.id}')" title="${t('Remove')}">✕</button>
+      </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-bottom:14px">
+      <div class="panel-header"><h2 class="panel-title">🫁 ${t('Peak flow')}</h2>
+        <span class="panel-badge">${tformat('best %1', d.personal_best)}</span></div>
+      <div class="pf-latest" style="color:${z.color}">
+        <span class="pf-latest-val">${d.latest.value}</span>
+        <span class="pf-latest-zone">${t(z.label)} · ${d.latest.pct_of_best}% ${t('of best')}</span>
+      </div>
+      ${zoneBar}
+      <div class="pf-thresholds">${tformat('Green ≥ %1 · Yellow ≥ %2 · Red below', d.green_min, d.yellow_min)}</div>
+      <div class="pf-recent">${recent}</div>
+      ${logRow}
+    </div>`;
+}
+
+async function logPeakFlow() {
+  const inp = document.getElementById('peak-flow-input');
+  const v = inp && inp.value;
+  if (v === '' || v == null) { showToast(t('Enter a reading'), 'error'); return; }
+  const r = await fetch('/api/vitals', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({type:'peak_flow', value1: v, date_key: localToday()}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Reading saved'), 'success'); loadPeakFlow(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
 // ── J1: injection-site rotation ─────────────────────────────────────────────
 // For injectable meds — log which site was used so the app can suggest the
 // least-recently-used one next. Sites/keys mirror db.injections.INJECTION_SITES.
@@ -9979,7 +10066,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); }
   if (tab === 'emergency') loadEmergencyCard();
   if (tab === 'appointments') loadAppointments();
 }

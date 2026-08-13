@@ -947,6 +947,14 @@ def api_symptom_med_effect():
 def api_vitals():
     return jsonify(get_vitals())
 
+@bp.route('/api/peak-flow')
+@require_auth
+def api_peak_flow():
+    """Peak-flow readings zoned green/yellow/red against the user's personal best."""
+    from db.peak_flow import get_peak_flow_state
+    days = to_int(request.args.get('days', 180), 180, lo=1, hi=3650)
+    return jsonify(get_peak_flow_state(days))
+
 @bp.route('/api/vitals', methods=['POST'])
 @require_auth
 def api_log_vital():

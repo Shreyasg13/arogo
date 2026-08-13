@@ -240,6 +240,7 @@ _VITAL_BOUNDS = {
     'blood_sugar':    ((5, 2000), None),
     'spo2':           ((10, 100), None),
     'temperature':    ((25, 120), None),   # spans both °C and °F
+    'peak_flow':      ((30, 900), None),   # L/min — guards typos, not a clinical range
 }
 
 
