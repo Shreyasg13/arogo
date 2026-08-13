@@ -6004,6 +6004,18 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   background: var(--gray-50); border: 1px solid var(--gray-200); color: var(--gray-700); font-family: inherit; }
 .ap-suggest-chip:hover { border-color: var(--teal-400); }
 
+/* Personal baseline bands (J7) — "your own normal". */
+.pb-row { padding: 10px 0; border-top: 1px solid var(--gray-100); }
+.pb-row:first-of-type { border-top: none; }
+.pb-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.pb-label { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+.pb-latest { font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.pb-track { position: relative; height: 8px; background: var(--gray-100); border-radius: 99px; }
+.pb-band { position: absolute; top: 0; height: 8px; background: var(--teal-200); border-radius: 99px; }
+.pb-mark { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%;
+  transform: translate(-50%, -50%); border: 2px solid var(--gray-0); box-shadow: 0 0 0 1px rgba(0,0,0,.12); }
+.pb-meta { font-size: 11.5px; color: var(--gray-400); margin-top: 5px; }
+
 /* Peak-flow tracker (J2) — personal-best zoning. */
 .pf-latest { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; }
 .pf-latest-val { font-size: 30px; font-weight: 800; line-height: 1; }

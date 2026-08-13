@@ -220,6 +220,12 @@ const I18N = {
     'Green ≥ %1 · Yellow ≥ %2 · Red below': 'हरा ≥ %1 · पीला ≥ %2 · नीचे लाल',
     'Zones are % of your personal best': 'ज़ोन आपके व्यक्तिगत सर्वश्रेष्ठ का % हैं',
     'Enter a reading': 'एक रीडिंग दर्ज करें', 'Reading saved': 'रीडिंग सहेजी गई',
+    'Your own normal': 'आपका अपना सामान्य', 'last 6 months': 'पिछले 6 महीने',
+    'Your typical range for each vital, from your own readings — a companion to the general reference ranges.':
+      'हर वाइटल के लिए आपकी सामान्य सीमा, आपकी अपनी रीडिंग से — सामान्य संदर्भ सीमाओं का साथी।',
+    'Systolic BP': 'सिस्टोलिक रक्तचाप', 'Resting heart rate': 'विश्राम हृदय गति',
+    'in your usual range': 'आपकी सामान्य सीमा में', 'above your usual': 'आपके सामान्य से ऊपर', 'below your usual': 'आपके सामान्य से नीचे',
+    'your usual %1–%2 %3': 'आपका सामान्य %1–%2 %3', 'from %1 readings': '%1 रीडिंग से',
     'Emergency action plans': 'आपातकालीन कार्य योजनाएँ',
     'Write down what to do in an emergency — in your own words, from your doctor. Arogo never fills in the medical steps for you.':
       'आपात स्थिति में क्या करना है, अपने शब्दों में अपने डॉक्टर से लिखें। Arogo आपके लिए चिकित्सा चरण कभी नहीं भरता।',
@@ -5623,6 +5629,47 @@ async function removeMedPhoto(mid) {
   loadMedicines();
 }
 
+// J7: "your own normal" — a personal baseline band (your mean ± 1 SD) per vital,
+// with where the latest reading sits. Descriptive stats of your own logs; a
+// complement to the population reference ranges, never a diagnosis.
+async function loadPersonalBaselines() {
+  const el = document.getElementById('personal-baselines-section');
+  if (!el) return;
+  const d = await fetch('/api/vitals/baselines?days=180', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const posMeta = {
+    within: { color: 'var(--teal-600)', label: 'in your usual range' },
+    above:  { color: '#B45309', label: 'above your usual' },
+    below:  { color: '#2563EB', label: 'below your usual' },
+  };
+  const rows = d.metrics.map(m => {
+    const pm = posMeta[m.position] || posMeta.within;
+    // Position the latest marker within a display span padded around the band.
+    const span = (m.high - m.low) || 1;
+    const dispLo = m.low - span * 0.8, dispHi = m.high + span * 0.8, w = dispHi - dispLo;
+    const pct = x => Math.max(0, Math.min(100, (x - dispLo) / w * 100));
+    return `<div class="pb-row">
+        <div class="pb-head">
+          <span class="pb-label">${t(m.label)}</span>
+          <span class="pb-latest" style="color:${pm.color}">${m.latest} ${escapeHtml(m.unit)} · ${t(pm.label)}</span>
+        </div>
+        <div class="pb-track">
+          <div class="pb-band" style="left:${pct(m.low).toFixed(1)}%;width:${(pct(m.high)-pct(m.low)).toFixed(1)}%"></div>
+          <div class="pb-mark" style="left:${pct(m.latest).toFixed(1)}%;background:${pm.color}"></div>
+        </div>
+        <div class="pb-meta">${tformat('your usual %1–%2 %3', m.low, m.high, m.unit)} · ${tformat('from %1 readings', m.count)}</div>
+      </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-bottom:14px">
+      <div class="panel-header"><h2 class="panel-title">🎯 ${t('Your own normal')}</h2>
+        <span class="panel-badge">${t('last 6 months')}</span></div>
+      <p style="font-size:12px;color:var(--gray-500);margin:2px 0 12px">
+        ${t('Your typical range for each vital, from your own readings — a companion to the general reference ranges.')}</p>
+      ${rows}
+    </div>`;
+}
+
 // ── J2: peak-flow / respiratory tracker ─────────────────────────────────────
 // PEF readings zoned green/yellow/red against the user's OWN personal best
 // (asthma-action-plan traffic lights). Framing only — never a diagnosis.
@@ -10176,7 +10223,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); }
   if (tab === 'emergency') { loadEmergencyCard(); loadActionPlans(); }
   if (tab === 'appointments') loadAppointments();
 }

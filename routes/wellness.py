@@ -955,6 +955,14 @@ def api_peak_flow():
     days = to_int(request.args.get('days', 180), 180, lo=1, hi=3650)
     return jsonify(get_peak_flow_state(days))
 
+@bp.route('/api/vitals/baselines')
+@require_auth
+def api_vital_baselines():
+    """Personal baseline bands (your own mean ± 1 SD) for core vitals (J7)."""
+    from db.baselines import get_personal_baselines
+    days = to_int(request.args.get('days', 180), 180, lo=7, hi=3650)
+    return jsonify(get_personal_baselines(days))
+
 
 # ── Emergency action plans (J3) ─────────────────────────────────────────────
 @bp.route('/api/action-plans', methods=['GET'])
