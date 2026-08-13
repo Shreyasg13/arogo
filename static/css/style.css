@@ -6021,6 +6021,15 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   .mexp-body { color: #FCD34D; }
 }
 
+/* Estimated HbA1c (K2). */
+.a1c-panel { display: flex; gap: 18px; align-items: center; padding: 16px 18px; margin-bottom: 14px; flex-wrap: wrap; }
+.a1c-main { text-align: center; flex-shrink: 0; }
+.a1c-val { font-size: 32px; font-weight: 800; color: var(--teal-700); line-height: 1; }
+.a1c-label { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+.a1c-side { flex: 1; min-width: 200px; }
+.a1c-side-row { font-size: 13px; color: var(--gray-700); }
+.a1c-note { font-size: 11.5px; color: var(--gray-400); line-height: 1.5; margin-top: 6px; }
+
 /* Personal baseline bands (J7) — "your own normal". */
 .pb-row { padding: 10px 0; border-top: 1px solid var(--gray-100); }
 .pb-row:first-of-type { border-top: none; }

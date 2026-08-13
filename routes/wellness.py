@@ -963,6 +963,14 @@ def api_vital_baselines():
     days = to_int(request.args.get('days', 180), 180, lo=7, hi=3650)
     return jsonify(get_personal_baselines(days))
 
+@bp.route('/api/vitals/estimated-a1c')
+@require_auth
+def api_estimated_a1c():
+    """Estimated HbA1c from logged glucose (ADAG formula) — an estimate (K2)."""
+    from db.glucose_a1c import estimate_a1c
+    days = to_int(request.args.get('days', 90), 90, lo=14, hi=365)
+    return jsonify(estimate_a1c(days))
+
 
 # ── Emergency action plans (J3) ─────────────────────────────────────────────
 @bp.route('/api/action-plans', methods=['GET'])

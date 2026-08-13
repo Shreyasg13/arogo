@@ -229,6 +229,10 @@ const I18N = {
     'Your typical range for each vital, from your own readings — a companion to the general reference ranges.':
       'हर वाइटल के लिए आपकी सामान्य सीमा, आपकी अपनी रीडिंग से — सामान्य संदर्भ सीमाओं का साथी।',
     'Systolic BP': 'सिस्टोलिक रक्तचाप', 'Resting heart rate': 'विश्राम हृदय गति',
+    'estimated HbA1c': 'अनुमानित HbA1c', 'avg glucose %1 mg/dL': 'औसत ग्लूकोज %1 mg/dL',
+    'from %1 readings · %2 days': '%1 रीडिंग · %2 दिन से',
+    'A rough estimate from your logged readings, not a lab test. Discuss the real number with your doctor.':
+      'आपकी दर्ज रीडिंग से एक मोटा अनुमान, प्रयोगशाला परीक्षण नहीं। असली संख्या अपने डॉक्टर से चर्चा करें।',
     'in your usual range': 'आपकी सामान्य सीमा में', 'above your usual': 'आपके सामान्य से ऊपर', 'below your usual': 'आपके सामान्य से नीचे',
     'your usual %1–%2 %3': 'आपका सामान्य %1–%2 %3', 'from %1 readings': '%1 रीडिंग से',
     'Emergency action plans': 'आपातकालीन कार्य योजनाएँ',
@@ -5694,6 +5698,27 @@ async function removeMedPhoto(mid) {
   loadMedicines();
 }
 
+// K2: estimated HbA1c from logged glucose (ADAG formula). An estimate from your
+// own readings — never a lab result. Shown only with enough readings.
+async function loadEstimatedA1c() {
+  const el = document.getElementById('estimated-a1c-section');
+  if (!el) return;
+  const d = await fetch('/api/vitals/estimated-a1c?days=90', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="panel a1c-panel">
+      <div class="a1c-main">
+        <div class="a1c-val">~${d.estimated_a1c}%</div>
+        <div class="a1c-label">${t('estimated HbA1c')}</div>
+      </div>
+      <div class="a1c-side">
+        <div class="a1c-side-row">${tformat('avg glucose %1 mg/dL', d.avg_glucose)}</div>
+        <div class="a1c-side-row">${tformat('from %1 readings · %2 days', d.count, d.days)}</div>
+        <div class="a1c-note">${t('A rough estimate from your logged readings, not a lab test. Discuss the real number with your doctor.')}</div>
+      </div>
+    </div>`;
+}
+
 // J7: "your own normal" — a personal baseline band (your mean ± 1 SD) per vital,
 // with where the latest reading sits. Descriptive stats of your own logs; a
 // complement to the population reference ranges, never a diagnosis.
@@ -10289,7 +10314,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); loadEstimatedA1c(); }
   if (tab === 'emergency') { loadEmergencyCard(); loadActionPlans(); }
   if (tab === 'appointments') loadAppointments();
 }
