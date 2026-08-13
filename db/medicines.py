@@ -575,6 +575,37 @@ def clear_medicine_photo(mid: str) -> str:
     return prev
 
 
+_DAYS_PER_MONTH = 30.437   # mean Gregorian month, so per-day cost is stable
+
+
+def get_cost_per_day() -> dict:
+    """Break each active medicine's monthly cost down to a per-day figure and
+    rank them, so the priciest daily medicine is obvious. Only medicines the user
+    actually priced are included; the rest are counted as `unpriced` (never
+    assumed to cost ₹0, which would understate the total)."""
+    meds = [m for m in list_medicines() if m.get('active')]
+    items = []
+    for m in meds:
+        cost = m.get('cost')
+        if cost is None:
+            continue
+        try:
+            monthly = float(cost)
+        except (TypeError, ValueError):
+            continue
+        if monthly < 0:
+            continue
+        items.append({'id': m['id'], 'name': m.get('name') or 'Medicine',
+                      'monthly': round(monthly, 2),
+                      'per_day': round(monthly / _DAYS_PER_MONTH, 2)})
+    items.sort(key=lambda x: -x['per_day'])
+    return {'has_data': bool(items),
+            'items': items,
+            'unpriced': sum(1 for m in meds if m.get('cost') is None),
+            'total_per_day': round(sum(i['per_day'] for i in items), 2),
+            'total_per_month': round(sum(i['monthly'] for i in items), 2)}
+
+
 def get_new_med_watch(recent_days: int = 45) -> dict:
     """For medicines started in the last `recent_days` days, list the symptoms
     the user has logged since that start date. This is a TIMING view — a prompt

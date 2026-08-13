@@ -5951,6 +5951,30 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .lab-band-mark.lab-high { background: #EF4444; }
 .lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
 
+/* This week vs last (I10) — honest delta tiles. */
+.wow-panel { padding: 16px 18px; }
+.wow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.wow-cell { border: 1px solid var(--gray-100); border-radius: 12px; padding: 12px; }
+.wow-label { font-size: 12px; color: var(--gray-500); font-weight: 600; margin-bottom: 4px; }
+.wow-this { font-size: 20px; font-weight: 700; color: var(--gray-900); }
+.wow-delta { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+.wow-delta .wow-prev { display: block; font-size: 11px; font-weight: 400; color: var(--gray-400); }
+.wow-good { color: var(--teal-600); }
+.wow-bad { color: #DC2626; }
+.wow-neutral { color: var(--gray-500); }
+.wow-flat { color: var(--gray-400); }
+
+/* Cost per day per medicine (I9). */
+.cpd-row { display: grid; grid-template-columns: minmax(90px, 1.4fr) 2fr auto; align-items: center;
+  gap: 12px; padding: 8px 0; border-top: 1px solid var(--gray-100); }
+.cpd-row:first-of-type { border-top: none; }
+.cpd-name { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+.cpd-bar-wrap { height: 8px; background: var(--gray-100); border-radius: 99px; overflow: hidden; }
+.cpd-bar { height: 8px; background: var(--teal-500); border-radius: 99px; }
+.cpd-day { font-size: 13.5px; font-weight: 700; color: var(--gray-900); text-align: right; white-space: nowrap; }
+.cpd-mo { display: block; font-size: 11px; font-weight: 400; color: var(--gray-400); }
+.cpd-note { font-size: 12px; color: var(--gray-400); margin-top: 10px; }
+
 /* Medicine identification photo (I8) — thumbnail in the card + tap-to-zoom. */
 .med-card-photo {
   width: 44px; height: 44px; object-fit: cover; border-radius: 10px; cursor: zoom-in;

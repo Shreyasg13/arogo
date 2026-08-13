@@ -287,6 +287,11 @@ def new_med_watch():
     days = to_int(request.args.get('days', 45), 45, lo=1, hi=180)
     return jsonify(get_new_med_watch(days))
 
+@bp.route('/api/medicines/cost-per-day')
+@require_auth
+def cost_per_day():
+    return jsonify(get_cost_per_day())
+
 @bp.route('/api/medicines/at-risk')
 @require_auth
 def at_risk_dose():

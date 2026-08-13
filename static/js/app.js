@@ -201,6 +201,10 @@ const I18N = {
     'Remove photo': 'फ़ोटो हटाएँ', 'Photo added': 'फ़ोटो जोड़ी गई', 'Photo removed': 'फ़ोटो हटाई गई',
     'Uploading photo…': 'फ़ोटो अपलोड हो रही है…', 'Could not upload the photo': 'फ़ोटो अपलोड नहीं हो सकी',
     'Image is too large (max 8 MB).': 'छवि बहुत बड़ी है (अधिकतम 8 MB)।',
+    'Cost per day': 'प्रति दिन लागत', '%1/mo': '%1/माह', '%1/day total': 'कुल %1/दिन',
+    '%1 medicine(s) have no price set — not counted.': '%1 दवा की कोई कीमत तय नहीं — गिनी नहीं गई।',
+    'This week vs last': 'इस सप्ताह बनाम पिछला', '7 days': '7 दिन', 'was %1': '%1 था',
+    'Adherence': 'पालन', 'Sleep': 'नींद', 'Weight': 'वज़न', 'BP (systolic)': 'रक्तचाप (सिस्टोलिक)',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -3084,10 +3088,45 @@ async function loadInsightCards() {
       </div>`).join('') + '</div>';
 }
 
+// I10: "this week vs last" — a small, honest delta card. Only shows metrics the
+// user logged in BOTH weeks; up/down is coloured only where a direction has a
+// clear meaning (adherence, sleep), neutral for weight and BP.
+async function loadWeekOverWeek() {
+  const box = document.getElementById('week-over-week');
+  if (!box) return;
+  const d = await fetch('/api/week-over-week', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { box.innerHTML = ''; return; }
+  const fmt = (v, unit) => unit === '%' ? `${v}%` : `${v}${unit ? ' ' + unit : ''}`;
+  const cells = d.metrics.map(m => {
+    const arrow = m.dir === 'flat' ? '→' : m.dir === 'up' ? '▲' : '▼';
+    let cls = 'wow-flat';
+    if (m.dir !== 'flat' && m.higher_better !== null) {
+      const good = (m.dir === 'up') === m.higher_better;
+      cls = good ? 'wow-good' : 'wow-bad';
+    } else if (m.dir !== 'flat') {
+      cls = 'wow-neutral';
+    }
+    const deltaTxt = m.delta > 0 ? `+${m.delta}` : `${m.delta}`;
+    return `<div class="wow-cell">
+        <div class="wow-label">${t(m.label)}</div>
+        <div class="wow-this">${fmt(m.this, m.unit)}</div>
+        <div class="wow-delta ${cls}">${arrow} ${deltaTxt}${m.unit === '%' ? '' : ''}
+          <span class="wow-prev">${tformat('was %1', fmt(m.last, m.unit))}</span></div>
+      </div>`;
+  }).join('');
+  box.innerHTML = `<div class="panel wow-panel">
+      <div class="panel-header"><h2 class="panel-title">📊 ${t('This week vs last')}</h2>
+        <span class="panel-badge">${t('7 days')}</span></div>
+      <div class="wow-grid">${cells}</div>
+    </div>`;
+}
+
 // ── Dashboard ──
 async function loadDashboard() {
   try { checkFirstRun(); }      catch (e) {}
   try { loadInsightCards(); }   catch (e) {}
+  try { loadWeekOverWeek(); }   catch (e) {}
   try { loadWellnessStrip(); }  catch (e) {}
   try { loadCarePanel(); }      catch (e) {}
   try { loadEncouragements(); } catch (e) {}
@@ -13921,8 +13960,35 @@ async function loadMedBudget() {
   const d = await fetch('/api/medicines/forecast', {credentials:'same-origin'})
     .then(r => r.ok ? r.json() : null).catch(() => null);
   if (!d) { el.innerHTML = `<div class="panel" style="padding:20px">${t('Could not load')}</div>`; return; }
-  el.innerHTML = renderMedBudget(d) + '<div id="med-spend-timeline"></div>';
+  el.innerHTML = renderMedBudget(d) + '<div id="cost-per-day-section"></div><div id="med-spend-timeline"></div>';
+  loadCostPerDay();
   loadMedSpendTimeline();
+}
+
+// I9: each medicine's monthly cost broken down to a per-day figure, ranked.
+// Only medicines the user priced; unpriced ones are counted, never assumed ₹0.
+async function loadCostPerDay() {
+  const el = document.getElementById('cost-per-day-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/cost-per-day', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const inr = n => '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const maxDay = Math.max(...d.items.map(i => i.per_day), 0.01);
+  const rows = d.items.map(i => `
+    <div class="cpd-row">
+      <div class="cpd-name">${escapeHtml(i.name)}</div>
+      <div class="cpd-bar-wrap"><div class="cpd-bar" style="width:${(i.per_day / maxDay * 100).toFixed(1)}%"></div></div>
+      <div class="cpd-day">${inr(i.per_day)}<span class="cpd-mo">${tformat('%1/mo', inr(i.monthly))}</span></div>
+    </div>`).join('');
+  const unpriced = d.unpriced
+    ? `<div class="cpd-note">${tformat('%1 medicine(s) have no price set — not counted.', d.unpriced)}</div>` : '';
+  el.innerHTML = `<div class="panel" style="padding:18px 20px;margin-top:20px">
+      <div class="panel-header"><h2 class="panel-title">🪙 ${t('Cost per day')}</h2>
+        <span class="panel-badge">${tformat('%1/day total', inr(d.total_per_day))}</span></div>
+      ${rows}
+      ${unpriced}
+    </div>`;
 }
 
 // Estimated medicine spend per month + YTD + projected annual.

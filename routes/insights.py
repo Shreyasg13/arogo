@@ -801,6 +801,13 @@ def api_hr_zones():
 def api_today_glance():
     return jsonify(get_today_glance())
 
+@bp.route('/api/week-over-week')
+@require_auth
+def api_week_over_week():
+    """This week vs last across core metrics — only where both weeks have data."""
+    from db.week_review import get_week_over_week
+    return jsonify(get_week_over_week())
+
 @bp.route('/api/profile/completeness')
 @require_auth
 def api_profile_completeness():
