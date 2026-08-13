@@ -952,6 +952,19 @@ def migrate_add_adherence_goal():
         pass
 
 
+def migrate_add_med_effectiveness():
+    """Create the medication effectiveness log (J5): a periodic subjective 1-5
+    rating of how well a medicine seems to be working, in the patient's own view.
+    A record of self-report over time — never a clinical measure."""
+    try:
+        execute("""CREATE TABLE IF NOT EXISTS med_effectiveness (
+            id TEXT PRIMARY KEY, medicine_id TEXT NOT NULL, rating INTEGER NOT NULL,
+            date_key TEXT NOT NULL, notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL, user_id TEXT NOT NULL)""")
+    except Exception:
+        pass
+
+
 def migrate_add_action_plans():
     """Create emergency action plans (J3): a titled, ordered list of steps the
     user writes down from their own doctor (anaphylaxis, asthma attack,
@@ -1283,6 +1296,7 @@ DATA_TABLES = [
     'share_snapshots',
     'injection_logs',
     'action_plans',
+    'med_effectiveness',
 ]
 
 
@@ -1347,6 +1361,7 @@ def init_db():
     migrate_add_workout_sets()
     migrate_add_injection_logs()
     migrate_add_action_plans()
+    migrate_add_med_effectiveness()
     migrate_add_body_measurements()
     migrate_add_pharmacy()
     migrate_add_condition_focus()

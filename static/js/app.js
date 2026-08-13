@@ -234,6 +234,11 @@ const I18N = {
       'आपने हर आवश्यकतानुसार दवा को कितनी बार लिया। बढ़ोतरी अपने डॉक्टर को बताने लायक हो सकती है।',
     'more than usual': 'सामान्य से अधिक', 'this week': 'इस सप्ताह',
     'usually ~%1/wk': 'आमतौर पर ~%1/सप्ताह', 'no baseline yet': 'अभी कोई आधार नहीं',
+    'Is it working?': 'क्या यह काम कर रहा है?',
+    'Your own sense of how well each medicine is working, 1–5. It’s a self-check to share with your doctor — not a measure of the drug.':
+      'हर दवा कितनी अच्छी तरह काम कर रही है, इसका आपका अपना अनुमान, 1–5। यह डॉक्टर के साथ साझा करने की स्व-जाँच है — दवा का माप नहीं।',
+    'not rated yet': 'अभी रेट नहीं', 'avg %1': 'औसत %1', '%1 rating(s)': '%1 रेटिंग',
+    'Rate %1/5': '%1/5 रेट करें', 'Rate %1 of 5': '5 में से %1 रेट करें', 'Rating saved': 'रेटिंग सहेजी गई',
     'Delete my account': 'मेरा खाता हटाएँ',
     'How Arogo works': 'Arogo कैसे काम करता है',
     'No ads, no data sale, and a plain-English definition of every number in the app — and where each one comes from.':
@@ -4886,6 +4891,7 @@ async function loadMedicines() {
   loadAdherenceWeekday();
   loadNewMedWatch();
   loadPrnFrequency();
+  loadEffectiveness();
   loadResponsiveness();
   loadSkipReasons();
   loadMedCost();
@@ -5068,6 +5074,52 @@ async function loadAdherenceWeekday() {
 }
 function _WEEKDAY_NAME(i) {
   return ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'][i] || '';
+}
+
+// J5: "Is it working?" — a periodic 1-5 self-rating per medicine, with a trend.
+// Captures the patient's own read; purely self-report, not a clinical measure.
+async function loadEffectiveness() {
+  const el = document.getElementById('effectiveness-section');
+  if (!el) return;
+  const [meds, eff] = await Promise.all([
+    fetch('/api/medicines', {credentials:'same-origin'}).then(r => r.json()).catch(() => []),
+    fetch('/api/medicines/effectiveness?days=180', {credentials:'same-origin'}).then(r => r.json()).catch(() => null),
+  ]);
+  const active = (Array.isArray(meds) ? meds : []).filter(m => m.active && m.frequency !== 'as_needed');
+  if (!active.length) { el.innerHTML = ''; return; }
+  const byMed = Object.fromEntries(((eff && eff.meds) || []).map(m => [m.id, m]));
+  const arrow = { up: '▲', down: '▼', flat: '→' };
+  const arrowCls = { up: 'eff-up', down: 'eff-down', flat: 'eff-flat' };
+  const rows = active.map(m => {
+    const e = byMed[m.id];
+    const dots = [1,2,3,4,5].map(n =>
+      `<button type="button" class="eff-dot${e && n <= e.latest ? ' on' : ''}"
+         data-ev-click="rateMed('${m.id}',${n})" title="${tformat('Rate %1/5', n)}" aria-label="${tformat('Rate %1 of 5', n)}"></button>`).join('');
+    const summary = e
+      ? `<span class="eff-summary"><span class="${arrowCls[e.direction]}">${arrow[e.direction]}</span>
+           ${tformat('avg %1', e.average)} · ${tformat('%1 rating(s)', e.count)}</span>`
+      : `<span class="eff-summary eff-none">${t('not rated yet')}</span>`;
+    return `<div class="eff-row">
+        <div class="eff-name">💊 ${escapeHtml(m.name)}</div>
+        <div class="eff-dots">${dots}</div>
+        ${summary}
+      </div>`;
+  }).join('');
+  el.innerHTML = `<div class="panel" style="padding:18px 20px">
+      <div class="panel-header"><h2 class="panel-title">📈 ${t('Is it working?')}</h2></div>
+      <p style="font-size:12px;color:var(--gray-500);margin:2px 0 12px">
+        ${t('Your own sense of how well each medicine is working, 1–5. It’s a self-check to share with your doctor — not a measure of the drug.')}</p>
+      ${rows}
+    </div>`;
+}
+
+async function rateMed(mid, rating) {
+  const r = await fetch('/api/medicines/effectiveness', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({medicine_id: mid, rating, date_key: localToday()}),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Rating saved'), 'success'); loadEffectiveness(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
 }
 
 // J4: PRN / rescue-med frequency — how often you reach for an as-needed med,

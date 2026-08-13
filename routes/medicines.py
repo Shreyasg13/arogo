@@ -300,6 +300,31 @@ def prn_frequency():
     return jsonify(get_prn_frequency(weeks))
 
 
+@bp.route('/api/medicines/effectiveness', methods=['GET'])
+@require_auth
+def med_effectiveness_get():
+    from db.med_effectiveness import get_effectiveness
+    days = to_int(request.args.get('days', 180), 180, lo=1, hi=3650)
+    return jsonify(get_effectiveness(days))
+
+@bp.route('/api/medicines/effectiveness', methods=['POST'])
+@require_auth
+def med_effectiveness_log():
+    from db.med_effectiveness import log_effectiveness
+    try:
+        rec = log_effectiveness(request.json or {})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    return jsonify({'success': True, 'rating': rec})
+
+@bp.route('/api/medicines/effectiveness/<rid>', methods=['DELETE'])
+@require_auth
+def med_effectiveness_delete(rid):
+    from db.med_effectiveness import delete_effectiveness
+    delete_effectiveness(rid)
+    return jsonify({'success': True})
+
+
 @bp.route('/api/injections', methods=['GET'])
 @require_auth
 def injections_state():

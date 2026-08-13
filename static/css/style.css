@@ -5951,6 +5951,22 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .lab-band-mark.lab-high { background: #EF4444; }
 .lab-band-mark--edge { width: 9px; height: 9px; opacity: .85; }
 
+/* "Is it working?" effectiveness (J5). */
+.eff-row { display: grid; grid-template-columns: 1.3fr auto auto; align-items: center; gap: 14px;
+  padding: 9px 0; border-top: 1px solid var(--gray-100); }
+.eff-row:first-of-type { border-top: none; }
+.eff-name { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+.eff-dots { display: flex; gap: 5px; }
+.eff-dot { width: 18px; height: 18px; border-radius: 50%; cursor: pointer;
+  border: 1.5px solid var(--gray-300); background: var(--gray-0); padding: 0; }
+.eff-dot.on { background: var(--teal-500); border-color: var(--teal-500); }
+.eff-dot:hover { border-color: var(--teal-500); }
+.eff-summary { font-size: 12.5px; color: var(--gray-600); text-align: right; white-space: nowrap; }
+.eff-none { color: var(--gray-400); }
+.eff-up { color: var(--teal-600); font-weight: 700; }
+.eff-down { color: #DC2626; font-weight: 700; }
+.eff-flat { color: var(--gray-400); font-weight: 700; }
+
 /* PRN / rescue-med frequency (J4). */
 .prn-row { display: grid; grid-template-columns: 1.4fr auto auto; align-items: center; gap: 14px;
   padding: 10px 0; border-top: 1px solid var(--gray-100); }
