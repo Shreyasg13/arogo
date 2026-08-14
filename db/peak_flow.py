@@ -13,9 +13,23 @@ your own trend the way an action plan does. Readings live in the shared `vitals`
 table under type='peak_flow'.
 """
 from .health import get_vitals
+from .core import execute, current_user_id
 
 _GREEN = 0.80
 _YELLOW = 0.50
+
+
+def _all_time_best():
+    """The user's highest peak-flow reading EVER — the asthma-action-plan personal
+    best. Must not be windowed: a best from a year ago still defines the zones, and
+    a deflated best would push readings into a falsely-green zone (under-warning)."""
+    r = execute("""SELECT MAX(value1) m FROM vitals
+                   WHERE user_id=? AND type='peak_flow'""",
+                (current_user_id(),), fetchone=True)
+    try:
+        return float(r['m']) if r and r['m'] is not None else None
+    except (TypeError, ValueError):
+        return None
 
 
 def _zone(value, personal_best):
@@ -48,7 +62,9 @@ def get_peak_flow_state(days: int = 180) -> dict:
     # backdated reading logged today must not read as "latest".
     readings.sort(key=lambda r: r['date'], reverse=True)
 
-    personal_best = max(r['value'] for r in readings)
+    # Zones are relative to the ALL-TIME best (not just the window's best), so an
+    # older best still governs and readings aren't nudged into a greener zone.
+    personal_best = _all_time_best() or max(r['value'] for r in readings)
     for r in readings:
         r['zone'] = _zone(r['value'], personal_best)
         r['pct_of_best'] = round(r['value'] / personal_best * 100)

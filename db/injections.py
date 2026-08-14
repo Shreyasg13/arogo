@@ -33,7 +33,12 @@ def log_injection(data: dict) -> dict:
     if not date_key or not valid_date(date_key):
         date_key = user_today()
     iid = new_id()
+    # If a medicine is linked, it must be the caller's own (defence-in-depth,
+    # mirroring log_effectiveness — never trust a client-supplied foreign id).
     mid = data.get('medicine_id') or None
+    if mid and not execute("SELECT 1 FROM medicines WHERE id=? AND user_id=?",
+                           (mid, current_user_id()), fetchone=True):
+        mid = None
     execute("""INSERT INTO injection_logs (id, medicine_id, site, date_key, notes, logged_at, user_id)
                VALUES (?,?,?,?,?,?,?)""",
             (iid, mid, site, date_key, str(data.get('notes', ''))[:200], now_iso(), current_user_id()),
@@ -55,11 +60,17 @@ def get_injection_state(days: int = 30) -> dict:
     days = max(1, min(int(days or 30), 3650))
     start = (_dt.date.today() - _dt.timedelta(days=days)).isoformat()
 
-    last_used, recent_count = {}, {}
-    for r in (execute("""SELECT site, MAX(date_key) last, COUNT(*) c
-                         FROM injection_logs WHERE user_id=? AND date_key>=?
-                         GROUP BY site""", (uid, start), fetchall=True) or []):
+    # last_used is ALL-TIME (a site injected before the window is still "used", not
+    # "never used", and its true last-use date drives the rotation suggestion).
+    last_used = {}
+    for r in (execute("""SELECT site, MAX(date_key) last FROM injection_logs
+                         WHERE user_id=? GROUP BY site""", (uid,), fetchall=True) or []):
         last_used[r['site']] = r['last']
+    # count is the recent (windowed) usage, for the "how often lately" display.
+    recent_count = {}
+    for r in (execute("""SELECT site, COUNT(*) c FROM injection_logs
+                         WHERE user_id=? AND date_key>=? GROUP BY site""",
+                      (uid, start), fetchall=True) or []):
         recent_count[r['site']] = r['c']
 
     sites = []
@@ -77,5 +88,5 @@ def get_injection_state(days: int = 30) -> dict:
     return {'sites': sites,
             'suggested_next': suggestion['site'],
             'total': sum(s['count'] for s in sites),
-            'has_data': any(s['count'] for s in sites),
+            'has_data': bool(last_used) or bool(recent),   # any history, not just the window
             'recent': recent}

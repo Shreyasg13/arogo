@@ -15,14 +15,6 @@ from .health import get_vitals
 _MIN_READINGS = 10   # too few readings and an "average glucose" means little
 
 
-def _mgdl(value):
-    """Blood-sugar readings are stored in mg/dL. Guard the mmol/L case (a value
-    under ~40 is almost certainly mmol/L) by converting, so a stray unit doesn't
-    produce a wild A1c."""
-    v = float(value)
-    return v * 18.0 if v < 40 else v
-
-
 def estimate_a1c(days: int = 90) -> dict:
     """Estimated A1c from the mean of blood-sugar readings over the window
     (defaults to ~3 months, the span an A1c reflects). has_data is False until
@@ -31,13 +23,18 @@ def estimate_a1c(days: int = 90) -> dict:
     values = []
     for r in rows:
         try:
-            values.append(_mgdl(r['value1']))
+            values.append(float(r['value1']))
         except (TypeError, ValueError):
             continue
     if len(values) < _MIN_READINGS:
         return {'has_data': False, 'count': len(values), 'min_readings': _MIN_READINGS}
 
-    mean_glucose = sum(values) / len(values)
+    # Decide the unit from the WHOLE series, not per reading — otherwise a genuine
+    # hypo (e.g. 38 mg/dL) would be mistaken for mmol/L and inflated ×18. A person's
+    # mean glucose is well above 40 in mg/dL and well below it in mmol/L, so the
+    # series mean cleanly separates the two.
+    raw_mean = sum(values) / len(values)
+    mean_glucose = raw_mean * 18.0 if raw_mean < 40 else raw_mean
     a1c = (mean_glucose + 46.7) / 28.7
     return {
         'has_data': True,

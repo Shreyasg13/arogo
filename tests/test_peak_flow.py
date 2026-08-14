@@ -67,6 +67,21 @@ def test_out_of_range_reading_rejected(app):
             log_vital({"type": "peak_flow", "value1": 5000})   # beyond the 30–900 guard
 
 
+def test_personal_best_is_all_time_not_windowed(app):
+    # A best recorded long before the 180-day window must still define the zones,
+    # or recent readings get nudged into a falsely-green zone (under-warning).
+    import datetime as dt
+    _, uid = _uid(app, "pf6@medeasy.test")
+    old = (dt.date.today() - dt.timedelta(days=300)).isoformat()   # outside the window
+    recent = (dt.date.today() - dt.timedelta(days=3)).isoformat()
+    with user_context(uid):
+        log_vital({"type": "peak_flow", "value1": 600, "date_key": old})     # all-time best
+        log_vital({"type": "peak_flow", "value1": 470, "date_key": recent})  # 78% of 600
+        d = get_peak_flow_state(days=180)
+    assert d["personal_best"] == 600                 # not the window's 470
+    assert d["latest"]["value"] == 470 and d["latest"]["zone"] == "yellow"   # 78% → caution
+
+
 def test_api(app):
     c, uid = _uid(app, "pf5@medeasy.test")
     c.post("/api/vitals", json={"type": "peak_flow", "value1": 400})

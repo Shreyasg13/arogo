@@ -62,6 +62,20 @@ def test_mmol_reading_is_converted(app):
     assert d["avg_glucose"] == round(8.5 * 18)     # ~153, not a wild number from 8.5
 
 
+def test_genuine_low_reading_not_misconverted(app):
+    # A real hypo (38 mg/dL) among mg/dL readings must NOT be treated as mmol/L
+    # and inflated x18 — the unit is decided from the whole series, not per reading.
+    _, uid = _uid(app, "a1c5@medeasy.test")
+    with user_context(uid):
+        for _ in range(_MIN_READINGS - 1):
+            _sugar(uid, 150)
+        _sugar(uid, 38)                 # a genuine low, in mg/dL
+        d = estimate_a1c()
+    # Mean is ~139 (well above 40) → whole series read as mg/dL; the 38 stays 38.
+    assert d["avg_glucose"] < 160       # not blown up by a 38*18=684 misconversion
+    assert 6 <= d["estimated_a1c"] <= 7
+
+
 def test_api(app):
     c, uid = _uid(app, "a1c4@medeasy.test")
     with user_context(uid):

@@ -52,6 +52,11 @@ def get_bp_home_vs_clinic(days: int = 180) -> dict:
 
 # Morning = on-waking window; evening = before-bed window. Readings outside these
 # (midday/overnight) don't belong to either and are left out of this split.
+# CAVEAT: logged_at is the server-local wall clock at entry time (now_iso()), used
+# here as a proxy for when the reading was taken. On a server whose timezone
+# matches the user's (the intended single-user self-hosted setup) this is accurate;
+# a UTC-hosted server with a distant-timezone user would misbucket. Vitals don't
+# store a user-tz timestamp, so a fully tz-correct split would need a schema change.
 def _slot(logged_at):
     try:
         h = int(str(logged_at)[11:13])
