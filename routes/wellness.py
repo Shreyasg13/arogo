@@ -971,6 +971,22 @@ def api_estimated_a1c():
     days = to_int(request.args.get('days', 90), 90, lo=14, hi=365)
     return jsonify(estimate_a1c(days))
 
+@bp.route('/api/vitals/bp-home-clinic')
+@require_auth
+def api_bp_home_clinic():
+    """Home vs clinic BP (white-coat effect, K4)."""
+    from db.bp_patterns import get_bp_home_vs_clinic
+    days = to_int(request.args.get('days', 180), 180, lo=7, hi=3650)
+    return jsonify(get_bp_home_vs_clinic(days))
+
+@bp.route('/api/vitals/bp-time-pattern')
+@require_auth
+def api_bp_time_pattern():
+    """Morning vs evening BP (K5)."""
+    from db.bp_patterns import get_bp_time_pattern
+    days = to_int(request.args.get('days', 180), 180, lo=7, hi=3650)
+    return jsonify(get_bp_time_pattern(days))
+
 
 # ── Emergency action plans (J3) ─────────────────────────────────────────────
 @bp.route('/api/action-plans', methods=['GET'])

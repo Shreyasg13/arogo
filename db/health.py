@@ -281,12 +281,15 @@ def log_vital(data: dict) -> dict:
         if not math.isfinite(value2):
             raise ValueError('Reading must be a number')
     _check_vital_range(vtype, value1, value2)
-    # Meal context only carries meaning for blood_sugar; ignore it elsewhere so a
-    # stray tag can't attach itself to a BP reading.
+    # Context is type-specific: a meal tag for blood_sugar, a home/clinic tag for
+    # blood_pressure (K4). Anything else is ignored so a stray tag can't attach
+    # itself to the wrong reading.
     context = ''
+    c = str(data.get('context', '') or '').strip().lower()
     if vtype == 'blood_sugar':
-        c = str(data.get('context', '') or '').strip().lower()
         context = c if c in GLUCOSE_CONTEXTS else ''
+    elif vtype == 'blood_pressure':
+        context = c if c in ('home', 'clinic') else ''
     # Validate the date, like log_sleep/log_body_metric do: an unchecked date_key
     # both orphans the reading on a non-navigable day AND (before escaping was
     # added downstream) let arbitrary text reach a render sink. Bad input files

@@ -6033,6 +6033,17 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   .mexp-body { color: #FCD34D; }
 }
 
+/* BP comparison cards (K4 home/clinic, K5 morning/evening). */
+.bpc-panel { padding: 16px 18px; margin-bottom: 14px; }
+.bpc-cols { display: flex; align-items: center; gap: 8px; }
+.bpc-col { flex: 1; text-align: center; }
+.bpc-side { font-size: 12.5px; font-weight: 600; color: var(--gray-600); margin-bottom: 4px; }
+.bpc-val { font-size: 26px; font-weight: 800; color: var(--gray-900); line-height: 1; }
+.bpc-meta { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+.bpc-vs { font-size: 12px; color: var(--gray-400); font-weight: 600; }
+.bpc-note { margin-top: 12px; font-size: 12.5px; line-height: 1.55; color: var(--gray-600);
+  background: var(--gray-50); border-radius: 10px; padding: 9px 12px; }
+
 /* Estimated HbA1c (K2). */
 .a1c-panel { display: flex; gap: 18px; align-items: center; padding: 16px 18px; margin-bottom: 14px; flex-wrap: wrap; }
 .a1c-main { text-align: center; flex-shrink: 0; }

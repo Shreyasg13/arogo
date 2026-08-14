@@ -232,6 +232,14 @@ const I18N = {
     'Your typical range for each vital, from your own readings — a companion to the general reference ranges.':
       'हर वाइटल के लिए आपकी सामान्य सीमा, आपकी अपनी रीडिंग से — सामान्य संदर्भ सीमाओं का साथी।',
     'Systolic BP': 'सिस्टोलिक रक्तचाप', 'Resting heart rate': 'विश्राम हृदय गति',
+    'Where taken? (optional)': 'कहाँ लिया? (वैकल्पिक)', 'At home': 'घर', 'Clinic': 'क्लिनिक',
+    'Home vs clinic BP': 'घर बनाम क्लिनिक रक्तचाप', 'Morning vs evening BP': 'सुबह बनाम शाम रक्तचाप',
+    'by time logged': 'दर्ज समय के अनुसार', 'Morning': 'सुबह', 'Evening': 'शाम',
+    'Your clinic readings run about %1 mmHg higher than at home — a possible white-coat effect worth mentioning to your doctor.':
+      'आपकी क्लिनिक रीडिंग घर की तुलना में लगभग %1 mmHg अधिक हैं — संभावित व्हाइट-कोट प्रभाव, अपने डॉक्टर को बताना उचित।',
+    'Home and clinic differ by about %1 mmHg (systolic).': 'घर और क्लिनिक में लगभग %1 mmHg (सिस्टोलिक) का अंतर है।',
+    'Your morning and evening readings are similar.': 'आपकी सुबह और शाम की रीडिंग समान हैं।',
+    '%1 systolic runs about %2 mmHg higher.': '%1 सिस्टोलिक लगभग %2 mmHg अधिक है।',
     'estimated HbA1c': 'अनुमानित HbA1c', 'avg glucose %1 mg/dL': 'औसत ग्लूकोज %1 mg/dL',
     'from %1 readings · %2 days': '%1 रीडिंग · %2 दिन से',
     'A rough estimate from your logged readings, not a lab test. Discuss the real number with your doctor.':
@@ -5723,6 +5731,52 @@ async function removeMedPhoto(mid) {
   loadMedicines();
 }
 
+// K4/K5: two-group BP comparison cards (home vs clinic; morning vs evening).
+function _bpCompareCard(title, badge, a, b, note) {
+  const fmt = g => g.diastolic != null ? `${g.systolic}/${g.diastolic}` : `${g.systolic}`;
+  return `<div class="panel bpc-panel">
+      <div class="panel-header"><h2 class="panel-title">${title}</h2>
+        ${badge ? `<span class="panel-badge">${badge}</span>` : ''}</div>
+      <div class="bpc-cols">
+        <div class="bpc-col"><div class="bpc-side">${a.label}</div>
+          <div class="bpc-val">${fmt(a.data)}</div>
+          <div class="bpc-meta">${tformat('%1 readings', a.data.count)}</div></div>
+        <div class="bpc-vs">vs</div>
+        <div class="bpc-col"><div class="bpc-side">${b.label}</div>
+          <div class="bpc-val">${fmt(b.data)}</div>
+          <div class="bpc-meta">${tformat('%1 readings', b.data.count)}</div></div>
+      </div>
+      ${note ? `<div class="bpc-note">${note}</div>` : ''}
+    </div>`;
+}
+
+async function loadBpHomeClinic() {
+  const el = document.getElementById('bp-home-clinic-section');
+  if (!el) return;
+  const d = await fetch('/api/vitals/bp-home-clinic?days=180', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const note = d.white_coat
+    ? `⚠️ ${tformat('Your clinic readings run about %1 mmHg higher than at home — a possible white-coat effect worth mentioning to your doctor.', d.systolic_gap)}`
+    : tformat('Home and clinic differ by about %1 mmHg (systolic).', Math.abs(d.systolic_gap));
+  el.innerHTML = _bpCompareCard('🏠🏥 ' + t('Home vs clinic BP'), t('last 6 months'),
+    {label: '🏠 ' + t('At home'), data: d.home}, {label: '🏥 ' + t('Clinic'), data: d.clinic}, note);
+}
+
+async function loadBpTimePattern() {
+  const el = document.getElementById('bp-time-pattern-section');
+  if (!el) return;
+  const d = await fetch('/api/vitals/bp-time-pattern?days=180', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data) { el.innerHTML = ''; return; }
+  const g = d.systolic_gap;
+  const note = Math.abs(g) < 5
+    ? t('Your morning and evening readings are similar.')
+    : tformat('%1 systolic runs about %2 mmHg higher.', g > 0 ? t('Morning') : t('Evening'), Math.abs(g));
+  el.innerHTML = _bpCompareCard('🌅🌆 ' + t('Morning vs evening BP'), t('by time logged'),
+    {label: '🌅 ' + t('Morning'), data: d.morning}, {label: '🌆 ' + t('Evening'), data: d.evening}, note);
+}
+
 // K2: estimated HbA1c from logged glucose (ADAG formula). An estimate from your
 // own readings — never a lab result. Shown only with enough readings.
 async function loadEstimatedA1c() {
@@ -10339,7 +10393,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); loadEstimatedA1c(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); loadEstimatedA1c(); loadBpHomeClinic(); loadBpTimePattern(); }
   if (tab === 'emergency') { loadEmergencyCard(); loadActionPlans(); }
   if (tab === 'appointments') loadAppointments();
 }
@@ -10890,12 +10944,20 @@ function renderVitalFields() {
   // A glucose number means little without knowing when it was taken — a fasting
   // 95 and a post-meal 95 are read very differently. Ask, so the logbook can
   // group readings the way a clinician would.
-  const ctxHtml = selectedVitalType === 'blood_sugar'
+  let ctxHtml = selectedVitalType === 'blood_sugar'
     ? `<div class="form-group" style="margin-bottom:8px"><label class="form-label">${t('When was this taken?')}</label>
         <div class="gl-ctx-chips">` +
         GLUCOSE_CTX.map(c => `<button type="button" class="gl-ctx-chip${c.id===selectedGlucoseContext?' selected':''}" data-ctx="${c.id}" data-ev-click="selectGlucoseContext('${c.id}')">${t(c.label)}</button>`).join('') +
       `</div></div>`
     : '';
+  // K4: where was the BP taken? Tag home/clinic so the white-coat comparison works.
+  if (selectedVitalType === 'blood_pressure') {
+    ctxHtml = `<div class="form-group" style="margin-bottom:8px"><label class="form-label">${t('Where taken? (optional)')}</label>
+      <div class="gl-ctx-chips">
+        <button type="button" class="gl-ctx-chip${selectedBpContext==='home'?' selected':''}" data-ev-click="selectBpContext('home')">🏠 ${t('At home')}</button>
+        <button type="button" class="gl-ctx-chip${selectedBpContext==='clinic'?' selected':''}" data-ev-click="selectBpContext('clinic')">🏥 ${t('Clinic')}</button>
+      </div></div>`;
+  }
   el.innerHTML = `<div class="form-row" style="margin-bottom:8px">` +
     cfg.fields.map(f => `<div class="form-group"><label class="form-label">${f.label}</label>
       <input type="number" class="form-input" id="${f.id}" placeholder="${f.ph}" step="0.1"></div>`).join('') +
@@ -10906,6 +10968,13 @@ function renderVitalFields() {
 function selectGlucoseContext(ctx) {
   selectedGlucoseContext = ctx;
   document.querySelectorAll('.gl-ctx-chip').forEach(b => b.classList.toggle('selected', b.dataset.ctx === ctx));
+}
+
+let selectedBpContext = '';
+function selectBpContext(ctx) {
+  // Toggle off if the same chip is tapped again — location is optional.
+  selectedBpContext = (selectedBpContext === ctx) ? '' : ctx;
+  renderVitalFields();
 }
 
 const GL_FLAG_COLOR = { above:'#EF4444', below:'#3B82F6', in:'#22C55E' };
@@ -10960,7 +11029,8 @@ async function logVital() {
     // path sends localToday(); this one didn't.
     body: JSON.stringify({ type:selectedVitalType, value1:v1, value2:v2||null,
       unit:cfg.unit, date_key: localToday(),
-      context: selectedVitalType === 'blood_sugar' ? selectedGlucoseContext : '',
+      context: selectedVitalType === 'blood_sugar' ? selectedGlucoseContext
+             : selectedVitalType === 'blood_pressure' ? selectedBpContext : '',
       notes:document.getElementById('vital-notes')?.value||'' })
   }).then(r => r.json());
   if (r.success) {
@@ -10969,6 +11039,7 @@ async function logVital() {
     if (document.getElementById('vf2')) document.getElementById('vf2').value = '';
     loadVitals();
     if (selectedVitalType === 'blood_sugar') loadGlucoseLogbook();
+    if (selectedVitalType === 'blood_pressure') { loadBpHomeClinic(); loadBpTimePattern(); }
   } else {
     showToast(r.error || 'Could not save reading', 'error');
   }
