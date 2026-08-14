@@ -820,15 +820,23 @@
   <!-- VITALS -->
   <div id="med-tab-vitals" class="wellness-tab-content" style="display:none;margin-top:16px">
     <div id="vitals-anomaly-panel"></div>
-    <div id="peak-flow-section"></div>
-    <div id="bp-home-clinic-section"></div>
-    <div id="bp-time-pattern-section"></div>
-    <div id="personal-baselines-section"></div>
-    <div id="vital-categories-panel"></div>
-    <div id="calculators-panel"></div>
-    <div id="correlation-explorer"></div>
-    <div id="vital-targets-panel"></div>
     <div id="vital-sparks"></div>
+    <div class="insights-collapse" id="vitals-insights-collapse">
+      <button class="insights-head" type="button" data-ev-click="toggleInsightsGroup('vitals-insights')" aria-expanded="false">
+        <span data-i18n="📊 Vitals trends &amp; analysis">📊 Vitals trends &amp; analysis</span>
+        <svg class="insights-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="insights-body">
+        <div id="peak-flow-section" style="margin-top:14px"></div>
+        <div id="bp-home-clinic-section"></div>
+        <div id="bp-time-pattern-section"></div>
+        <div id="personal-baselines-section"></div>
+        <div id="vital-categories-panel"></div>
+        <div id="calculators-panel"></div>
+        <div id="correlation-explorer"></div>
+        <div id="vital-targets-panel"></div>
+      </div>
+    </div>
     <div class="vitals-layout">
       <div class="vitals-log-panel">
         <div class="panel">
@@ -1088,33 +1096,27 @@
   <div id="pill-burden-section" style="margin-bottom:14px"></div>
   <div id="medicines-grid" class="medicines-grid"></div>
 
-  <!-- I5: New-medication side-effect watch (timing, not causation) -->
+  <!-- Core adherence story — kept visible -->
   <div id="new-med-watch-section" style="margin-top:20px"></div>
-
-  <!-- J4: PRN / rescue-med frequency -->
-  <div id="prn-frequency-section" style="margin-top:20px"></div>
-
-  <!-- J5: "Is it working?" effectiveness log -->
-  <div id="effectiveness-section" style="margin-top:20px"></div>
-
-  <!-- Adherence goal + month-end forecast -->
   <div id="adherence-forecast-section" style="margin-top:24px"></div>
-
-  <!-- Which doses you miss most -->
   <div id="med-missed-section" style="margin-top:24px"></div>
 
-  <!-- Adherence by part of day -->
-  <div id="med-tod-section" style="margin-top:24px"></div>
-  <div id="med-weekday-section" style="margin-top:24px"></div>
-
-  <!-- Reminder responsiveness -->
-  <div id="responsiveness-section" style="margin-top:24px"></div>
-
-  <!-- Why doses get skipped -->
-  <div id="med-skip-section" style="margin-top:24px"></div>
-
-  <!-- Dose calendar -->
-  <div id="med-calendar-section" style="margin-top:24px"></div>
+  <!-- Deeper analytics, collapsed by default (consolidation) -->
+  <div class="insights-collapse" id="med-insights-collapse">
+    <button class="insights-head" type="button" data-ev-click="toggleInsightsGroup('med-insights')" aria-expanded="false">
+      <span data-i18n="📊 More insights &amp; trends">📊 More insights &amp; trends</span>
+      <svg class="insights-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="insights-body">
+      <div id="prn-frequency-section" style="margin-top:16px"></div>
+      <div id="effectiveness-section" style="margin-top:20px"></div>
+      <div id="med-tod-section" style="margin-top:20px"></div>
+      <div id="med-weekday-section" style="margin-top:20px"></div>
+      <div id="responsiveness-section" style="margin-top:20px"></div>
+      <div id="med-skip-section" style="margin-top:20px"></div>
+      <div id="med-calendar-section" style="margin-top:20px"></div>
+    </div>
+  </div>
 
   <!-- Adherence streaks — BOTTOM ↓ -->
   <div id="med-streaks-section" style="margin-top:24px"></div>

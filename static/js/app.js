@@ -163,6 +163,8 @@ const I18N = {
     'Quiet hours': 'शांत घंटे', 'Daily journal reminder': 'दैनिक डायरी रिमाइंडर',
     'Download everything': 'सब कुछ डाउनलोड करें', '💾 Backup & restore': '💾 बैकअप व पुनर्स्थापना',
     '📅 Add to your calendar': '📅 अपने कैलेंडर में जोड़ें',
+    '📊 More insights & trends': '📊 और अंतर्दृष्टि व रुझान',
+    '📊 Vitals trends & analysis': '📊 वाइटल्स रुझान व विश्लेषण',
     'Download an .ics file of your dose times, upcoming appointments and lab rechecks, then open it to add them to Google, Apple or Outlook calendar.':
       'अपनी दवा के समय, आगामी अपॉइंटमेंट और लैब पुनःजाँच की .ics फ़ाइल डाउनलोड करें, फिर उसे खोलकर Google, Apple या Outlook कैलेंडर में जोड़ें।',
     'Download calendar (.ics)': 'कैलेंडर डाउनलोड करें (.ics)',
@@ -3187,6 +3189,27 @@ async function loadWeekOverWeek() {
     </div>`;
 }
 
+// Consolidation: collapsible "insights" groups. State is remembered per group so
+// a user who opens the deep analytics keeps them open. Collapsed by default keeps
+// the core view (schedule, cards, log form) uncluttered.
+function toggleInsightsGroup(key) {
+  const wrap = document.getElementById(key + '-collapse');
+  if (!wrap) return;
+  const open = wrap.classList.toggle('open');
+  const btn = wrap.querySelector('.insights-head');
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  try { localStorage.setItem('me_collapse_' + key, open ? '1' : '0'); } catch (e) {}
+}
+function _applyCollapseState(key) {
+  const wrap = document.getElementById(key + '-collapse');
+  if (!wrap) return;
+  let open = false;
+  try { open = localStorage.getItem('me_collapse_' + key) === '1'; } catch (e) {}
+  wrap.classList.toggle('open', open);
+  const btn = wrap.querySelector('.insights-head');
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
 // ── Dashboard ──
 async function loadDashboard() {
   try { checkFirstRun(); }      catch (e) {}
@@ -4923,6 +4946,7 @@ async function loadMedicines() {
   loadNewMedWatch();
   loadExpiringMeds();
   loadPillBurden();
+  _applyCollapseState('med-insights');
   loadPrnFrequency();
   loadEffectiveness();
   loadResponsiveness();
@@ -10393,7 +10417,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); loadEstimatedA1c(); loadBpHomeClinic(); loadBpTimePattern(); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); loadEstimatedA1c(); loadBpHomeClinic(); loadBpTimePattern(); _applyCollapseState('vitals-insights'); }
   if (tab === 'emergency') { loadEmergencyCard(); loadActionPlans(); }
   if (tab === 'appointments') loadAppointments();
 }

@@ -6033,6 +6033,20 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   .mexp-body { color: #FCD34D; }
 }
 
+/* Collapsible "insights" groups (consolidation) — keep deep analytics tucked
+   away by default so the core view stays uncluttered. */
+.insights-collapse { margin-top: 20px; border-top: 1px solid var(--gray-150); }
+.insights-head {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; background: none; border: none; cursor: pointer; font-family: inherit;
+  padding: 14px 2px; font-size: 14px; font-weight: 700; color: var(--gray-700);
+}
+.insights-head:hover { color: var(--teal-700); }
+.insights-chev { transition: transform .2s ease; flex-shrink: 0; color: var(--gray-400); }
+.insights-collapse.open .insights-chev { transform: rotate(180deg); }
+.insights-body { display: none; }
+.insights-collapse.open .insights-body { display: block; }
+
 /* BP comparison cards (K4 home/clinic, K5 morning/evening). */
 .bpc-panel { padding: 16px 18px; margin-bottom: 14px; }
 .bpc-cols { display: flex; align-items: center; gap: 8px; }
