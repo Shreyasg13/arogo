@@ -165,6 +165,8 @@ const I18N = {
     '📅 Add to your calendar': '📅 अपने कैलेंडर में जोड़ें',
     '📊 More insights & trends': '📊 और अंतर्दृष्टि व रुझान',
     '📊 Vitals trends & analysis': '📊 वाइटल्स रुझान व विश्लेषण',
+    'Medications': 'दवाइयाँ', 'Records & vitals': 'रिकॉर्ड व वाइटल्स',
+    'Care & family': 'देखभाल व परिवार', 'Lifestyle': 'जीवनशैली', 'More': 'अधिक',
     'Download an .ics file of your dose times, upcoming appointments and lab rechecks, then open it to add them to Google, Apple or Outlook calendar.':
       'अपनी दवा के समय, आगामी अपॉइंटमेंट और लैब पुनःजाँच की .ics फ़ाइल डाउनलोड करें, फिर उसे खोलकर Google, Apple या Outlook कैलेंडर में जोड़ें।',
     'Download calendar (.ics)': 'कैलेंडर डाउनलोड करें (.ics)',
@@ -2543,6 +2545,7 @@ function switchView(view) {
   if (viewEl) viewEl.classList.add('active');
   document.querySelectorAll('[data-view="' + view + '"]')
     .forEach(n => n.classList.add('active'));
+  try { _applyNavGroups(); } catch (e) {}   // keep the active view's nav group open
   closeMobileMore();   // navigating always dismisses the mobile sheet
 
   if (view === 'dashboard')     { loadDashboard(); loadWellnessStrip(); }
@@ -3208,6 +3211,46 @@ function _applyCollapseState(key) {
   wrap.classList.toggle('open', open);
   const btn = wrap.querySelector('.insights-head');
   if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+// Sidebar nav grouping — collapsible sections so a 30-item sidebar scans easily.
+function toggleNavGroup(key) {
+  const g = document.querySelector('.nav-group[data-group="' + key + '"]');
+  if (!g) return;
+  const collapsed = g.classList.toggle('collapsed');
+  try { localStorage.setItem('me_nav_' + key, collapsed ? '1' : '0'); } catch (e) {}
+}
+function _applyNavGroups() {
+  document.querySelectorAll('.nav-group').forEach(g => {
+    let collapsed = false;
+    try { collapsed = localStorage.getItem('me_nav_' + g.dataset.group) === '1'; } catch (e) {}
+    g.classList.toggle('collapsed', collapsed);
+  });
+  // The group holding the current view is always expanded so the active item shows.
+  const active = document.querySelector('.nav-item.active');
+  const g = active && active.closest('.nav-group');
+  if (g) g.classList.remove('collapsed');
+}
+
+// Auto-hide an insights group's header until at least one of its panels has
+// content — so a brand-new user with no data doesn't see an empty section.
+// Panels fill asynchronously, so a MutationObserver keeps the header in sync.
+function _refreshInsightGroup(wrap) {
+  const body = wrap.querySelector('.insights-body');
+  if (!body) return;
+  const hasContent = [...body.children].some(c => c.innerHTML.trim() !== '');
+  wrap.classList.toggle('empty-hidden', !hasContent);
+}
+function _watchInsightGroups() {
+  document.querySelectorAll('.insights-collapse').forEach(wrap => {
+    _refreshInsightGroup(wrap);
+    if (wrap._insightObs) return;   // observer already attached
+    const body = wrap.querySelector('.insights-body');
+    if (!body) return;
+    const obs = new MutationObserver(() => _refreshInsightGroup(wrap));
+    obs.observe(body, { childList: true, subtree: true, characterData: true });
+    wrap._insightObs = obs;
+  });
 }
 
 // ── Dashboard ──
@@ -4947,6 +4990,7 @@ async function loadMedicines() {
   loadExpiringMeds();
   loadPillBurden();
   _applyCollapseState('med-insights');
+  _watchInsightGroups();
   loadPrnFrequency();
   loadEffectiveness();
   loadResponsiveness();
@@ -10417,7 +10461,7 @@ function switchMedTab(tab) {
     c.style.display = c.id === `med-tab-${tab}` ? '' : 'none';
   });
   if (tab === 'symptoms') { renderRegionChips(); loadSymptoms(); loadSymptomPatterns(); loadSymptomBodyMap(); }
-  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); loadEstimatedA1c(); loadBpHomeClinic(); loadBpTimePattern(); _applyCollapseState('vitals-insights'); }
+  if (tab === 'vitals')   { loadVitals(); renderVitalFields(); loadMeasurementReminders(); loadVitalSparks(); loadVitalTargets(); loadGlucoseLogbook(); loadVitalsAnomalies(); loadVitalCategories(); loadCalculators(); loadCorrelationExplorer(); loadPeakFlow(); loadPersonalBaselines(); loadEstimatedA1c(); loadBpHomeClinic(); loadBpTimePattern(); _applyCollapseState('vitals-insights'); _watchInsightGroups(); }
   if (tab === 'emergency') { loadEmergencyCard(); loadActionPlans(); }
   if (tab === 'appointments') loadAppointments();
 }

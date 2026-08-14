@@ -31,6 +31,17 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .logo-sub { font-size:10px; color:rgba(255,255,255,.35); letter-spacing:.08em; text-transform:uppercase; margin-top:1px; }
 .sidebar-nav { display:flex; flex-direction:column; gap:1px; padding:16px 12px; flex:1; overflow-y:auto; }
 .nav-section-label { font-size:10px; font-weight:600; color:rgba(255,255,255,.25); letter-spacing:.1em; text-transform:uppercase; padding:12px 8px 6px; }
+/* Collapsible nav groups — tame a 30-item sidebar into scannable sections. */
+.nav-group-head { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px;
+  background:none; border:none; cursor:pointer; font-family:inherit; text-align:left;
+  font-size:10px; font-weight:600; color:rgba(255,255,255,.28); letter-spacing:.1em;
+  text-transform:uppercase; padding:12px 8px 6px; }
+.nav-group-head:hover { color:rgba(255,255,255,.55); }
+.nav-group-chev { color:rgba(255,255,255,.3); transition:transform .2s ease; flex-shrink:0; }
+.nav-group.collapsed .nav-group-chev { transform:rotate(-90deg); }
+.nav-group.collapsed .nav-group-items { display:none; }
+:root[data-mode="simple"] .sidebar-nav .nav-group-head { display:none; }
+:root[data-mode="simple"] .sidebar-nav .nav-group.collapsed .nav-group-items { display:block; }
 .nav-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:var(--r-md); color:rgba(255,255,255,.45); text-decoration:none; font-size:13.5px; font-weight:400; transition:all .15s; position:relative; }
 .nav-item:hover { color:rgba(255,255,255,.85); background:rgba(255,255,255,.05); }
 .nav-item.active { color:#fff; background:rgba(79,141,116,.3); }
@@ -6046,6 +6057,8 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .insights-collapse.open .insights-chev { transform: rotate(180deg); }
 .insights-body { display: none; }
 .insights-collapse.open .insights-body { display: block; }
+/* Hidden entirely until at least one panel inside has content. */
+.insights-collapse.empty-hidden { display: none; }
 
 /* BP comparison cards (K4 home/clinic, K5 morning/evening). */
 .bpc-panel { padding: 16px 18px; margin-bottom: 14px; }

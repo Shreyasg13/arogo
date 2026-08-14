@@ -190,144 +190,182 @@
   </div>
 
   <nav class="sidebar-nav">
-    <div class="nav-section-label">Overview</div>
     <a href="#" class="nav-item active" data-view="dashboard" data-essential>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
       <span data-i18n="Dashboard">Dashboard</span>
     </a>
 
-    <div class="nav-section-label" data-i18n="Care">Care</div>
-    <a href="#" class="nav-item nav-item--primary" data-view="medicines" data-essential>
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20H4a2 2 0 01-2-2V6a2 2 0 012-2h16a2 2 0 012 2v5"/><circle cx="18" cy="18" r="4"/><path d="M18 16v4M16 18h4"/></svg>
-      <span data-i18n="Medicines">Medicines</span>
-      <span class="nav-badge" id="nav-dose-badge" style="display:none"></span>
-    </a>
-    <a href="#" class="nav-item" data-view="reports" data-essential>
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-      <span data-i18n="Medical">Medical</span>
-    </a>
-    <a href="#" class="nav-item" data-view="body">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-      <span data-i18n="Body &amp; Vitals">Body &amp; Vitals</span>
-    </a>
-    <a href="#" class="nav-item" data-view="labs">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6l-5 9a2 2 0 001.75 3h12.5A2 2 0 0020 17l-5-9V2"/><path d="M8 2h8"/><path d="M7.5 14h9"/></svg>
-      <span data-i18n="Lab results">Lab results</span>
-    </a>
-    <a href="#" class="nav-item" data-view="conditions">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      <span data-i18n="My conditions">My conditions</span>
-    </a>
-    <a href="#" class="nav-item" data-view="immunizations">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2l4 4-9 9-4-4z"/><path d="M9 11l-6 6a2.8 2.8 0 004 4l6-6"/><path d="M12 8l4 4"/></svg>
-      <span data-i18n="Vaccines">Vaccines</span>
-    </a>
-    <a href="#" class="nav-item" data-view="timeline">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="12" cy="20" r="2"/></svg>
-      <span data-i18n="Timeline">Timeline</span>
-    </a>
-    <a href="#" class="nav-item" data-view="goals">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
-      <span data-i18n="Goals">Goals</span>
-    </a>
-    <a href="#" class="nav-item" data-view="fasting">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-      <span data-i18n="Fasting">Fasting</span>
-    </a>
-    <a href="#" class="nav-item" data-view="health-id">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M13 10h5M13 14h5M5 15.5c.6-1.4 4-1.4 4.6 0"/></svg>
-      <span data-i18n="Health ID">Health ID</span>
-    </a>
-    <a href="#" class="nav-item" data-view="care-plan">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      <span data-i18n="Care plan">Care plan</span>
-    </a>
-    <a href="#" class="nav-item" data-view="care-team">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-      <span data-i18n="Care team">Care team</span>
-    </a>
-    <a href="#" class="nav-item" data-view="prescriptions">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
-      <span data-i18n="Prescriptions">Prescriptions</span>
-    </a>
-    <a href="#" class="nav-item" data-view="claims">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/></svg>
-      <span data-i18n="Claims">Claims</span>
-    </a>
-    <a href="#" class="nav-item" data-view="allergies">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      <span data-i18n="Allergies">Allergies</span>
-    </a>
-    <a href="#" class="nav-item" data-view="upcoming">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      <span data-i18n="Upcoming">Upcoming</span>
-    </a>
-    <a href="#" class="nav-item" data-view="meal-plan">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 002-2V2M4 2v20M11 2v20M18 2c-1.5 0-3 1.5-3 5s1.5 5 3 5v10"/></svg>
-      <span data-i18n="Meal plan">Meal plan</span>
-    </a>
-    <a href="#" class="nav-item" data-view="taper">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7L2 7M18 12L6 12M14 17L10 17"/></svg>
-      <span data-i18n="Dose taper">Dose taper</span>
-    </a>
-    <a href="#" class="nav-item" data-view="med-budget">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-      <span data-i18n="Med budget">Med budget</span>
-    </a>
-    <a href="#" class="nav-item" data-view="spending">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-      <span data-i18n="Spending">Spending</span>
-    </a>
-    <a href="#" class="nav-item" data-view="family" data-essential>
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-      <span data-i18n="Family">Family</span>
-    </a>
-    <a href="#" class="nav-item" data-view="dependents">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a4 4 0 100-8 4 4 0 000 8z"/><path d="M17 11a3 3 0 100-6 3 3 0 000 6z"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg>
-      <span data-i18n="People I care for">People I care for</span>
-    </a>
+    <div class="nav-group" data-group="meds">
+      <button class="nav-group-head" type="button" data-ev-click="toggleNavGroup('meds')">
+        <span data-i18n="Medications">Medications</span>
+        <svg class="nav-group-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-group-items">
+        <a href="#" class="nav-item nav-item--primary" data-view="medicines" data-essential>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20H4a2 2 0 01-2-2V6a2 2 0 012-2h16a2 2 0 012 2v5"/><circle cx="18" cy="18" r="4"/><path d="M18 16v4M16 18h4"/></svg>
+          <span data-i18n="Medicines">Medicines</span>
+          <span class="nav-badge" id="nav-dose-badge" style="display:none"></span>
+        </a>
+        <a href="#" class="nav-item" data-view="prescriptions">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+          <span data-i18n="Prescriptions">Prescriptions</span>
+        </a>
+        <a href="#" class="nav-item" data-view="taper">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7L2 7M18 12L6 12M14 17L10 17"/></svg>
+          <span data-i18n="Dose taper">Dose taper</span>
+        </a>
+        <a href="#" class="nav-item" data-view="med-budget">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span data-i18n="Med budget">Med budget</span>
+        </a>
+      </div>
+    </div>
 
-    <div class="nav-section-label" data-i18n="Track">Track</div>
-    <a href="#" class="nav-item" data-view="food" data-essential>
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
-      <span data-i18n="Food &amp; Water">Food &amp; Water</span>
-    </a>
-    <a href="#" class="nav-item" data-view="fitness">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span data-i18n="Fitness">Fitness</span>
-    </a>
-    <a href="#" class="nav-item" data-view="strength">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M21 21l-1-1M3 3l1 1M18 22l4-4M2 6l4-4M2 18l4 4M18 2l4 4"/></svg>
-      <span data-i18n="Strength">Strength</span>
-    </a>
-    <a href="#" class="nav-item" data-view="sleep">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-      <span data-i18n="Sleep">Sleep</span>
-    </a>
+    <div class="nav-group" data-group="records">
+      <button class="nav-group-head" type="button" data-ev-click="toggleNavGroup('records')">
+        <span data-i18n="Records &amp; vitals">Records &amp; vitals</span>
+        <svg class="nav-group-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-group-items">
+        <a href="#" class="nav-item" data-view="reports" data-essential>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span data-i18n="Medical">Medical</span>
+        </a>
+        <a href="#" class="nav-item" data-view="body">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          <span data-i18n="Body &amp; Vitals">Body &amp; Vitals</span>
+        </a>
+        <a href="#" class="nav-item" data-view="labs">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6l-5 9a2 2 0 001.75 3h12.5A2 2 0 0020 17l-5-9V2"/><path d="M8 2h8"/><path d="M7.5 14h9"/></svg>
+          <span data-i18n="Lab results">Lab results</span>
+        </a>
+        <a href="#" class="nav-item" data-view="conditions">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span data-i18n="My conditions">My conditions</span>
+        </a>
+        <a href="#" class="nav-item" data-view="immunizations">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2l4 4-9 9-4-4z"/><path d="M9 11l-6 6a2.8 2.8 0 004 4l6-6"/><path d="M12 8l4 4"/></svg>
+          <span data-i18n="Vaccines">Vaccines</span>
+        </a>
+        <a href="#" class="nav-item" data-view="allergies">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span data-i18n="Allergies">Allergies</span>
+        </a>
+        <a href="#" class="nav-item" data-view="timeline">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="12" cy="20" r="2"/></svg>
+          <span data-i18n="Timeline">Timeline</span>
+        </a>
+      </div>
+    </div>
 
-    <div class="nav-section-label">More</div>
-    <a href="#" class="nav-item" data-view="habits">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      <span data-i18n="Habits">Habits</span>
-    </a>
-    <a href="#" class="nav-item" data-view="thoughts">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      <span data-i18n="Journal">Journal</span>
-    </a>
-    <a href="#" class="nav-item" data-view="todos">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      <span data-i18n="Tasks">Tasks</span>
-      <span class="nav-badge" id="nav-todo-badge" style="display:none"></span>
-    </a>
-    <a href="#" class="nav-item" data-view="progress">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      <span data-i18n="Progress">Progress</span>
-    </a>
-    <a href="#" class="nav-item" data-view="notifications">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-      <span data-i18n="Notifications">Notifications</span>
-      <span class="nav-badge" id="nav-notif-badge" style="display:none"></span>
-    </a>
+    <div class="nav-group" data-group="care">
+      <button class="nav-group-head" type="button" data-ev-click="toggleNavGroup('care')">
+        <span data-i18n="Care &amp; family">Care &amp; family</span>
+        <svg class="nav-group-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-group-items">
+        <a href="#" class="nav-item" data-view="upcoming">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span data-i18n="Upcoming">Upcoming</span>
+        </a>
+        <a href="#" class="nav-item" data-view="care-plan">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span data-i18n="Care plan">Care plan</span>
+        </a>
+        <a href="#" class="nav-item" data-view="care-team">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span data-i18n="Care team">Care team</span>
+        </a>
+        <a href="#" class="nav-item" data-view="family" data-essential>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          <span data-i18n="Family">Family</span>
+        </a>
+        <a href="#" class="nav-item" data-view="dependents">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a4 4 0 100-8 4 4 0 000 8z"/><path d="M17 11a3 3 0 100-6 3 3 0 000 6z"/><path d="M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2"/><path d="M22 21v-2a4 4 0 00-3-3.87"/></svg>
+          <span data-i18n="People I care for">People I care for</span>
+        </a>
+        <a href="#" class="nav-item" data-view="claims">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"/></svg>
+          <span data-i18n="Claims">Claims</span>
+        </a>
+        <a href="#" class="nav-item" data-view="health-id">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M13 10h5M13 14h5M5 15.5c.6-1.4 4-1.4 4.6 0"/></svg>
+          <span data-i18n="Health ID">Health ID</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="lifestyle">
+      <button class="nav-group-head" type="button" data-ev-click="toggleNavGroup('lifestyle')">
+        <span data-i18n="Lifestyle">Lifestyle</span>
+        <svg class="nav-group-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-group-items">
+        <a href="#" class="nav-item" data-view="food" data-essential>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+          <span data-i18n="Food &amp; Water">Food &amp; Water</span>
+        </a>
+        <a href="#" class="nav-item" data-view="meal-plan">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 002-2V2M4 2v20M11 2v20M18 2c-1.5 0-3 1.5-3 5s1.5 5 3 5v10"/></svg>
+          <span data-i18n="Meal plan">Meal plan</span>
+        </a>
+        <a href="#" class="nav-item" data-view="fitness">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <span data-i18n="Fitness">Fitness</span>
+        </a>
+        <a href="#" class="nav-item" data-view="strength">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11M21 21l-1-1M3 3l1 1M18 22l4-4M2 6l4-4M2 18l4 4M18 2l4 4"/></svg>
+          <span data-i18n="Strength">Strength</span>
+        </a>
+        <a href="#" class="nav-item" data-view="sleep">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          <span data-i18n="Sleep">Sleep</span>
+        </a>
+        <a href="#" class="nav-item" data-view="goals">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <span data-i18n="Goals">Goals</span>
+        </a>
+        <a href="#" class="nav-item" data-view="fasting">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span data-i18n="Fasting">Fasting</span>
+        </a>
+        <a href="#" class="nav-item" data-view="habits">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <span data-i18n="Habits">Habits</span>
+        </a>
+        <a href="#" class="nav-item" data-view="thoughts">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span data-i18n="Journal">Journal</span>
+        </a>
+        <a href="#" class="nav-item" data-view="todos">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span data-i18n="Tasks">Tasks</span>
+          <span class="nav-badge" id="nav-todo-badge" style="display:none"></span>
+        </a>
+      </div>
+    </div>
+
+    <div class="nav-group" data-group="more">
+      <button class="nav-group-head" type="button" data-ev-click="toggleNavGroup('more')">
+        <span data-i18n="More">More</span>
+        <svg class="nav-group-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="nav-group-items">
+        <a href="#" class="nav-item" data-view="spending">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+          <span data-i18n="Spending">Spending</span>
+        </a>
+        <a href="#" class="nav-item" data-view="progress">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span data-i18n="Progress">Progress</span>
+        </a>
+        <a href="#" class="nav-item" data-view="notifications">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          <span data-i18n="Notifications">Notifications</span>
+          <span class="nav-badge" id="nav-notif-badge" style="display:none"></span>
+        </a>
+      </div>
+    </div>
   </nav>
 
     <!-- Global search overlay -->
