@@ -223,17 +223,19 @@ class TestDoseLogging:
         assert r.status_code == 404
         assert dose_log_count() == 0
 
-    def test_unscheduled_time_is_silently_accepted(self, alice):
-        """API CONTRACT SMELL (documented): logging time='99:99' — or any
-        key the schedule doesn't contain — returns success and writes a row
-        that no view will ever surface. tests/test_api.py even posts the
-        wrong key ('scheduled') and still gets success:true."""
+    def test_malformed_time_is_now_rejected(self, alice):
+        """RESOLVED (was a documented API contract smell): logging time='99:99'
+        used to return success and write a row no view would ever surface. The
+        /log route now validates a HH:MM slot server-side and rejects a
+        malformed time with 400, so junk slots can't accrete and skew the
+        responsiveness / skip-reason scans. A missing or empty time stays
+        lenient (it's inert in the math — see test_api's 'scheduled'-key call)."""
         mid = mk_med(alice)["id"]
         r = alice.post("/api/medicines/%s/log" % mid,
                        json={"date": TODAY, "time": "99:99", "taken": True})
-        assert r.status_code == 200 and r.get_json()["success"]
+        assert r.status_code == 400
         doses = alice.get("/api/medicines/today").get_json()
-        assert all(not d["taken"] for d in doses)   # nothing visibly taken
+        assert all(not d["taken"] for d in doses)   # nothing written
 
     def test_taking_dose_decrements_pill_stock(self, alice):
         """FIXED: taking a dose now consumes stock (pills_per_dose), un-taking

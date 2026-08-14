@@ -1087,7 +1087,11 @@ def get_medicine_detail(mid: str, days: int = 30):
     reason_list = sorted(
         ({'reason': k, 'label': _SKIP_LABEL.get(k, k), 'count': v} for k, v in reasons.items()),
         key=lambda x: -x['count'])
-    history = [e for e in get_medicine_events(days=3650, limit=500)
+    # Whitelist only the fields the modal renders — never ship the internal
+    # row id / medicine_id / user_id in the API payload (the UI doesn't use them
+    # and internal ids must not leave the server).
+    history = [{'kind': e.get('kind'), 'at': e.get('at'), 'detail': e.get('detail') or ''}
+               for e in get_medicine_events(days=3650, limit=500)
                if e.get('medicine_id') == mid][:20]
 
     return {
@@ -1645,10 +1649,16 @@ _FREQ_DOSES = {
 def _days_of_supply(m):
     """Days of stock left for a medicine, or None if it isn't tracking pills.
 
+    As-needed (PRN) meds have no daily consumption rate, so ANY supply-days
+    figure would be invented (the frequency table would silently assume 1/day).
+    Return None for them — the same honesty rule the miss-math already follows.
+
     A day-of-week schedule stretches the supply: a med taken only 2 of 7 days
     lasts ~3.5× longer than the daily rate, so scale the per-day burn by how many
     weekdays it's actually taken — otherwise a weekly med reads as 'low' when it
     has weeks of pills left."""
+    if m.get('frequency') == 'as_needed':
+        return None
     pc = m.get('pill_count')
     if pc is None:
         return None

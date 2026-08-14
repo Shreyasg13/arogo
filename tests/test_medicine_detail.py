@@ -102,6 +102,50 @@ def test_backfill_a_past_dose_updates_adherence(app):
     assert after == before + 3
 
 
+def test_prn_with_stock_shows_no_fabricated_supply(app):
+    # Review finding 1: a PRN med that tracks pills must NOT report a
+    # days-of-supply — it has no daily rate, so any figure would be invented.
+    c = _register(app, "meddet6@medeasy.test")
+    m = c.post("/api/medicines", json={
+        "name": "Rescue Inhaler", "frequency": "as_needed"}).get_json()["medicine"]
+    c.post(f"/api/medicines/{m['id']}/stock",
+           json={"pill_count": 30, "pills_per_dose": 1, "refill_threshold": 7})
+    d = c.get(f"/api/medicines/{m['id']}/detail").get_json()
+    assert d["is_prn"] is True
+    assert d["days_of_supply"] is None          # not a fabricated ~30 days
+
+
+def test_log_rejects_future_date_and_bad_time(app):
+    # Review finding 2: the server, not just the client, blocks a future-dated
+    # or malformed dose so it can't consume stock or skew the math.
+    c = _register(app, "meddet7@medeasy.test")
+    m = c.post("/api/medicines", json={
+        "name": "Ramipril", "frequency": "once_daily", "times": ["08:00"]}).get_json()["medicine"]
+    future = (dt.date.today() + dt.timedelta(days=30)).isoformat()
+    r1 = c.post(f"/api/medicines/{m['id']}/log",
+                json={"date": future, "time": "08:00", "taken": True})
+    assert r1.status_code == 400
+    r2 = c.post(f"/api/medicines/{m['id']}/log",
+                json={"date": _days_ago(1), "time": "not-a-time", "taken": True})
+    assert r2.status_code == 400
+    # A valid past-dated backfill still works.
+    r3 = c.post(f"/api/medicines/{m['id']}/log",
+                json={"date": _days_ago(1), "time": "08:00", "taken": True})
+    assert r3.status_code == 200 and r3.get_json()["success"] is True
+
+
+def test_detail_history_carries_no_internal_ids(app):
+    # Review finding 3: the /detail payload must not ship internal row ids.
+    c = _register(app, "meddet8@medeasy.test")
+    m = c.post("/api/medicines", json={
+        "name": "Atorvastatin", "frequency": "once_daily", "times": ["21:00"]}).get_json()["medicine"]
+    d = c.get(f"/api/medicines/{m['id']}/detail").get_json()
+    assert d["history"], "expected at least a 'started' event"
+    for e in d["history"]:
+        assert "id" not in e and "medicine_id" not in e and "user_id" not in e
+        assert set(e.keys()) <= {"kind", "at", "detail"}
+
+
 def test_prn_has_no_adherence_but_shows_history(app):
     c = _register(app, "meddet4@medeasy.test")
     m = c.post("/api/medicines", json={

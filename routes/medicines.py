@@ -240,12 +240,27 @@ def toggle_med(mid):
 @bp.route('/api/medicines/<mid>/log', methods=['POST'])
 @require_auth
 def log_dose_route(mid):
+    import re as _re, datetime as _dt
+    from db.core import valid_date
     data = request.json or {}
     # Default to the USER's day, not the server's, so a client that omits the
     # date lands on the same day get_today_doses() will read it back from.
-    ok = log_dose(mid,
-                  data.get('date', user_today()),
-                  data.get('time', ''),
+    date = str(data.get('date', user_today()))
+    time = str(data.get('time', ''))
+    # Server-side guards (the backfill UI has its own, but a crafted POST would
+    # bypass them): a real, non-future date so a future-dated row can't consume
+    # pill stock or skew the adherence/on-time math, and a HH:MM slot when a
+    # time is given. One day of slack absorbs any device-vs-server midnight skew
+    # so a legitimate "mark taken" at midnight is never wrongly rejected.
+    try:
+        latest_ok = (_dt.date.fromisoformat(user_today()) + _dt.timedelta(days=1)).isoformat()
+    except ValueError:
+        latest_ok = user_today()
+    if not valid_date(date) or date > latest_ok:
+        return jsonify({'success': False, 'error': 'Invalid or future date'}), 400
+    if time and not _re.match(r'^([01]?\d|2[0-3]):[0-5]\d$', time):
+        return jsonify({'success': False, 'error': 'Invalid time'}), 400
+    ok = log_dose(mid, date, time,
                   taken=data.get('taken', True),
                   reason=data.get('reason'))
     if not ok:
