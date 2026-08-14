@@ -6004,6 +6004,18 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   background: var(--gray-50); border: 1px solid var(--gray-200); color: var(--gray-700); font-family: inherit; }
 .ap-suggest-chip:hover { border-color: var(--teal-400); }
 
+/* Pill burden (K3). */
+.pbur-panel { padding: 14px 18px; }
+.pbur-stats { display: flex; gap: 26px; flex-wrap: wrap; }
+.pbur-stat { display: flex; flex-direction: column; }
+.pbur-num { font-size: 24px; font-weight: 800; color: var(--gray-900); line-height: 1; }
+.pbur-k { font-size: 12px; color: var(--gray-500); margin-top: 3px; }
+.pbur-nudge { margin-top: 12px; font-size: 13px; line-height: 1.55; color: #92400E;
+  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; padding: 10px 12px; }
+@media (prefers-color-scheme: dark) {
+  .pbur-nudge { background: rgba(120,53,15,.22); border-color: rgba(253,230,138,.3); color: #FCD34D; }
+}
+
 /* Medication expiry (K1). */
 .med-expiry-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
   background: var(--gray-100); color: var(--gray-600); }

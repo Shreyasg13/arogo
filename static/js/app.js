@@ -207,6 +207,9 @@ const I18N = {
     'Set expiry date': 'समाप्ति तिथि सेट करें', 'Edit expiry date': 'समाप्ति तिथि संपादित करें',
     'Expiry date saved': 'समाप्ति तिथि सहेजी गई', 'Expiry cleared': 'समाप्ति हटाई गई',
     'Pick a date': 'तारीख चुनें', 'expired': 'समाप्त', '%1d left': '%1 दिन शेष',
+    'pills / day': 'गोलियाँ / दिन', 'medicines': 'दवाइयाँ', 'as-needed': 'आवश्यकतानुसार',
+    'You’re on %1 medicines. It can be worth asking your doctor whether every one is still needed.':
+      'आप %1 दवाइयाँ ले रहे हैं। अपने डॉक्टर से पूछना उचित हो सकता है कि क्या हर एक अब भी ज़रूरी है।',
     '%1 medicine(s) have no price set — not counted.': '%1 दवा की कोई कीमत तय नहीं — गिनी नहीं गई।',
     'This week vs last': 'इस सप्ताह बनाम पिछला', '7 days': '7 दिन', 'was %1': '%1 था',
     'Adherence': 'पालन', 'Sleep': 'नींद', 'Weight': 'वज़न', 'BP (systolic)': 'रक्तचाप (सिस्टोलिक)',
@@ -4911,6 +4914,7 @@ async function loadMedicines() {
   loadAdherenceWeekday();
   loadNewMedWatch();
   loadExpiringMeds();
+  loadPillBurden();
   loadPrnFrequency();
   loadEffectiveness();
   loadResponsiveness();
@@ -5611,6 +5615,27 @@ function renderMedicinesGrid(meds) {
       </div>
     </div>`;
   }).join('');
+}
+
+// K3: pill burden — total pills/day + medicine count, with a gentle review nudge
+// at the polypharmacy threshold. From the user's own list; never says to stop.
+async function loadPillBurden() {
+  const el = document.getElementById('pill-burden-section');
+  if (!el) return;
+  const d = await fetch('/api/medicines/pill-burden', {credentials:'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.has_data || d.medicine_count < 2) { el.innerHTML = ''; return; }
+  const nudge = d.polypharmacy
+    ? `<div class="pbur-nudge">💬 ${tformat('You’re on %1 medicines. It can be worth asking your doctor whether every one is still needed.', d.medicine_count)}</div>`
+    : '';
+  el.innerHTML = `<div class="panel pbur-panel">
+      <div class="pbur-stats">
+        <div class="pbur-stat"><span class="pbur-num">${d.daily_pills}</span><span class="pbur-k">${t('pills / day')}</span></div>
+        <div class="pbur-stat"><span class="pbur-num">${d.medicine_count}</span><span class="pbur-k">${t('medicines')}</span></div>
+        ${d.as_needed_count ? `<div class="pbur-stat"><span class="pbur-num">${d.as_needed_count}</span><span class="pbur-k">${t('as-needed')}</span></div>` : ''}
+      </div>
+      ${nudge}
+    </div>`;
 }
 
 // K1: banner listing expired / soon-to-expire medicines (own entered dates).

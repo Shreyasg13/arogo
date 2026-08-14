@@ -580,6 +580,51 @@ def clear_medicine_photo(mid: str) -> str:
 _DAYS_PER_MONTH = 30.437   # mean Gregorian month, so per-day cost is stable
 
 
+def _pills_per_day(m) -> float:
+    """Average pills consumed per calendar day for a scheduled medicine, honouring
+    a weekday or interval schedule (mirrors _days_of_supply's burn rate)."""
+    per_dose = m.get('pills_per_dose') or 1
+    doses = max(len(m.get('times') or []), 1)
+    iv = m.get('interval_days')
+    sd = m.get('schedule_days')
+    if iv:
+        return doses * per_dose / iv
+    if sd:
+        return doses * per_dose * (len(sd) / 7.0)
+    return _FREQ_DOSES.get(m.get('frequency', 'once_daily'), 1) * per_dose
+
+
+_POLYPHARMACY_N = 5   # widely-used clinical threshold for a medication review
+
+
+def get_pill_burden() -> dict:
+    """Total pills/day across all active scheduled medicines and how many distinct
+    medicines are on the list. When the count hits the polypharmacy threshold,
+    flags it as worth a review — a prompt to ask a doctor whether every medicine
+    is still needed, never advice to stop anything. From the user's own list."""
+    active = [m for m in list_medicines() if m.get('active')]
+    scheduled = [m for m in active
+                 if m.get('frequency') != 'as_needed' and m.get('times')]
+    per_med = []
+    total = 0.0
+    for m in scheduled:
+        ppd = _pills_per_day(m)
+        total += ppd
+        per_med.append({'id': m['id'], 'name': m.get('name') or 'Medicine',
+                        'per_day': round(ppd, 1)})
+    per_med.sort(key=lambda x: -x['per_day'])
+    med_count = len(active)   # count every active med, incl. as-needed
+    return {
+        'has_data': bool(active),
+        'daily_pills': round(total, 1),
+        'medicine_count': med_count,
+        'as_needed_count': sum(1 for m in active if m.get('frequency') == 'as_needed'),
+        'per_med': per_med,
+        'polypharmacy': med_count >= _POLYPHARMACY_N,
+        'threshold': _POLYPHARMACY_N,
+    }
+
+
 def get_cost_per_day() -> dict:
     """Break each active medicine's monthly cost down to a per-day figure and
     rank them, so the priciest daily medicine is obvious. Only medicines the user

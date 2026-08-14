@@ -300,6 +300,12 @@ def medicines_expiring():
     days = to_int(request.args.get('days', 60), 60, lo=1, hi=3650)
     return jsonify(get_expiring_medicines(days))
 
+@bp.route('/api/medicines/pill-burden')
+@require_auth
+def pill_burden():
+    from db.medicines import get_pill_burden
+    return jsonify(get_pill_burden())
+
 @bp.route('/api/medicines/<mid>/expiry', methods=['POST'])
 @require_auth
 def set_medicine_expiry_route(mid):
