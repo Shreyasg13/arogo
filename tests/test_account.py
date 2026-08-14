@@ -32,7 +32,7 @@ def _reg(app, email):
 
 
 def test_export_returns_own_data_without_secrets(app):
-    c = _reg(app, "exp1@medeasy.test")
+    c = _reg(app, "acctexp1@medeasy.test")
     c.post("/api/medicines", json={"name": "Metformin", "dosage": "500"})
     c.post("/api/food/log", json={
         "food_id": "roti", "food_name": "Roti", "meal_type": "lunch",
@@ -43,15 +43,15 @@ def test_export_returns_own_data_without_secrets(app):
     assert "attachment" in r.headers.get("Content-Disposition", "")
     data = json.loads(r.get_data(as_text=True))
 
-    assert data["account"]["email"] == "exp1@medeasy.test"
+    assert data["account"]["email"] == "acctexp1@medeasy.test"
     assert "password_hash" not in data["account"]      # never export the hash
     assert any(m["name"] == "Metformin" for m in data.get("medicines", []))
     assert len(data.get("food_logs", [])) >= 1
 
 
 def test_export_is_isolated_per_user(app):
-    a = _reg(app, "exp2a@medeasy.test")
-    b = _reg(app, "exp2b@medeasy.test")
+    a = _reg(app, "acctexp2a@medeasy.test")
+    b = _reg(app, "acctexp2b@medeasy.test")
     a.post("/api/medicines", json={"name": "OnlyMineMed", "dosage": "1"})
     data = json.loads(b.get("/api/account/export").get_data(as_text=True))
     assert not any(m["name"] == "OnlyMineMed" for m in data.get("medicines", []))

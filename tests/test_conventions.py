@@ -87,6 +87,30 @@ class TestPwaRoutes:
             assert client.get(f"/static/icons/{icon}").status_code == 200, icon
 
 
+# ── Test-isolation hygiene ──────────────────────────────────────────────────────
+
+class TestNoSharedTestEmails:
+    def test_no_email_reused_across_test_files(self):
+        """Every test file shares one in-memory DB per xdist worker, so a fixture
+        email used in two files means the second registration hits a duplicate,
+        leaves that client unauthenticated, and the test flakes with a 401 only
+        under parallel load (passing serially). This bit the suite repeatedly
+        (cal*/meas*/tl*/exp1@). Keep every @medeasy.{test,local} address to a
+        single file so the flake class can't return."""
+        import glob
+        pat = re.compile(r'[A-Za-z0-9_.+-]+@medeasy\.(?:test|local)')
+        owners = {}
+        clashes = []
+        for path in sorted(glob.glob(os.path.join(ROOT, "tests", "test_*.py"))):
+            fname = os.path.basename(path)
+            for email in set(pat.findall(_read("tests/" + fname))):
+                if email in owners and owners[email] != fname:
+                    clashes.append(f"{email}: {owners[email]} + {fname}")
+                owners.setdefault(email, fname)
+        assert not clashes, ("test-fixture emails reused across files (parallel-run "
+                             "flake risk — give each file a unique prefix):\n" + "\n".join(sorted(clashes)))
+
+
 # ── Route-map hygiene ───────────────────────────────────────────────────────────
 
 class TestNoDuplicateRoutes:
