@@ -1012,6 +1012,115 @@ def get_skip_reasons(days: int = 30) -> dict:
             'top': counts[0]['reason'] if counts else None, 'has_data': bool(counts)}
 
 
+def _dose_delay_min(date_key, time_key, taken_at):
+    """Minutes between a dose's scheduled local time and when it was logged
+    (+ve = logged late). None when the pieces don't line up or it's a far-off
+    backfill (|Δ|>2 days) or a PRN HH:MM:SS stamp. Shared by the responsiveness
+    panel and the per-medicine detail so both bucket 'on time' identically."""
+    import datetime as _d
+    tk = str(time_key or '')
+    if len(tk) < 4 or tk[2] != ':' or len(tk) > 5:
+        return None
+    try:
+        sched = _d.datetime.fromisoformat(f"{date_key}T{tk[:5]}:00")
+        logged = _d.datetime.fromisoformat(str(taken_at)[:19])
+    except (ValueError, TypeError):
+        return None
+    dm = (logged - sched).total_seconds() / 60.0
+    return None if abs(dm) > 2 * 24 * 60 else dm
+
+
+def get_medicine_detail(mid: str, days: int = 30):
+    """One medicine's whole story in a single view: its OWN adherence over the
+    window, its own skip reasons, its on-time quality, days of supply, and its
+    change history (started/stopped/resumed). Everything the app already knows
+    about this medicine, gathered from scattered account-wide panels into one
+    place. All from the user's own logs — nothing invented. Returns None for a
+    missing or foreign medicine (route answers 404)."""
+    from datetime import date, timedelta
+    import statistics
+    uid = current_user_id()
+    m = get_medicine(mid)              # user-scoped; None for missing/foreign
+    if not m:
+        return None
+    days = max(1, min(int(days or 30), 366))
+    anchor = date.fromisoformat(user_today())
+    daykeys = [(anchor - timedelta(days=i)).isoformat() for i in range(days)]
+
+    is_prn = m.get('frequency') == 'as_needed'
+    times = m.get('times') or []
+
+    slots, total, taken = [], 0, 0
+    reasons, delays = {}, []
+    buckets = {'early': 0, 'ontime': 0, 'late': 0, 'very_late': 0}
+    # PRN meds have no schedule to hold adherence against — skip the miss math
+    # (an as-needed dose is never a "missed" one). Their history still shows.
+    if not is_prn:
+        for t in times:
+            s_total = s_taken = 0
+            for d in daykeys:
+                if not _scheduled_on_day(m, d):
+                    continue
+                s_total += 1
+                log = execute("""SELECT taken, skip_reason, taken_at FROM dose_logs
+                                 WHERE medicine_id=? AND date_key=? AND time_key=? AND user_id=?""",
+                              (mid, d, t, uid), fetchone=True)
+                if log and log['taken']:
+                    s_taken += 1
+                    dm = _dose_delay_min(d, t, log['taken_at'])
+                    if dm is not None:
+                        delays.append(dm)
+                        if dm < 0:      buckets['early'] += 1
+                        elif dm <= 30:  buckets['ontime'] += 1
+                        elif dm <= 180: buckets['late'] += 1
+                        else:           buckets['very_late'] += 1
+                elif log and log['skip_reason'] in SKIP_REASONS:
+                    reasons[log['skip_reason']] = reasons.get(log['skip_reason'], 0) + 1
+            if s_total:
+                slots.append({'time': t, 'label': _slot_label(t), 'total': s_total,
+                              'taken': s_taken, 'missed': s_total - s_taken,
+                              'pct': round(s_taken / s_total * 100)})
+            total += s_total
+            taken += s_taken
+
+    n_ontime = len(delays)
+    reason_list = sorted(
+        ({'reason': k, 'label': _SKIP_LABEL.get(k, k), 'count': v} for k, v in reasons.items()),
+        key=lambda x: -x['count'])
+    history = [e for e in get_medicine_events(days=3650, limit=500)
+               if e.get('medicine_id') == mid][:20]
+
+    return {
+        'id': m['id'], 'name': m['name'], 'icon': m.get('icon') or '💊',
+        'dosage': m.get('dosage', ''), 'unit': m.get('unit', ''),
+        'purpose': m.get('purpose', ''), 'timing_text': m.get('timing_text') or '',
+        'active': bool(m.get('active')), 'is_prn': is_prn,
+        'times': times, 'days': days,
+        'pill_count': m.get('pill_count'),
+        'days_of_supply': _days_of_supply(m),
+        'adherence': {
+            'total': total, 'taken': taken, 'missed': total - taken,
+            'pct': round(taken / total * 100) if total else None,
+            'has_data': total > 0,
+        },
+        'slots': slots,
+        'skip_reasons': reason_list,
+        'ontime': {
+            'count': n_ontime,
+            'median_delay_min': round(statistics.median(delays)) if delays else None,
+            'ontime_pct': round((buckets['early'] + buckets['ontime']) / n_ontime * 100) if n_ontime else None,
+            'buckets': [
+                {'key': 'early',     'label': 'Early',     'count': buckets['early']},
+                {'key': 'ontime',    'label': 'On time',   'count': buckets['ontime']},
+                {'key': 'late',      'label': 'Late',      'count': buckets['late']},
+                {'key': 'very_late', 'label': 'Very late', 'count': buckets['very_late']},
+            ],
+            'has_data': n_ontime > 0,
+        },
+        'history': history,
+    }
+
+
 def get_reminder_responsiveness(days: int = 30) -> dict:
     """How soon you log a dose after it's due — from taken_at vs the scheduled
     time. Buckets each taken dose into early / on-time (≤30 min) / late (≤3 h) /

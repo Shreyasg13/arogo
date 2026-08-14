@@ -439,6 +439,18 @@ def medicine_history():
     days = to_int(request.args.get('days', 365), 365, lo=1, hi=3650)
     return jsonify({'events': get_medicine_events(days)})
 
+@bp.route('/api/medicines/<mid>/detail')
+@require_auth
+def medicine_detail(mid):
+    """One medicine's whole story: its own adherence, skip reasons, on-time
+    quality, days of supply, and change history — gathered in one place."""
+    from db.medicines import get_medicine_detail
+    days = to_int(request.args.get('days', 30), 30, lo=1, hi=366)
+    d = get_medicine_detail(mid, days)
+    if d is None:
+        return jsonify({'success': False, 'error': 'Medicine not found'}), 404
+    return jsonify(d)
+
 @bp.route('/api/medicines/adherence-breakdown')
 @require_auth
 def adherence_breakdown():

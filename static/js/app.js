@@ -201,6 +201,27 @@ const I18N = {
     'No symptoms logged in the last 14 days': 'पिछले 14 दिनों में कोई लक्षण दर्ज नहीं',
     'Head': 'सिर', 'Neck': 'गर्दन', 'Chest': 'छाती', 'Abdomen': 'पेट', 'Pelvis': 'श्रोणि',
     'Back': 'पीठ', 'Arms': 'बाहें', 'Legs': 'टांगें', 'Skin': 'त्वचा', 'General': 'सामान्य',
+    'View details': 'विवरण देखें', 'Loading…': 'लोड हो रहा है…', 'Close': 'बंद करें',
+    'Could not load this medicine.': 'यह दवा लोड नहीं हो सकी।',
+    'As-needed medicine — no fixed schedule to measure adherence against.': 'आवश्यकतानुसार दवा — पालन मापने के लिए कोई निश्चित समय-सारणी नहीं।',
+    '%1 of %2 doses over %3 days': '%3 दिनों में %2 में से %1 खुराक',
+    'Not enough scheduled doses yet to measure adherence.': 'पालन मापने के लिए अभी पर्याप्त निर्धारित खुराकें नहीं हैं।',
+    'On-time quality': 'समय-पालन गुणवत्ता',
+    'usually logged on time or early': 'आमतौर पर समय पर या पहले दर्ज',
+    'typically logged about %1 min after the scheduled time': 'आमतौर पर निर्धारित समय के लगभग %1 मिनट बाद दर्ज',
+    '%1% within the on-time window': '%1% समय-पर सीमा के भीतर',
+    'Timing is approximate — it compares the scheduled time with when you logged the dose.': 'समय अनुमानित है — यह निर्धारित समय की तुलना खुराक दर्ज करने के समय से करता है।',
+    'Why doses were missed': 'खुराकें क्यों छूटीं', 'Supply': 'भंडार',
+    'About %1 days of stock left': 'लगभग %1 दिनों का स्टॉक शेष', '%1 left': '%1 शेष',
+    'Started': 'शुरू किया', 'Stopped': 'बंद किया', 'Resumed': 'फिर शुरू किया',
+    'Removed': 'हटाया', 'Restocked': 'पुनः भरा', 'Adherence · last %1 days': 'पालन · पिछले %1 दिन',
+    'Log a missed entry': 'छूटी प्रविष्टि दर्ज करें',
+    'Forgot to log a dose? Record it for a past day so your history is accurate.': 'खुराक दर्ज करना भूल गए? इसे पिछले दिन के लिए दर्ज करें ताकि आपका इतिहास सटीक रहे।',
+    'Took it': 'ले ली', 'Skipped it': 'छोड़ दी',
+    'Pick a date and time': 'तारीख़ और समय चुनें',
+    "A dose can't be logged for a future day": 'भविष्य के दिन के लिए खुराक दर्ज नहीं की जा सकती',
+    'Past dose logged': 'पिछली खुराक दर्ज की गई', 'Marked as skipped': 'छोड़ी हुई के रूप में चिह्नित',
+    'Could not log that dose': 'वह खुराक दर्ज नहीं हो सकी',
     'Medicine photo': 'दवा की फ़ोटो', 'Add a photo': 'फ़ोटो जोड़ें', 'Change photo': 'फ़ोटो बदलें',
     'Remove photo': 'फ़ोटो हटाएँ', 'Photo added': 'फ़ोटो जोड़ी गई', 'Photo removed': 'फ़ोटो हटाई गई',
     'Uploading photo…': 'फ़ोटो अपलोड हो रही है…', 'Could not upload the photo': 'फ़ोटो अपलोड नहीं हो सकी',
@@ -5667,6 +5688,9 @@ function renderMedicinesGrid(meds) {
       <div class="med-card-footer">
         <span class="med-card-status ${m.active ? 'active' : ''}">● ${m.active ? t('Active') : t('Paused')}</span>
         <div class="med-card-actions">
+          <button class="btn-icon" title="${t('View details')}" data-ev-click="openMedDetail('${m.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </button>
           <button class="btn-icon" title="${m.photo_path ? t('Change photo') : t('Add a photo')}" data-ev-click="openMedPhotoPicker('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </button>
@@ -6083,6 +6107,169 @@ function viewMedPhoto(encodedPath, name) {
   ov.innerHTML = `<figure><img src="/uploads/${encodedPath}" alt="${escapeHtml(name || '')}">
     <figcaption>${escapeHtml(name || '')}</figcaption></figure>`;
   ov.style.display = 'flex';
+}
+
+// ── Per-medicine detail drill-down (L1) ─────────────────────────────────────
+// One medicine's whole story — its own adherence, skip reasons, on-time
+// quality, days of supply, and change history — pulled together from the
+// scattered account-wide panels. Everything shown is the user's own logged
+// data; the modal renders "not enough yet" honestly rather than inventing.
+const _MED_EVENT_LABEL = { started: 'Started', stopped: 'Stopped',
+  resumed: 'Resumed', deleted: 'Removed', restocked: 'Restocked' };
+
+function _detailBar(pct, cls) {
+  const w = Math.max(0, Math.min(100, Math.round(pct || 0)));
+  return `<div class="mdt-bar"><span class="mdt-bar-fill ${cls || ''}" style="width:${w}%"></span></div>`;
+}
+
+async function openMedDetail(id) {
+  let ov = document.getElementById('med-detail-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'med-detail-overlay';
+    ov.className = 'med-detail-overlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.addEventListener('click', (e) => {
+      if (e.target === ov || e.target.closest('[data-close-detail]')) {
+        ov.style.display = 'none'; ov.innerHTML = '';
+      }
+    });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = `<div class="mdt-card"><div class="mdt-loading">${t('Loading…')}</div></div>`;
+  ov.style.display = 'flex';
+
+  const d = await fetch(`/api/medicines/${id}/detail`, { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) {
+    ov.innerHTML = `<div class="mdt-card"><button class="mdt-close" data-close-detail aria-label="${t('Close')}">×</button>
+      <p class="mdt-empty">${t('Could not load this medicine.')}</p></div>`;
+    return;
+  }
+
+  const a = d.adherence || {};
+  const ot = d.ontime || {};
+  // Adherence section
+  let adhHtml;
+  if (d.is_prn) {
+    adhHtml = `<p class="mdt-note">${t('As-needed medicine — no fixed schedule to measure adherence against.')}</p>`;
+  } else if (a.has_data) {
+    const slots = (d.slots || []).map(s =>
+      `<div class="mdt-slot"><span class="mdt-slot-time">⏰ ${escapeHtml(s.time)}</span>
+        ${_detailBar(s.pct, s.pct >= 80 ? 'good' : s.pct >= 50 ? 'mid' : 'low')}
+        <span class="mdt-slot-pct">${s.pct}%</span></div>`).join('');
+    adhHtml = `<div class="mdt-big"><span class="mdt-big-num">${a.pct}%</span>
+        <span class="mdt-big-sub">${tformat('%1 of %2 doses over %3 days', a.taken, a.total, d.days)}</span></div>
+      ${slots ? `<div class="mdt-slots">${slots}</div>` : ''}`;
+  } else {
+    adhHtml = `<p class="mdt-note">${t('Not enough scheduled doses yet to measure adherence.')}</p>`;
+  }
+
+  // On-time quality
+  let otHtml = '';
+  if (ot.has_data) {
+    const bars = (ot.buckets || []).map(b => {
+      const pct = ot.count ? Math.round(b.count / ot.count * 100) : 0;
+      return `<div class="mdt-slot"><span class="mdt-slot-time">${t(b.label)}</span>
+        ${_detailBar(pct, b.key === 'ontime' || b.key === 'early' ? 'good' : b.key === 'late' ? 'mid' : 'low')}
+        <span class="mdt-slot-pct">${b.count}</span></div>`;
+    }).join('');
+    const med = ot.median_delay_min;
+    const medTxt = med == null ? '' :
+      (med <= 0 ? t('usually logged on time or early')
+                : tformat('typically logged about %1 min after the scheduled time', med));
+    otHtml = `<div class="mdt-section"><h4>${t('On-time quality')}</h4>
+      <div class="mdt-big-sub" style="margin-bottom:8px">${tformat('%1% within the on-time window', ot.ontime_pct)}${medTxt ? ' · ' + medTxt : ''}</div>
+      <div class="mdt-slots">${bars}</div>
+      <p class="mdt-fineprint">${t('Timing is approximate — it compares the scheduled time with when you logged the dose.')}</p></div>`;
+  }
+
+  // Skip reasons
+  let reasonsHtml = '';
+  if ((d.skip_reasons || []).length) {
+    const chips = d.skip_reasons.map(r =>
+      `<span class="mdt-chip">${escapeHtml(t(r.label))} · ${r.count}</span>`).join('');
+    reasonsHtml = `<div class="mdt-section"><h4>${t('Why doses were missed')}</h4>
+      <div class="mdt-chips">${chips}</div></div>`;
+  }
+
+  // Supply
+  let supplyHtml = '';
+  if (d.days_of_supply != null) {
+    supplyHtml = `<div class="mdt-section"><h4>${t('Supply')}</h4>
+      <div class="mdt-big-sub">${tformat('About %1 days of stock left', d.days_of_supply)}${
+        d.pill_count != null ? ' · ' + tformat('%1 left', d.pill_count) : ''}</div></div>`;
+  }
+
+  // History
+  let historyHtml = '';
+  if ((d.history || []).length) {
+    const rows = d.history.map(e => {
+      const lbl = _MED_EVENT_LABEL[e.kind] || e.kind;
+      return `<li><span class="mdt-hist-date">${escapeHtml((e.at || '').slice(0, 10))}</span>
+        <span class="mdt-hist-kind">${t(lbl)}</span>${e.detail ? ` <span class="mdt-hist-detail">${escapeHtml(e.detail)}</span>` : ''}</li>`;
+    }).join('');
+    historyHtml = `<div class="mdt-section"><h4>${t('History')}</h4><ul class="mdt-hist">${rows}</ul></div>`;
+  }
+
+  // Backfill a past dose (L5): the only place in the app to record a dose you
+  // took (or skipped) but forgot to log on an earlier day, so adherence stays
+  // truthful. Scheduled meds only — PRN uses "log a dose now". Future dates are
+  // impossible by construction (max=today).
+  let backfillHtml = '';
+  if (!d.is_prn && (d.times || []).length) {
+    const today = (typeof localToday === 'function') ? localToday()
+      : new Date().toISOString().slice(0, 10);
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yesterday = y.toISOString().slice(0, 10);
+    const timeOpts = d.times.map(tm => `<option value="${escapeHtml(tm)}">${escapeHtml(tm)}</option>`).join('');
+    backfillHtml = `<div class="mdt-section"><h4>${t('Log a missed entry')}</h4>
+      <p class="mdt-fineprint" style="margin:0 0 8px">${t('Forgot to log a dose? Record it for a past day so your history is accurate.')}</p>
+      <div class="mdt-bf">
+        <input type="date" id="mdt-bf-date" class="form-input" max="${today}" value="${yesterday}">
+        <select id="mdt-bf-time" class="form-input">${timeOpts}</select>
+      </div>
+      <div class="mdt-bf-actions">
+        <button class="btn-primary" data-ev-click="submitBackfillDose('${d.id}', true)">${t('Took it')}</button>
+        <button class="btn-outline" data-ev-click="submitBackfillDose('${d.id}', false)">${t('Skipped it')}</button>
+      </div></div>`;
+  }
+
+  const status = d.active ? `<span class="mdt-status active">● ${t('Active')}</span>`
+                          : `<span class="mdt-status">● ${t('Paused')}</span>`;
+  ov.innerHTML = `<div class="mdt-card" role="document">
+    <button class="mdt-close" data-close-detail aria-label="${t('Close')}">×</button>
+    <div class="mdt-head">
+      <span class="mdt-icon">${escapeHtml(d.icon || '💊')}</span>
+      <div><div class="mdt-name">${escapeHtml(d.name)}</div>
+        <div class="mdt-sub">${escapeHtml([d.dosage, d.unit].filter(Boolean).join(' '))}${
+          d.purpose ? ' · ' + escapeHtml(d.purpose) : ''}</div></div>
+      ${status}
+    </div>
+    <div class="mdt-section"><h4>${tformat('Adherence · last %1 days', d.days)}</h4>${adhHtml}</div>
+    ${otHtml}${reasonsHtml}${supplyHtml}${backfillHtml}${historyHtml}
+  </div>`;
+}
+
+async function submitBackfillDose(id, taken) {
+  const date = (document.getElementById('mdt-bf-date') || {}).value;
+  const time = (document.getElementById('mdt-bf-time') || {}).value;
+  if (!date || !time) { showToast('Pick a date and time', 'error'); return; }
+  const today = (typeof localToday === 'function') ? localToday()
+    : new Date().toISOString().slice(0, 10);
+  if (date > today) { showToast("A dose can't be logged for a future day", 'error'); return; }
+  const res = await fetch(`/api/medicines/${id}/log`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify({ date, time, taken })
+  }).then(r => r.json()).catch(() => null);
+  if (res && res.success) {
+    showToast(taken ? 'Past dose logged' : 'Marked as skipped');
+    openMedDetail(id);                       // refresh the modal's numbers
+    if (typeof loadMedicines === 'function') { try { loadMedicines(); } catch (e) {} }
+  } else {
+    showToast('Could not log that dose', 'error');
+  }
 }
 
 // ── Offline write queue (IndexedDB outbox) ──────────────────────────────────
