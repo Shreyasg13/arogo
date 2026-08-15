@@ -9,6 +9,7 @@ acting-as returns the managed member's card, not the caregiver's.
 from flask import Blueprint, jsonify
 from auth import require_auth
 from db.health_id import get_health_id
+from db.health_binder import get_health_binder
 from db.health import build_emergency_qr
 
 bp = Blueprint('health_id', __name__)
@@ -18,6 +19,14 @@ bp = Blueprint('health_id', __name__)
 @require_auth
 def api_health_id():
     return jsonify(get_health_id())
+
+
+@bp.route('/api/health-binder')
+@require_auth
+def api_health_binder():
+    """The always-current, printable full health summary (N2). Read-only;
+    composed entirely from the user's own records."""
+    return jsonify(get_health_binder())
 
 
 @bp.route('/api/health-id/qr')

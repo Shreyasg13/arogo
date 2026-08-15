@@ -630,7 +630,43 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   body.printing-health-id #health-id-card {
     position:absolute; left:0; top:0; margin:12mm; box-shadow:none;
     border:1px solid #999; max-width:none; width:auto; }
+
+  /* N2 health binder — isolate the document for print (same pattern) */
+  body.printing-binder { background:#fff; }
+  body.printing-binder * { visibility:hidden !important; }
+  body.printing-binder #health-binder-doc,
+  body.printing-binder #health-binder-doc * { visibility:visible !important; }
+  body.printing-binder #health-binder-doc {
+    position:absolute; left:0; top:0; margin:10mm; box-shadow:none; border:none;
+    max-width:none; width:auto; }
+  body.printing-binder .bnd-sec { break-inside:avoid; }
 }
+
+/* N2 health binder (screen) */
+.bnd-doc { background:var(--card, #fff); border:1px solid var(--gray-100, #eee); border-radius:var(--r-xl, 16px); padding:26px 28px; max-width:760px; }
+.bnd-head { border-bottom:2px solid var(--sage-600, #4a6a5a); padding-bottom:12px; margin-bottom:16px; }
+.bnd-brand { font-size:12px; font-weight:700; letter-spacing:.04em; color:var(--sage-600, #4a6a5a); }
+.bnd-name { font-family:'EB Garamond',serif; font-size:26px; margin-top:4px; }
+.bnd-sub { font-size:13px; color:var(--gray-500, #666); margin-top:2px; }
+.bnd-gen { font-size:11.5px; color:var(--gray-400, #999); margin-top:4px; }
+.bnd-sec { margin-bottom:16px; }
+.bnd-sec-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--sage-600, #4a6a5a); margin:0 0 7px; }
+.bnd-row { display:flex; gap:14px; padding:3px 0; font-size:13.5px; }
+.bnd-k { min-width:120px; color:var(--gray-500, #666); flex-shrink:0; }
+.bnd-v { color:var(--gray-800, #222); }
+.bnd-list { margin:0; padding-left:18px; font-size:13.5px; }
+.bnd-list li { padding:2px 0; }
+.bnd-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.bnd-table td { padding:3px 8px 3px 0; border-bottom:1px solid var(--gray-50, #f4f4f4); }
+.bnd-dim { color:var(--gray-400, #999); }
+.bnd-foot { font-size:11px; color:var(--gray-400, #999); margin-top:18px; border-top:1px solid var(--gray-100, #eee); padding-top:10px; }
+.bnd-actions { margin-bottom:14px; }
+
+/* N3 family medical history */
+.fh-card { padding:12px 16px; margin-bottom:9px; }
+.fh-head { display:flex; gap:10px; align-items:flex-start; }
+.fh-cond { font-size:14.5px; font-weight:600; }
+.fh-meta { font-size:12.5px; color:var(--gray-500, #666); margin-top:3px; }
 
 /* ── DASHBOARD ── */
 .dash-hero-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }

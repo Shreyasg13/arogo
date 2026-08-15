@@ -336,5 +336,28 @@ test('_labBandBar: far-out value is clamped to the track edge', () => {
   if (!html.includes('lab-band-mark--edge')) throw new Error('edge marker class missing');
 });
 
+test('_pageMatches: finds a page by its label and by a keyword', () => {
+  // Label match.
+  const byLabel = S._pageMatches('lab').map(t => t.v);
+  if (!byLabel.includes('labs')) throw new Error('should match Lab results by label: ' + byLabel);
+  // A plural query still finds the singular label ("labs" → "Lab results").
+  const plural = S._pageMatches('labs').map(t => t.v);
+  if (!plural.includes('labs')) throw new Error('plural query should still match: ' + plural);
+  // Keyword-only match (the word "dentist" isn't in the label "Dental & vision").
+  const byKw = S._pageMatches('dentist').map(t => t.v);
+  if (!byKw.includes('dentalvision')) throw new Error('should match via keyword: ' + byKw);
+});
+test('_pageMatches: ranks a label-prefix hit above a keyword-only hit', () => {
+  // "sleep" is the Sleep page's label and also a Body/Vitals-adjacent word; the
+  // page whose label starts with the query must come first.
+  const r = S._pageMatches('sleep');
+  if (!r.length || r[0].v !== 'sleep') throw new Error('Sleep page should rank first: ' + JSON.stringify(r.map(t => t.v)));
+});
+test('_pageMatches: short/empty queries return nothing, and caps at 6', () => {
+  eq(S._pageMatches('a').length, 0);
+  eq(S._pageMatches('').length, 0);
+  if (S._pageMatches('e').length > 6) throw new Error('should cap results at 6');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

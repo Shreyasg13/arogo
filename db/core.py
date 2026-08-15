@@ -451,6 +451,11 @@ CREATE TABLE IF NOT EXISTS dental_vision_visits (
     provider TEXT DEFAULT '', summary TEXT DEFAULT '', next_due TEXT DEFAULT NULL,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS family_history (
+    id TEXT PRIMARY KEY, relation TEXT DEFAULT 'other', condition TEXT NOT NULL,
+    age_at_onset INTEGER DEFAULT NULL, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS symptom_photos (
     id TEXT PRIMARY KEY, label TEXT DEFAULT '', filename TEXT NOT NULL,
     taken_date TEXT NOT NULL, notes TEXT DEFAULT '',
@@ -1359,6 +1364,7 @@ DATA_TABLES = [
     'vision_prescriptions',
     'home_supplies',
     'symptom_photos',
+    'family_history',
 ]
 
 
