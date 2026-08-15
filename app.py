@@ -67,6 +67,7 @@ def create_app(config=Config):
     from routes.vital_targets import bp as vital_targets_bp
     from routes.workouts   import bp as workouts_bp
     from routes.shares     import bp as shares_bp
+    from routes.dental_vision import bp as dental_vision_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -95,6 +96,7 @@ def create_app(config=Config):
     app.register_blueprint(vital_targets_bp)
     app.register_blueprint(workouts_bp)
     app.register_blueprint(shares_bp)
+    app.register_blueprint(dental_vision_bp)
 
     @app.before_request
     def _reject_non_object_json():

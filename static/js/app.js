@@ -681,6 +681,24 @@ const I18N = {
     'Overdue': 'बकाया', 'This week': 'इस सप्ताह', 'Next 30 days': 'अगले 30 दिन', 'Later': 'बाद में',
     '%1 overdue': '%1 बकाया', '%1 this week': '%1 इस सप्ताह',
     'Allergies': 'एलर्जी', 'What you react to, how badly — these show on your Health ID card': 'आपको किससे और कितनी एलर्जी है — ये आपके हेल्थ ID कार्ड पर दिखती हैं',
+    'Dental & vision': 'दाँत और आँख', 'Dental': 'दाँत', 'Eye exam': 'आँख जाँच',
+    'Two easy-to-forget checkups, and your glasses prescription — kept, never interpreted': 'दो अक्सर भूली जाने वाली जाँचें, और आपका चश्मे का पर्चा — सहेजा जाता है, कभी व्याख्या नहीं',
+    'Next checkups you noted': 'आपने नोट की अगली जाँचें', 'overdue by %1 days': '%1 दिन विलंबित',
+    'due today': 'आज देय', 'in %1 days': '%1 दिन में', 'Checkups': 'जाँचें',
+    'Add a checkup': 'जाँच जोड़ें', 'Visit date': 'विज़िट की तिथि',
+    'Clinic / doctor (optional)': 'क्लिनिक / डॉक्टर (वैकल्पिक)', 'Next due (optional)': 'अगली देय (वैकल्पिक)',
+    'What was done (optional)': 'क्या किया गया (वैकल्पिक)', 'next due %1': 'अगली देय %1',
+    'No checkups logged yet.': 'अभी तक कोई जाँच दर्ज नहीं।',
+    'Vision prescription': 'दृष्टि का पर्चा', 'Add a vision prescription': 'दृष्टि का पर्चा जोड़ें',
+    'Copied exactly from your prescription — Arogo stores it, it never reads your vision from these numbers.': 'आपके पर्चे से हूबहू लिया गया — Arogo इसे सहेजता है, इन आँकड़ों से आपकी दृष्टि नहीं पढ़ता।',
+    'Glasses': 'चश्मा', 'Contacts': 'कॉन्टैक्ट लेंस', 'Prescription date': 'पर्चे की तिथि',
+    'SPH': 'SPH', 'CYL': 'CYL', 'Axis': 'अक्ष', 'ADD': 'ADD',
+    'Right (OD)': 'दायाँ (OD)', 'Left (OS)': 'बायाँ (OS)', 'PD (optional)': 'PD (वैकल्पिक)',
+    'Notes (optional)': 'टिप्पणी (वैकल्पिक)', 'PD %1': 'PD %1',
+    'No vision prescription saved yet.': 'अभी तक कोई दृष्टि पर्चा सहेजा नहीं गया।',
+    'Pick a visit date': 'विज़िट की तिथि चुनें', 'Checkup added': 'जाँच जोड़ी गई',
+    'Pick a prescription date': 'पर्चे की तिथि चुनें', 'Prescription saved': 'पर्चा सहेजा गया',
+    'Could not save': 'सहेजा नहीं जा सका',
     'Add an allergy': 'एलर्जी जोड़ें', 'Allergen (e.g. Penicillin, Peanuts)': 'एलर्जन (जैसे पेनिसिलिन, मूँगफली)',
     'Reaction (e.g. rash, swelling)': 'प्रतिक्रिया (जैसे चकत्ते, सूजन)', 'Date noticed (optional)': 'देखी गई तिथि (वैकल्पिक)',
     'Severe': 'गंभीर', 'Moderate': 'मध्यम', 'Mild': 'हल्की', 'severe': 'गंभीर',
@@ -2590,6 +2608,7 @@ function switchView(view) {
   if (view === 'prescriptions') loadPrescriptions();
   if (view === 'claims')        loadClaims();
   if (view === 'allergies')     loadAllergies();
+  if (view === 'dentalvision')  loadDentalVision();
   if (view === 'upcoming')      loadUpcoming();
   if (view === 'meal-plan')     loadMealPlan();
   if (view === 'taper')         loadTaper();
@@ -14626,6 +14645,159 @@ async function deleteAllergy(id) {
   await fetch('/api/allergies/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   if (_editingAllergy === id) _editingAllergy = null;
   loadAllergies();
+}
+
+// ── Dental & vision care ─────────────────────────────────────────────────────
+// Two easy-to-forget checkups plus the user's own glasses/contacts prescription.
+// Everything shown is a factual record the user entered — dates are echoed with
+// a countdown, never scheduled; Rx values are kept verbatim, never interpreted.
+async function loadDentalVision() {
+  const el = document.getElementById('dentalvision-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const [visitsD, rxD, dueD] = await Promise.all([
+    fetch('/api/dental-vision/visits', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {visits:[]}).catch(() => ({visits:[]})),
+    fetch('/api/dental-vision/rx', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {prescriptions:[]}).catch(() => ({prescriptions:[]})),
+    fetch('/api/dental-vision/due', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {due:[]}).catch(() => ({due:[]})),
+  ]);
+  el.innerHTML = renderDentalVision(visitsD.visits || [], rxD.prescriptions || [], dueD.due || []);
+}
+
+function _dvKindLabel(k) {
+  return k === 'dental' ? '🦷 ' + t('Dental') : '👁️ ' + t('Eye exam');
+}
+
+function renderDentalVision(visits, prescriptions, due) {
+  const today = localToday();
+
+  // Due countdown — only echoes a next-due date the user recorded.
+  const dueRows = (due || []).filter(d => d.overdue || d.due_soon).map(d => {
+    const when = d.overdue ? tformat('overdue by %1 days', Math.abs(d.days_until))
+                           : (d.days_until === 0 ? t('due today') : tformat('in %1 days', d.days_until));
+    return `<div class="dv-due-row ${d.overdue ? 'overdue' : ''}">
+        <span>${_dvKindLabel(d.kind)}</span>
+        <span class="dv-due-when">${escHtml(_fmtShortDate(d.next_due))} · ${when}</span></div>`;
+  }).join('');
+  const dueBanner = dueRows ? `<div class="panel dv-due-panel">
+      <div class="dv-due-title">${t('Next checkups you noted')}</div>${dueRows}</div>` : '';
+
+  // Checkup form + list.
+  const visitForm = `<div class="panel" style="padding:18px 20px;margin-bottom:14px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add a checkup')}</h2>
+      <div class="dv-form">
+        <select id="dv-kind" class="form-input" style="max-width:150px">
+          <option value="dental">${t('Dental')}</option>
+          <option value="eye">${t('Eye exam')}</option>
+        </select>
+        <input type="date" id="dv-date" class="form-input" max="${today}" title="${t('Visit date')}" style="max-width:160px">
+        <input type="text" id="dv-provider" class="form-input" placeholder="${t('Clinic / doctor (optional)')}" style="flex:2;min-width:160px">
+        <input type="date" id="dv-next" class="form-input" title="${t('Next due (optional)')}" style="max-width:160px">
+      </div>
+      <div class="dv-form" style="margin-top:8px">
+        <input type="text" id="dv-summary" class="form-input" placeholder="${t('What was done (optional)')}" style="flex:3;min-width:200px">
+        <button class="btn-primary" data-ev-click="saveDVVisit()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  const visitCards = (visits || []).length ? visits.map(v => {
+    const meta = [v.provider && escHtml(v.provider),
+                  v.next_due && tformat('next due %1', _fmtShortDate(v.next_due))].filter(Boolean).join(' · ');
+    return `<div class="panel dv-card">
+        <div class="dv-card-head">
+          <div style="flex:1;min-width:0">
+            <div class="dv-card-title">${_dvKindLabel(v.kind)} <span class="dv-card-date">${escHtml(_fmtShortDate(v.visit_date))}</span></div>
+            ${meta ? `<div class="dv-card-meta">${meta}</div>` : ''}
+            ${v.summary ? `<div class="dv-card-summary">${escHtml(v.summary)}</div>` : ''}
+          </div>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteDVVisit('${v.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+      </div>`;
+  }).join('') : `<div class="dv-empty">${t('No checkups logged yet.')}</div>`;
+
+  // Vision prescription form + list.
+  const cell = (id, ph) => `<input type="text" id="${id}" class="form-input dv-rx-cell" placeholder="${ph}">`;
+  const rxForm = `<div class="panel" style="padding:18px 20px;margin:18px 0 14px">
+      <h2 class="panel-title" style="margin-bottom:6px">${t('Add a vision prescription')}</h2>
+      <p class="dv-fineprint">${t('Copied exactly from your prescription — Arogo stores it, it never reads your vision from these numbers.')}</p>
+      <div class="dv-form" style="margin:10px 0">
+        <select id="dv-rx-kind" class="form-input" style="max-width:150px">
+          <option value="glasses">${t('Glasses')}</option>
+          <option value="contacts">${t('Contacts')}</option>
+        </select>
+        <input type="date" id="dv-rx-date" class="form-input" max="${today}" title="${t('Prescription date')}" style="max-width:160px">
+      </div>
+      <table class="dv-rx-table"><thead><tr>
+        <th></th><th>${t('SPH')}</th><th>${t('CYL')}</th><th>${t('Axis')}</th><th>${t('ADD')}</th></tr></thead>
+        <tbody>
+          <tr><th>${t('Right (OD)')}</th><td>${cell('dv-r-sph','')}</td><td>${cell('dv-r-cyl','')}</td><td>${cell('dv-r-axis','')}</td><td>${cell('dv-r-add','')}</td></tr>
+          <tr><th>${t('Left (OS)')}</th><td>${cell('dv-l-sph','')}</td><td>${cell('dv-l-cyl','')}</td><td>${cell('dv-l-axis','')}</td><td>${cell('dv-l-add','')}</td></tr>
+        </tbody></table>
+      <div class="dv-form" style="margin-top:10px">
+        <input type="text" id="dv-rx-pd" class="form-input" placeholder="${t('PD (optional)')}" style="max-width:130px">
+        <input type="text" id="dv-rx-notes" class="form-input" placeholder="${t('Notes (optional)')}" style="flex:2;min-width:160px">
+        <button class="btn-primary" data-ev-click="saveVisionRx()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  const rxCards = (prescriptions || []).length ? prescriptions.map(p => {
+    const row = (lbl, sph, cyl, axis, add) => `<tr><th>${lbl}</th>
+        <td>${escHtml(sph || '—')}</td><td>${escHtml(cyl || '—')}</td>
+        <td>${escHtml(axis || '—')}</td><td>${escHtml(add || '—')}</td></tr>`;
+    return `<div class="panel dv-card">
+        <div class="dv-card-head">
+          <div style="flex:1;min-width:0">
+            <div class="dv-card-title">${p.kind === 'contacts' ? '👁️ ' + t('Contacts') : '👓 ' + t('Glasses')}
+              <span class="dv-card-date">${escHtml(_fmtShortDate(p.rx_date))}</span></div>
+            <table class="dv-rx-table dv-rx-view"><thead><tr><th></th><th>${t('SPH')}</th><th>${t('CYL')}</th><th>${t('Axis')}</th><th>${t('ADD')}</th></tr></thead>
+              <tbody>${row(t('Right (OD)'), p.right_sph, p.right_cyl, p.right_axis, p.right_add)}
+              ${row(t('Left (OS)'), p.left_sph, p.left_cyl, p.left_axis, p.left_add)}</tbody></table>
+            ${(p.pd || p.notes) ? `<div class="dv-card-meta">${[p.pd && tformat('PD %1', escHtml(p.pd)), p.notes && escHtml(p.notes)].filter(Boolean).join(' · ')}</div>` : ''}
+          </div>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteVisionRx('${p.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+      </div>`;
+  }).join('') : `<div class="dv-empty">${t('No vision prescription saved yet.')}</div>`;
+
+  return dueBanner
+    + `<div class="section-header"><h2 class="section-title">${t('Checkups')}</h2></div>`
+    + visitForm + visitCards
+    + `<div class="section-header"><h2 class="section-title">${t('Vision prescription')}</h2></div>`
+    + rxForm + rxCards;
+}
+
+async function saveDVVisit() {
+  const val = id => (document.getElementById(id) || {}).value || '';
+  const body = { kind: val('dv-kind'), visit_date: val('dv-date'),
+                 provider: val('dv-provider'), summary: val('dv-summary'),
+                 next_due: val('dv-next') || null };
+  if (!body.visit_date) { showToast('Pick a visit date', 'error'); return; }
+  const r = await fetch('/api/dental-vision/visits', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Checkup added'); loadDentalVision(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function deleteDVVisit(id) {
+  await fetch('/api/dental-vision/visits/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadDentalVision();
+}
+
+async function saveVisionRx() {
+  const val = id => (document.getElementById(id) || {}).value || '';
+  const body = { rx_date: val('dv-rx-date'), kind: val('dv-rx-kind'),
+                 right_sph: val('dv-r-sph'), right_cyl: val('dv-r-cyl'), right_axis: val('dv-r-axis'), right_add: val('dv-r-add'),
+                 left_sph: val('dv-l-sph'), left_cyl: val('dv-l-cyl'), left_axis: val('dv-l-axis'), left_add: val('dv-l-add'),
+                 pd: val('dv-rx-pd'), notes: val('dv-rx-notes') };
+  if (!body.rx_date) { showToast('Pick a prescription date', 'error'); return; }
+  const r = await fetch('/api/dental-vision/rx', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Prescription saved'); loadDentalVision(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function deleteVisionRx(id) {
+  await fetch('/api/dental-vision/rx/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadDentalVision();
 }
 
 // ── Family health calendar (upcoming) ────────────────────────────────────────

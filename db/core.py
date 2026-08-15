@@ -446,6 +446,18 @@ CREATE TABLE IF NOT EXISTS immunizations (
     dose_label TEXT DEFAULT '', date_given TEXT NOT NULL, notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS dental_vision_visits (
+    id TEXT PRIMARY KEY, kind TEXT NOT NULL, visit_date TEXT NOT NULL,
+    provider TEXT DEFAULT '', summary TEXT DEFAULT '', next_due TEXT DEFAULT NULL,
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS vision_prescriptions (
+    id TEXT PRIMARY KEY, rx_date TEXT NOT NULL, kind TEXT DEFAULT 'glasses',
+    right_sph TEXT DEFAULT '', right_cyl TEXT DEFAULT '', right_axis TEXT DEFAULT '', right_add TEXT DEFAULT '',
+    left_sph TEXT DEFAULT '', left_cyl TEXT DEFAULT '', left_axis TEXT DEFAULT '', left_add TEXT DEFAULT '',
+    pd TEXT DEFAULT '', notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS health_goals (
     id TEXT PRIMARY KEY, title TEXT DEFAULT '', metric TEXT NOT NULL,
     target_value REAL NOT NULL, direction TEXT DEFAULT 'below',
@@ -1317,6 +1329,8 @@ DATA_TABLES = [
     'injection_logs',
     'action_plans',
     'med_effectiveness',
+    'dental_vision_visits',
+    'vision_prescriptions',
 ]
 
 

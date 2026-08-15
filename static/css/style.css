@@ -6222,6 +6222,31 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .mdt-bf-actions { display: flex; gap: 8px; margin-top: 10px; }
 .mdt-bf-actions .btn-primary, .mdt-bf-actions .btn-outline { flex: 1; }
 
+/* Dental & vision care */
+.dv-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.dv-due-panel { padding: 14px 18px; margin-bottom: 16px; }
+.dv-due-title { font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--gray-400, #999); margin-bottom: 8px; }
+.dv-due-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; padding: 4px 0; }
+.dv-due-row.overdue .dv-due-when { color: var(--terracotta-500, #c96a4a); font-weight: 600; }
+.dv-due-when { color: var(--gray-500, #666); }
+.dv-card { padding: 14px 18px; margin-bottom: 10px; }
+.dv-card-head { display: flex; gap: 10px; align-items: flex-start; }
+.dv-card-title { font-size: 14.5px; font-weight: 600; }
+.dv-card-date { font-weight: 400; color: var(--gray-400, #999); font-size: 12.5px; margin-left: 4px; }
+.dv-card-meta { font-size: 12.5px; color: var(--gray-500, #666); margin-top: 3px; }
+.dv-card-summary { font-size: 13px; color: var(--gray-600, #555); margin-top: 5px; }
+.dv-empty { font-size: 13px; color: var(--gray-400, #999); padding: 6px 2px 14px; }
+.dv-fineprint { font-size: 11.5px; color: var(--gray-400, #999); margin: 0; }
+.dv-rx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dv-rx-table th, .dv-rx-table td { text-align: center; padding: 4px 6px; }
+.dv-rx-table thead th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--gray-400, #999); font-weight: 600; }
+.dv-rx-table tbody th { text-align: left; font-weight: 600; color: var(--gray-600, #555); white-space: nowrap; }
+.dv-rx-cell { width: 100%; min-width: 52px; text-align: center; padding: 6px 4px; }
+.dv-rx-view { margin-top: 8px; max-width: 420px; }
+.dv-rx-view td { color: var(--gray-700, #333); }
+
 /* Symptom body-map (I7) — region picker chips + heat grid. */
 .region-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .region-chip {
