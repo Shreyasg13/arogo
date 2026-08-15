@@ -267,6 +267,10 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8" r="2.2"/><path d="M3 21v-1a5 5 0 015-5h2a5 5 0 015 5v1"/><path d="M16 13a4 4 0 014 4v1"/></svg>
           <span data-i18n="Family history">Family history</span>
         </a>
+        <a href="#" class="nav-item" data-view="procedures">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 01-2 2H3"/><path d="M16 3v3a2 2 0 002 2h3"/><rect x="3" y="10" width="18" height="11" rx="2"/><path d="M12 13v5M9.5 15.5h5"/></svg>
+          <span data-i18n="Procedures">Procedures</span>
+        </a>
         <a href="#" class="nav-item" data-view="timeline">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="12" cy="20" r="2"/></svg>
           <span data-i18n="Timeline">Timeline</span>
@@ -352,6 +356,18 @@
         <a href="#" class="nav-item" data-view="habits">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           <span data-i18n="Habits">Habits</span>
+        </a>
+        <a href="#" class="nav-item" data-view="quit">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+          <span data-i18n="Quit tracker">Quit tracker</span>
+        </a>
+        <a href="#" class="nav-item" data-view="menopause">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M12 13v8M9 18h6"/></svg>
+          <span data-i18n="Menopause">Menopause</span>
+        </a>
+        <a href="#" class="nav-item" data-view="pregnancy">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7c-2 0-3 2-3 4v4a3 3 0 006 0c0-3 1.5-3 1.5-5S13.5 7 12 7z"/><path d="M9 15v5M15 15v5"/></svg>
+          <span data-i18n="Pregnancy">Pregnancy</span>
         </a>
         <a href="#" class="nav-item" data-view="thoughts">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
@@ -2525,6 +2541,46 @@
     </div>
   </div>
   <div id="familyhistory-content"></div>
+</div>
+
+<!-- ═══════════ PROCEDURES & HOSPITALIZATIONS (O1) ═══════════ -->
+<div id="view-procedures" class="view">
+  <div class="page-header"><div>
+    <div class="page-eyebrow" data-i18n="Care">Care</div>
+    <h1 class="page-title" data-i18n="Procedures">Procedures</h1>
+    <p class="page-subtitle" data-i18n="Past surgeries, hospital stays and procedures — the history a new doctor asks for">Past surgeries, hospital stays and procedures — the history a new doctor asks for</p>
+  </div></div>
+  <div id="procedures-content"></div>
+</div>
+
+<!-- ═══════════ QUIT TRACKER (O2) ═══════════ -->
+<div id="view-quit" class="view">
+  <div class="page-header"><div>
+    <div class="page-eyebrow" data-i18n="Track">Track</div>
+    <h1 class="page-title" data-i18n="Quit tracker">Quit tracker</h1>
+    <p class="page-subtitle" data-i18n="Track a quit date and see the days, units and money you've saved — all from your own numbers">Track a quit date and see the days, units and money you've saved — all from your own numbers</p>
+  </div></div>
+  <div id="quit-content"></div>
+</div>
+
+<!-- ═══════════ MENOPAUSE COMPANION (O3) ═══════════ -->
+<div id="view-menopause" class="view">
+  <div class="page-header"><div>
+    <div class="page-eyebrow" data-i18n="Track">Track</div>
+    <h1 class="page-title" data-i18n="Menopause">Menopause</h1>
+    <p class="page-subtitle" data-i18n="Log how symptoms feel day to day. A simple picture of what you recorded — never a diagnosis">Log how symptoms feel day to day. A simple picture of what you recorded — never a diagnosis</p>
+  </div></div>
+  <div id="menopause-content"></div>
+</div>
+
+<!-- ═══════════ PREGNANCY TRACKER (O4) ═══════════ -->
+<div id="view-pregnancy" class="view">
+  <div class="page-header"><div>
+    <div class="page-eyebrow" data-i18n="Track">Track</div>
+    <h1 class="page-title" data-i18n="Pregnancy">Pregnancy</h1>
+    <p class="page-subtitle" data-i18n="Your week, weight and kick counts, kept in one place. Tracking only — Arogo gives no medical guidance">Your week, weight and kick counts, kept in one place. Tracking only — Arogo gives no medical guidance</p>
+  </div></div>
+  <div id="pregnancy-content"></div>
 </div>
 
 <!-- ═══════════ FAMILY HEALTH CALENDAR (UPCOMING) ═══════════ -->

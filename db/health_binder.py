@@ -48,11 +48,17 @@ def get_health_binder() -> dict:
         vaccines = []
 
     # Dental & vision — next checkups the user noted + their current Rx.
+    # The Rx is projected to just the optical fields (no internal id/user_id/
+    # created_at need leave the server in the binder JSON).
     dental_vision = {'due': [], 'rx': None}
     try:
         from .dental_vision import get_due, latest_rx
         dental_vision['due'] = get_due() or []
-        dental_vision['rx'] = latest_rx()
+        rx = latest_rx()
+        if rx:
+            dental_vision['rx'] = {k: rx.get(k) for k in
+                ('kind', 'rx_date', 'right_sph', 'right_cyl', 'right_axis', 'right_add',
+                 'left_sph', 'left_cyl', 'left_axis', 'left_add', 'pd')}
     except Exception:
         pass
 

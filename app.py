@@ -71,6 +71,10 @@ def create_app(config=Config):
     from routes.home_supplies import bp as home_supplies_bp
     from routes.symptom_photos import bp as symptom_photos_bp
     from routes.family_history import bp as family_history_bp
+    from routes.procedures import bp as procedures_bp
+    from routes.quit import bp as quit_bp
+    from routes.menopause import bp as menopause_bp
+    from routes.pregnancy import bp as pregnancy_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -103,6 +107,10 @@ def create_app(config=Config):
     app.register_blueprint(home_supplies_bp)
     app.register_blueprint(symptom_photos_bp)
     app.register_blueprint(family_history_bp)
+    app.register_blueprint(procedures_bp)
+    app.register_blueprint(quit_bp)
+    app.register_blueprint(menopause_bp)
+    app.register_blueprint(pregnancy_bp)
 
     @app.before_request
     def _reject_non_object_json():

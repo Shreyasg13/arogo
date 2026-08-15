@@ -22,9 +22,9 @@ def to_num(v, default=0.0, lo=None, hi=None):
     try:
         n = float(v)
     except (TypeError, ValueError):
-        return float(default)
+        return None if default is None else float(default)
     if not math.isfinite(n):
-        return float(default)
+        return None if default is None else float(default)
     if lo is not None and n < lo:
         n = lo
     if hi is not None and n > hi:
@@ -33,8 +33,11 @@ def to_num(v, default=0.0, lo=None, hi=None):
 
 
 def to_int(v, default=0, lo=None, hi=None):
-    """Safe int via to_num (handles '3', 3.0, None, 'abc', NaN, inf)."""
-    return int(to_num(v, default, lo, hi))
+    """Safe int via to_num (handles '3', 3.0, None, 'abc', NaN, inf). When
+    default is None, an unparseable/missing value returns None (not a crash and
+    not a fabricated 0) — callers that want a real optional integer pass None."""
+    n = to_num(v, default, lo, hi)
+    return None if n is None else int(n)
 
 
 def valid_date(v):
@@ -454,6 +457,33 @@ CREATE TABLE IF NOT EXISTS dental_vision_visits (
 CREATE TABLE IF NOT EXISTS family_history (
     id TEXT PRIMARY KEY, relation TEXT DEFAULT 'other', condition TEXT NOT NULL,
     age_at_onset INTEGER DEFAULT NULL, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS procedures (
+    id TEXT PRIMARY KEY, kind TEXT DEFAULT 'procedure', name TEXT NOT NULL,
+    date_key TEXT NOT NULL, end_date TEXT DEFAULT NULL, provider TEXT DEFAULT '',
+    location TEXT DEFAULT '', notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS quit_plans (
+    id TEXT PRIMARY KEY, kind TEXT DEFAULT 'other', label TEXT DEFAULT '',
+    quit_date TEXT NOT NULL, baseline_per_day REAL DEFAULT NULL,
+    unit_cost REAL DEFAULT NULL, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS menopause_logs (
+    id TEXT PRIMARY KEY, date_key TEXT NOT NULL, hot_flashes INTEGER DEFAULT 0,
+    night_sweats INTEGER DEFAULT 0, sleep INTEGER DEFAULT 0, mood INTEGER DEFAULT 0,
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pregnancy (
+    id TEXT PRIMARY KEY, lmp_date TEXT DEFAULT NULL, due_date TEXT DEFAULT NULL,
+    active INTEGER DEFAULT 1, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pregnancy_logs (
+    id TEXT PRIMARY KEY, pregnancy_id TEXT NOT NULL, date_key TEXT NOT NULL,
+    weight_kg REAL DEFAULT NULL, kicks INTEGER DEFAULT NULL, notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS symptom_photos (
@@ -1365,6 +1395,11 @@ DATA_TABLES = [
     'home_supplies',
     'symptom_photos',
     'family_history',
+    'procedures',
+    'quit_plans',
+    'menopause_logs',
+    'pregnancy',
+    'pregnancy_logs',
 ]
 
 

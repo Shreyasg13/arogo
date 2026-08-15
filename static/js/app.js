@@ -738,6 +738,27 @@ const I18N = {
     'Added to family history': 'पारिवारिक इतिहास में जोड़ा', 'Enter a condition': 'एक स्थिति भरें',
     'Mother':'माँ','Father':'पिता','Sister':'बहन','Brother':'भाई','Daughter':'बेटी','Son':'बेटा',
     'Grandmother':'दादी/नानी','Grandfather':'दादा/नाना','Aunt':'चाची/मौसी','Uncle':'चाचा/मामा','Other relative':'अन्य रिश्तेदार',
+    'Procedures':'प्रक्रियाएँ',
+    'Past surgeries, hospital stays and procedures — the history a new doctor asks for':'पिछली सर्जरी, अस्पताल में रुकना और प्रक्रियाएँ — नए डॉक्टर द्वारा माँगा जाने वाला इतिहास',
+    'Surgery':'सर्जरी','Hospital stay':'अस्पताल में रुकना','Procedure':'प्रक्रिया','Add a procedure':'प्रक्रिया जोड़ें',
+    'What was it? (e.g. Appendectomy)':'क्या था? (जैसे अपेंडिक्स)','Date':'तिथि','End date (optional)':'अंतिम तिथि (वैकल्पिक)',
+    'Doctor / hospital (optional)':'डॉक्टर / अस्पताल (वैकल्पिक)','No procedures logged yet.':'अभी कोई प्रक्रिया दर्ज नहीं।','Procedure added':'प्रक्रिया जोड़ी गई',
+    'Quit tracker':'छोड़ने का ट्रैकर',
+    'Track a quit date and see the days, units and money you\'ve saved — all from your own numbers':'छोड़ने की तिथि ट्रैक करें और बचाए दिन, मात्रा व पैसे देखें — सब आपके अपने आँकड़ों से',
+    'Smoking':'धूम्रपान','Alcohol':'शराब','cigarettes':'सिगरेट','drinks':'ड्रिंक','units':'यूनिट',
+    'Start a quit':'छोड़ना शुरू करें','Quit date':'छोड़ने की तिथि','Per day before (optional)':'पहले प्रतिदिन (वैकल्पिक)',
+    'Cost each ₹ (optional)':'प्रति ₹ (वैकल्पिक)','Start':'शुरू करें','No quit started yet. Set a date above and watch the days add up.':'अभी कुछ शुरू नहीं। ऊपर तिथि चुनें और दिन गिनते देखें।',
+    '%1 avoided':'%1 बचाई','saved':'बचाए','since %1':'%1 से','days free':'दिन मुक्त','Reset to today (relapse)':'आज पर रीसेट करें','Quit started — you got this':'शुरू हुआ — आप कर सकते हैं','Fresh start from today':'आज से नई शुरुआत',
+    'Menopause':'रजोनिवृत्ति',
+    'Log how symptoms feel day to day. A simple picture of what you recorded — never a diagnosis':'रोज़ लक्षण कैसे लगते हैं दर्ज करें। आपके दर्ज का सरल चित्र — कभी निदान नहीं',
+    'Hot flashes':'गर्मी के झोंके','Night sweats':'रात का पसीना','Sleep disruption':'नींद में बाधा','Log today':'आज दर्ज करें','None':'कोई नहीं',
+    'avg %1':'औसत %1','none logged':'कुछ दर्ज नहीं','%1 tougher days':'%1 कठिन दिन','Last %1 days':'पिछले %1 दिन','No symptoms logged':'कोई लक्षण दर्ज नहीं','No entries yet.':'अभी कोई प्रविष्टि नहीं।','Logged':'दर्ज किया',
+    'Pregnancy':'गर्भावस्था',
+    'Your week, weight and kick counts, kept in one place. Tracking only — Arogo gives no medical guidance':'आपका सप्ताह, वज़न और किक गिनती एक जगह। केवल ट्रैकिंग — Arogo कोई चिकित्सा सलाह नहीं देता',
+    'Start tracking':'ट्रैकिंग शुरू करें','Enter your last period date (or a due date) — Arogo works out the week. It offers no medical guidance.':'अपनी पिछली माहवारी की तिथि (या नियत तिथि) भरें — Arogo सप्ताह निकालता है। कोई चिकित्सा सलाह नहीं।',
+    'Last period (LMP)':'पिछली माहवारी (LMP)','Due date (optional)':'नियत तिथि (वैकल्पिक)','week not available':'सप्ताह उपलब्ध नहीं','weeks %1 days':'सप्ताह %1 दिन',
+    'due %1':'नियत %1','%1 days to go':'%1 दिन शेष','%1 days over':'%1 दिन ऊपर','End tracking':'ट्रैकिंग समाप्त करें','Add a log':'लॉग जोड़ें',
+    'Weight kg (optional)':'वज़न किग्रा (वैकल्पिक)','Kicks (optional)':'किक (वैकल्पिक)','%1 kicks':'%1 किक','No logs yet.':'अभी कोई लॉग नहीं।','Tracking started':'ट्रैकिंग शुरू','Enter a last-period or due date':'पिछली माहवारी या नियत तिथि भरें',
     'Add an allergy': 'एलर्जी जोड़ें', 'Allergen (e.g. Penicillin, Peanuts)': 'एलर्जन (जैसे पेनिसिलिन, मूँगफली)',
     'Reaction (e.g. rash, swelling)': 'प्रतिक्रिया (जैसे चकत्ते, सूजन)', 'Date noticed (optional)': 'देखी गई तिथि (वैकल्पिक)',
     'Severe': 'गंभीर', 'Moderate': 'मध्यम', 'Mild': 'हल्की', 'severe': 'गंभीर',
@@ -2652,6 +2673,10 @@ function switchView(view) {
   if (view === 'symptomphotos') loadSymptomPhotos();
   if (view === 'binder')        loadHealthBinder();
   if (view === 'familyhistory') loadFamilyHistory();
+  if (view === 'procedures')    loadProcedures();
+  if (view === 'quit')          loadQuit();
+  if (view === 'menopause')     loadMenopause();
+  if (view === 'pregnancy')     loadPregnancy();
   if (view === 'upcoming')      loadUpcoming();
   if (view === 'meal-plan')     loadMealPlan();
   if (view === 'taper')         loadTaper();
@@ -11941,8 +11966,12 @@ const NAV_TARGETS = [
   {v:'symptomphotos', l:'Photo journal',    k:'rash wound swelling photo'},
   {v:'timeline',      l:'Timeline',         k:'history'},
   {v:'familyhistory', l:'Family history',   k:'relatives hereditary genetic parents'},
+  {v:'procedures',    l:'Procedures',       k:'surgery surgeries hospital hospitalization operation'},
   {v:'health-id',     l:'Health ID',        k:'id card emergency'},
   {v:'binder',        l:'Health binder',    k:'summary print pdf full record doctor'},
+  {v:'quit',          l:'Quit tracker',     k:'smoking smoke alcohol sobriety stop'},
+  {v:'menopause',     l:'Menopause',        k:'perimenopause hot flashes'},
+  {v:'pregnancy',     l:'Pregnancy',        k:'pregnant weeks kicks due date lmp'},
   {v:'upcoming',      l:'Upcoming',         k:'calendar appointment due renewal'},
   {v:'care-plan',     l:'Care plan',        k:'shared plan'},
   {v:'care-team',     l:'Care team',        k:'doctor provider clinic'},
@@ -15189,9 +15218,13 @@ function renderHealthBinder(d) {
   // Recent labs.
   let labsInner = '';
   if ((d.labs || []).length) {
-    labsInner = `<table class="bnd-table"><tbody>${d.labs.map(l =>
-      `<tr><td>${escHtml(l.name)}</td><td>${escHtml(l.value)}${l.unit ? ' ' + escHtml(l.unit) : ''}</td>
-        <td class="bnd-dim">${escHtml(_fmtShortDate(l.date))}</td></tr>`).join('')}</tbody></table>`;
+    // Coerce value to a string BEFORE escHtml — escHtml does String(x||''),
+    // which would silently blank a genuine numeric reading of 0.
+    labsInner = `<table class="bnd-table"><tbody>${d.labs.map(l => {
+      const val = (l.value === null || l.value === undefined) ? '' : String(l.value);
+      return `<tr><td>${escHtml(l.name)}</td><td>${escHtml(val)}${l.unit ? ' ' + escHtml(l.unit) : ''}</td>
+        <td class="bnd-dim">${escHtml(_fmtShortDate(l.date))}</td></tr>`;
+    }).join('')}</tbody></table>`;
   }
 
   // Vaccines.
@@ -15331,6 +15364,294 @@ async function saveFamilyEntry() {
 async function deleteFamilyEntry(id) {
   await fetch('/api/family-history/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   loadFamilyHistory();
+}
+
+// ── Procedures & hospitalizations (O1) ───────────────────────────────────────
+const _PROC_KIND = { surgery: 'Surgery', hospitalization: 'Hospital stay', procedure: 'Procedure' };
+
+async function loadProcedures() {
+  const el = document.getElementById('procedures-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/procedures', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {procedures:[]}).catch(() => ({procedures:[]}));
+  el.innerHTML = renderProcedures(d.procedures || []);
+}
+
+function renderProcedures(list) {
+  const today = localToday();
+  const kinds = Object.keys(_PROC_KIND).map(k => `<option value="${k}">${t(_PROC_KIND[k])}</option>`).join('');
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add a procedure')}</h2>
+      <div class="dv-form">
+        <select id="proc-kind" class="form-input" style="max-width:160px">${kinds}</select>
+        <input type="text" id="proc-name" class="form-input" placeholder="${t('What was it? (e.g. Appendectomy)')}" style="flex:2;min-width:190px">
+        <input type="date" id="proc-date" class="form-input" max="${today}" title="${t('Date')}" style="max-width:160px">
+        <input type="date" id="proc-end" class="form-input" max="${today}" title="${t('End date (optional)')}" style="max-width:160px">
+      </div>
+      <div class="dv-form" style="margin-top:8px">
+        <input type="text" id="proc-provider" class="form-input" placeholder="${t('Doctor / hospital (optional)')}" style="flex:1;min-width:160px">
+        <input type="text" id="proc-notes" class="form-input" placeholder="${t('Notes (optional)')}" style="flex:2;min-width:160px">
+        <button class="btn-primary" data-ev-click="saveProcedure()">${t('Add')}</button>
+      </div>
+    </div>`;
+  if (!list.length) return form + `<div class="dv-empty">${t('No procedures logged yet.')}</div>`;
+  const cards = list.map(p => {
+    const when = p.end_date && p.end_date !== p.date_key
+      ? `${escHtml(_fmtShortDate(p.date_key))} – ${escHtml(_fmtShortDate(p.end_date))}`
+      : escHtml(_fmtShortDate(p.date_key));
+    const meta = [p.provider && escHtml(p.provider), p.location && escHtml(p.location)].filter(Boolean).join(' · ');
+    return `<div class="panel fh-card"><div class="fh-head"><div style="flex:1;min-width:0">
+        <div class="fh-cond">${escHtml(p.name)} <span class="dv-card-date">${escHtml(t(_PROC_KIND[p.kind] || p.kind))} · ${when}</span></div>
+        ${meta ? `<div class="fh-meta">${meta}</div>` : ''}
+        ${p.notes ? `<div class="sup-notes">${escHtml(p.notes)}</div>` : ''}
+      </div><button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteProcedure('${p.id}')" style="color:var(--gray-300)">✕</button></div></div>`;
+  }).join('');
+  return form + cards;
+}
+
+async function saveProcedure() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const body = { kind: v('proc-kind'), name: v('proc-name'), date_key: v('proc-date'),
+                 end_date: v('proc-end') || null, provider: v('proc-provider'), notes: v('proc-notes') };
+  if (!body.name.trim()) { showToast('Enter what it was', 'error'); return; }
+  if (!body.date_key) { showToast('Pick a date', 'error'); return; }
+  const r = await fetch('/api/procedures', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Procedure added'); loadProcedures(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function deleteProcedure(id) {
+  await fetch('/api/procedures/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadProcedures();
+}
+
+// ── Quit tracker (O2) ────────────────────────────────────────────────────────
+const _QUIT_KIND = { smoking: 'Smoking', alcohol: 'Alcohol', other: 'Other' };
+const _QUIT_UNIT = { smoking: 'cigarettes', alcohol: 'drinks', other: 'units' };
+
+async function loadQuit() {
+  const el = document.getElementById('quit-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/quit', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {plans:[]}).catch(() => ({plans:[]}));
+  el.innerHTML = renderQuit(d.plans || []);
+}
+
+function renderQuit(plans) {
+  const today = localToday();
+  const kinds = Object.keys(_QUIT_KIND).map(k => `<option value="${k}">${t(_QUIT_KIND[k])}</option>`).join('');
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Start a quit')}</h2>
+      <div class="dv-form">
+        <select id="quit-kind" class="form-input" style="max-width:150px">${kinds}</select>
+        <input type="date" id="quit-date" class="form-input" max="${today}" value="${today}" title="${t('Quit date')}" style="max-width:160px">
+      </div>
+      <div class="dv-form" style="margin-top:8px">
+        <input type="number" id="quit-baseline" class="form-input" placeholder="${t('Per day before (optional)')}" min="0" step="any" style="max-width:180px">
+        <input type="number" id="quit-cost" class="form-input" placeholder="${t('Cost each ₹ (optional)')}" min="0" step="any" style="max-width:170px">
+        <button class="btn-primary" data-ev-click="saveQuit()">${t('Start')}</button>
+      </div>
+    </div>`;
+  if (!plans.length) return form + `<div class="dv-empty">${t('No quit started yet. Set a date above and watch the days add up.')}</div>`;
+  const cards = plans.map(p => {
+    const unit = t(_QUIT_UNIT[p.kind] || 'units');
+    const stats = [];
+    if (p.units_avoided != null) stats.push(`<div class="quit-stat"><div class="quit-stat-n">${trimG(p.units_avoided)}</div><div class="quit-stat-l">${tformat('%1 avoided', unit)}</div></div>`);
+    if (p.money_saved != null) stats.push(`<div class="quit-stat"><div class="quit-stat-n">₹${escHtml(String(p.money_saved))}</div><div class="quit-stat-l">${t('saved')}</div></div>`);
+    return `<div class="panel quit-card">
+        <div class="quit-head">
+          <div><div class="quit-kind">${t(_QUIT_KIND[p.kind] || p.kind)}${p.label ? ' · ' + escHtml(p.label) : ''}</div>
+            <div class="quit-since">${tformat('since %1', escHtml(_fmtShortDate(p.quit_date)))}</div></div>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteQuit('${p.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+        <div class="quit-days"><span class="quit-days-n">${p.days_free}</span> ${t('days free')}</div>
+        ${stats.length ? `<div class="quit-stats">${stats.join('')}</div>` : ''}
+        <button class="btn-outline btn-sm" data-ev-click="resetQuit('${p.id}')" style="margin-top:10px">${t('Reset to today (relapse)')}</button>
+      </div>`;
+  }).join('');
+  return form + cards;
+}
+
+async function saveQuit() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const body = { kind: v('quit-kind'), quit_date: v('quit-date'),
+                 baseline_per_day: v('quit-baseline') || null, unit_cost: v('quit-cost') || null };
+  if (!body.quit_date) { showToast('Pick a quit date', 'error'); return; }
+  const r = await fetch('/api/quit', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Quit started — you got this'); loadQuit(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function resetQuit(id) {
+  const r = await fetch('/api/quit/' + id, {method:'PATCH', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({quit_date: localToday()})}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Fresh start from today'); loadQuit(); }
+  else showToast('Could not update', 'error');
+}
+
+async function deleteQuit(id) {
+  await fetch('/api/quit/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadQuit();
+}
+
+// ── Menopause companion (O3) ─────────────────────────────────────────────────
+const _MENO_SYM = { hot_flashes: 'Hot flashes', night_sweats: 'Night sweats', sleep: 'Sleep disruption', mood: 'Mood' };
+const _MENO_SEV = ['—', 'Mild', 'Moderate', 'Severe'];
+
+async function loadMenopause() {
+  const el = document.getElementById('menopause-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/menopause', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {logs:[],summary:{}}).catch(() => ({logs:[],summary:{}}));
+  el.innerHTML = renderMenopause(d.logs || [], d.summary || {});
+}
+
+function _sevSelect(id) {
+  const opts = _MENO_SEV.map((lbl, i) => `<option value="${i}">${i === 0 ? t('None') : t(lbl)}</option>`).join('');
+  return `<select id="${id}" class="form-input mp-sev">${opts}</select>`;
+}
+
+function renderMenopause(logs, summary) {
+  const today = localToday();
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:10px">${t('Log today')}</h2>
+      <input type="date" id="mp-date" class="form-input" max="${today}" value="${today}" style="max-width:170px;margin-bottom:10px">
+      <div class="mp-grid">
+        ${Object.keys(_MENO_SYM).map(s => `<label class="mp-row"><span>${t(_MENO_SYM[s])}</span>${_sevSelect('mp-' + s)}</label>`).join('')}
+      </div>
+      <div class="dv-form" style="margin-top:10px">
+        <input type="text" id="mp-notes" class="form-input" placeholder="${t('Notes (optional)')}" style="flex:2;min-width:180px">
+        <button class="btn-primary" data-ev-click="saveMenopause()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  let summaryHtml = '';
+  if (summary.has_data) {
+    const rows = Object.keys(_MENO_SYM).map(s => {
+      const d = (summary.symptoms || {})[s] || {};
+      const avg = d.avg_when_present != null ? tformat('avg %1', d.avg_when_present) : t('none logged');
+      return `<div class="bnd-row"><span class="bnd-k">${t(_MENO_SYM[s])}</span><span class="bnd-v">${tformat('%1 tougher days', d.flare_days || 0)} · ${avg}</span></div>`;
+    }).join('');
+    summaryHtml = `<div class="panel" style="padding:16px 20px;margin-bottom:14px">
+        <div class="sup-alert-title">${tformat('Last %1 days', summary.days)}</div>${rows}</div>`;
+  }
+
+  const list = logs.length ? logs.slice(0, 30).map(l => {
+    const bits = Object.keys(_MENO_SYM).filter(s => (l[s] || 0) >= 1)
+      .map(s => `${t(_MENO_SYM[s])} ${t(_MENO_SEV[l[s]])}`).join(' · ');
+    return `<div class="panel fh-card"><div class="fh-head"><div style="flex:1;min-width:0">
+        <div class="fh-cond" style="font-size:13.5px">${escHtml(_fmtShortDate(l.date_key))}</div>
+        <div class="fh-meta">${bits || t('No symptoms logged')}${l.notes ? ' · ' + escHtml(l.notes) : ''}</div>
+      </div><button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteMenopause('${l.id}')" style="color:var(--gray-300)">✕</button></div></div>`;
+  }).join('') : `<div class="dv-empty">${t('No entries yet.')}</div>`;
+
+  return form + summaryHtml + list;
+}
+
+async function saveMenopause() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const body = { date_key: v('mp-date'), notes: v('mp-notes') };
+  Object.keys(_MENO_SYM).forEach(s => { body[s] = v('mp-' + s) || 0; });
+  const r = await fetch('/api/menopause', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Logged'); loadMenopause(); }
+  else showToast('Could not save', 'error');
+}
+
+async function deleteMenopause(id) {
+  await fetch('/api/menopause/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadMenopause();
+}
+
+// ── Pregnancy tracker (O4) ───────────────────────────────────────────────────
+async function loadPregnancy() {
+  const el = document.getElementById('pregnancy-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/pregnancy', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {pregnancy:{active:false},logs:[]}).catch(() => ({pregnancy:{active:false},logs:[]}));
+  el.innerHTML = renderPregnancy(d.pregnancy || {active:false}, d.logs || []);
+}
+
+function renderPregnancy(preg, logs) {
+  const today = localToday();
+  if (!preg.active) {
+    return `<div class="panel" style="padding:20px 22px;max-width:520px">
+        <h2 class="panel-title" style="margin-bottom:6px">${t('Start tracking')}</h2>
+        <p class="dv-fineprint" style="margin-bottom:12px">${t('Enter your last period date (or a due date) — Arogo works out the week. It offers no medical guidance.')}</p>
+        <div class="dv-form">
+          <input type="date" id="preg-lmp" class="form-input" max="${today}" title="${t('Last period (LMP)')}" style="max-width:190px">
+          <input type="date" id="preg-due" class="form-input" title="${t('Due date (optional)')}" style="max-width:190px">
+          <button class="btn-primary" data-ev-click="savePregnancy()">${t('Start')}</button>
+        </div>
+      </div>`;
+  }
+  const weekStr = preg.week != null
+    ? `<span class="preg-week-n">${preg.week}</span><span class="preg-week-u">${tformat('weeks %1 days', preg.day_in_week || 0)}</span>`
+    : `<span class="preg-week-u">${t('week not available')}</span>`;
+  const due = [];
+  if (preg.due_date) due.push(tformat('due %1', escHtml(_fmtShortDate(preg.due_date))));
+  if (preg.days_to_due != null) due.push(preg.days_to_due >= 0 ? tformat('%1 days to go', preg.days_to_due) : tformat('%1 days over', Math.abs(preg.days_to_due)));
+
+  const hero = `<div class="panel preg-hero">
+      <div class="preg-week">${weekStr}</div>
+      ${due.length ? `<div class="preg-due">${due.join(' · ')}</div>` : ''}
+      <button class="btn-outline btn-sm" data-ev-click="endPregnancy()" style="margin-top:12px">${t('End tracking')}</button>
+    </div>`;
+
+  const logForm = `<div class="panel" style="padding:16px 20px;margin:14px 0">
+      <h2 class="panel-title" style="margin-bottom:10px">${t('Add a log')}</h2>
+      <div class="dv-form">
+        <input type="date" id="preg-log-date" class="form-input" max="${today}" value="${today}" style="max-width:160px">
+        <input type="number" id="preg-weight" class="form-input" placeholder="${t('Weight kg (optional)')}" min="20" max="250" step="any" style="max-width:170px">
+        <input type="number" id="preg-kicks" class="form-input" placeholder="${t('Kicks (optional)')}" min="0" style="max-width:150px">
+        <button class="btn-primary" data-ev-click="savePregnancyLog()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  const list = logs.length ? logs.map(l => {
+    const bits = [l.weight_kg != null ? trimG(l.weight_kg) + ' kg' : '', l.kicks != null ? tformat('%1 kicks', l.kicks) : '', l.notes ? escHtml(l.notes) : ''].filter(Boolean).join(' · ');
+    return `<div class="panel fh-card"><div class="fh-head"><div style="flex:1;min-width:0">
+        <div class="fh-cond" style="font-size:13.5px">${escHtml(_fmtShortDate(l.date_key))}</div>
+        <div class="fh-meta">${bits || '—'}</div>
+      </div><button class="btn-icon" title="${t('Delete')}" data-ev-click="deletePregnancyLog('${l.id}')" style="color:var(--gray-300)">✕</button></div></div>`;
+  }).join('') : `<div class="dv-empty">${t('No logs yet.')}</div>`;
+
+  return hero + logForm + list;
+}
+
+async function savePregnancy() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const body = { lmp_date: v('preg-lmp') || null, due_date: v('preg-due') || null };
+  if (!body.lmp_date && !body.due_date) { showToast('Enter a last-period or due date', 'error'); return; }
+  const r = await fetch('/api/pregnancy', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Tracking started'); loadPregnancy(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function savePregnancyLog() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const body = { date_key: v('preg-log-date'), weight_kg: v('preg-weight') || null, kicks: v('preg-kicks') || null };
+  const r = await fetch('/api/pregnancy/log', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Logged'); loadPregnancy(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function endPregnancy() {
+  await fetch('/api/pregnancy/end', {method:'POST', credentials:'same-origin'}).catch(() => {});
+  loadPregnancy();
+}
+
+async function deletePregnancyLog(id) {
+  await fetch('/api/pregnancy/log/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadPregnancy();
 }
 
 // ── Family health calendar (upcoming) ────────────────────────────────────────

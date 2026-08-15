@@ -54,6 +54,15 @@ def test_blank_age_stays_null_not_zero(app):
     assert e["age_at_onset"] is None
 
 
+def test_non_numeric_age_is_null_not_a_500(app):
+    # Review finding: a non-numeric age_at_onset used to crash (float(None)).
+    # It must degrade to None, not an HTTP 500 or a fabricated 0.
+    c = _reg(app, "fh7@medeasy.test")
+    r = c.post("/api/family-history", json={"relation": "aunt", "condition": "Glaucoma", "age_at_onset": "abc"})
+    assert r.status_code == 200
+    assert r.get_json()["entry"]["age_at_onset"] is None
+
+
 def test_delete(app):
     c = _reg(app, "fh5@medeasy.test")
     e = c.post("/api/family-history", json={"relation": "brother", "condition": "Epilepsy"}).get_json()["entry"]
