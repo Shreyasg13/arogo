@@ -67,4 +67,10 @@ def get_health_id() -> dict:
             'provider': _s(e.get('insurance_provider')),
             'number': _s(e.get('insurance_number')),
         },
+        # M1 — the user's own stated wishes, shown verbatim. Never interpreted.
+        'advance_care': {
+            'organ_donor': _s(e.get('organ_donor')),
+            'directive_wishes': _s(e.get('directive_wishes')),
+            'directive_location': _s(e.get('directive_location')),
+        },
     }

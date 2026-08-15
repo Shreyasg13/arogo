@@ -699,6 +699,31 @@ const I18N = {
     'Pick a visit date': 'विज़िट की तिथि चुनें', 'Checkup added': 'जाँच जोड़ी गई',
     'Pick a prescription date': 'पर्चे की तिथि चुनें', 'Prescription saved': 'पर्चा सहेजा गया',
     'Could not save': 'सहेजा नहीं जा सका',
+    'Advance care & wishes': 'अग्रिम देखभाल और इच्छाएँ',
+    'Your own wishes, shown as you write them. Arogo stores them for an emergency — it never interprets or acts on them.': 'आपकी अपनी इच्छाएँ, जैसा आप लिखते हैं वैसे ही दिखाई जाती हैं। Arogo इन्हें आपात स्थिति के लिए सहेजता है — कभी व्याख्या या कार्रवाई नहीं करता।',
+    'Organ donor': 'अंगदाता', 'Not specified': 'निर्दिष्ट नहीं', 'Registered donor': 'पंजीकृत दाता',
+    'Wishes to donate': 'दान करना चाहते हैं', 'Does not wish to donate': 'दान नहीं करना चाहते',
+    'Where directives are kept': 'निर्देश कहाँ रखे हैं', 'Medical wishes / directives': 'चिकित्सा इच्छाएँ / निर्देश',
+    'Medical wishes': 'चिकित्सा इच्छाएँ', 'Directives kept': 'निर्देश रखे हैं',
+    'Home supplies': 'घरेलू सामग्री',
+    'Your first-aid kit and OTC basics — quantities and expiry dates, with a nudge when something runs low or expires': 'आपकी प्राथमिक चिकित्सा किट और सामान्य दवाइयाँ — मात्रा और समाप्ति तिथियाँ, और कुछ कम या समाप्त होने पर सूचना',
+    'First aid': 'प्राथमिक चिकित्सा', 'OTC medicine': 'सामान्य दवा', 'Device': 'उपकरण', 'Other': 'अन्य',
+    'Needs attention': 'ध्यान चाहिए', '%1 expired': '%1 समाप्त', '%1 expiring soon': '%1 जल्द समाप्त',
+    '%1 running low': '%1 कम हो रहे', 'Add an item': 'सामग्री जोड़ें',
+    'Item (e.g. Paracetamol, Bandages)': 'सामग्री (जैसे पैरासिटामोल, पट्टी)', 'Qty': 'मात्रा', 'Unit': 'इकाई',
+    'Expiry (optional)': 'समाप्ति (वैकल्पिक)', 'Nudge at (optional)': 'सूचना मात्रा (वैकल्पिक)',
+    'Nudge me when the quantity drops to this': 'मात्रा इतनी होने पर सूचित करें',
+    'Nothing in your kit yet. Add your first-aid supplies and OTC basics above.': 'अभी किट में कुछ नहीं। ऊपर अपनी प्राथमिक चिकित्सा सामग्री जोड़ें।',
+    'expired %1': '%1 को समाप्त', 'expires %1': '%1 को समाप्त होगा', 'low': 'कम',
+    'Use one': 'एक उपयोग करें', 'Add one': 'एक जोड़ें', 'Item added': 'सामग्री जोड़ी गई',
+    'Enter an item name': 'सामग्री का नाम भरें', 'Could not update': 'अपडेट नहीं हो सका',
+    'Photo journal': 'फोटो जर्नल',
+    'Photograph a rash, wound or swelling to see how it changes. Your photos, lined up by date — Arogo never reads a diagnosis from them': 'चकत्ते, घाव या सूजन की फोटो लें और बदलाव देखें। आपकी फोटो, तिथि अनुसार — Arogo इनसे कभी निदान नहीं पढ़ता',
+    'Add a photo': 'फोटो जोड़ें', 'What is it? (e.g. Left forearm rash)': 'यह क्या है? (जैसे बायीं बाँह के चकत्ते)',
+    'No photos yet. Add one above, using the same label each time to build a timeline.': 'अभी कोई फोटो नहीं। ऊपर जोड़ें, हर बार वही लेबल इस्तेमाल कर समयरेखा बनाएँ।',
+    '%1 photos': '%1 फोटो', 'Uploading…': 'अपलोड हो रहा है…', 'Photo added': 'फोटो जोड़ी गई',
+    'Choose a photo first': 'पहले एक फोटो चुनें', 'Add a label so photos group together': 'फोटो समूहित करने के लिए एक लेबल जोड़ें',
+    'Could not upload': 'अपलोड नहीं हो सका',
     'Add an allergy': 'एलर्जी जोड़ें', 'Allergen (e.g. Penicillin, Peanuts)': 'एलर्जन (जैसे पेनिसिलिन, मूँगफली)',
     'Reaction (e.g. rash, swelling)': 'प्रतिक्रिया (जैसे चकत्ते, सूजन)', 'Date noticed (optional)': 'देखी गई तिथि (वैकल्पिक)',
     'Severe': 'गंभीर', 'Moderate': 'मध्यम', 'Mild': 'हल्की', 'severe': 'गंभीर',
@@ -2609,6 +2634,8 @@ function switchView(view) {
   if (view === 'claims')        loadClaims();
   if (view === 'allergies')     loadAllergies();
   if (view === 'dentalvision')  loadDentalVision();
+  if (view === 'supplies')      loadSupplies();
+  if (view === 'symptomphotos') loadSymptomPhotos();
   if (view === 'upcoming')      loadUpcoming();
   if (view === 'meal-plan')     loadMealPlan();
   if (view === 'taper')         loadTaper();
@@ -11478,8 +11505,8 @@ async function deleteActionPlan(id) {
 async function loadEmergencyCard() {
   const r = await fetch('/api/emergency').then(r => r.json()).catch(() => null);
   if (!r) return;
-  const fields = ['blood_type','allergies','conditions','medications','contact1_name','contact1_phone','contact2_name','contact2_phone','insurance_provider','insurance_number'];
-  const elMap  = {'blood_type':'em-blood-type','allergies':'em-allergies','conditions':'em-conditions','medications':'em-medications','contact1_name':'em-c1-name','contact1_phone':'em-c1-phone','contact2_name':'em-c2-name','contact2_phone':'em-c2-phone','insurance_provider':'em-insurance-provider','insurance_number':'em-insurance-number'};
+  const fields = ['blood_type','allergies','conditions','medications','contact1_name','contact1_phone','contact2_name','contact2_phone','insurance_provider','insurance_number','organ_donor','directive_wishes','directive_location'];
+  const elMap  = {'blood_type':'em-blood-type','allergies':'em-allergies','conditions':'em-conditions','medications':'em-medications','contact1_name':'em-c1-name','contact1_phone':'em-c1-phone','contact2_name':'em-c2-name','contact2_phone':'em-c2-phone','insurance_provider':'em-insurance-provider','insurance_number':'em-insurance-number','organ_donor':'em-organ-donor','directive_wishes':'em-directive-wishes','directive_location':'em-directive-location'};
   fields.forEach(k => {
     const el = document.getElementById(elMap[k]);
     if (el) { if (el.tagName === 'SELECT') el.value = r[k]||''; else el.value = r[k]||''; }
@@ -11508,6 +11535,9 @@ async function saveEmergencyInfo() {
     contact2_phone:      document.getElementById('em-c2-phone')?.value,
     insurance_provider:  document.getElementById('em-insurance-provider')?.value,
     insurance_number:    document.getElementById('em-insurance-number')?.value,
+    organ_donor:         document.getElementById('em-organ-donor')?.value,
+    directive_wishes:    document.getElementById('em-directive-wishes')?.value,
+    directive_location:  document.getElementById('em-directive-location')?.value,
   };
   const r = await fetch('/api/emergency', {
     method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)
@@ -14045,8 +14075,17 @@ function renderHealthId(d) {
   const ins = d.insurance || {};
   const insVal = [ins.provider, ins.number].filter(Boolean).join(' · ');
 
+  // M1 — advance-care wishes, shown verbatim (the user's own words), only when set.
+  const ac = d.advance_care || {};
+  const acBlock = [
+    ac.organ_donor ? _hidRow('Organ donor', ac.organ_donor) : '',
+    ac.directive_wishes ? _hidRow('Medical wishes', ac.directive_wishes) : '',
+    ac.directive_location ? _hidRow('Directives kept', ac.directive_location) : '',
+  ].join('');
+
   const anyData = id.name || d.blood_type || d.allergies || (d.allergy_list || []).length ||
-    d.conditions || (d.active_medicines || []).length || contacts || insVal;
+    d.conditions || (d.active_medicines || []).length || contacts || insVal ||
+    ac.organ_donor || ac.directive_wishes || ac.directive_location;
 
   const card = `
     <div id="health-id-card" class="hid-card">
@@ -14060,6 +14099,7 @@ function renderHealthId(d) {
         ${medsBlock}
         ${contactsBlock}
         ${_hidRow('Insurance', insVal)}
+        ${acBlock}
       </div>
       <div id="hid-qr" class="hid-qr"></div>
       <div class="hid-foot">${t('Generated by Arogo from your own records. Not a substitute for official ID.')}</div>
@@ -14798,6 +14838,205 @@ async function saveVisionRx() {
 async function deleteVisionRx(id) {
   await fetch('/api/dental-vision/rx/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   loadDentalVision();
+}
+
+// ── Home medical supplies (M2) ───────────────────────────────────────────────
+// First-aid kit + OTC basics with quantity, optional expiry, and an optional
+// restock threshold. Factual inventory only — an OTC item here is a thing on a
+// shelf, never a treatment recommendation.
+const _SUP_CAT = { first_aid: 'First aid', otc: 'OTC medicine', device: 'Device', other: 'Other' };
+
+async function loadSupplies() {
+  const el = document.getElementById('supplies-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const [listD, alertD] = await Promise.all([
+    fetch('/api/supplies', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {supplies:[]}).catch(() => ({supplies:[]})),
+    fetch('/api/supplies/alerts', {credentials:'same-origin'}).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+  ]);
+  el.innerHTML = renderSupplies(listD.supplies || [], alertD || {});
+}
+
+function _supExpiryTag(item) {
+  if (!item.expiry_date) return '';
+  const d = escHtml(_fmtShortDate(item.expiry_date));
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const exp = new Date(item.expiry_date + 'T00:00:00');
+  const days = Math.round((exp - today) / 864e5);
+  let cls = '';
+  if (days < 0) cls = 'expired';
+  else if (days <= 60) cls = 'soon';
+  const label = days < 0 ? tformat('expired %1', d) : tformat('expires %1', d);
+  return `<span class="sup-exp ${cls}">${label}</span>`;
+}
+
+function renderSupplies(list, alerts) {
+  const alertLine = [];
+  if ((alerts.expired || []).length) alertLine.push(`<span class="sup-al expired">${tformat('%1 expired', alerts.expired.length)}</span>`);
+  if ((alerts.expiring || []).length) alertLine.push(`<span class="sup-al soon">${tformat('%1 expiring soon', alerts.expiring.length)}</span>`);
+  if ((alerts.low || []).length) alertLine.push(`<span class="sup-al low">${tformat('%1 running low', alerts.low.length)}</span>`);
+  const alertBanner = alertLine.length
+    ? `<div class="panel sup-alert-panel"><div class="sup-alert-title">${t('Needs attention')}</div><div class="sup-al-row">${alertLine.join('')}</div></div>` : '';
+
+  const catOpts = Object.keys(_SUP_CAT).map(k => `<option value="${k}">${t(_SUP_CAT[k])}</option>`).join('');
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:14px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add an item')}</h2>
+      <div class="dv-form">
+        <input type="text" id="sup-name" class="form-input" placeholder="${t('Item (e.g. Paracetamol, Bandages)')}" style="flex:2;min-width:180px">
+        <select id="sup-cat" class="form-input" style="max-width:160px">${catOpts}</select>
+        <input type="number" id="sup-qty" class="form-input" placeholder="${t('Qty')}" min="0" style="max-width:90px">
+        <input type="text" id="sup-unit" class="form-input" placeholder="${t('Unit')}" style="max-width:120px">
+      </div>
+      <div class="dv-form" style="margin-top:8px">
+        <input type="date" id="sup-expiry" class="form-input" title="${t('Expiry (optional)')}" style="max-width:160px">
+        <input type="number" id="sup-lowat" class="form-input" placeholder="${t('Nudge at (optional)')}" min="0" title="${t('Nudge me when the quantity drops to this')}" style="max-width:150px">
+        <button class="btn-primary" data-ev-click="saveSupply()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  if (!list.length) {
+    return alertBanner + form + `<div class="dv-empty">${t('Nothing in your kit yet. Add your first-aid supplies and OTC basics above.')}</div>`;
+  }
+
+  // Group by category, in the fixed order.
+  let body = '';
+  Object.keys(_SUP_CAT).forEach(cat => {
+    const items = list.filter(s => (s.category || 'other') === cat);
+    if (!items.length) return;
+    body += `<div class="section-header"><h2 class="section-title">${t(_SUP_CAT[cat])}</h2></div>`;
+    body += items.map(s => {
+      const qty = s.quantity || 0;
+      const low = (s.low_at || 0) > 0 && qty <= s.low_at;
+      const qtyText = qty + (s.unit ? ' ' + escHtml(s.unit) : '');
+      return `<div class="panel sup-card">
+          <div class="sup-head">
+            <div style="flex:1;min-width:0">
+              <div class="sup-name">${escHtml(s.name)}</div>
+              <div class="sup-meta">
+                <span class="sup-qty ${low ? 'low' : ''}">${qtyText}${low ? ' · ' + t('low') : ''}</span>
+                ${s.expiry_date ? _supExpiryTag(s) : ''}
+              </div>
+              ${s.notes ? `<div class="sup-notes">${escHtml(s.notes)}</div>` : ''}
+            </div>
+            <div class="sup-actions">
+              <button class="btn-icon" title="${t('Use one')}" data-ev-click="restockSupply('${s.id}', ${qty}, -1)">−</button>
+              <button class="btn-icon" title="${t('Add one')}" data-ev-click="restockSupply('${s.id}', ${qty}, 1)">＋</button>
+              <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteSupply('${s.id}')" style="color:var(--gray-300)">✕</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  });
+
+  return alertBanner + form + body;
+}
+
+async function saveSupply() {
+  const val = id => (document.getElementById(id) || {}).value || '';
+  const body = { name: val('sup-name'), category: val('sup-cat'),
+                 quantity: val('sup-qty') || 0, unit: val('sup-unit'),
+                 expiry_date: val('sup-expiry') || null, low_at: val('sup-lowat') || 0 };
+  if (!body.name.trim()) { showToast('Enter an item name', 'error'); return; }
+  const r = await fetch('/api/supplies', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Item added'); loadSupplies(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function restockSupply(id, currentQty, delta) {
+  const next = Math.max(0, (Number(currentQty) || 0) + delta);
+  const r = await fetch('/api/supplies/' + id, {method:'PATCH', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({quantity: next})}).then(x => x.json()).catch(() => null);
+  if (r && r.success) loadSupplies();
+  else showToast('Could not update', 'error');
+}
+
+async function deleteSupply(id) {
+  await fetch('/api/supplies/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadSupplies();
+}
+
+// ── Symptom photo journal (M3) ───────────────────────────────────────────────
+// Photograph a rash / wound / swelling and follow how it looks over time.
+// Grouped by a free-text label into per-subject timelines. Own images only,
+// shown by date — Arogo never analyses or diagnoses from a photo.
+async function loadSymptomPhotos() {
+  const el = document.getElementById('symptomphotos-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/symptom-photos', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {photos:[]}).catch(() => ({photos:[]}));
+  el.innerHTML = renderSymptomPhotos(d.photos || []);
+}
+
+function renderSymptomPhotos(photos) {
+  const today = localToday();
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add a photo')}</h2>
+      <div class="dv-form">
+        <input type="text" id="sp-label" class="form-input" placeholder="${t('What is it? (e.g. Left forearm rash)')}" style="flex:2;min-width:200px">
+        <input type="date" id="sp-date" class="form-input" max="${today}" value="${today}" style="max-width:160px">
+      </div>
+      <div class="dv-form" style="margin-top:8px">
+        <input type="text" id="sp-notes" class="form-input" placeholder="${t('Notes (optional)')}" style="flex:2;min-width:180px">
+        <input type="file" id="sp-file" accept="image/*" class="form-input" style="max-width:230px">
+        <button class="btn-primary" data-ev-click="uploadSymptomPhoto()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  if (!photos.length) {
+    return form + `<div class="dv-empty">${t('No photos yet. Add one above, using the same label each time to build a timeline.')}</div>`;
+  }
+
+  // Group by label; within a group show oldest → newest so change reads left to right.
+  const groups = {};
+  photos.forEach(p => { (groups[p.label] = groups[p.label] || []).push(p); });
+  let body = '';
+  Object.keys(groups).forEach(label => {
+    const items = groups[label].slice().sort((a, b) =>
+      (a.taken_date || '').localeCompare(b.taken_date || ''));
+    const thumbs = items.map(p => {
+      const enc = encodeURIComponent(p.filename);
+      return `<figure class="sp-thumb">
+          <img src="/uploads/${enc}" alt="${escHtml(label)}" loading="lazy"
+               data-ev-click="viewMedPhoto('${enc}','${escHtml(label)}')">
+          <figcaption>${escHtml(_fmtShortDate(p.taken_date))}</figcaption>
+          <button class="sp-del" title="${t('Delete')}" data-ev-click="deleteSymptomPhoto('${p.id}')">✕</button>
+          ${p.notes ? `<div class="sp-note">${escHtml(p.notes)}</div>` : ''}
+        </figure>`;
+    }).join('');
+    body += `<div class="panel sp-group">
+        <div class="sp-group-head">${escHtml(label)} <span class="sp-count">${tformat('%1 photos', items.length)}</span></div>
+        <div class="sp-strip">${thumbs}</div>
+      </div>`;
+  });
+
+  return form + body;
+}
+
+async function uploadSymptomPhoto() {
+  const label = (document.getElementById('sp-label') || {}).value || '';
+  const date = (document.getElementById('sp-date') || {}).value || '';
+  const notes = (document.getElementById('sp-notes') || {}).value || '';
+  const fileEl = document.getElementById('sp-file');
+  const file = fileEl && fileEl.files && fileEl.files[0];
+  if (!file) { showToast('Choose a photo first', 'error'); return; }
+  if (!label.trim()) { showToast('Add a label so photos group together', 'error'); return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('label', label);
+  fd.append('taken_date', date);
+  fd.append('notes', notes);
+  showToast('Uploading…');
+  const r = await fetch('/api/symptom-photos', {method:'POST', credentials:'same-origin', body: fd})
+    .then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Photo added'); loadSymptomPhotos(); }
+  else showToast((r && r.error) || 'Could not upload', 'error');
+}
+
+async function deleteSymptomPhoto(id) {
+  await fetch('/api/symptom-photos/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadSymptomPhotos();
 }
 
 // ── Family health calendar (upcoming) ────────────────────────────────────────

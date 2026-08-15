@@ -605,11 +605,15 @@ def save_emergency_info(data: dict) -> dict:
     e = get_emergency_info()
     execute("""UPDATE emergency_info SET blood_type=?,allergies=?,conditions=?,medications=?,
                contact1_name=?,contact1_phone=?,contact2_name=?,contact2_phone=?,
-               insurance_provider=?,insurance_number=?,updated_at=? WHERE id=? AND user_id=?""",
+               insurance_provider=?,insurance_number=?,
+               organ_donor=?,directive_wishes=?,directive_location=?,updated_at=? WHERE id=? AND user_id=?""",
             (data.get('blood_type',''), data.get('allergies',''), data.get('conditions',''),
              data.get('medications',''), data.get('contact1_name',''), data.get('contact1_phone',''),
              data.get('contact2_name',''), data.get('contact2_phone',''),
              data.get('insurance_provider',''), data.get('insurance_number',''),
+             str(data.get('organ_donor','') or '')[:40],
+             str(data.get('directive_wishes','') or '')[:500],
+             str(data.get('directive_location','') or '')[:200],
              now_iso(), e['id'], current_user_id()), commit=True)
     return get_emergency_info()
 

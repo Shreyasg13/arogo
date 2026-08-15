@@ -125,6 +125,9 @@ def uploaded_file(filename):
         owned = execute("SELECT 1 FROM medicines WHERE photo_path=? AND user_id=?",
                         (filename, uid), fetchone=True)
     if not owned:
+        owned = execute("SELECT 1 FROM symptom_photos WHERE filename=? AND user_id=?",
+                        (filename, uid), fetchone=True)
+    if not owned:
         return jsonify({'error': 'Not found'}), 404
     return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
 

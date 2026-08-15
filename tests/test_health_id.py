@@ -83,6 +83,31 @@ def test_isolation_between_users(app):
     assert all(m["name"] != "SecretDrugA" for m in card_b["active_medicines"])
 
 
+def test_advance_care_wishes_persist_and_surface(app):
+    # M1 — the user's own advance-care wishes save on the emergency card and
+    # appear verbatim on the health-ID card. Never interpreted, only stored.
+    c, uid = _uid(app, "hid7@medeasy.test")
+    with user_context(uid):
+        save_emergency_info({"organ_donor": "Registered donor",
+                             "directive_wishes": "No heroic measures; comfort care only.",
+                             "directive_location": "Home safe, top drawer"})
+        card = get_health_id()
+    ac = card["advance_care"]
+    assert ac["organ_donor"] == "Registered donor"
+    assert ac["directive_wishes"] == "No heroic measures; comfort care only."
+    assert ac["directive_location"] == "Home safe, top drawer"
+    # And through the HTTP round-trip.
+    body = c.get("/api/health-id").get_json()
+    assert body["advance_care"]["organ_donor"] == "Registered donor"
+
+
+def test_advance_care_empty_by_default(app):
+    _, uid = _uid(app, "hid8@medeasy.test")
+    with user_context(uid):
+        card = get_health_id()
+    assert card["advance_care"] == {"organ_donor": "", "directive_wishes": "", "directive_location": ""}
+
+
 def test_api_endpoint(app):
     c, uid = _uid(app, "hid6@medeasy.test")
     with user_context(uid):

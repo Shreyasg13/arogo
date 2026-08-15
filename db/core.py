@@ -451,6 +451,17 @@ CREATE TABLE IF NOT EXISTS dental_vision_visits (
     provider TEXT DEFAULT '', summary TEXT DEFAULT '', next_due TEXT DEFAULT NULL,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS symptom_photos (
+    id TEXT PRIMARY KEY, label TEXT DEFAULT '', filename TEXT NOT NULL,
+    taken_date TEXT NOT NULL, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS home_supplies (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT DEFAULT 'other',
+    quantity INTEGER DEFAULT 0, unit TEXT DEFAULT '', expiry_date TEXT DEFAULT NULL,
+    low_at INTEGER DEFAULT 0, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS vision_prescriptions (
     id TEXT PRIMARY KEY, rx_date TEXT NOT NULL, kind TEXT DEFAULT 'glasses',
     right_sph TEXT DEFAULT '', right_cyl TEXT DEFAULT '', right_axis TEXT DEFAULT '', right_add TEXT DEFAULT '',
@@ -837,6 +848,21 @@ def migrate_add_quiet_hours():
         "ALTER TABLE reminder_settings ADD COLUMN quiet_enabled INTEGER DEFAULT 0",
         "ALTER TABLE reminder_settings ADD COLUMN quiet_start TEXT DEFAULT '22:00'",
         "ALTER TABLE reminder_settings ADD COLUMN quiet_end TEXT DEFAULT '07:00'",
+    ):
+        try:
+            execute(ddl)
+        except Exception:
+            pass
+
+
+def migrate_add_advance_care():
+    """M1 — advance-care / medical-wishes columns on the emergency card. These
+    hold ONLY the user's own stated wishes (organ-donor status, directives, and
+    where the paperwork is kept); nothing is interpreted or acted on."""
+    for ddl in (
+        "ALTER TABLE emergency_info ADD COLUMN organ_donor TEXT DEFAULT ''",
+        "ALTER TABLE emergency_info ADD COLUMN directive_wishes TEXT DEFAULT ''",
+        "ALTER TABLE emergency_info ADD COLUMN directive_location TEXT DEFAULT ''",
     ):
         try:
             execute(ddl)
@@ -1331,6 +1357,8 @@ DATA_TABLES = [
     'med_effectiveness',
     'dental_vision_visits',
     'vision_prescriptions',
+    'home_supplies',
+    'symptom_photos',
 ]
 
 
@@ -1377,6 +1405,7 @@ def init_db():
     migrate_add_dose_timing()
     migrate_add_quiet_hours()
     migrate_add_reminder_lead()
+    migrate_add_advance_care()
     migrate_add_default_snooze()
     migrate_add_care_team()
     migrate_add_lab_rechecks()

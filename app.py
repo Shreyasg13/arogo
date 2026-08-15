@@ -68,6 +68,8 @@ def create_app(config=Config):
     from routes.workouts   import bp as workouts_bp
     from routes.shares     import bp as shares_bp
     from routes.dental_vision import bp as dental_vision_bp
+    from routes.home_supplies import bp as home_supplies_bp
+    from routes.symptom_photos import bp as symptom_photos_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -97,6 +99,8 @@ def create_app(config=Config):
     app.register_blueprint(workouts_bp)
     app.register_blueprint(shares_bp)
     app.register_blueprint(dental_vision_bp)
+    app.register_blueprint(home_supplies_bp)
+    app.register_blueprint(symptom_photos_bp)
 
     @app.before_request
     def _reject_non_object_json():
