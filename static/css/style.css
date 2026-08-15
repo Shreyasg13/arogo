@@ -686,6 +686,27 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .mp-sev { max-width:130px; }
 @media (max-width:640px){ .mp-grid { grid-template-columns:1fr; } }
 
+/* C2 feature directory */
+.fd-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:900; display:flex;
+  align-items:flex-start; justify-content:center; padding:5vh 16px; overflow-y:auto; }
+.fd-modal { background:var(--card, #fff); border-radius:var(--r-xl, 16px); max-width:760px; width:100%;
+  box-shadow:0 20px 60px rgba(0,0,0,.3); overflow:hidden; }
+.fd-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
+  padding:20px 22px 14px; border-bottom:1px solid var(--gray-100, #eee); }
+.fd-title { font-family:'EB Garamond',serif; font-size:22px; }
+.fd-sub { font-size:12.5px; color:var(--gray-500, #666); margin-top:3px; }
+.fd-body { padding:16px 22px 24px; max-height:74vh; overflow-y:auto; }
+.fd-section { margin-bottom:16px; }
+.fd-section-title { font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.05em;
+  color:var(--sage-600, #4a6a5a); margin:0 0 8px; }
+.fd-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; }
+.fd-item { display:flex; align-items:center; justify-content:space-between; gap:8px; text-align:left;
+  padding:9px 12px; border:1px solid var(--gray-100, #eee); border-radius:10px; background:transparent;
+  cursor:pointer; font-size:13.5px; color:var(--gray-800, #222); }
+.fd-item:hover { background:var(--sage-50, #f0f4f1); border-color:var(--sage-200, #cdddd3); }
+.fd-new { font-size:9.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  background:var(--terracotta-500, #c96a4a); color:#fff; border-radius:6px; padding:2px 6px; }
+
 /* O4 pregnancy */
 .preg-hero { padding:22px; text-align:center; }
 .preg-week-n { font-family:'EB Garamond',serif; font-size:46px; color:var(--sage-600, #4a6a5a); line-height:1; }

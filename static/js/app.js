@@ -725,6 +725,10 @@ const I18N = {
     'Choose a photo first': 'पहले एक फोटो चुनें', 'Add a label so photos group together': 'फोटो समूहित करने के लिए एक लेबल जोड़ें',
     'Could not upload': 'अपलोड नहीं हो सका',
     'Pages': 'पेज', 'Open this page': 'यह पेज खोलें',
+    'Personal records': 'व्यक्तिगत रिकॉर्ड', 'Goals & tracking': 'लक्ष्य और ट्रैकिंग',
+    'Explore features': 'विशेषताएँ देखें', 'Everything Arogo can do': 'Arogo जो कुछ कर सकता है',
+    'Tap anything to open it. Your data stays private — no ads, no selling.': 'खोलने के लिए किसी पर टैप करें। आपका डेटा निजी रहता है — कोई विज्ञापन नहीं, बिक्री नहीं।',
+    'New': 'नया', 'Medicines': 'दवाइयाँ', 'Vitals & records': 'वाइटल और रिकॉर्ड', 'Care & family': 'देखभाल और परिवार', 'Lifestyle': 'जीवनशैली',
     'Health binder': 'हेल्थ बाइंडर',
     'One always-current page to hand a new doctor, hospital or the ER — built from your own records, nothing invented': 'नए डॉक्टर, अस्पताल या ER को देने के लिए हमेशा अद्यतन एक पेज — आपके अपने रिकॉर्ड से, कुछ भी मनगढ़ंत नहीं',
     'Could not load': 'लोड नहीं हो सका', 'Recent labs': 'हाल की लैब', 'Critical': 'महत्वपूर्ण',
@@ -12008,6 +12012,57 @@ function _pageMatches(q) {
     (b.l.toLowerCase().startsWith(s) - a.l.toLowerCase().startsWith(s)) ||
     (b.l.toLowerCase().includes(s) - a.l.toLowerCase().includes(s)));
   return hit.slice(0, 6);
+}
+
+// C2 — a browsable directory of every feature, grouped, so a big app stays
+// discoverable. Labels come from NAV_TARGETS (single source of truth); the
+// "New" badge flags the latest additions. Navigation only — nothing is logged.
+const FEATURE_SECTIONS = [
+  {t: 'Medicines',        v: ['medicines', 'prescriptions', 'taper', 'med-budget']},
+  {t: 'Vitals & records', v: ['reports', 'body', 'labs', 'conditions', 'immunizations', 'allergies']},
+  {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'timeline']},
+  {t: 'Care & family',    v: ['upcoming', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
+  {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
+  {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
+  {t: 'More',             v: ['spending', 'progress', 'notifications']},
+];
+const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy']);
+
+function _navLabel(v) {
+  const t0 = NAV_TARGETS.find(x => x.v === v);
+  return t0 ? t0.l : v;
+}
+
+function openFeatureDirectory() {
+  try { localStorage.setItem('me_seen_features', '1'); } catch (e) {}
+  const existing = document.getElementById('feature-dir-overlay');
+  if (existing) existing.remove();
+  const sections = FEATURE_SECTIONS.map(s => {
+    const rows = s.v.map(v => `<button class="fd-item" data-ev-click="closeFeatureDirectory();switchView('${v}')">
+        <span>${escHtml(t(_navLabel(v)))}</span>
+        ${NEW_FEATURES.has(v) ? `<span class="fd-new">${t('New')}</span>` : ''}
+      </button>`).join('');
+    return `<div class="fd-section"><h3 class="fd-section-title">${t(s.t)}</h3><div class="fd-grid">${rows}</div></div>`;
+  }).join('');
+  const ov = document.createElement('div');
+  ov.id = 'feature-dir-overlay';
+  ov.className = 'fd-overlay';
+  ov.setAttribute('data-ev-click', "backdropClose(event,this,'closeFeatureDirectory')");
+  ov.innerHTML = `<div class="fd-modal">
+      <div class="fd-head">
+        <div><div class="fd-title">${t('Everything Arogo can do')}</div>
+          <div class="fd-sub">${t('Tap anything to open it. Your data stays private — no ads, no selling.')}</div></div>
+        <button class="btn-icon" data-ev-click="closeFeatureDirectory()">✕</button>
+      </div>
+      <div class="fd-body">${sections}</div>
+    </div>`;
+  document.body.appendChild(ov);
+}
+
+function closeFeatureDirectory() {
+  const el = document.getElementById('feature-dir-overlay');
+  if (el) el.remove();
 }
 
 function _pagesSectionHtml(q) {
