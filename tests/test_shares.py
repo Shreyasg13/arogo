@@ -102,3 +102,38 @@ def test_expiry_clamped(app):
         s = create_snapshot(days_valid=9999)
         exp = dt.datetime.fromisoformat(s["expires_at"])
         assert exp <= dt.datetime.utcnow() + dt.timedelta(days=90, minutes=1)
+
+
+def test_binder_scope_adds_extra_sections_and_still_no_private(app):
+    # B1 — a 'binder' scope share shows the fuller doctor-relevant sections
+    # (advance-care wishes, labs, vaccines, emergency contacts) but STILL never
+    # journal / cycle / mood.
+    from db.health import save_emergency_info
+    from db.core import new_id, now_iso
+    c, uid = _uid(app, "sh_binder@medeasy.test")
+    with user_context(uid):
+        save_emergency_info({"blood_type": "O+", "organ_donor": "Registered donor",
+                             "directive_wishes": "Comfort care only.",
+                             "contact1_name": "Meera", "contact1_phone": "+91 90000 22222"})
+        execute("""INSERT INTO lab_results (id,lab_key,name,value,unit,date_key,created_at,user_id)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (new_id(), "hba1c", "HbA1c", 6.8, "%", "2026-08-01", now_iso(), uid), commit=True)
+    snap = c.post("/api/share/snapshot", json={"label": "Full", "scope": "binder"}).get_json()["snapshot"]
+    body = c.get(f"/share/{snap['token']}").get_data(as_text=True)
+    assert "Registered donor" in body and "Comfort care only." in body
+    assert "HbA1c" in body and "Meera" in body
+    # Never the private stuff.
+    for forbidden in ("journal", "cycle", "mood"):
+        assert forbidden not in body.lower() or "does not include" in body.lower()
+
+
+def test_summary_scope_omits_advance_care_and_contacts(app):
+    from db.health import save_emergency_info
+    c, uid = _uid(app, "sh_summary@medeasy.test")
+    with user_context(uid):
+        save_emergency_info({"organ_donor": "Registered donor",
+                             "contact1_name": "Ravi", "contact1_phone": "+91 90000 11111"})
+    snap = c.post("/api/share/snapshot", json={"scope": "summary"}).get_json()["snapshot"]
+    body = c.get(f"/share/{snap['token']}").get_data(as_text=True)
+    # Emergency contacts / organ-donor wishes are binder-only.
+    assert "Registered donor" not in body and "Ravi" not in body

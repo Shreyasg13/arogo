@@ -726,6 +726,7 @@ const I18N = {
     'Could not upload': 'अपलोड नहीं हो सका',
     'Pages': 'पेज', 'Open this page': 'यह पेज खोलें',
     'Personal records': 'व्यक्तिगत रिकॉर्ड', 'Goals & tracking': 'लक्ष्य और ट्रैकिंग',
+    'Share': 'साझा करें', 'Quick summary': 'त्वरित सारांश', 'Full health binder': 'पूर्ण हेल्थ बाइंडर',
     'Explore features': 'विशेषताएँ देखें', 'Everything Arogo can do': 'Arogo जो कुछ कर सकता है',
     'Tap anything to open it. Your data stays private — no ads, no selling.': 'खोलने के लिए किसी पर टैप करें। आपका डेटा निजी रहता है — कोई विज्ञापन नहीं, बिक्री नहीं।',
     'New': 'नया', 'Medicines': 'दवाइयाँ', 'Vitals & records': 'वाइटल और रिकॉर्ड', 'Care & family': 'देखभाल और परिवार', 'Lifestyle': 'जीवनशैली',
@@ -3979,9 +3980,10 @@ function closeShareManager() { const m = document.getElementById('share-manager-
 async function createShareLink() {
   const label = document.getElementById('share-label')?.value || '';
   const days = parseInt(document.getElementById('share-days')?.value, 10) || 7;
+  const scope = document.getElementById('share-scope')?.value || 'summary';
   const r = await fetch('/api/share/snapshot', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ label, days_valid: days })
+    body: JSON.stringify({ label, days_valid: days, scope })
   }).then(r => r.json()).catch(() => null);
   if (r && r.success) {
     showToast(t('Link created 🔗'));

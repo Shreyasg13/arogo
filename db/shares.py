@@ -21,18 +21,22 @@ DEFAULT_DAYS = 7
 MAX_DAYS = 90
 
 
-def create_snapshot(label: str = '', days_valid: int = DEFAULT_DAYS) -> dict:
+SCOPES = ('summary', 'binder')
+
+
+def create_snapshot(label: str = '', days_valid: int = DEFAULT_DAYS, scope: str = 'summary') -> dict:
     uid = current_user_id()
     try:
         days_valid = max(1, min(int(days_valid), MAX_DAYS))
     except (TypeError, ValueError):
         days_valid = DEFAULT_DAYS
+    scope = scope if scope in SCOPES else 'summary'
     token = secrets.token_urlsafe(24)      # ~192 bits, unguessable
     expires = (dt.datetime.utcnow() + dt.timedelta(days=days_valid)).replace(microsecond=0).isoformat()
     sid = new_id()
     execute("""INSERT INTO share_snapshots (id, token, scope, label, created_at, expires_at, revoked, views, user_id)
                VALUES (?,?,?,?,?,?,0,0,?)""",
-            (sid, token, 'summary', str(label or '')[:80], now_iso(), expires, uid), commit=True)
+            (sid, token, scope, str(label or '')[:80], now_iso(), expires, uid), commit=True)
     return _row_to_dict(execute("SELECT * FROM share_snapshots WHERE id=? AND user_id=?", (sid, uid), fetchone=True))
 
 
@@ -85,7 +89,7 @@ def resolve_snapshot(token: str):
     if row['revoked'] or _is_expired(row['expires_at']):
         return None
     return {'user_id': row['user_id'], 'id': row['id'], 'expires_at': row['expires_at'],
-            'label': row['label']}
+            'label': row['label'], 'scope': row['scope'] if 'scope' in row.keys() else 'summary'}
 
 
 def _bump_views(sid: str):
@@ -94,9 +98,13 @@ def _bump_views(sid: str):
 
 # Fields the public snapshot is ALLOWED to expose. Anything not built here is,
 # by construction, not shared. Journal / cycle / mood are absent by design.
-def compile_snapshot(owner_uid: str, snap_id: str = None) -> dict:
+def compile_snapshot(owner_uid: str, snap_id: str = None, scope: str = 'summary') -> dict:
     """Build the safe, read-only snapshot for a resolved owner. MUST be given a
-    user_id that came from resolve_snapshot(), never from a session."""
+    user_id that came from resolve_snapshot(), never from a session.
+
+    scope='binder' adds the extra doctor-relevant sections the full health binder
+    shows (recent labs, vaccines, advance-care wishes, dental/vision, emergency
+    contacts). Still a curated, read-only subset — never journal/cycle/mood."""
     from .health import get_emergency_info, get_habit_stats  # noqa: F401 (health import warms core)
     from .medicines import list_medicines, get_adherence_stats
     from .food import get_profile
@@ -119,6 +127,18 @@ def compile_snapshot(owner_uid: str, snap_id: str = None) -> dict:
 
         adherence = get_adherence_stats(30)
 
+        extra = {}
+        if scope == 'binder':
+            from .health_binder import get_health_binder
+            b = get_health_binder()
+            extra = {
+                'advance_care': b.get('advance_care') or {},
+                'labs': b.get('labs') or [],
+                'vaccines': b.get('vaccines') or [],
+                'dental_vision': b.get('dental_vision') or {},
+                'contacts': b.get('contacts') or [],
+            }
+
     if snap_id:
         _bump_views(snap_id)
 
@@ -128,6 +148,7 @@ def compile_snapshot(owner_uid: str, snap_id: str = None) -> dict:
 
     return {
         'name': first,
+        'scope': scope,
         'age': profile.get('age'),
         'gender': profile.get('gender'),
         'blood_type': emg.get('blood_type') or None,
@@ -137,5 +158,7 @@ def compile_snapshot(owner_uid: str, snap_id: str = None) -> dict:
         'vitals': latest,
         'adherence_30d': adherence,
         'generated': dt.date.today().isoformat(),
-        # No journal, cycle, mood, symptoms, weight history, or contacts — by design.
+        **extra,
+        # No journal, cycle, mood, symptoms, weight history — by design. Emergency
+        # contacts are included ONLY in the binder scope the user explicitly chose.
     }

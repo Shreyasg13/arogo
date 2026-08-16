@@ -24,7 +24,8 @@ bp = Blueprint('shares', __name__)
 @require_auth
 def api_create():
     data = request.json or {}
-    snap = create_snapshot(label=data.get('label', ''), days_valid=data.get('days_valid', 7))
+    snap = create_snapshot(label=data.get('label', ''), days_valid=data.get('days_valid', 7),
+                           scope=data.get('scope', 'summary'))
     return jsonify({'success': True, 'snapshot': snap})
 
 
@@ -56,7 +57,7 @@ def public_snapshot(token):
     resolved = resolve_snapshot(token)
     if not resolved:
         return _gone('It may have expired or been turned off.')
-    d = compile_snapshot(resolved['user_id'], resolved['id'])
+    d = compile_snapshot(resolved['user_id'], resolved['id'], resolved.get('scope', 'summary'))
     html = _PAGE_SHELL.format(title='Health snapshot', body=_render_snapshot(d, resolved))
     return Response(html, mimetype='text/html',
                     headers={'Cache-Control': 'no-store, max-age=0',
@@ -92,6 +93,32 @@ def _render_snapshot(d, resolved):
             (f'<div><b>Conditions:</b> {e(d["conditions"])}</div>' if d.get('conditions') else '') + \
             (f'<div><b>Allergies:</b> {e(d["allergies"])}</div>' if d.get('allergies') else '') + '</div>'
     label = f' · {e(resolved["label"])}' if resolved.get('label') else ''
+
+    # Binder scope adds the extra doctor-relevant sections (labs, vaccines,
+    # advance-care wishes, dental/vision, emergency contacts).
+    binder_html = ''
+    if d.get('scope') == 'binder':
+        ac = d.get('advance_care') or {}
+        ac_rows = ''.join(f'<div><b>{lbl}:</b> {e(val)}</div>' for lbl, val in (
+            ('Organ donor', ac.get('organ_donor')), ('Medical wishes', ac.get('directive_wishes')),
+            ('Directives kept', ac.get('directive_location'))) if val)
+        ac_block = f'<h2>Advance care &amp; wishes</h2><div class="flags">{ac_rows}</div>' if ac_rows else ''
+
+        labs = ''.join(f'<tr><td>{e(l.get("name"))}</td><td>{e(l.get("value"))} {e(l.get("unit"))}</td>'
+                       f'<td>{e(l.get("date"))}</td></tr>' for l in (d.get('labs') or []))
+        labs_block = (f'<h2>Recent labs</h2><table><thead><tr><th>Test</th><th>Value</th><th>Date</th></tr></thead>'
+                      f'<tbody>{labs}</tbody></table>') if labs else ''
+
+        vax = ''.join(f'<tr><td>{e(v.get("name"))}</td><td>{e(v.get("last_date"))}</td></tr>'
+                      for v in (d.get('vaccines') or []))
+        vax_block = (f'<h2>Vaccines</h2><table><thead><tr><th>Vaccine</th><th>Last dose</th></tr></thead>'
+                     f'<tbody>{vax}</tbody></table>') if vax else ''
+
+        contacts = ''.join(f'<div>{e(c.get("name"))} — {e(c.get("phone"))}</div>' for c in (d.get('contacts') or []))
+        contacts_block = f'<h2>In an emergency, call</h2><div class="flags">{contacts}</div>' if contacts else ''
+
+        binder_html = ac_block + labs_block + vax_block + contacts_block
+
     return f'''<div class="sheet">
       <div class="brand">🌱 Arogo — Health snapshot{label}</div>
       <div class="name">{e(d.get("name") or "Someone")}</div>
@@ -100,6 +127,7 @@ def _render_snapshot(d, resolved):
       <h2>Current medications</h2>{meds_block}
       <div class="muted small">Adherence: {e(adh_line)}</div>
       <h2>Latest vitals</h2>{vitals_block}
+      {binder_html}
       <div class="foot muted">Shared by the person from self-tracked data in Arogo. Read-only, expiring link.
       Not an official medical record. Does not include private journal, cycle, or mood entries.</div>
     </div>'''
