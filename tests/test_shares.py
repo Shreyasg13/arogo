@@ -137,3 +137,22 @@ def test_summary_scope_omits_advance_care_and_contacts(app):
     body = c.get(f"/share/{snap['token']}").get_data(as_text=True)
     # Emergency contacts / organ-donor wishes are binder-only.
     assert "Registered donor" not in body and "Ravi" not in body
+
+
+def test_binder_share_renders_dental_vision(app):
+    # Review finding: the binder scope built dental_vision but never rendered it.
+    from db.core import new_id, now_iso
+    c, uid = _uid(app, "sh_dv@medeasy.test")
+    with user_context(uid):
+        execute("""INSERT INTO vision_prescriptions (id, rx_date, kind, right_sph, left_sph, created_at, user_id)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (new_id(), "2026-07-01", "glasses", "-2.25", "-2.00", now_iso(), uid), commit=True)
+        execute("""INSERT INTO dental_vision_visits (id, kind, visit_date, next_due, created_at, user_id)
+                   VALUES (?,?,?,?,?,?)""",
+                (new_id(), "dental", "2026-01-10", "2026-12-10", now_iso(), uid), commit=True)
+    snap = c.post("/api/share/snapshot", json={"scope": "binder"}).get_json()["snapshot"]
+    body = c.get(f"/share/{snap['token']}").get_data(as_text=True)
+    assert "Dental &amp; vision" in body and "-2.25" in body and "2026-12-10" in body
+    # And a summary-scope share still omits it.
+    snap2 = c.post("/api/share/snapshot", json={"scope": "summary"}).get_json()["snapshot"]
+    assert "-2.25" not in c.get(f"/share/{snap2['token']}").get_data(as_text=True)

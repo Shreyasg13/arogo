@@ -327,7 +327,8 @@ _ACTING_AS_EXCLUDED = ('/auth', '/api/account', '/api/family')
 # Endpoints blocked outright while acting-as (403), never merely scoped. Two
 # groups, same rule:
 #   • The private "diary" categories — journal + mood (both the `thoughts`
-#     table), menstrual cycle, and the mood-sleep correlation. A caregiver
+#     table), menstrual cycle, the mood-sleep correlation, and the intimate
+#     reproductive/life-stage logs (menopause symptoms, pregnancy). A caregiver
 #     managing a member's meds has no business reading these. (/api/mood covers
 #     /api/mood-sleep/correlation — do not narrow to a segment boundary or that
 #     mood-timeline endpoint stops being caught.)
@@ -339,6 +340,7 @@ _ACTING_AS_EXCLUDED = ('/auth', '/api/account', '/api/family')
 #     a different path — so they are walled too. Matching uses the canonical
 #     (v1-normalized) path, so /api/v1/backup etc. are covered as well.
 _ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
+                      '/api/menopause', '/api/pregnancy',
                       '/api/backup', '/api/import', '/api/export', '/api/search')
 
 

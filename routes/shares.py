@@ -117,7 +117,20 @@ def _render_snapshot(d, resolved):
         contacts = ''.join(f'<div>{e(c.get("name"))} — {e(c.get("phone"))}</div>' for c in (d.get('contacts') or []))
         contacts_block = f'<h2>In an emergency, call</h2><div class="flags">{contacts}</div>' if contacts else ''
 
-        binder_html = ac_block + labs_block + vax_block + contacts_block
+        dv = d.get('dental_vision') or {}
+        dv_bits = []
+        for due in (dv.get('due') or []):
+            kind = 'Dental' if due.get('kind') == 'dental' else 'Eye exam'
+            if due.get('next_due'):
+                dv_bits.append(f'<div><b>{kind} due:</b> {e(due.get("next_due"))}</div>')
+        rx = dv.get('rx') or {}
+        if rx:
+            dv_bits.append(
+                f'<div><b>Glasses Rx:</b> R {e(rx.get("right_sph") or "—")}/{e(rx.get("right_cyl") or "—")}, '
+                f'L {e(rx.get("left_sph") or "—")}/{e(rx.get("left_cyl") or "—")}</div>')
+        dv_block = f'<h2>Dental &amp; vision</h2><div class="flags">{"".join(dv_bits)}</div>' if dv_bits else ''
+
+        binder_html = ac_block + labs_block + vax_block + dv_block + contacts_block
 
     return f'''<div class="sheet">
       <div class="brand">🌱 Arogo — Health snapshot{label}</div>

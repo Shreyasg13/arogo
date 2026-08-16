@@ -33,7 +33,11 @@ def add_log(data: dict) -> dict:
 
 def list_logs(days: int = 90) -> list:
     days = max(1, min(int(days or 90), 3650))
-    start = (_dt.date.today() - _dt.timedelta(days=days)).isoformat()
+    try:
+        anchor = _dt.date.fromisoformat(user_today())   # the user's day, matching stored date_keys
+    except ValueError:
+        anchor = _dt.date.today()
+    start = (anchor - _dt.timedelta(days=days)).isoformat()
     rows = execute("""SELECT * FROM menopause_logs WHERE user_id=? AND date_key>=?
                       ORDER BY date_key DESC, created_at DESC""",
                    (current_user_id(), start), fetchall=True)

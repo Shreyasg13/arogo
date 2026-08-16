@@ -203,6 +203,15 @@ class TestPrivateCategoriesWalledFromManaging:
         assert carol.get("/api/mood-sleep/correlation").status_code == 403
         carol.post("/api/family/act-as/stop")
 
+    def test_menopause_and_pregnancy_blocked_while_managing(self, carol, dave, group):
+        # Review finding: menopause + pregnancy are as intimate as cycle — a
+        # caregiver managing a member's meds must not read them either.
+        self._start(carol, dave)
+        assert carol.get("/api/menopause").status_code == 403
+        assert carol.get("/api/pregnancy").status_code == 403
+        assert carol.get("/api/pregnancy").get_json().get("code") == "PRIVATE_WHILE_ACTING"
+        carol.post("/api/family/act-as/stop")
+
     def test_member_still_sees_own_private_data(self, carol, dave, group):
         # The wall is only for the caregiver-while-managing; Dave's own access is fine.
         assert dave.get("/api/thoughts").status_code == 200
