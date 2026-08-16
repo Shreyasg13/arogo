@@ -459,6 +459,11 @@ CREATE TABLE IF NOT EXISTS family_history (
     age_at_onset INTEGER DEFAULT NULL, notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS health_reminders (
+    id TEXT PRIMARY KEY, title TEXT NOT NULL, due_date TEXT NOT NULL,
+    repeat_days INTEGER DEFAULT NULL, notes TEXT DEFAULT '', done INTEGER DEFAULT 0,
+    last_done TEXT DEFAULT NULL, created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS procedures (
     id TEXT PRIMARY KEY, kind TEXT DEFAULT 'procedure', name TEXT NOT NULL,
     date_key TEXT NOT NULL, end_date TEXT DEFAULT NULL, provider TEXT DEFAULT '',
@@ -1400,6 +1405,7 @@ DATA_TABLES = [
     'menopause_logs',
     'pregnancy',
     'pregnancy_logs',
+    'health_reminders',
 ]
 
 

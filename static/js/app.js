@@ -727,6 +727,14 @@ const I18N = {
     'Pages': 'पेज', 'Open this page': 'यह पेज खोलें',
     'Personal records': 'व्यक्तिगत रिकॉर्ड', 'Goals & tracking': 'लक्ष्य और ट्रैकिंग',
     'Share': 'साझा करें', 'Quick summary': 'त्वरित सारांश', 'Full health binder': 'पूर्ण हेल्थ बाइंडर',
+    'Reminders': 'अनुस्मारक',
+    'Your own health to-dos — an annual check-up, an eye test, a self-exam. You set them; Arogo just keeps track of what\'s due': 'आपके अपने स्वास्थ्य कार्य — वार्षिक जाँच, आँख जाँच, स्व-परीक्षण। आप तय करें; Arogo सिर्फ़ देय पर नज़र रखता है',
+    'Add a reminder': 'अनुस्मारक जोड़ें', 'What? (e.g. Annual check-up, Eye test)': 'क्या? (जैसे वार्षिक जाँच, आँख जाँच)',
+    'Due date': 'देय तिथि', 'Repeat': 'दोहराएँ', 'One-off': 'एक बार', 'Monthly': 'मासिक', 'Every 3 months': 'हर 3 माह',
+    'Every 6 months': 'हर 6 माह', 'Yearly': 'वार्षिक', 'Every 2 years': 'हर 2 वर्ष',
+    'Nothing to remember yet. Add the health tasks you want nudged — you decide what and when.': 'अभी याद रखने को कुछ नहीं। जिन कार्यों की सूचना चाहते हैं जोड़ें — क्या और कब आप तय करें।',
+    'repeats': 'दोहराता है', 'Reminder added': 'अनुस्मारक जोड़ा',
+    'Done — rolled to next time': 'पूर्ण — अगली बार पर बढ़ाया', 'Done ✓': 'पूर्ण ✓',
     'Explore features': 'विशेषताएँ देखें', 'Everything Arogo can do': 'Arogo जो कुछ कर सकता है',
     'Tap anything to open it. Your data stays private — no ads, no selling.': 'खोलने के लिए किसी पर टैप करें। आपका डेटा निजी रहता है — कोई विज्ञापन नहीं, बिक्री नहीं।',
     'New': 'नया', 'Medicines': 'दवाइयाँ', 'Vitals & records': 'वाइटल और रिकॉर्ड', 'Care & family': 'देखभाल और परिवार', 'Lifestyle': 'जीवनशैली',
@@ -2682,6 +2690,7 @@ function switchView(view) {
   if (view === 'quit')          loadQuit();
   if (view === 'menopause')     loadMenopause();
   if (view === 'pregnancy')     loadPregnancy();
+  if (view === 'reminders')     loadHealthReminders();
   if (view === 'upcoming')      loadUpcoming();
   if (view === 'meal-plan')     loadMealPlan();
   if (view === 'taper')         loadTaper();
@@ -11979,6 +11988,7 @@ const NAV_TARGETS = [
   {v:'menopause',     l:'Menopause',        k:'perimenopause hot flashes'},
   {v:'pregnancy',     l:'Pregnancy',        k:'pregnant weeks kicks due date lmp'},
   {v:'upcoming',      l:'Upcoming',         k:'calendar appointment due renewal'},
+  {v:'reminders',     l:'Reminders',        k:'checkup screening self-exam recurring to-do preventive'},
   {v:'care-plan',     l:'Care plan',        k:'shared plan'},
   {v:'care-team',     l:'Care team',        k:'doctor provider clinic'},
   {v:'family',        l:'Family',           k:'caregiver share'},
@@ -12023,7 +12033,7 @@ const FEATURE_SECTIONS = [
   {t: 'Medicines',        v: ['medicines', 'prescriptions', 'taper', 'med-budget']},
   {t: 'Vitals & records', v: ['reports', 'body', 'labs', 'conditions', 'immunizations', 'allergies']},
   {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'timeline']},
-  {t: 'Care & family',    v: ['upcoming', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
+  {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
   {t: 'More',             v: ['spending', 'progress', 'notifications']},
@@ -15709,6 +15719,77 @@ async function endPregnancy() {
 async function deletePregnancyLog(id) {
   await fetch('/api/pregnancy/log/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   loadPregnancy();
+}
+
+// ── Custom health reminders (D) ──────────────────────────────────────────────
+// The user's own health to-dos with a due date and optional repeat. User-defined
+// only — Arogo recommends no screening schedule; it just tracks what's due.
+async function loadHealthReminders() {
+  const el = document.getElementById('reminders-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/health-reminders', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {reminders:[]}).catch(() => ({reminders:[]}));
+  el.innerHTML = renderHealthReminders(d.reminders || []);
+}
+
+function renderHealthReminders(list) {
+  const today = localToday();
+  const repeatOpts = [['', t('One-off')], ['30', t('Monthly')], ['90', t('Every 3 months')],
+                      ['180', t('Every 6 months')], ['365', t('Yearly')], ['730', t('Every 2 years')]]
+    .map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+  const form = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add a reminder')}</h2>
+      <div class="dv-form">
+        <input type="text" id="rem-title" class="form-input" placeholder="${t('What? (e.g. Annual check-up, Eye test)')}" style="flex:2;min-width:200px">
+        <input type="date" id="rem-date" class="form-input" title="${t('Due date')}" style="max-width:160px">
+        <select id="rem-repeat" class="form-input" style="max-width:160px" title="${t('Repeat')}">${repeatOpts}</select>
+        <button class="btn-primary" data-ev-click="saveHealthReminder()">${t('Add')}</button>
+      </div>
+    </div>`;
+
+  if (!list.length) {
+    return form + `<div class="dv-empty">${t('Nothing to remember yet. Add the health tasks you want nudged — you decide what and when.')}</div>`;
+  }
+  const cards = list.map(r => {
+    const when = r.days_until == null ? '' :
+      (r.overdue ? tformat('overdue by %1 days', Math.abs(r.days_until))
+       : r.days_until === 0 ? t('due today') : tformat('in %1 days', r.days_until));
+    return `<div class="panel rem-card ${r.overdue ? 'overdue' : ''}">
+        <div class="rem-head">
+          <div style="flex:1;min-width:0">
+            <div class="rem-title">${escHtml(r.title)}</div>
+            <div class="rem-meta"><span class="${r.overdue ? 'rem-over' : ''}">${escHtml(_fmtShortDate(r.due_date))} · ${when}</span>${r.recurring ? ' · ↻ ' + t('repeats') : ''}${r.notes ? ' · ' + escHtml(r.notes) : ''}</div>
+          </div>
+          <button class="btn-icon" title="${t('Mark done')}" data-ev-click="completeHealthReminder('${r.id}')">✓</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteHealthReminder('${r.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+  return form + cards;
+}
+
+async function saveHealthReminder() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const body = { title: v('rem-title'), due_date: v('rem-date'), repeat_days: v('rem-repeat') || null };
+  if (!body.title.trim()) { showToast('Enter what to remember', 'error'); return; }
+  if (!body.due_date) { showToast('Pick a due date', 'error'); return; }
+  const r = await fetch('/api/health-reminders', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast('Reminder added'); loadHealthReminders(); }
+  else showToast((r && r.error) || 'Could not save', 'error');
+}
+
+async function completeHealthReminder(id) {
+  const r = await fetch('/api/health-reminders/' + id + '/done', {method:'POST', credentials:'same-origin'})
+    .then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(r.reminder && r.reminder.recurring ? t('Done — rolled to next time') : t('Done ✓')); loadHealthReminders(); }
+  else showToast('Could not update', 'error');
+}
+
+async function deleteHealthReminder(id) {
+  await fetch('/api/health-reminders/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
+  loadHealthReminders();
 }
 
 // ── Family health calendar (upcoming) ────────────────────────────────────────

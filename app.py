@@ -75,6 +75,7 @@ def create_app(config=Config):
     from routes.quit import bp as quit_bp
     from routes.menopause import bp as menopause_bp
     from routes.pregnancy import bp as pregnancy_bp
+    from routes.health_reminders import bp as health_reminders_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(reports_bp)
@@ -111,6 +112,7 @@ def create_app(config=Config):
     app.register_blueprint(quit_bp)
     app.register_blueprint(menopause_bp)
     app.register_blueprint(pregnancy_bp)
+    app.register_blueprint(health_reminders_bp)
 
     @app.before_request
     def _reject_non_object_json():
