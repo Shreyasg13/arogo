@@ -704,6 +704,15 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   padding:9px 12px; border:1px solid var(--gray-100, #eee); border-radius:10px; background:transparent;
   cursor:pointer; font-size:13.5px; color:var(--gray-800, #222); }
 .fd-item:hover { background:var(--sage-50, #f0f4f1); border-color:var(--sage-200, #cdddd3); }
+.fd-item-go { flex:1; min-width:0; cursor:pointer; }
+.fd-pin { border:none; background:transparent; cursor:pointer; font-size:15px; color:var(--gray-300, #c9c9c9); line-height:1; padding:0 2px; }
+.fd-pin.on { color:var(--sage-600, #4a6a5a); }
+
+/* C3 dashboard pinned shortcuts */
+.dash-shortcuts-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+.dash-shortcut { border:1px solid var(--gray-100, #eee); background:var(--card, #fff); border-radius:999px;
+  padding:7px 14px; font-size:13px; font-weight:600; color:var(--sage-600, #4a6a5a); cursor:pointer; }
+.dash-shortcut:hover { background:var(--sage-50, #f0f4f1); border-color:var(--sage-200, #cdddd3); }
 .fd-new { font-size:9.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
   background:var(--terracotta-500, #c96a4a); color:#fff; border-radius:6px; padding:2px 6px; }
 

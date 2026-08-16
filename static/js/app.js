@@ -736,6 +736,7 @@ const I18N = {
     'repeats': 'दोहराता है', 'Reminder added': 'अनुस्मारक जोड़ा',
     'Done — rolled to next time': 'पूर्ण — अगली बार पर बढ़ाया', 'Done ✓': 'पूर्ण ✓',
     'Explore features': 'विशेषताएँ देखें', 'Everything Arogo can do': 'Arogo जो कुछ कर सकता है',
+    'Pin to dashboard': 'डैशबोर्ड पर पिन करें', 'Up to %1 shortcuts': '%1 तक शॉर्टकट',
     'Tap anything to open it. Your data stays private — no ads, no selling.': 'खोलने के लिए किसी पर टैप करें। आपका डेटा निजी रहता है — कोई विज्ञापन नहीं, बिक्री नहीं।',
     'New': 'नया', 'Medicines': 'दवाइयाँ', 'Vitals & records': 'वाइटल और रिकॉर्ड', 'Care & family': 'देखभाल और परिवार', 'Lifestyle': 'जीवनशैली',
     'Health binder': 'हेल्थ बाइंडर',
@@ -3378,6 +3379,7 @@ function _watchInsightGroups() {
 // ── Dashboard ──
 async function loadDashboard() {
   try { checkFirstRun(); }      catch (e) {}
+  try { renderDashShortcuts(); } catch (e) {}
   try { loadInsightCards(); }   catch (e) {}
   try { loadWeekOverWeek(); }   catch (e) {}
   try { loadWellnessStrip(); }  catch (e) {}
@@ -12050,11 +12052,16 @@ function openFeatureDirectory() {
   try { localStorage.setItem('me_seen_features', '1'); } catch (e) {}
   const existing = document.getElementById('feature-dir-overlay');
   if (existing) existing.remove();
+  const pins = _getPins();
   const sections = FEATURE_SECTIONS.map(s => {
-    const rows = s.v.map(v => `<button class="fd-item" data-ev-click="closeFeatureDirectory();switchView('${v}')">
-        <span>${escHtml(t(_navLabel(v)))}</span>
+    const rows = s.v.map(v => {
+      const on = pins.includes(v);
+      return `<div class="fd-item">
+        <span class="fd-item-go" data-ev-click="closeFeatureDirectory();switchView('${v}')">${escHtml(t(_navLabel(v)))}</span>
         ${NEW_FEATURES.has(v) ? `<span class="fd-new">${t('New')}</span>` : ''}
-      </button>`).join('');
+        <button class="fd-pin ${on ? 'on' : ''}" title="${t('Pin to dashboard')}" data-ev-click="togglePin('${v}')">${on ? '★' : '☆'}</button>
+      </div>`;
+    }).join('');
     return `<div class="fd-section"><h3 class="fd-section-title">${t(s.t)}</h3><div class="fd-grid">${rows}</div></div>`;
   }).join('');
   const ov = document.createElement('div');
@@ -12075,6 +12082,34 @@ function openFeatureDirectory() {
 function closeFeatureDirectory() {
   const el = document.getElementById('feature-dir-overlay');
   if (el) el.remove();
+}
+
+// C3 — pin favourite features to a dashboard shortcuts row. Purely a per-device
+// preference in localStorage; navigation only, no data touched.
+const _MAX_PINS = 8;
+function _getPins() {
+  try { return JSON.parse(localStorage.getItem('me_pins') || '[]').filter(v => NAV_TARGETS.some(x => x.v === v)); }
+  catch (e) { return []; }
+}
+function togglePin(v) {
+  let pins = _getPins();
+  if (pins.includes(v)) pins = pins.filter(x => x !== v);
+  else if (pins.length < _MAX_PINS) pins.push(v);
+  else { showToast(tformat('Up to %1 shortcuts', _MAX_PINS)); return; }
+  try { localStorage.setItem('me_pins', JSON.stringify(pins)); } catch (e) {}
+  // Update just the clicked pin in place (no rebuild → no scroll jump).
+  const on = pins.includes(v);
+  const btn = document.querySelector(`#feature-dir-overlay .fd-pin[data-ev-click="togglePin('${v}')"]`);
+  if (btn) { btn.classList.toggle('on', on); btn.textContent = on ? '★' : '☆'; }
+  renderDashShortcuts();
+}
+function renderDashShortcuts() {
+  const el = document.getElementById('dash-shortcuts');
+  if (!el) return;
+  const pins = _getPins();
+  if (!pins.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="dash-shortcuts-row">${pins.map(v =>
+    `<button class="dash-shortcut" data-ev-click="switchView('${v}')">${escHtml(t(_navLabel(v)))}</button>`).join('')}</div>`;
 }
 
 function _pagesSectionHtml(q) {
