@@ -723,6 +723,19 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dt-week   .dt-dot { background:var(--amber-400, #e0a83e); }
 .dt-stale  .dt-dot { background:var(--terracotta-400, #c67b5c); }
 
+/* Welcome tour (guided intro modal) */
+.tour-slide { text-align:center; padding:10px 6px 4px; }
+.tour-icon { font-size:44px; line-height:1; margin-bottom:10px; }
+.tour-title { font-size:19px; font-weight:700; margin:0 0 8px; color:var(--gray-800, #333); }
+.tour-body { font-size:14px; line-height:1.55; color:var(--gray-600, #555); margin:0 auto; max-width:340px; }
+.tour-go { margin-top:16px; }
+.tour-dots { display:flex; justify-content:center; gap:7px; margin:18px 0 4px; }
+.tour-dot { width:7px; height:7px; border-radius:50%; background:var(--gray-200, #ddd); transition:background .15s; }
+.tour-dot.on { background:var(--sage-500, #5a8f7b); }
+.tour-nav { display:flex; justify-content:space-between; align-items:center; margin-top:12px; }
+.btn-text { background:none; border:none; color:var(--gray-500, #666); font-size:13.5px; cursor:pointer; padding:8px 6px; }
+.btn-text:hover { color:var(--gray-700, #444); }
+
 /* O2 quit tracker */
 .btn-sm { font-size:12.5px; padding:6px 12px; }
 .quit-card { padding:16px 18px; margin-bottom:12px; }

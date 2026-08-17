@@ -416,6 +416,10 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
           <span data-i18n="Explore features">Explore features</span>
         </a>
+        <a href="#" class="nav-item" data-ev-click="openWelcomeTour()">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" transform="rotate(90 12 12)"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg>
+          <span data-i18n="Take a tour">Take a tour</span>
+        </a>
         <a href="#" class="nav-item" data-view="export">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span data-i18n="Export data">Export data</span>
@@ -4049,6 +4053,17 @@
       </div>
       <div id="share-list"></div>
     </div>
+  </div>
+</div>
+
+<!-- Guided tour of the app's main areas (a curated intro to a big app). -->
+<div class="modal-overlay" id="welcome-tour-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeWelcomeTour')">
+  <div class="modal" id="welcome-tour-sheet" style="max-width:440px">
+    <div class="modal-head">
+      <div class="modal-title" data-i18n="Welcome to Arogo">Welcome to Arogo</div>
+      <button class="modal-close" data-ev-click="closeWelcomeTour()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="welcome-tour-body"></div>
   </div>
 </div>
 

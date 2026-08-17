@@ -90,6 +90,30 @@ const I18N = {
     'Only %1 entry(ies) — no trend yet': 'केवल %1 प्रविष्टि — अभी कोई ट्रेंड नहीं',
     'Up to date': 'अद्यतित', 'A little old': 'थोड़ा पुराना', 'Out of date': 'पुराना',
     'Skip to main content': 'मुख्य सामग्री पर जाएँ',
+    // Welcome tour
+    'Take a tour': 'एक टूर लें', 'Next': 'आगे', 'Open': 'खोलें', 'Take me there': 'वहाँ ले चलें',
+    'Welcome to Arogo': 'Arogo में आपका स्वागत है',
+    'A calm home for your health — medicines, vitals, records and the people who help you. Here are the main areas; you can skip anytime.':
+      'आपके स्वास्थ्य का एक शांत घर — दवाइयाँ, वाइटल्स, रिकॉर्ड और आपकी मदद करने वाले लोग। यहाँ मुख्य हिस्से हैं; आप कभी भी छोड़ सकते हैं।',
+    'Your medicines': 'आपकी दवाइयाँ',
+    'The heart of the app: doses and reminders, refills, and how consistently you take them. Start by adding a medicine.':
+      'ऐप का दिल: खुराक व रिमाइंडर, रीफिल, और आप कितनी नियमितता से लेते हैं। एक दवा जोड़कर शुरू करें।',
+    'Open medicines': 'दवाइयाँ खोलें',
+    'Body & vitals': 'शरीर व वाइटल्स',
+    'Log blood pressure, sugar, weight and more. Everything you enter stays yours — shown as trends, never judged.':
+      'रक्तचाप, शुगर, वज़न आदि दर्ज करें। आपका दर्ज किया सब आपका रहता है — ट्रेंड के रूप में दिखता है, कभी आँका नहीं जाता।',
+    'Open Body & Vitals': 'शरीर व वाइटल्स खोलें',
+    'Records & care': 'रिकॉर्ड व देखभाल',
+    'Keep reports, lab results, appointments and prescriptions in one place — ready for your next visit.':
+      'रिपोर्ट, लैब नतीजे, अपॉइंटमेंट और नुस्खे एक जगह रखें — आपकी अगली मुलाक़ात के लिए तैयार।',
+    'Open records': 'रिकॉर्ड खोलें',
+    'Family & caregivers': 'परिवार व देखभालकर्ता',
+    'Optionally share a safe summary with people you trust, or help manage a family member’s meds. Private categories stay private.':
+      'चाहें तो भरोसेमंद लोगों के साथ एक सुरक्षित सारांश साझा करें, या किसी परिवारजन की दवाइयाँ संभालने में मदद करें। निजी श्रेणियाँ निजी रहती हैं।',
+    'Open family': 'परिवार खोलें',
+    'Explore everything': 'सब कुछ देखें',
+    'That’s the tour. There’s much more — browse every feature and pin your favourites to the dashboard.':
+      'यह रहा टूर। और भी बहुत कुछ है — हर सुविधा देखें और अपनी पसंदीदा को डैशबोर्ड पर पिन करें।',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -1975,6 +1999,10 @@ function showApp() {
 
   // Fire a pending home-screen shortcut once the app is up.
   try { _runShortcutAction(); } catch (e) {}
+
+  // First-timers get one gentle guided tour (skips if onboarding/any overlay
+  // is already showing). Re-openable later from the More nav.
+  try { maybeAutoTour(); } catch (e) {}
 }
 
 // Dispatch a stashed PWA home-screen shortcut (see the manifest `shortcuts`).
@@ -12235,6 +12263,89 @@ function openFeatureDirectory() {
 function closeFeatureDirectory() {
   const el = document.getElementById('feature-dir-overlay');
   if (el) el.remove();
+}
+
+// ── Welcome tour: a curated intro to a big app ───────────────────────────────
+// Complements the (flat) feature directory with a short narrative of the main
+// areas. Runs in a normal .modal-overlay, so the a11y focus-trap/Escape apply.
+// Each slide can jump to a real view. Non-nagging: auto-shows once, then only
+// on request. Purely navigational — touches no data.
+const TOUR_SLIDES = [
+  {icon: '🌱', title: 'Welcome to Arogo',
+   body: 'A calm home for your health — medicines, vitals, records and the people who help you. Here are the main areas; you can skip anytime.'},
+  {icon: '💊', title: 'Your medicines',
+   body: 'The heart of the app: doses and reminders, refills, and how consistently you take them. Start by adding a medicine.',
+   view: 'medicines', cta: 'Open medicines'},
+  {icon: '❤️', title: 'Body & vitals',
+   body: 'Log blood pressure, sugar, weight and more. Everything you enter stays yours — shown as trends, never judged.',
+   view: 'body', cta: 'Open Body & Vitals'},
+  {icon: '📁', title: 'Records & care',
+   body: 'Keep reports, lab results, appointments and prescriptions in one place — ready for your next visit.',
+   view: 'reports', cta: 'Open records'},
+  {icon: '👪', title: 'Family & caregivers',
+   body: 'Optionally share a safe summary with people you trust, or help manage a family member’s meds. Private categories stay private.',
+   view: 'family', cta: 'Open family'},
+  {icon: '🧭', title: 'Explore everything',
+   body: 'That’s the tour. There’s much more — browse every feature and pin your favourites to the dashboard.',
+   action: 'openFeatureDirectory', cta: 'Explore features'},
+];
+let _tourIdx = 0;
+
+function openWelcomeTour() {
+  const m = document.getElementById('welcome-tour-modal');
+  if (!m) return;
+  _tourIdx = 0;
+  try { localStorage.setItem('me_tour_seen', '1'); } catch (e) {}
+  m.style.display = 'flex';
+  _renderTour();
+}
+function closeWelcomeTour() {
+  const m = document.getElementById('welcome-tour-modal');
+  if (m) m.style.display = 'none';
+}
+function _renderTour() {
+  const body = document.getElementById('welcome-tour-body');
+  if (!body) return;
+  const s = TOUR_SLIDES[_tourIdx];
+  const last = _tourIdx === TOUR_SLIDES.length - 1;
+  const dots = TOUR_SLIDES.map((_, i) =>
+    `<span class="tour-dot ${i === _tourIdx ? 'on' : ''}"></span>`).join('');
+  const go = s.view
+    ? `<button class="btn-secondary btn-sm" data-ev-click="tourGoto('${s.view}')">${t(s.cta || 'Take me there')}</button>`
+    : (s.action ? `<button class="btn-secondary btn-sm" data-ev-click="tourAction('${s.action}')">${t(s.cta || 'Open')}</button>` : '');
+  body.innerHTML = `
+    <div class="tour-slide">
+      <div class="tour-icon">${s.icon}</div>
+      <h3 class="tour-title">${t(s.title)}</h3>
+      <p class="tour-body">${t(s.body)}</p>
+      ${go ? `<div class="tour-go">${go}</div>` : ''}
+    </div>
+    <div class="tour-dots">${dots}</div>
+    <div class="tour-nav">
+      <button class="btn-text" data-ev-click="${_tourIdx === 0 ? 'closeWelcomeTour()' : 'tourPrev()'}">${t(_tourIdx === 0 ? 'Skip' : 'Back')}</button>
+      <button class="btn-primary btn-sm" data-ev-click="${last ? 'closeWelcomeTour()' : 'tourNext()'}">${t(last ? 'Done' : 'Next')}</button>
+    </div>`;
+  // Make the new controls keyboard-operable + focus the primary action.
+  try { _a11yEnhance(body); } catch (e) {}
+  try { body.querySelector('.btn-primary').focus(); } catch (e) {}
+}
+function tourNext() { if (_tourIdx < TOUR_SLIDES.length - 1) { _tourIdx++; _renderTour(); } }
+function tourPrev() { if (_tourIdx > 0) { _tourIdx--; _renderTour(); } }
+function tourGoto(view) { closeWelcomeTour(); switchView(view); }
+function tourAction(fn) { closeWelcomeTour(); try { window[fn] && window[fn](); } catch (e) {} }
+
+// Auto-show once, only when nothing else is claiming the screen (never stacks on
+// the profile-onboarding modal or a first-run flow).
+function maybeAutoTour() {
+  try {
+    if (localStorage.getItem('me_tour_seen')) return;
+    const ob = document.getElementById('onboarding-overlay');
+    if (ob && getComputedStyle(ob).display !== 'none') return;   // let onboarding finish first
+    if (_a11yTopOverlay && _a11yTopOverlay()) return;            // don't stack on any open overlay
+    setTimeout(() => {
+      if (!localStorage.getItem('me_tour_seen') && !(_a11yTopOverlay && _a11yTopOverlay())) openWelcomeTour();
+    }, 900);
+  } catch (e) {}
 }
 
 // C3 — pin favourite features to a dashboard shortcuts row. Purely a per-device
