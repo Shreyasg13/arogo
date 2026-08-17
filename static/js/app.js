@@ -727,6 +727,12 @@ const I18N = {
     'Pages': 'पेज', 'Open this page': 'यह पेज खोलें',
     'Personal records': 'व्यक्तिगत रिकॉर्ड', 'Goals & tracking': 'लक्ष्य और ट्रैकिंग',
     'Share': 'साझा करें', 'Quick summary': 'त्वरित सारांश', 'Full health binder': 'पूर्ण हेल्थ बाइंडर',
+    'Import from a device': 'डिवाइस से आयात करें', 'Import readings from a device': 'डिवाइस से रीडिंग आयात करें',
+    'Export a CSV from your BP monitor, glucometer, oximeter or thermometer, then paste it or choose the file. Nothing is saved until you review and confirm.': 'अपने BP मॉनिटर, ग्लूकोमीटर, ऑक्सीमीटर या थर्मामीटर से CSV निर्यात करें, फिर पेस्ट करें या फ़ाइल चुनें। समीक्षा और पुष्टि तक कुछ सहेजा नहीं जाता।',
+    '…or paste CSV here (e.g. Date,Systolic,Diastolic,Glucose)': '…या यहाँ CSV पेस्ट करें (जैसे Date,Systolic,Diastolic,Glucose)',
+    'Preview': 'पूर्वावलोकन', 'No readings recognised in that file.': 'उस फ़ाइल में कोई रीडिंग नहीं पहचानी गई।',
+    '%1 recognised · %2 rows skipped': '%1 पहचानी · %2 पंक्तियाँ छोड़ी', 'Import selected': 'चयनित आयात करें',
+    '%1 imported%2': '%1 आयात%2', '%1 skipped': '%1 छोड़ी',
     'Reminders': 'अनुस्मारक',
     'Your own health to-dos — an annual check-up, an eye test, a self-exam. You set them; Arogo just keeps track of what\'s due': 'आपके अपने स्वास्थ्य कार्य — वार्षिक जाँच, आँख जाँच, स्व-परीक्षण। आप तय करें; Arogo सिर्फ़ देय पर नज़र रखता है',
     'Add a reminder': 'अनुस्मारक जोड़ें', 'What? (e.g. Annual check-up, Eye test)': 'क्या? (जैसे वार्षिक जाँच, आँख जाँच)',
@@ -15825,6 +15831,67 @@ async function completeHealthReminder(id) {
 async function deleteHealthReminder(id) {
   await fetch('/api/health-reminders/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   loadHealthReminders();
+}
+
+// ── Device CSV import (Category 1) ───────────────────────────────────────────
+// Paste or upload a CSV from a home BP monitor / glucometer / oximeter and
+// review the parsed readings before anything is saved. The server re-validates
+// every committed row (ranges enforced), so a junk reading is skipped, not saved.
+let _vitalsImportPreview = null;
+
+function openVitalsImport() {
+  const el = document.getElementById('vitals-import-box');
+  if (!el) return;
+  if (el.innerHTML.trim()) { el.innerHTML = ''; _vitalsImportPreview = null; return; }   // toggle off
+  el.innerHTML = `<div class="panel" style="padding:16px 18px;margin-bottom:14px">
+      <h3 class="panel-title" style="margin-bottom:6px">${t('Import readings from a device')}</h3>
+      <p class="dv-fineprint">${t('Export a CSV from your BP monitor, glucometer, oximeter or thermometer, then paste it or choose the file. Nothing is saved until you review and confirm.')}</p>
+      <input type="file" id="vimp-file" accept=".csv,text/csv,text/plain" class="form-input" style="margin:10px 0;max-width:280px">
+      <textarea id="vimp-text" class="form-input" rows="4" placeholder="${t('…or paste CSV here (e.g. Date,Systolic,Diastolic,Glucose)')}"></textarea>
+      <div style="margin-top:10px"><button class="btn-primary btn-sm" data-ev-click="previewVitalsImport()">${t('Preview')}</button>
+        <button class="btn-outline btn-sm" data-ev-click="openVitalsImport()" style="margin-left:6px">${t('Cancel')}</button></div>
+      <div id="vimp-result" style="margin-top:12px"></div>
+    </div>`;
+}
+
+async function previewVitalsImport() {
+  let csv = (document.getElementById('vimp-text') || {}).value || '';
+  const f = (document.getElementById('vimp-file') || {}).files && document.getElementById('vimp-file').files[0];
+  if (f && !csv.trim()) { try { csv = await f.text(); } catch (e) {} }
+  if (!csv.trim()) { showToast('Paste or choose a CSV first', 'error'); return; }
+  const d = await fetch('/api/import/vitals/preview', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({csv})}).then(r => r.json()).catch(() => null);
+  const res = document.getElementById('vimp-result');
+  if (!res) return;
+  if (!d || !(d.candidates || []).length) {
+    _vitalsImportPreview = null;
+    res.innerHTML = `<div class="dv-empty">${t('No readings recognised in that file.')}</div>`;
+    return;
+  }
+  _vitalsImportPreview = d.candidates;
+  const rows = d.candidates.map((c, i) => `<label class="vimp-row">
+      <input type="checkbox" class="vimp-ck" data-i="${i}" checked>
+      <span>${escHtml(_fmtShortDate(c.date_key))} · ${escHtml(t(c.label))} · ${escHtml(String(c.value1))}${c.value2 != null ? '/' + escHtml(String(c.value2)) : ''} ${escHtml(c.unit || '')}</span>
+    </label>`).join('');
+  res.innerHTML = `<div class="vimp-preview">${rows}</div>
+    <div style="font-size:12px;color:var(--gray-400);margin:8px 0">${tformat('%1 recognised · %2 rows skipped', d.candidates.length, d.skipped || 0)}</div>
+    <button class="btn-primary btn-sm" data-ev-click="commitVitalsImport()">${t('Import selected')}</button>`;
+}
+
+async function commitVitalsImport() {
+  if (!_vitalsImportPreview) return;
+  const checked = [...document.querySelectorAll('#vitals-import-box .vimp-ck:checked')]
+    .map(ck => _vitalsImportPreview[+ck.dataset.i]).filter(Boolean);
+  if (!checked.length) { showToast('Select at least one reading', 'error'); return; }
+  const r = await fetch('/api/import/vitals/commit', {method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin', body: JSON.stringify({rows: checked})}).then(x => x.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(tformat('%1 imported%2', r.saved, r.failed ? ', ' + tformat('%1 skipped', r.failed) : ''));
+    const box = document.getElementById('vitals-import-box'); if (box) box.innerHTML = '';
+    _vitalsImportPreview = null;
+    try { loadVitals(); } catch (e) {}
+    try { loadVitalSparks(); } catch (e) {}
+  } else showToast('Could not import', 'error');
 }
 
 // ── Family health calendar (upcoming) ────────────────────────────────────────
