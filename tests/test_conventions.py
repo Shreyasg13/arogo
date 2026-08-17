@@ -220,3 +220,52 @@ class TestConventions:
                     window = norm[m.start():m.start() + 300]
                     assert "user_id" in window or "WHERE id=" in window, \
                         f"{f}: unscoped query on {table}: …{window[:90]}"
+
+
+class TestAccessibility:
+    """Guards for the accessibility baseline so a later edit can't silently
+    strip the skip link, landmarks, reduced-motion handling, or the CSS hooks
+    the a11y layer depends on."""
+
+    def test_skip_link_targets_main(self):
+        html = _read("templates/index.html")
+        assert 'class="skip-link"' in html, "skip link removed"
+        assert 'href="#app-main"' in html, "skip link must target #app-main"
+        assert 'id="app-main"' in html, "main landmark #app-main missing"
+
+    def test_sr_only_utility_defined(self):
+        css = _read("static/css/style.css")
+        assert re.search(r"\.sr-only\s*\{", css), ".sr-only utility missing"
+        assert re.search(r"\.skip-link\s*\{", css), ".skip-link styles missing"
+
+    def test_landmarks_are_labelled(self):
+        html = _read("templates/index.html")
+        # The primary nav must carry an accessible name (two navs otherwise clash).
+        assert re.search(r'<nav class="sidebar-nav"[^>]*aria-label=', html), \
+            "primary nav needs aria-label"
+        assert re.search(r'<nav class="mobile-tabbar"[^>]*aria-label=', html), \
+            "mobile tabbar needs aria-label"
+
+    def test_active_nav_marks_aria_current(self):
+        """switchView must set aria-current on the active nav item (and the
+        default dashboard item ships marked)."""
+        html = _read("templates/index.html")
+        assert 'aria-current="page"' in html, "no default aria-current on dashboard nav"
+        js = _read("static/js/app.js")
+        assert "setAttribute('aria-current'" in js, "switchView doesn't set aria-current"
+
+    def test_global_reduced_motion(self):
+        css = _read("static/css/style.css")
+        assert "prefers-reduced-motion" in css, "no reduced-motion handling"
+        # Must be the app-wide guard, not only the two scoped Q1 blocks.
+        assert re.search(r"prefers-reduced-motion:\s*reduce\s*\)\s*\{\s*\*", css), \
+            "reduced-motion must apply app-wide (*, *::before, *::after)"
+
+    def test_keyboard_bridge_present(self):
+        """Non-native click surfaces get button semantics + an Enter/Space
+        activation bridge — the a11y layer's core keyboard fix."""
+        js = _read("static/js/app.js")
+        assert "_a11yEnhance" in js, "a11y enhancer removed"
+        assert "role" in js and "'button'" in js, "no role=button assignment"
+        assert "_evRun(el.getAttribute('data-ev-click')" in js, \
+            "Enter/Space → click bridge missing"

@@ -172,8 +172,11 @@
 
 <div class="app-shell">
 
+<!-- Keyboard/screen-reader users can jump past the nav straight to content. -->
+<a href="#app-main" class="skip-link" data-i18n="Skip to main content">Skip to main content</a>
+
 <!-- ── SIDEBAR ── -->
-<aside class="sidebar" id="app-sidebar">
+<aside class="sidebar" id="app-sidebar" aria-label="Primary">
   <div class="logo">
     <div class="logo-icon">
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
@@ -189,8 +192,8 @@
     </div>
   </div>
 
-  <nav class="sidebar-nav">
-    <a href="#" class="nav-item active" data-view="dashboard" data-essential>
+  <nav class="sidebar-nav" aria-label="Main navigation">
+    <a href="#" class="nav-item active" aria-current="page" data-view="dashboard" data-essential>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
       <span data-i18n="Dashboard">Dashboard</span>
     </a>
@@ -3957,7 +3960,7 @@
 </div>
 
 <!-- ── Mobile bottom tab bar (≤768px) ── -->
-<nav class="mobile-tabbar" id="mobile-tabbar">
+<nav class="mobile-tabbar" id="mobile-tabbar" aria-label="Primary (mobile)">
   <a href="#" class="mtab" data-view="dashboard" data-essential>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
     <span data-i18n="Home">Home</span>

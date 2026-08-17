@@ -89,6 +89,7 @@ const I18N = {
     '%1 in the last 30 days': 'पिछले 30 दिनों में %1',
     'Only %1 entry(ies) — no trend yet': 'केवल %1 प्रविष्टि — अभी कोई ट्रेंड नहीं',
     'Up to date': 'अद्यतित', 'A little old': 'थोड़ा पुराना', 'Out of date': 'पुराना',
+    'Skip to main content': 'मुख्य सामग्री पर जाएँ',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -2579,12 +2580,75 @@ document.addEventListener('keydown', e => {
   else                                  submitRegister();
 });
 
-// ── Accessibility: Escape closes the topmost open overlay ──
+// ── Accessibility: overlay focus + keyboard handling ──
+// Every full-screen overlay in the app matches one of these. Kept in one place
+// so Escape-to-close, focus-restore, and the Tab focus-trap all agree on what
+// "an open overlay" is (the Q1 pass only knew about the first three).
+const _A11Y_OVERLAY_SEL = '.modal-overlay, .checkin-overlay, .global-search-wrap, .fd-overlay, #onboarding-overlay';
+
+// Remember the last thing focused OUTSIDE any overlay, so closing a modal can
+// return focus where it was instead of dumping it at the top of the document.
+let _a11yLastFocus = null;
+document.addEventListener('focusin', e => {
+  const t = e.target;
+  if (t && t.closest && !t.closest(_A11Y_OVERLAY_SEL)) _a11yLastFocus = t;
+});
+
+function _a11yShown(el) {
+  // Robust "is it visible" that works for position:fixed overlays too, where
+  // offsetParent is always null even when the element is on screen.
+  const st = getComputedStyle(el);
+  if (st.display === 'none' || st.visibility === 'hidden') return false;
+  return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+}
+function _a11yVisibleOverlays() {
+  return [...document.querySelectorAll(_A11Y_OVERLAY_SEL)].filter(_a11yShown);
+}
+function _a11yTopOverlay() {
+  const open = _a11yVisibleOverlays();
+  return open.length ? open[open.length - 1] : null;
+}
+function _a11yFocusables(el) {
+  return [...el.querySelectorAll(
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
+    'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+    .filter(n => _a11yShown(n) || n === document.activeElement);
+}
+
+// Escape closes the topmost open overlay and restores focus.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  const open = [...document.querySelectorAll('.modal-overlay, .checkin-overlay, .global-search-wrap')]
-    .filter(el => getComputedStyle(el).display !== 'none');
-  if (open.length) { open[open.length - 1].style.display = 'none'; e.preventDefault(); }
+  const top = _a11yTopOverlay();
+  if (!top) return;
+  if (top.id === 'feature-dir-overlay') top.remove();   // this one is built/torn-down
+  else top.style.display = 'none';
+  e.preventDefault();
+  try { if (_a11yLastFocus && document.contains(_a11yLastFocus)) _a11yLastFocus.focus(); } catch (err) {}
+});
+
+// Trap Tab within the topmost overlay so keyboard focus can't wander behind it.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const top = _a11yTopOverlay();
+  if (!top) return;
+  const f = _a11yFocusables(top);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  const active = document.activeElement;
+  if (e.shiftKey && (active === first || !top.contains(active))) { last.focus(); e.preventDefault(); }
+  else if (!e.shiftKey && active === last) { first.focus(); e.preventDefault(); }
+});
+
+// Enter/Space activate a non-native clickable (div/span carrying data-ev-click
+// that we've marked role="button"). Bridges the CSP-safe delegation to keyboard.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+  const el = e.target;
+  if (!el || el.getAttribute('role') !== 'button' || !el.hasAttribute('data-ev-click')) return;
+  const tag = el.tagName;
+  if (tag === 'BUTTON' || tag === 'A' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  e.preventDefault();
+  try { _evRun(el.getAttribute('data-ev-click'), el, e); } catch (err) {}
 });
 
 // ── Accessibility: label modals + icon-only controls for screen readers ──
@@ -2600,6 +2664,52 @@ function _applyA11yLabels() {
   });
 }
 document.addEventListener('DOMContentLoaded', _applyA11yLabels);
+
+// ── Accessibility: make rendered markup keyboard- & screen-reader-friendly ──
+// Runs over the shell on load and over each view after it renders. Idempotent
+// (marks processed elements) so repeat passes on navigation stay cheap.
+const _A11Y_NATIVE = { BUTTON: 1, A: 1, INPUT: 1, SELECT: 1, TEXTAREA: 1, LABEL: 1 };
+let _a11yIdSeq = 0;
+function _a11yEnhance(root) {
+  if (!root || !root.querySelectorAll) return;
+
+  // 1. Keyboard-operable click surfaces: a div/span carrying data-ev-click is
+  //    mouse-only. Give it button semantics so it's focusable + Enter/Space
+  //    works (see the keydown bridge above). Skip native controls and the
+  //    click-outside backdrops (announcing those as buttons is noise).
+  root.querySelectorAll('[data-ev-click]:not([data-a11y])').forEach(el => {
+    el.setAttribute('data-a11y', '1');
+    if (_A11Y_NATIVE[el.tagName] || el.getAttribute('role')) return;
+    const ev = el.getAttribute('data-ev-click') || '';
+    if (/backdropClose/.test(ev)) return;                 // dismiss-on-outside-click, not a control
+    el.setAttribute('role', 'button');
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+  });
+
+  // 2. Hide purely decorative inline icons from the a11y tree — every icon in
+  //    this app sits beside its own visible text label, so an unlabeled SVG is
+  //    just duplicate noise for a screen reader.
+  root.querySelectorAll('svg:not([data-a11y])').forEach(svg => {
+    svg.setAttribute('data-a11y', '1');
+    if (svg.getAttribute('role') === 'img' || svg.getAttribute('aria-label')) return;
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+  });
+
+  // 3. Programmatically associate visible labels with their control. The app's
+  //    labels rely on proximity (no for=); wire them up so a screen reader
+  //    announces the field name, without editing every form by hand.
+  root.querySelectorAll('label.form-label:not([data-a11y])').forEach(lbl => {
+    lbl.setAttribute('data-a11y', '1');
+    if (lbl.htmlFor || lbl.querySelector('input,select,textarea')) return;
+    let ctl = lbl.nextElementSibling;
+    while (ctl && !/^(INPUT|SELECT|TEXTAREA)$/.test(ctl.tagName)) ctl = ctl.nextElementSibling;
+    if (!ctl) return;
+    if (!ctl.id) ctl.id = 'a11y-f-' + (++_a11yIdSeq);
+    lbl.htmlFor = ctl.id;
+  });
+}
+document.addEventListener('DOMContentLoaded', () => { try { _a11yEnhance(document); } catch (e) {} });
 
 // ── State ──
 let selectedTags = [], selectedFile = null, selectedIcon = '💊', selectedColor = 'teal', selectedActivityType = 'running';
@@ -2686,12 +2796,18 @@ function switchView(view) {
   view = REDIRECT[view] || view;
 
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.querySelectorAll('[data-view]').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('[data-view]').forEach(n => {
+    n.classList.remove('active');
+    n.removeAttribute('aria-current');       // a11y: only the active nav is "current"
+  });
   const viewEl = document.getElementById('view-' + view);
   if (viewEl) viewEl.classList.add('active');
   document.querySelectorAll('[data-view="' + view + '"]')
-    .forEach(n => n.classList.add('active'));
+    .forEach(n => { n.classList.add('active'); n.setAttribute('aria-current', 'page'); });
   try { _applyNavGroups(); } catch (e) {}   // keep the active view's nav group open
+  // a11y: make this view's dynamically-rendered click surfaces keyboard-operable
+  // and hide its decorative icons. Deferred so view loaders have painted.
+  try { setTimeout(() => _a11yEnhance(viewEl || document), 60); } catch (e) {}
   closeMobileMore();   // navigating always dismisses the mobile sheet
 
   if (view === 'dashboard')     { loadDashboard(); loadWellnessStrip(); }
