@@ -309,6 +309,30 @@ def account_export():
     return resp
 
 
+@bp.route('/api/export/categories')
+@require_auth
+def export_categories():
+    """The pickable categories for a scoped export (Category 2 — data control)."""
+    from db.account import EXPORT_CATEGORIES
+    return jsonify({'categories': [{'key': k, 'label': lbl} for k, lbl, _t in EXPORT_CATEGORIES]})
+
+
+@bp.route('/api/export/scoped', methods=['POST'])
+@require_auth
+def account_export_scoped():
+    """Download ONLY the chosen categories — hand a doctor just labs, or share
+    everything-but-diary. Health data only; never account/secret meta."""
+    import json as _json
+    from db.account import export_selected_data
+    cats = (request.get_json(silent=True) or {}).get('categories')
+    data = export_selected_data(g.user_id, cats if isinstance(cats, list) else [])
+    payload = _json.dumps(data, indent=2, ensure_ascii=False, default=str)
+    resp = make_response(payload)
+    resp.headers['Content-Type'] = 'application/json; charset=utf-8'
+    resp.headers['Content-Disposition'] = 'attachment; filename="arogo-selected-data.json"'
+    return resp
+
+
 @bp.route('/api/account', methods=['DELETE'])
 @require_auth
 @rate_limit_auth

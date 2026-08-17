@@ -28,6 +28,51 @@ def _redact(row: dict) -> dict:
     return row
 
 
+# User-facing categories for a SCOPED export — pick some, export only those.
+# Maps the health-data tables (never account/secret meta) into groups a person
+# recognises, so they can hand a doctor just labs, or share everything-but-diary.
+EXPORT_CATEGORIES = [
+    ('medicines', 'Medicines & doses',
+     ['medicines', 'dose_logs', 'dose_snoozes', 'medicine_events', 'med_taper_steps',
+      'med_effectiveness', 'injection_logs', 'action_plans']),
+    ('vitals', 'Vitals & body',
+     ['vitals', 'vital_targets', 'body_metrics']),
+    ('labs', 'Lab results', ['lab_results', 'lab_rechecks']),
+    ('symptoms', 'Symptoms & photos', ['symptoms', 'symptom_photos']),
+    ('records', 'Records & care',
+     ['reports', 'appointments', 'immunizations', 'prescriptions', 'allergies',
+      'dental_vision_visits', 'vision_prescriptions', 'procedures', 'family_history',
+      'doctor_questions', 'care_plan_items', 'providers', 'claims', 'dependents',
+      'dependent_records', 'health_reminders', 'home_supplies', 'emergency_info']),
+    ('lifestyle', 'Food, water, sleep & fitness',
+     ['food_logs', 'custom_foods', 'hydration_logs', 'meal_plans', 'fitness_activities',
+      'workout_sets', 'habits', 'habit_logs', 'sleep_logs']),
+    ('goals', 'Goals & spending', ['health_goals', 'fasting_sessions', 'health_expenses']),
+    ('private', 'Private — journal, mood, cycle, menopause, pregnancy',
+     ['thoughts', 'menstrual_cycles', 'cycle_symptoms', 'menopause_logs', 'pregnancy', 'pregnancy_logs']),
+]
+_EXPORT_CAT_TABLES = {key: tables for key, _label, tables in EXPORT_CATEGORIES}
+
+
+def export_selected_data(uid: str, category_keys) -> dict:
+    """Export ONLY the tables in the chosen categories (health data only, never
+    account/secret meta). Redacts secrets like the full export. Empty when no
+    valid category is chosen — so a stray key can never dump everything."""
+    chosen = set()
+    for k in (category_keys or []):
+        chosen.update(_EXPORT_CAT_TABLES.get(k, []))
+    out = {'_categories': [k for k in (category_keys or []) if k in _EXPORT_CAT_TABLES]}
+    for t in DATA_TABLES:
+        if t not in chosen:
+            continue
+        try:
+            rows = execute(f"SELECT * FROM {t} WHERE user_id=?", (uid,), fetchall=True) or []
+            out[t] = [_redact(dict(r)) for r in rows]
+        except Exception:
+            out[t] = []
+    return out
+
+
 def export_all_data(uid: str) -> dict:
     """Every row this user owns, across every table, plus account basics."""
     out = {}

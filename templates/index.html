@@ -413,6 +413,10 @@
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
           <span data-i18n="Explore features">Explore features</span>
         </a>
+        <a href="#" class="nav-item" data-view="export">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="Export data">Export data</span>
+        </a>
         <a href="#" class="nav-item" data-view="spending">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
           <span data-i18n="Spending">Spending</span>
@@ -2807,6 +2811,13 @@
       A single file with <b>every record</b> Arogo holds about you, across all
       features — not just the range above. This is your data; take it anytime.</p>
     <button class="btn-outline" data-ev-click="downloadAllData()">Download all my data (JSON)</button>
+
+    <div style="margin-top:16px;border-top:1px solid var(--gray-100);padding-top:14px">
+      <div style="font-size:13.5px;font-weight:600;margin-bottom:4px" data-i18n="Or export only some categories">Or export only some categories</div>
+      <p style="font-size:12.5px;color:var(--gray-400);margin-bottom:10px" data-i18n="Hand a doctor just your labs, or share everything except your private diary.">Hand a doctor just your labs, or share everything except your private diary.</p>
+      <div id="scoped-export-cats" class="scoped-cats"></div>
+      <button class="btn-outline btn-sm" data-ev-click="downloadScopedData()" style="margin-top:10px" data-i18n="Download selected (JSON)">Download selected (JSON)</button>
+    </div>
   </div>
 
   <!-- Calendar export (.ics) -->

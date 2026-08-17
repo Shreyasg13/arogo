@@ -727,6 +727,13 @@ const I18N = {
     'Pages': 'पेज', 'Open this page': 'यह पेज खोलें',
     'Personal records': 'व्यक्तिगत रिकॉर्ड', 'Goals & tracking': 'लक्ष्य और ट्रैकिंग',
     'Share': 'साझा करें', 'Quick summary': 'त्वरित सारांश', 'Full health binder': 'पूर्ण हेल्थ बाइंडर',
+    'Export data': 'डेटा निर्यात', 'Or export only some categories': 'या केवल कुछ श्रेणियाँ निर्यात करें',
+    'Hand a doctor just your labs, or share everything except your private diary.': 'डॉक्टर को सिर्फ़ अपनी लैब दें, या निजी डायरी छोड़कर सब साझा करें।',
+    'Download selected (JSON)': 'चयनित डाउनलोड करें (JSON)',
+    'Medicines & doses': 'दवाइयाँ और खुराक', 'Vitals & body': 'वाइटल और शरीर',
+    'Symptoms & photos': 'लक्षण और फोटो', 'Records & care': 'रिकॉर्ड और देखभाल',
+    'Food, water, sleep & fitness': 'भोजन, पानी, नींद और फ़िटनेस', 'Goals & spending': 'लक्ष्य और खर्च',
+    'Private — journal, mood, cycle, menopause, pregnancy': 'निजी — जर्नल, मूड, चक्र, रजोनिवृत्ति, गर्भावस्था',
     'Import from a device': 'डिवाइस से आयात करें', 'Import readings from a device': 'डिवाइस से रीडिंग आयात करें',
     'Export a CSV from your BP monitor, glucometer, oximeter or thermometer, then paste it or choose the file. Nothing is saved until you review and confirm.': 'अपने BP मॉनिटर, ग्लूकोमीटर, ऑक्सीमीटर या थर्मामीटर से CSV निर्यात करें, फिर पेस्ट करें या फ़ाइल चुनें। समीक्षा और पुष्टि तक कुछ सहेजा नहीं जाता।',
     '…or paste CSV here (e.g. Date,Systolic,Diastolic,Glucose)': '…या यहाँ CSV पेस्ट करें (जैसे Date,Systolic,Diastolic,Glucose)',
@@ -2654,7 +2661,9 @@ function switchView(view) {
   const REDIRECT = {
     'consistency': 'habits',
     'report':      'progress',
-    'export':      'progress',
+    // 'export' was accidentally redirected here, which orphaned the whole
+    // data-export page (the DPDP "download all my data" + scoped export). It is
+    // a real, reachable page — see the "Export data" item in the More nav group.
   };
   view = REDIRECT[view] || view;
 
@@ -2706,6 +2715,7 @@ function switchView(view) {
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
+  if (view === 'export')        initExportView();
   if (view === 'progress')      loadProgress();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
@@ -12015,6 +12025,7 @@ const NAV_TARGETS = [
   {v:'spending',      l:'Spending',         k:'expenses money cost'},
   {v:'progress',      l:'Progress',         k:'trends charts weight'},
   {v:'notifications', l:'Notifications',    k:'reminders alerts'},
+  {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability'},
 ];
 
 function _pageMatches(q) {
@@ -12044,7 +12055,7 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['spending', 'progress', 'notifications']},
+  {t: 'More',             v: ['spending', 'progress', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
   'procedures', 'binder', 'quit', 'menopause', 'pregnancy']);
@@ -18003,6 +18014,7 @@ async function initExportView() {
 
   renderExportSections();
   await loadExportCounts();
+  loadScopedExportCats();
 }
 
 async function loadExportCounts() {
@@ -18105,6 +18117,34 @@ async function downloadAllData() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast('✓ Downloaded all your data', 'success');
+  } catch { showToast('Could not prepare your data — try again', 'error'); }
+}
+
+// Category 2 — scoped export: pick categories, download only those.
+async function loadScopedExportCats() {
+  const el = document.getElementById('scoped-export-cats');
+  if (!el) return;
+  const d = await fetch('/api/export/categories', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : {categories:[]}).catch(() => ({categories:[]}));
+  el.innerHTML = (d.categories || []).map(c =>
+    `<label class="scoped-cat"><input type="checkbox" class="scoped-ck" value="${escHtml(c.key)}"> <span>${escHtml(t(c.label))}</span></label>`).join('');
+}
+
+async function downloadScopedData() {
+  const cats = [...document.querySelectorAll('#scoped-export-cats .scoped-ck:checked')].map(ck => ck.value);
+  if (!cats.length) { showToast('Pick at least one category', 'error'); return; }
+  showToast('Preparing your data…', 'info');
+  try {
+    const r = await fetch('/api/export/scoped', {method:'POST', headers:{'Content-Type':'application/json'},
+      credentials:'same-origin', body: JSON.stringify({categories: cats})});
+    if (!r.ok) throw new Error('export failed');
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'arogo-selected-data.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✓ Downloaded selected data', 'success');
   } catch { showToast('Could not prepare your data — try again', 'error'); }
 }
 
