@@ -71,6 +71,24 @@ const I18N = {
     'Fitness': 'फ़िटनेस', 'Habits': 'आदतें', 'Journal': 'डायरी', 'Tasks': 'कार्य',
     'Progress': 'प्रगति', 'Alerts': 'सूचनाएँ', 'Theme': 'थीम',
     'Food & Water': 'खाना व पानी', 'Notifications': 'सूचनाएँ',
+    // Data check (data-trust — freshness + confidence)
+    'Data check': 'डेटा जाँच', 'Your record': 'आपका रिकॉर्ड',
+    'How current your record is, and where a summary rests on thin data. Facts only — the app never tells you how often you should log.':
+      'आपका रिकॉर्ड कितना ताज़ा है, और कहाँ किसी सारांश के पीछे बहुत कम डेटा है। सिर्फ़ तथ्य — ऐप कभी नहीं बताता कि आपको कितनी बार दर्ज करना चाहिए।',
+    'today': 'आज', 'yesterday': 'कल', '%1 days ago': '%1 दिन पहले', 'never': 'कभी नहीं',
+    'Could not load your data check.': 'आपकी डेटा जाँच लोड नहीं हो सकी।',
+    'Nothing tracked yet. As you log medicines, vitals and more, this page shows how current each part of your record is.':
+      'अभी कुछ ट्रैक नहीं हुआ। जैसे-जैसे आप दवाइयाँ, वाइटल्स आदि दर्ज करेंगे, यह पेज दिखाएगा कि आपके रिकॉर्ड का हर हिस्सा कितना ताज़ा है।',
+    'You use %1 tracker(s).': 'आप %1 ट्रैकर उपयोग करते हैं।',
+    '%1 not updated in over a month.': '%1 एक महीने से अधिक से अपडेट नहीं हुए।',
+    '%1 with too little data to show a trend.': '%1 में ट्रेंड दिखाने के लिए बहुत कम डेटा है।',
+    'Your adherence % is based on only %1 scheduled dose(s) so far — read it as a rough early signal, not a settled number.':
+      'आपका पालन % अब तक केवल %1 निर्धारित खुराक पर आधारित है — इसे एक मोटे शुरुआती संकेत के रूप में लें, पक्की संख्या नहीं।',
+    'Medication doses': 'दवा की खुराकें', 'Vitals': 'वाइटल्स', 'Body measurements': 'शारीरिक माप',
+    'Lab results': 'लैब नतीजे', 'Symptoms': 'लक्षण', 'Water': 'पानी', 'Activity': 'गतिविधि',
+    '%1 in the last 30 days': 'पिछले 30 दिनों में %1',
+    'Only %1 entry(ies) — no trend yet': 'केवल %1 प्रविष्टि — अभी कोई ट्रेंड नहीं',
+    'Up to date': 'अद्यतित', 'A little old': 'थोड़ा पुराना', 'Out of date': 'पुराना',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -2717,6 +2735,7 @@ function switchView(view) {
   if (view === 'todos')         loadTodos();
   if (view === 'export')        initExportView();
   if (view === 'progress')      loadProgress();
+  if (view === 'datatrust')     loadDataTrust();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12026,6 +12045,7 @@ const NAV_TARGETS = [
   {v:'progress',      l:'Progress',         k:'trends charts weight'},
   {v:'notifications', l:'Notifications',    k:'reminders alerts'},
   {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability'},
+  {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
 ];
 
 function _pageMatches(q) {
@@ -12055,10 +12075,10 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['spending', 'progress', 'notifications', 'export']},
+  {t: 'More',             v: ['spending', 'progress', 'datatrust', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -15483,6 +15503,77 @@ async function saveFamilyEntry() {
 async function deleteFamilyEntry(id) {
   await fetch('/api/family-history/' + id, {method:'DELETE', credentials:'same-origin'}).catch(() => {});
   loadFamilyHistory();
+}
+
+// ── Data check (data-trust: freshness + confidence) ──────────────────────────
+// Honest, descriptive-only: how current each part of the record is, and where a
+// summary rests on thin data. No cadence expectations, no verdicts, no advice.
+const _DT_LABELS = {
+  doses: 'Medication doses', vitals: 'Vitals', weight: 'Body measurements',
+  labs: 'Lab results', symptoms: 'Symptoms', sleep: 'Sleep', food: 'Food',
+  water: 'Water', activity: 'Activity',
+};
+const _DT_ICON = {
+  doses: '💊', vitals: '❤️', weight: '⚖️', labs: '🧪', symptoms: '🤒',
+  sleep: '😴', food: '🍽️', water: '💧', activity: '🏃',
+};
+
+function _dtAgo(days) {
+  if (days == null) return '';
+  if (days <= 0) return t('today');
+  if (days === 1) return t('yesterday');
+  return tformat('%1 days ago', days);
+}
+
+async function loadDataTrust() {
+  const el = document.getElementById('datatrust-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/data-trust', {credentials:'same-origin'})
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your data check.')}</div>`; return; }
+  el.innerHTML = renderDataTrust(d);
+}
+
+function renderDataTrust(d) {
+  const fresh = d.freshness || [];
+  if (!fresh.length) {
+    return `<div class="dv-empty">${t('Nothing tracked yet. As you log medicines, vitals and more, this page shows how current each part of your record is.')}</div>`;
+  }
+
+  const s = d.summary || {};
+  const bits = [tformat('You use %1 tracker(s).', s.tracked || 0)];
+  if (s.stale) bits.push(tformat('%1 not updated in over a month.', s.stale));
+  if (s.thin)  bits.push(tformat('%1 with too little data to show a trend.', s.thin));
+  const summary = `<div class="panel dt-summary">${escHtml(bits.join(' '))}</div>`;
+
+  // Honest caveats on headline numbers (thin sample).
+  let notes = '';
+  (d.notes || []).forEach(n => {
+    if (n.kind === 'thin_adherence') {
+      notes += `<div class="dt-note">⚠️ ${escHtml(tformat('Your adherence % is based on only %1 scheduled dose(s) so far — read it as a rough early signal, not a settled number.', n.count))}</div>`;
+    }
+  });
+
+  const tiles = fresh.map(r => {
+    const label = t(_DT_LABELS[r.key] || r.label || r.key);
+    const ago = _dtAgo(r.days_since);
+    const when = r.last_date ? `${escHtml(r.last_date)}${ago ? ' · ' + escHtml(ago) : ''}` : t('never');
+    const countLine = tformat('%1 in the last 30 days', r.count_30d || 0);
+    const thin = r.thin ? `<div class="dt-thin">${escHtml(tformat('Only %1 entry(ies) — no trend yet', r.total))}</div>` : '';
+    return `<div class="panel dt-tile dt-${escHtml(r.status)}">
+        <div class="dt-icon">${_DT_ICON[r.key] || '•'}</div>
+        <div class="dt-body">
+          <div class="dt-label">${escHtml(label)}</div>
+          <div class="dt-when">${when}</div>
+          <div class="dt-count">${escHtml(countLine)}</div>
+          ${thin}
+        </div>
+        <div class="dt-dot" title="${escHtml(t(r.status === 'recent' ? 'Up to date' : r.status === 'week' ? 'A little old' : 'Out of date'))}"></div>
+      </div>`;
+  }).join('');
+
+  return summary + notes + `<div class="dt-grid">${tiles}</div>`;
 }
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────

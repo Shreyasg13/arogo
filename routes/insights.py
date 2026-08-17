@@ -818,6 +818,14 @@ def api_profile_completeness():
 def api_visit_checklist():
     return jsonify(get_visit_checklist())
 
+@bp.route('/api/data-trust')
+@require_auth
+def api_data_trust():
+    """How current your record is + honest caveats where a summary rests on thin
+    data. Purely descriptive — no advice, no cadence expectations, no verdicts."""
+    from db.data_trust import get_data_trust
+    return jsonify(get_data_trust())
+
 # NOTE: /api/emergency (GET/POST) and /api/wellness/today live in
 # routes/wellness.py — the duplicate definitions here were dead code (wellness
 # registers first) and were removed.
