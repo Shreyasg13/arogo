@@ -4076,7 +4076,10 @@
   <div class="modal" id="visit-detail-sheet" style="max-width:520px">
     <div class="modal-head">
       <div class="modal-title" data-i18n="Visit">Visit</div>
-      <button class="modal-close" data-ev-click="closeVisitDetail()" aria-label="Close">×</button>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="btn-outline btn-sm" data-ev-click="printVisitSummary()" data-i18n="🖨 Print">🖨 Print</button>
+        <button class="modal-close" data-ev-click="closeVisitDetail()" aria-label="Close">×</button>
+      </div>
     </div>
     <div class="modal-body" id="visit-detail-body"></div>
   </div>

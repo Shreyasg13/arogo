@@ -125,7 +125,7 @@ const I18N = {
     'Visit notes': 'मुलाक़ात के नोट्स', 'Save notes': 'नोट्स सेव करें',
     'Action items': 'करने के काम', 'No action items yet.': 'अभी कोई काम नहीं।',
     'Add something to do after this visit…': 'इस मुलाक़ात के बाद करने को कुछ जोड़ें…',
-    'Could not load this visit.': 'यह मुलाक़ात लोड नहीं हो सकी।',
+    'Could not load this visit.': 'यह मुलाक़ात लोड नहीं हो सकी।', '🖨 Print': '🖨 प्रिंट',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -11303,8 +11303,47 @@ async function _reloadVisitDetail() {
   const body = document.getElementById('visit-detail-body');
   if (!body) return;
   if (!d) { body.innerHTML = `<div class="dv-empty">${t('Could not load this visit.')}</div>`; return; }
+  _visitDetailData = d;
   body.innerHTML = renderVisitDetail(d);
   try { _a11yEnhance(body); } catch (e) {}
+}
+
+// Build a clean, paper-ready summary of the loaded visit and print it. Uses the
+// shared body.printing-visit isolate pattern (same as the health binder), so the
+// shared print stylesheet handles page setup. Own data only — nothing invented.
+let _visitDetailData = null;
+function printVisitSummary() {
+  const d = _visitDetailData;
+  if (!d) return;
+  const a = d.appointment;
+  const esc = escHtml;
+  const list = (arr, fn) => arr && arr.length ? `<ul>${arr.map(fn).join('')}</ul>` : `<div class="pd-muted">—</div>`;
+  const meta = [a.date, a.time, a.location].filter(Boolean).map(esc).join(' · ');
+  const prov = d.provider ? `<div class="pd-row">${esc(d.provider.name)}${d.provider.specialty ? ' · ' + esc(d.provider.specialty) : ''}${d.provider.phone ? ' · ' + esc(d.provider.phone) : ''}</div>` : '';
+  const bring = (d.bring && ((d.bring.refills || []).length || (d.bring.labs_due || []).length)) ? `
+    <h2>${t('Might be worth bringing up')}</h2>
+    ${list([].concat((d.bring.refills || []).map(r => r.name), (d.bring.labs_due || []).map(l => l.name)), n => `<li>${esc(n)}</li>`)}` : '';
+  const questions = `<h2>${t('Questions to ask')}</h2>${list(d.questions, q => `<li>${q.asked ? '☑ ' : '☐ '}${esc(q.question)}</li>`)}`;
+  const notes = (a.visit_summary || a.follow_up) ? `
+    <h2>${t('Visit notes')}</h2>
+    ${a.visit_summary ? `<div class="pd-row"><strong>${t('What the doctor said')}:</strong> ${esc(a.visit_summary)}</div>` : ''}
+    ${a.follow_up ? `<div class="pd-row"><strong>${t('Follow-ups')}:</strong> ${esc(a.follow_up)}</div>` : ''}` : '';
+  const actions = (d.actions && d.actions.length) ? `<h2>${t('Action items')}</h2>${list(d.actions, x => `<li>${x.done ? '☑ ' : '☐ '}${esc(x.text)}</li>`)}` : '';
+
+  let doc = document.getElementById('visit-print-doc');
+  if (!doc) { doc = document.createElement('div'); doc.id = 'visit-print-doc'; doc.className = 'print-doc'; document.body.appendChild(doc); }
+  doc.innerHTML = `
+    <h1>${esc(a.title)}</h1>
+    <div class="pd-sub">${meta || ''}${d.is_past ? ' · ' + t('Past visit') : ''}</div>
+    ${prov ? `<h2>${t('Doctor / provider')}</h2>${prov}` : ''}
+    ${d.is_past ? (notes + actions + questions) : (bring + questions)}
+    <div class="pd-foot">Arogo · ${t('Your record')} · ${esc(d.today || a.date || '')}</div>`;
+
+  document.body.classList.add('printing-visit');
+  const cleanup = () => { document.body.classList.remove('printing-visit'); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(cleanup, 1500);   // fallback for browsers that don't fire afterprint
+  window.print();
 }
 
 function _vdQuestions(qs) {

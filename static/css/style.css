@@ -672,7 +672,50 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
     position:absolute; left:0; top:0; margin:10mm; box-shadow:none; border:none;
     max-width:none; width:auto; }
   body.printing-binder .bnd-sec { break-inside:avoid; }
+
+  /* Per-appointment visit summary — isolate the printable doc (same pattern) */
+  body.printing-visit { background:#fff; }
+  body.printing-visit * { visibility:hidden !important; }
+  body.printing-visit #visit-print-doc,
+  body.printing-visit #visit-print-doc * { visibility:visible !important; }
+  body.printing-visit #visit-print-doc {
+    position:absolute; left:0; top:0; margin:0; box-shadow:none; border:none;
+    max-width:none; width:auto; }
 }
+
+/* ── Shared print baseline ─────────────────────────────────────────────────
+   The app's printables used to each roll their own page setup. These rules
+   give every print a sane page margin, drop the app chrome, force legible
+   black-on-white, and stop cards/tables from splitting across a page break. */
+@page { margin: 14mm; }
+@media print {
+  :root { --print: 1; }
+  html, body { background:#fff !important; }
+  /* Anything purely interactive or navigational has no place on paper. */
+  .sidebar, .mobile-tabbar, .quick-fab, .global-search-wrap, .skip-link,
+  #verify-banner, #install-banner, .toast, #firstrun-card, .no-print {
+    display:none !important;
+  }
+  /* Keep colours readable and actually printed (not dropped by the browser). */
+  * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  body:not([class*="printing-"]) { color:#000 !important; }
+  /* Don't guillotine a card, table row, or section across pages. */
+  .panel, .card, .bnd-sec, .vd-sec, .dt-tile, tr, .appt-card, .print-block { break-inside:avoid; }
+  h1, h2, h3, .section-title, .panel-title { break-after:avoid; }
+}
+
+/* Printable document shell (per-visit summary, and reusable for future prints) */
+.print-doc { font:14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; color:#111; padding:0; }
+.print-doc h1 { font-size:20px; margin:0 0 2px; }
+.print-doc .pd-sub { color:#444; font-size:13px; margin-bottom:16px; }
+.print-doc h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:#555;
+  border-bottom:1px solid #ccc; padding-bottom:3px; margin:18px 0 8px; }
+.print-doc .pd-row { padding:3px 0; }
+.print-doc .pd-muted { color:#666; }
+.print-doc .pd-foot { margin-top:24px; padding-top:8px; border-top:1px solid #ccc;
+  font-size:11px; color:#777; }
+.print-doc ul { margin:4px 0; padding-left:20px; }
+.print-doc li { padding:2px 0; }
 
 /* N2 health binder (screen) */
 .bnd-doc { background:var(--card, #fff); border:1px solid var(--gray-100, #eee); border-radius:var(--r-xl, 16px); padding:26px 28px; max-width:760px; }

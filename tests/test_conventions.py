@@ -269,3 +269,23 @@ class TestAccessibility:
         assert "role" in js and "'button'" in js, "no role=button assignment"
         assert "_evRun(el.getAttribute('data-ev-click')" in js, \
             "Enter/Space → click bridge missing"
+
+
+class TestPrint:
+    """Guards the shared print baseline so a later edit can't send the app's
+    printables (binder, visit summary, doctor letters) back to messy pages."""
+
+    def test_shared_print_baseline(self):
+        css = _read("static/css/style.css")
+        assert "@page" in css, "no @page margin — printables lose page setup"
+        assert ".no-print" in css, "no .no-print utility"
+        # Chrome must be dropped on paper.
+        assert re.search(r"@media print\b", css)
+        assert ".quick-fab" in css and ".sidebar" in css, "print CSS must hide app chrome"
+
+    def test_visit_print_isolate(self):
+        css = _read("static/css/style.css")
+        assert "printing-visit" in css, "per-visit print isolate rule missing"
+        assert ".print-doc" in css, "printable doc shell styles missing"
+        js = _read("static/js/app.js")
+        assert "printVisitSummary" in js, "visit print function removed"
