@@ -780,6 +780,10 @@
           </div>
         </div>
         <div class="form-group" style="margin:0">
+          <label class="form-label"><span data-i18n="Doctor / provider">Doctor / provider</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
+          <select class="form-input" id="appt-provider"><option value="" data-i18n="Not linked">Not linked</option></select>
+        </div>
+        <div class="form-group" style="margin:0">
           <label class="form-label"><span data-i18n="Notes">Notes</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
           <input type="text" class="form-input" id="appt-notes" maxlength="500"
                  placeholder="e.g. fasting, bring old reports" data-i18n-ph="e.g. fasting, bring old reports">
@@ -4064,6 +4068,17 @@
       <button class="modal-close" data-ev-click="closeWelcomeTour()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="welcome-tour-body"></div>
+  </div>
+</div>
+
+<!-- Per-appointment visit flow: before (bring + questions) / during-after (notes + actions). -->
+<div class="modal-overlay" id="visit-detail-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeVisitDetail')">
+  <div class="modal" id="visit-detail-sheet" style="max-width:520px">
+    <div class="modal-head">
+      <div class="modal-title" data-i18n="Visit">Visit</div>
+      <button class="modal-close" data-ev-click="closeVisitDetail()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="visit-detail-body"></div>
   </div>
 </div>
 

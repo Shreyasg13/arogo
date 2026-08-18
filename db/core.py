@@ -531,6 +531,10 @@ CREATE TABLE IF NOT EXISTS providers (
     phone TEXT DEFAULT '', clinic TEXT DEFAULT '', address TEXT DEFAULT '',
     notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS visit_action_items (
+    id TEXT PRIMARY KEY, appointment_id TEXT NOT NULL, text TEXT NOT NULL,
+    done INTEGER DEFAULT 0, created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS lab_rechecks (
     id TEXT PRIMARY KEY, lab_key TEXT NOT NULL, interval_days INTEGER DEFAULT 180,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
@@ -1050,6 +1054,16 @@ def migrate_add_visit_notes():
             pass
 
 
+def migrate_link_questions_to_visit():
+    """Let a doctor question belong to a SPECIFIC appointment (the visit-flow).
+    NULL = a general 'ask at my next visit' question (the existing global list),
+    so this is backward-compatible."""
+    try:
+        execute("ALTER TABLE doctor_questions ADD COLUMN appointment_id TEXT DEFAULT NULL")
+    except Exception:
+        pass
+
+
 def migrate_add_med_effectiveness():
     """Create the medication effectiveness log (J5): a periodic subjective 1-5
     rating of how well a medicine seems to be working, in the patient's own view.
@@ -1406,6 +1420,7 @@ DATA_TABLES = [
     'pregnancy',
     'pregnancy_logs',
     'health_reminders',
+    'visit_action_items',
 ]
 
 
@@ -1474,6 +1489,7 @@ def init_db():
     migrate_add_action_plans()
     migrate_add_med_effectiveness()
     migrate_add_visit_notes()
+    migrate_link_questions_to_visit()
     migrate_add_body_measurements()
     migrate_add_pharmacy()
     migrate_add_condition_focus()

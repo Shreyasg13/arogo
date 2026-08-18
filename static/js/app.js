@@ -114,6 +114,18 @@ const I18N = {
     'Explore everything': 'सब कुछ देखें',
     'That’s the tour. There’s much more — browse every feature and pin your favourites to the dashboard.':
       'यह रहा टूर। और भी बहुत कुछ है — हर सुविधा देखें और अपनी पसंदीदा को डैशबोर्ड पर पिन करें।',
+    // Per-appointment visit flow
+    'Visit': 'मुलाक़ात', 'Open visit': 'मुलाक़ात खोलें', 'Past visit': 'पिछली मुलाक़ात',
+    'Doctor / provider': 'डॉक्टर / प्रदाता', 'Not linked': 'लिंक नहीं',
+    'Might be worth bringing up': 'शायद बताने लायक',
+    'Due around now, from your own refills and lab rechecks.':
+      'अभी के आसपास देय — आपके अपने रीफिल और लैब री-चेक से।',
+    'Questions to ask': 'पूछने के सवाल', 'No questions yet.': 'अभी कोई सवाल नहीं।',
+    'Add a question to ask…': 'पूछने के लिए एक सवाल जोड़ें…', 'Mark asked': 'पूछा हुआ चिह्नित करें',
+    'Visit notes': 'मुलाक़ात के नोट्स', 'Save notes': 'नोट्स सेव करें',
+    'Action items': 'करने के काम', 'No action items yet.': 'अभी कोई काम नहीं।',
+    'Add something to do after this visit…': 'इस मुलाक़ात के बाद करने को कुछ जोड़ें…',
+    'Could not load this visit.': 'यह मुलाक़ात लोड नहीं हो सकी।',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -10945,6 +10957,22 @@ async function loadAppointments() {
     .then(r => r.json()).catch(() => ({ appointments: [] }));
   renderAppointments(d.appointments || []);
   loadDoctorQuestions();
+  _loadApptProviders();
+}
+
+// Populate the appointment form's "Doctor / provider" selector from the care
+// team, so a visit can be linked to a real provider (revives appointments.provider_id).
+let _apptProviders = [];
+async function _loadApptProviders() {
+  const sel = document.getElementById('appt-provider');
+  if (!sel) return;
+  const d = await fetch('/api/providers', { credentials: 'same-origin' })
+    .then(r => r.json()).catch(() => ({ providers: [] }));
+  _apptProviders = d.providers || [];
+  const keep = sel.value;
+  sel.innerHTML = `<option value="">${t('Not linked')}</option>` +
+    _apptProviders.map(p => `<option value="${p.id}">${escHtml(p.name)}${p.specialty ? ' · ' + escHtml(p.specialty) : ''}</option>`).join('');
+  sel.value = keep;
 }
 
 // ── Emergency SOS — one-tap "I need help now" to your caregivers ──
@@ -11105,6 +11133,9 @@ function renderAppointments(appts) {
         ${L.past ? _visitNotesBlock(a) : ''}
       </div>
       <div class="appt-actions">
+        <button class="btn-icon" title="${t('Open visit')}" data-ev-click="openVisitDetail('${a.id}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/></svg>
+        </button>
         <button class="btn-icon" title="${t('Edit')}" data-ev-click="editAppointment('${a.id}')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -11171,6 +11202,7 @@ function editAppointment(id) {
   const set = (f, v) => { const el = document.getElementById('appt-' + f); if (el) el.value = v ?? ''; };
   set('title', a.title); set('date', a.date); set('kind', a.kind);
   set('time', a.time); set('location', a.location); set('notes', a.notes);
+  set('provider', a.provider_id);
   const rem = document.getElementById('appt-remind'); if (rem) rem.checked = !!a.remind;
   const rd = document.getElementById('appt-remind-days');
   if (rd) {
@@ -11198,7 +11230,7 @@ function onApptRemindToggle() {
 
 function cancelApptEdit() {
   _editingApptId = null;
-  ['title', 'time', 'location', 'notes'].forEach(f => {
+  ['title', 'time', 'location', 'notes', 'provider'].forEach(f => {
     const el = document.getElementById('appt-' + f); if (el) el.value = '';
   });
   const btn = document.getElementById('appt-submit-btn'); if (btn) btn.textContent = t('Add appointment');
@@ -11215,6 +11247,7 @@ async function addAppointment() {
     kind: document.getElementById('appt-kind')?.value || 'doctor',
     time: document.getElementById('appt-time')?.value || '',
     location: document.getElementById('appt-location')?.value || '',
+    provider_id: document.getElementById('appt-provider')?.value || '',
     notes: document.getElementById('appt-notes')?.value || '',
     remind: !!document.getElementById('appt-remind')?.checked,
     reminder_days: parseInt(document.getElementById('appt-remind-days')?.value ?? '1', 10) || 0,
@@ -11241,6 +11274,162 @@ function deleteAppointment(id) {
     loadAppointments();
     loadDashboard();
   });
+}
+
+// ── Per-appointment visit flow: before / during / after in one place ─────────
+// Ties this visit's own prep questions + a "bring this up" list to its post-visit
+// notes and the action items that came out of it. Descriptive only — the prep
+// list reuses the app's refill/lab-due logic; no advice is generated.
+let _visitAid = null;
+
+async function openVisitDetail(aid) {
+  _visitAid = aid;
+  const m = document.getElementById('visit-detail-modal');
+  const body = document.getElementById('visit-detail-body');
+  if (!m || !body) return;
+  body.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  m.style.display = 'flex';
+  await _reloadVisitDetail();
+}
+function closeVisitDetail() {
+  const m = document.getElementById('visit-detail-modal');
+  if (m) m.style.display = 'none';
+  _visitAid = null;
+}
+async function _reloadVisitDetail() {
+  if (!_visitAid) return;
+  const d = await fetch(`/api/appointments/${_visitAid}/detail`, { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  const body = document.getElementById('visit-detail-body');
+  if (!body) return;
+  if (!d) { body.innerHTML = `<div class="dv-empty">${t('Could not load this visit.')}</div>`; return; }
+  body.innerHTML = renderVisitDetail(d);
+  try { _a11yEnhance(body); } catch (e) {}
+}
+
+function _vdQuestions(qs) {
+  const rows = qs.map(q => `<div class="vd-item">
+      <button class="vd-check ${q.asked ? 'on' : ''}" title="${t('Mark asked')}" data-ev-click="vdToggleQuestion('${q.id}')">${q.asked ? '✓' : ''}</button>
+      <span class="vd-item-text ${q.asked ? 'vd-done' : ''}">${escHtml(q.question)}</span>
+      <button class="btn-icon vd-del" title="${t('Delete')}" data-ev-click="vdDelQuestion('${q.id}')">✕</button>
+    </div>`).join('');
+  return `${rows || `<div class="vd-empty-line">${t('No questions yet.')}</div>`}
+    <div class="vd-add">
+      <input type="text" class="form-input" id="vd-q-input" placeholder="${t('Add a question to ask…')}" maxlength="400">
+      <button class="btn-secondary btn-sm" data-ev-click="vdAddQuestion()">${t('Add')}</button>
+    </div>`;
+}
+
+function _vdActions(items) {
+  const rows = items.map(a => `<div class="vd-item">
+      <button class="vd-check ${a.done ? 'on' : ''}" title="${t('Mark done')}" data-ev-click="vdToggleAction('${a.id}')">${a.done ? '✓' : ''}</button>
+      <span class="vd-item-text ${a.done ? 'vd-done' : ''}">${escHtml(a.text)}</span>
+      <button class="btn-icon vd-del" title="${t('Delete')}" data-ev-click="vdDelAction('${a.id}')">✕</button>
+    </div>`).join('');
+  return `${rows || `<div class="vd-empty-line">${t('No action items yet.')}</div>`}
+    <div class="vd-add">
+      <input type="text" class="form-input" id="vd-a-input" placeholder="${t('Add something to do after this visit…')}" maxlength="300">
+      <button class="btn-secondary btn-sm" data-ev-click="vdAddAction()">${t('Add')}</button>
+    </div>`;
+}
+
+function renderVisitDetail(d) {
+  const a = d.appointment;
+  const L = _apptDateLabel(a.date);
+  const prov = d.provider
+    ? `<div class="vd-prov">👩‍⚕️ ${escHtml(d.provider.name)}${d.provider.specialty ? ' · ' + escHtml(d.provider.specialty) : ''}</div>` : '';
+  const header = `<div class="vd-head">
+      <div class="vd-kind">${APPT_KIND[a.kind] || '📅'}</div>
+      <div style="flex:1;min-width:0">
+        <div class="vd-title">${escHtml(a.title)}</div>
+        <div class="vd-meta">${L.nice}${a.time ? ' · ' + escHtml(a.time) : ''}${a.location ? ' · ' + escHtml(a.location) : ''}</div>
+        ${prov}
+      </div>
+      <span class="vd-badge ${d.is_past ? 'vd-past' : 'vd-upnext'}">${d.is_past ? t('Past visit') : t('Upcoming')}</span>
+    </div>`;
+
+  // "Bring this up" — only for upcoming visits, and only if something's due.
+  let bring = '';
+  const b = d.bring || {};
+  if (!d.is_past && ((b.refills || []).length || (b.labs_due || []).length)) {
+    const chips = []
+      .concat((b.refills || []).map(r => `<span class="vd-chip">💊 ${escHtml(r.name)}</span>`))
+      .concat((b.labs_due || []).map(l => `<span class="vd-chip">🧪 ${escHtml(l.name)}</span>`))
+      .join('');
+    bring = `<div class="vd-sec"><div class="vd-sec-h">${t('Might be worth bringing up')}</div>
+      <div class="vd-chips">${chips}</div>
+      <div class="vd-hint">${t('Due around now, from your own refills and lab rechecks.')}</div></div>`;
+  }
+
+  const questions = `<div class="vd-sec"><div class="vd-sec-h">${t('Questions to ask')}</div>${_vdQuestions(d.questions || [])}</div>`;
+
+  const notes = `<div class="vd-sec"><div class="vd-sec-h">${t('Visit notes')}</div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">${t('What the doctor said')}</label>
+        <textarea class="form-input" id="vd-summary" rows="3" placeholder="${t('Diagnosis, advice, changes…')}">${escapeHtml(a.visit_summary || '')}</textarea>
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label">${t('Follow-ups')}</label>
+        <textarea class="form-input" id="vd-follow" rows="2" placeholder="${t('Tests to book, next visit, things to watch…')}">${escapeHtml(a.follow_up || '')}</textarea>
+      </div>
+      <button class="btn-primary btn-sm" data-ev-click="vdSaveNotes()">${t('Save notes')}</button></div>`;
+
+  const actions = `<div class="vd-sec"><div class="vd-sec-h">${t('Action items')}</div>${_vdActions(d.actions || [])}</div>`;
+
+  // Before-heavy for upcoming; after-heavy for past.
+  const before = bring + questions;
+  const after = notes + actions;
+  return header + (d.is_past ? (after + before) : (before + after));
+}
+
+async function _vdPost(url, payload) {
+  return fetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify(payload || {}),
+  }).then(r => r.json()).catch(() => null);
+}
+
+async function vdAddQuestion() {
+  const inp = document.getElementById('vd-q-input');
+  const q = (inp?.value || '').trim();
+  if (!q) return;
+  const r = await _vdPost(`/api/appointments/${_visitAid}/questions`, { question: q });
+  if (r && r.success) { _reloadVisitDetail(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+async function vdToggleQuestion(qid) {
+  await fetch(`/api/doctor-questions/${qid}/toggle`, { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+  _reloadVisitDetail();
+}
+async function vdDelQuestion(qid) {
+  await fetch(`/api/doctor-questions/${qid}`, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+  _reloadVisitDetail();
+}
+async function vdAddAction() {
+  const inp = document.getElementById('vd-a-input');
+  const txt = (inp?.value || '').trim();
+  if (!txt) return;
+  const r = await _vdPost(`/api/appointments/${_visitAid}/actions`, { text: txt });
+  if (r && r.success) { _reloadVisitDetail(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+async function vdToggleAction(iid) {
+  await fetch(`/api/visit-actions/${iid}/toggle`, { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+  _reloadVisitDetail();
+}
+async function vdDelAction(iid) {
+  await fetch(`/api/visit-actions/${iid}`, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+  _reloadVisitDetail();
+}
+async function vdSaveNotes() {
+  const visit_summary = document.getElementById('vd-summary')?.value || '';
+  const follow_up = document.getElementById('vd-follow')?.value || '';
+  const r = await fetch(`/api/appointments/${_visitAid}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ visit_summary, follow_up }),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Visit notes saved'), 'success'); loadAppointments(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
 }
 
 // ── Measurement reminders (take a BP / sugar / weight reading) ──────

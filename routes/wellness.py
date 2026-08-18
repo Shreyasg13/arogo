@@ -92,6 +92,48 @@ def api_delete_doctor_question(qid):
     delete_doctor_question(qid)
     return jsonify({'success': True})
 
+# ── Per-appointment visit flow (before / during / after in one place) ────────
+@bp.route('/api/appointments/<aid>/detail')
+@require_auth
+def api_visit_detail(aid):
+    from db.visit_flow import get_visit_detail
+    d = get_visit_detail(aid)
+    if d is None:
+        return jsonify({'error': 'Appointment not found'}), 404
+    return jsonify(d)
+
+@bp.route('/api/appointments/<aid>/questions', methods=['POST'])
+@require_auth
+def api_add_visit_question(aid):
+    try:
+        q = add_doctor_question((request.json or {}).get('question', ''), appointment_id=aid)
+        return jsonify({'success': True, 'question': q})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/appointments/<aid>/actions', methods=['POST'])
+@require_auth
+def api_add_visit_action(aid):
+    from db.visit_flow import add_visit_action
+    try:
+        return jsonify({'success': True, 'action': add_visit_action(aid, (request.json or {}).get('text', ''))})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@bp.route('/api/visit-actions/<iid>/toggle', methods=['POST'])
+@require_auth
+def api_toggle_visit_action(iid):
+    from db.visit_flow import toggle_visit_action
+    toggle_visit_action(iid)
+    return jsonify({'success': True})
+
+@bp.route('/api/visit-actions/<iid>', methods=['DELETE'])
+@require_auth
+def api_delete_visit_action(iid):
+    from db.visit_flow import delete_visit_action
+    delete_visit_action(iid)
+    return jsonify({'success': True})
+
 # ── Measurement reminders ───────────────────────────────────────────────────
 @bp.route('/api/measurement-reminders')
 @require_auth

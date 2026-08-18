@@ -736,6 +736,30 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .btn-text { background:none; border:none; color:var(--gray-500, #666); font-size:13.5px; cursor:pointer; padding:8px 6px; }
 .btn-text:hover { color:var(--gray-700, #444); }
 
+/* Per-appointment visit flow modal */
+.vd-head { display:flex; align-items:flex-start; gap:12px; padding-bottom:14px; margin-bottom:6px; border-bottom:1px solid var(--gray-100, #eee); }
+.vd-kind { font-size:26px; line-height:1; }
+.vd-title { font-size:17px; font-weight:700; color:var(--gray-800, #333); }
+.vd-meta { font-size:13px; color:var(--gray-500, #666); margin-top:2px; }
+.vd-prov { font-size:13px; color:var(--sage-600, #4a7d6a); margin-top:4px; }
+.vd-badge { font-size:11px; font-weight:600; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+.vd-badge.vd-upnext { background:var(--sage-50, #eef5f1); color:var(--sage-700, #3d6b5a); }
+.vd-badge.vd-past { background:var(--gray-100, #eee); color:var(--gray-500, #666); }
+.vd-sec { margin-top:16px; }
+.vd-sec-h { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--gray-400, #999); margin-bottom:8px; }
+.vd-item { display:flex; align-items:center; gap:9px; padding:6px 0; }
+.vd-check { width:22px; height:22px; flex-shrink:0; border-radius:6px; border:1.5px solid var(--gray-300, #ccc); background:none; cursor:pointer; font-size:13px; color:#fff; display:flex; align-items:center; justify-content:center; }
+.vd-check.on { background:var(--sage-500, #5a8f7b); border-color:var(--sage-500, #5a8f7b); }
+.vd-item-text { flex:1; font-size:14px; color:var(--gray-700, #444); }
+.vd-item-text.vd-done { text-decoration:line-through; color:var(--gray-400, #999); }
+.vd-del { color:var(--gray-300, #bbb); flex-shrink:0; }
+.vd-empty-line { font-size:13px; color:var(--gray-400, #999); padding:4px 0; }
+.vd-add { display:flex; gap:8px; margin-top:8px; }
+.vd-add .form-input { flex:1; }
+.vd-chips { display:flex; flex-wrap:wrap; gap:7px; }
+.vd-chip { font-size:12.5px; background:var(--sand-100, #f4ede1); color:var(--gray-700, #444); padding:4px 10px; border-radius:16px; }
+.vd-hint { font-size:12px; color:var(--gray-400, #999); margin-top:7px; }
+
 /* O2 quit tracker */
 .btn-sm { font-size:12.5px; padding:6px 12px; }
 .quit-card { padding:16px 18px; margin-bottom:12px; }

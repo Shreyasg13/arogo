@@ -639,6 +639,17 @@ def _clean_reminder_days(v, default=1):
         return default
 
 
+def _valid_provider_id(pid):
+    """Only accept a provider the caller actually owns (else NULL) — keeps the
+    appointment→care-team link honest and un-spoofable."""
+    pid = str(pid or '').strip()
+    if not pid:
+        return None
+    own = execute("SELECT id FROM providers WHERE id=? AND user_id=?",
+                  (pid, current_user_id()), fetchone=True)
+    return pid if own else None
+
+
 def create_appointment(data: dict) -> dict:
     title = str(data.get('title', '')).strip()
     if not title:
@@ -650,14 +661,15 @@ def create_appointment(data: dict) -> dict:
     if kind not in _APPT_KINDS:
         kind = 'other'
     time = str(data.get('time', '') or '')[:5]
+    provider_id = _valid_provider_id(data.get('provider_id'))
     aid = new_id()
     execute("""INSERT INTO appointments
-                 (id,user_id,title,kind,date,time,location,notes,remind,reminder_days,created_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                 (id,user_id,title,kind,date,time,location,notes,remind,reminder_days,provider_id,created_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (aid, current_user_id(), title[:160], kind, date, time,
              str(data.get('location', ''))[:200], str(data.get('notes', ''))[:500],
              0 if data.get('remind') is False else 1, _clean_reminder_days(data.get('reminder_days')),
-             now_iso()), commit=True)
+             provider_id, now_iso()), commit=True)
     return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?",
                         (aid, current_user_id()), fetchone=True))
 
@@ -704,13 +716,15 @@ def update_appointment(aid: str, data: dict) -> dict:
         if 'visit_summary' in data else cur.get('visit_summary', '')
     follow_up = str(data.get('follow_up', cur.get('follow_up', '')))[:2000] \
         if 'follow_up' in data else cur.get('follow_up', '')
+    provider_id = _valid_provider_id(data.get('provider_id')) if 'provider_id' in data \
+        else cur.get('provider_id')
     execute("""UPDATE appointments SET title=?, kind=?, date=?, time=?, location=?, notes=?, remind=?, reminder_days=?,
-               visit_summary=?, follow_up=?
+               visit_summary=?, follow_up=?, provider_id=?
                WHERE id=? AND user_id=?""",
             (title[:160], kind, date, time,
              str(data.get('location', cur['location']))[:200],
              str(data.get('notes', cur['notes']))[:500], remind, reminder_days,
-             visit_summary, follow_up, aid, uid), commit=True)
+             visit_summary, follow_up, provider_id, aid, uid), commit=True)
     return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?", (aid, uid), fetchone=True))
 
 
@@ -729,20 +743,31 @@ def get_next_appointment():
 
 # ── Doctor-visit prep questions ──────────────────────────────────────────────
 
-def add_doctor_question(text: str) -> dict:
+def add_doctor_question(text: str, appointment_id: str = None) -> dict:
+    """Add a question to ask a doctor. appointment_id=None → the general
+    'ask at my next visit' list; a real id → pinned to that specific visit
+    (the visit-flow). If an id is given it must be the caller's own appointment."""
     q = str(text or '').strip()
     if not q:
         raise ValueError('A question is required')
+    if appointment_id:
+        own = execute("SELECT id FROM appointments WHERE id=? AND user_id=?",
+                      (appointment_id, current_user_id()), fetchone=True)
+        if not own:
+            raise ValueError('Appointment not found')
     qid = new_id()
-    execute("""INSERT INTO doctor_questions (id,user_id,question,asked,created_at)
-               VALUES (?,?,?,0,?)""",
-            (qid, current_user_id(), q[:400], now_iso()), commit=True)
+    execute("""INSERT INTO doctor_questions (id,user_id,question,asked,created_at,appointment_id)
+               VALUES (?,?,?,0,?,?)""",
+            (qid, current_user_id(), q[:400], now_iso(), appointment_id or None), commit=True)
     return dict(execute("SELECT * FROM doctor_questions WHERE id=? AND user_id=?",
                         (qid, current_user_id()), fetchone=True))
 
 
 def list_doctor_questions() -> list:
-    rows = execute("""SELECT * FROM doctor_questions WHERE user_id=?
+    """The GENERAL question list only (appointment_id IS NULL). Per-visit
+    questions live in the visit detail, so they don't clutter this list."""
+    rows = execute("""SELECT * FROM doctor_questions
+                      WHERE user_id=? AND appointment_id IS NULL
                       ORDER BY asked, created_at""", (current_user_id(),), fetchall=True)
     return [dict(r) for r in rows]
 
