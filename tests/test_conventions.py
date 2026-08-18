@@ -146,8 +146,12 @@ def _py_files(*dirs):
 
 class TestConventions:
     def test_no_inline_event_handlers(self):
-        """Strict CSP: on*= attributes are dead on arrival — use data-ev-*."""
-        pat = re.compile(r'\bon(?:click|change|input|keydown|keyup|submit|load|dblclick)\s*=\s*["\']')
+        """Strict CSP: on*= attributes are dead on arrival — use data-ev-*.
+        Covers error/load/focus/blur/mouse* too: an inline onerror fallback
+        silently never fires under CSP (was the case on the Garmin logo)."""
+        pat = re.compile(
+            r'\bon(?:click|change|input|keydown|keyup|submit|load|dblclick|'
+            r'error|focus|blur|mouseover|mouseout|mouseenter|mouseleave)\s*=\s*["\']')
         offenders = []
         for f in FRONTEND_FILES:
             for i, line in enumerate(_read(f).splitlines(), 1):
