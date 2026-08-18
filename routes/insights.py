@@ -834,6 +834,21 @@ def api_glossary():
     from db.glossary import get_glossary
     return jsonify(get_glossary())
 
+@bp.route('/api/weekly-review')
+@require_auth
+def api_weekly_review():
+    """The guided weekly-review payload (composed from existing recaps) + this
+    week's saved reflection + past reflections."""
+    from db.weekly_review import get_weekly_review
+    return jsonify(get_weekly_review())
+
+@bp.route('/api/weekly-review', methods=['POST'])
+@require_auth
+def api_save_weekly_review():
+    from db.weekly_review import save_weekly_review
+    d = request.get_json(silent=True) or {}
+    return jsonify({'success': True, 'saved': save_weekly_review(d.get('wins'), d.get('focus'))})
+
 # NOTE: /api/emergency (GET/POST) and /api/wellness/today live in
 # routes/wellness.py — the duplicate definitions here were dead code (wellness
 # registers first) and were removed.

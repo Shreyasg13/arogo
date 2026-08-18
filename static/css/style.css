@@ -818,6 +818,31 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .gl-none { color:var(--gray-400, #999); font-style:italic; }
 .gl-aka { font-size:11.5px; color:var(--gray-400, #999); margin-top:6px; }
 
+/* Weekly review ritual */
+.wr-head { margin-bottom:16px; }
+.wr-week { font-size:15px; font-weight:700; color:var(--gray-800, #333); }
+.wr-range { font-size:12.5px; color:var(--gray-400, #999); }
+.wr-step { border:1px solid var(--gray-100, #eee); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:var(--surface, #fff); }
+.wr-step-h { display:flex; align-items:center; gap:9px; font-size:14px; font-weight:700; color:var(--gray-700, #444); margin-bottom:10px; }
+.wr-num { width:22px; height:22px; flex-shrink:0; border-radius:50%; background:var(--sage-500, #5a8f7b); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; }
+.wr-big { font-size:30px; font-weight:800; color:var(--sage-600, #4a7d6a); line-height:1; }
+.wr-sub { font-size:13px; color:var(--gray-500, #666); line-height:1.5; margin-top:4px; }
+.wr-cmp { color:var(--gray-400, #999); font-weight:400; }
+.wr-metric { display:flex; justify-content:space-between; align-items:baseline; padding:6px 0; border-bottom:1px solid var(--gray-50, #f4f4f4); font-size:13.5px; }
+.wr-metric:last-child { border-bottom:none; }
+.wr-metric-label { color:var(--gray-600, #555); }
+.wr-metric-val { font-weight:600; color:var(--gray-800, #333); }
+.wr-metric-val.wr-good { color:var(--sage-600, #4a7d6a); }
+.wr-metric-val.wr-warn { color:var(--amber-600, #b9822e); }
+.wr-metric-was { font-size:11.5px; font-weight:400; color:var(--gray-400, #999); margin-left:4px; }
+.wr-wins .wr-win { font-size:13.5px; padding:4px 0; color:var(--gray-700, #444); }
+.wr-saved { font-size:12px; color:var(--sage-600, #4a7d6a); margin-left:10px; }
+.wr-hist { margin-top:18px; }
+.wr-hist-h { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-400, #999); margin-bottom:8px; }
+.wr-hist-item { border-left:2px solid var(--gray-100, #eee); padding:4px 0 8px 12px; margin-bottom:6px; }
+.wr-hist-week { font-size:12px; font-weight:600; color:var(--gray-500, #666); }
+.wr-hist-line { font-size:13px; color:var(--gray-600, #555); margin-top:2px; }
+
 /* O2 quit tracker */
 .btn-sm { font-size:12.5px; padding:6px 12px; }
 .quit-card { padding:16px 18px; margin-bottom:12px; }

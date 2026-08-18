@@ -135,6 +135,30 @@ const I18N = {
     'All terms': 'सभी शब्द', 'No matching term.': 'कोई मिलता शब्द नहीं।',
     'Plain-language explanations of the terms on your lab reports and vitals — what each one measures.':
       'आपकी लैब रिपोर्ट और वाइटल्स के शब्दों की सरल व्याख्या — हर एक क्या मापता है।',
+    // Weekly review ritual
+    'Weekly review': 'साप्ताहिक समीक्षा', 'Could not load your weekly review.': 'आपकी साप्ताहिक समीक्षा लोड नहीं हो सकी।',
+    'A few honest minutes on how your week went — then one focus you set for the next.':
+      'आपका सप्ताह कैसा रहा, इस पर कुछ ईमानदार मिनट — फिर अगले के लिए एक फोकस जो आप तय करें।',
+    'Your week': 'आपका सप्ताह', 'last week': 'पिछला सप्ताह', 'was': 'था',
+    'How you did on medicines': 'दवाइयों में आप कैसे रहे',
+    '%1 of %2 scheduled doses taken': '%2 में से %1 निर्धारित खुराक ली',
+    'Not enough dose data this week to show adherence.': 'इस सप्ताह पालन दिखाने के लिए पर्याप्त खुराक डेटा नहीं।',
+    'Which way things moved': 'चीज़ें किस ओर गईं',
+    'No metric had data in both this week and last yet — keep logging and this fills in.':
+      'अभी किसी मीट्रिक के पास इस और पिछले सप्ताह दोनों का डेटा नहीं — दर्ज करते रहें, यह भर जाएगा।',
+    'Vitals direction': 'वाइटल्स की दिशा', 'trending down': 'नीचे जा रहा', 'trending up': 'ऊपर जा रहा', 'steady': 'स्थिर',
+    'Not enough readings to call a direction yet.': 'दिशा बताने के लिए अभी पर्याप्त रीडिंग नहीं।',
+    'Wins': 'उपलब्धियाँ',
+    'No standout wins the data can back this week — and that’s completely okay.':
+      'इस सप्ताह डेटा जिनका समर्थन करे ऐसी कोई खास उपलब्धि नहीं — और यह बिल्कुल ठीक है।',
+    'Gaps to note': 'ध्यान देने योग्य कमियाँ', 'Light on data this week': 'इस सप्ताह डेटा कम',
+    'Nothing is assumed for these.': 'इनके लिए कुछ मान नहीं लिया गया।',
+    'Your record is reasonably current across the board.': 'आपका रिकॉर्ड कुल मिलाकर काफ़ी हद तक ताज़ा है।',
+    'Your reflection': 'आपका चिंतन', 'What went well?': 'क्या अच्छा रहा?', 'A small thing counts.': 'छोटी बात भी मायने रखती है।',
+    'One focus for next week': 'अगले सप्ताह के लिए एक फोकस',
+    'e.g. take the evening dose on time': 'जैसे शाम की खुराक समय पर लेना',
+    'Save reflection': 'चिंतन सेव करें', 'Reflection saved': 'चिंतन सेव हुआ', 'Saved': 'सेव हुआ',
+    'Past reflections': 'पिछले चिंतन', 'Went well': 'अच्छा रहा', 'Focus': 'फोकस',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -2902,6 +2926,7 @@ function switchView(view) {
   if (view === 'progress')      loadProgress();
   if (view === 'datatrust')     loadDataTrust();
   if (view === 'glossary')      loadGlossary();
+  if (view === 'weekreview')    loadWeekReview();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12429,6 +12454,7 @@ const NAV_TARGETS = [
   {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
+  {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},
 ];
 
 function _pageMatches(q) {
@@ -12458,10 +12484,10 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['spending', 'progress', 'datatrust', 'glossary', 'notifications', 'export']},
+  {t: 'More',             v: ['spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -16118,6 +16144,119 @@ function filterGlossary() {
   });
   const nr = document.getElementById('gl-noresult');
   if (nr) nr.style.display = shown ? 'none' : '';
+}
+
+// ── Weekly review ritual: read your week, then set a focus you act on ─────────
+// Composes the app's existing honest recaps; the only new thing you create is a
+// short reflection, saved per week and shown back over time.
+async function loadWeekReview() {
+  const el = document.getElementById('weekreview-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/weekly-review', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your weekly review.')}</div>`; return; }
+  el.innerHTML = renderWeekReview(d);
+  try { _a11yEnhance(el); } catch (e) {}
+}
+
+function _wrStep(n, title, inner) {
+  return `<div class="wr-step"><div class="wr-step-h"><span class="wr-num">${n}</span>${escHtml(title)}</div>${inner}</div>`;
+}
+
+function renderWeekReview(d) {
+  const r = d.review || {};
+  const p = r.period || {};
+  const head = `<div class="wr-head">
+      <div class="wr-week">${t('Your week')}</div>
+      <div class="wr-range">${escHtml(p.start || d.week_start || '')} → ${escHtml(p.end || '')}</div>
+    </div>`;
+
+  // 1 · Adherence
+  const adh = r.adherence;
+  const adhDelta = (d.deltas || []).find(m => m.key === 'adherence');
+  let adhInner;
+  if (adh) {
+    const cmp = adhDelta ? ` <span class="wr-cmp">(${t('last week')}: ${adhDelta.last}%)</span>` : '';
+    adhInner = `<div class="wr-big">${adh.pct}%</div><div class="wr-sub">${tformat('%1 of %2 scheduled doses taken', adh.taken, adh.total)}${cmp}</div>`;
+  } else {
+    adhInner = `<div class="wr-sub">${t('Not enough dose data this week to show adherence.')}</div>`;
+  }
+
+  // 2 · Which way things moved (this vs last, present in both weeks only)
+  const deltas = (d.deltas || []);
+  const rows = deltas.map(m => {
+    const arrow = m.dir === 'up' ? '↑' : m.dir === 'down' ? '↓' : '→';
+    let tone = '';
+    if (m.higher_better === true) tone = m.dir === 'up' ? 'wr-good' : (m.dir === 'down' ? 'wr-warn' : '');
+    return `<div class="wr-metric">
+        <span class="wr-metric-label">${escHtml(m.label)}</span>
+        <span class="wr-metric-val ${tone}">${escHtml(String(m.this))}${escHtml(m.unit || '')} ${arrow}
+          <span class="wr-metric-was">${t('was')} ${escHtml(String(m.last))}${escHtml(m.unit || '')}</span></span>
+      </div>`;
+  }).join('');
+  const movedInner = deltas.length ? rows
+    : `<div class="wr-sub">${t('No metric had data in both this week and last yet — keep logging and this fills in.')}</div>`;
+
+  // 3 · Vitals direction
+  const vits = (r.vitals || []).filter(v => v.direction);
+  const vitInner = vits.length
+    ? vits.map(v => `<div class="wr-metric"><span class="wr-metric-label">${escHtml(v.label)}</span>
+        <span class="wr-metric-val">${v.direction === 'down' ? '↓ ' + t('trending down') : v.direction === 'up' ? '↑ ' + t('trending up') : '→ ' + t('steady')}</span></div>`).join('')
+    : `<div class="wr-sub">${t('Not enough readings to call a direction yet.')}</div>`;
+
+  // 4 · Wins (only what the data supports)
+  const wins = (r.wins || []);
+  const winInner = wins.length
+    ? `<div class="wr-wins">${wins.map(w => `<div class="wr-win">${w.icon || '•'} ${escHtml(w.text)}</div>`).join('')}</div>`
+    : `<div class="wr-sub">${t('No standout wins the data can back this week — and that’s completely okay.')}</div>`;
+
+  // 5 · Gaps
+  const gaps = (d.gaps || []);
+  const gapInner = gaps.length
+    ? `<div class="wr-sub">${t('Light on data this week')}: ${gaps.map(escHtml).join(', ')}. ${t('Nothing is assumed for these.')}</div>`
+    : `<div class="wr-sub">${t('Your record is reasonably current across the board.')}</div>`;
+
+  // 6 · Reflection (the only thing you create)
+  const s = d.saved || {};
+  const reflect = _wrStep(6, t('Your reflection'), `
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">${t('What went well?')}</label>
+      <textarea class="form-input" id="wr-wins" rows="2" placeholder="${t('A small thing counts.')}">${escapeHtml(s.wins || '')}</textarea>
+    </div>
+    <div class="form-group" style="margin-bottom:10px">
+      <label class="form-label">${t('One focus for next week')}</label>
+      <textarea class="form-input" id="wr-focus" rows="2" placeholder="${t('e.g. take the evening dose on time')}">${escapeHtml(s.focus || '')}</textarea>
+    </div>
+    <button class="btn-primary btn-sm" data-ev-click="saveWeekReflection()">${t('Save reflection')}</button>
+    ${s.updated_at ? `<span class="wr-saved">${t('Saved')}</span>` : ''}`);
+
+  // Past reflections
+  const hist = (d.history || []);
+  const histBlock = hist.length ? `<div class="wr-hist"><div class="wr-hist-h">${t('Past reflections')}</div>${
+    hist.map(h => `<div class="wr-hist-item"><div class="wr-hist-week">${escHtml(h.week_start)}</div>
+      ${h.wins ? `<div class="wr-hist-line"><strong>${t('Went well')}:</strong> ${escHtml(h.wins)}</div>` : ''}
+      ${h.focus ? `<div class="wr-hist-line"><strong>${t('Focus')}:</strong> ${escHtml(h.focus)}</div>` : ''}</div>`).join('')
+  }</div>` : '';
+
+  return head +
+    _wrStep(1, t('How you did on medicines'), adhInner) +
+    _wrStep(2, t('Which way things moved'), movedInner) +
+    _wrStep(3, t('Vitals direction'), vitInner) +
+    _wrStep(4, t('Wins'), winInner) +
+    _wrStep(5, t('Gaps to note'), gapInner) +
+    reflect + histBlock;
+}
+
+async function saveWeekReflection() {
+  const wins = document.getElementById('wr-wins')?.value || '';
+  const focus = document.getElementById('wr-focus')?.value || '';
+  const r = await fetch('/api/weekly-review', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ wins, focus }),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Reflection saved'), 'success'); loadWeekReview(); }
+  else showToast(t('Could not save'), 'error');
 }
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────

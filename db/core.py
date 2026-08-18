@@ -535,6 +535,11 @@ CREATE TABLE IF NOT EXISTS visit_action_items (
     id TEXT PRIMARY KEY, appointment_id TEXT NOT NULL, text TEXT NOT NULL,
     done INTEGER DEFAULT 0, created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS weekly_reviews (
+    id TEXT PRIMARY KEY, week_start TEXT NOT NULL, wins TEXT DEFAULT '',
+    focus TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+    user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS lab_rechecks (
     id TEXT PRIMARY KEY, lab_key TEXT NOT NULL, interval_days INTEGER DEFAULT 180,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
@@ -1421,6 +1426,7 @@ DATA_TABLES = [
     'pregnancy_logs',
     'health_reminders',
     'visit_action_items',
+    'weekly_reviews',
 ]
 
 
