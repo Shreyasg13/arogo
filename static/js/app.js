@@ -126,6 +126,15 @@ const I18N = {
     'Action items': 'करने के काम', 'No action items yet.': 'अभी कोई काम नहीं।',
     'Add something to do after this visit…': 'इस मुलाक़ात के बाद करने को कुछ जोड़ें…',
     'Could not load this visit.': 'यह मुलाक़ात लोड नहीं हो सकी।', '🖨 Print': '🖨 प्रिंट',
+    // Plain-language glossary (definitions stay in English to avoid mistranslating a medical fact)
+    'What this means': 'इसका मतलब', 'Could not load the glossary.': 'शब्दावली लोड नहीं हो सकी।',
+    'Also called': 'और भी कहते हैं', 'No plain-language note for this one yet.': 'इसके लिए अभी सरल विवरण नहीं है।',
+    'Plain-language definitions — what each term measures, not a judgement of your value. Ranges and status live in your Labs and Vitals.':
+      'सरल भाषा में परिभाषाएँ — हर शब्द क्या मापता है, आपके मान पर कोई निर्णय नहीं। रेंज और स्थिति आपके लैब व वाइटल्स में हैं।',
+    'Search a term…': 'कोई शब्द खोजें…', 'Your terms': 'आपके शब्द', 'Your medicines': 'आपकी दवाइयाँ',
+    'All terms': 'सभी शब्द', 'No matching term.': 'कोई मिलता शब्द नहीं।',
+    'Plain-language explanations of the terms on your lab reports and vitals — what each one measures.':
+      'आपकी लैब रिपोर्ट और वाइटल्स के शब्दों की सरल व्याख्या — हर एक क्या मापता है।',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -2892,6 +2901,7 @@ function switchView(view) {
   if (view === 'export')        initExportView();
   if (view === 'progress')      loadProgress();
   if (view === 'datatrust')     loadDataTrust();
+  if (view === 'glossary')      loadGlossary();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12418,6 +12428,7 @@ const NAV_TARGETS = [
   {v:'notifications', l:'Notifications',    k:'reminders alerts'},
   {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
+  {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
 ];
 
 function _pageMatches(q) {
@@ -12447,10 +12458,10 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['spending', 'progress', 'datatrust', 'notifications', 'export']},
+  {t: 'More',             v: ['spending', 'progress', 'datatrust', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -16029,6 +16040,84 @@ function renderDataTrust(d) {
   }).join('');
 
   return summary + notes + `<div class="dt-grid">${tiles}</div>`;
+}
+
+// ── Plain-language glossary: "what this measures" ────────────────────────────
+// Definitional only — describes what a term measures, never judges your value.
+let _glossaryData = null;
+async function loadGlossary() {
+  const el = document.getElementById('glossary-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/glossary', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load the glossary.')}</div>`; return; }
+  _glossaryData = d;
+  el.innerHTML = renderGlossary(d);
+  try { _a11yEnhance(el); } catch (e) {}
+}
+
+function _glossCard(e) {
+  const unit = e.unit ? `<span class="gl-unit">${escHtml(e.unit)}</span>` : '';
+  const aka = (e.aka && e.aka.length) ? `<div class="gl-aka">${t('Also called')}: ${e.aka.map(escHtml).join(', ')}</div>` : '';
+  const body = e.plain ? escHtml(e.plain) : `<span class="gl-none">${t('No plain-language note for this one yet.')}</span>`;
+  return `<div class="gl-card" data-gl="${escHtml((e.term + ' ' + (e.plain || '') + ' ' + (e.aka || []).join(' ')).toLowerCase())}">
+      <div class="gl-term">${escHtml(e.term)} ${unit}</div>
+      <div class="gl-plain">${body}</div>
+      ${aka}
+    </div>`;
+}
+
+function renderGlossary(d) {
+  const y = d.yours || {}, all = d.all || {};
+  const yoursCount = (y.labs || []).length + (y.vitals || []).length + (y.medicines || []).length;
+
+  const disclaimer = `<div class="gl-note">${t('Plain-language definitions — what each term measures, not a judgement of your value. Ranges and status live in your Labs and Vitals.')}</div>`;
+  const search = `<input type="text" class="form-input gl-search" id="gl-search" placeholder="${t('Search a term…')}" data-ev-input="filterGlossary()">`;
+
+  let yours = '';
+  if (yoursCount) {
+    const labs = (y.labs || []).map(_glossCard).join('');
+    const vitals = (y.vitals || []).map(_glossCard).join('');
+    const meds = (y.medicines || []).map(_glossCard).join('');
+    yours = `<div class="gl-sec"><h2 class="section-title">${t('Your terms')}</h2>
+      ${labs ? `<div class="gl-subh">${t('Lab results')}</div><div class="gl-grid">${labs}</div>` : ''}
+      ${vitals ? `<div class="gl-subh">${t('Vitals')}</div><div class="gl-grid">${vitals}</div>` : ''}
+      ${meds ? `<div class="gl-subh">${t('Your medicines')}</div><div class="gl-grid">${meds}</div>` : ''}
+    </div>`;
+  }
+
+  // Full reference, labs grouped by category, then vitals.
+  const byCat = {};
+  (all.labs || []).forEach(e => { (byCat[e.category || 'Other'] = byCat[e.category || 'Other'] || []).push(e); });
+  const catBlocks = Object.keys(byCat).map(cat =>
+    `<div class="gl-subh">${escHtml(cat)}</div><div class="gl-grid">${byCat[cat].map(_glossCard).join('')}</div>`).join('');
+  const allSec = `<div class="gl-sec"><h2 class="section-title">${t('All terms')}</h2>
+    ${catBlocks}
+    <div class="gl-subh">${t('Vitals')}</div><div class="gl-grid">${(all.vitals || []).map(_glossCard).join('')}</div>
+  </div>`;
+
+  return disclaimer + search + yours + allSec + `<div id="gl-noresult" class="dv-empty" style="display:none">${t('No matching term.')}</div>`;
+}
+
+function filterGlossary() {
+  const q = (document.getElementById('gl-search')?.value || '').trim().toLowerCase();
+  const cards = document.querySelectorAll('#glossary-content .gl-card');
+  let shown = 0;
+  cards.forEach(c => {
+    const hit = !q || (c.getAttribute('data-gl') || '').includes(q);
+    c.style.display = hit ? '' : 'none';
+    if (hit) shown++;
+  });
+  // Hide now-empty subheadings/sections.
+  document.querySelectorAll('#glossary-content .gl-grid').forEach(g => {
+    const any = [...g.querySelectorAll('.gl-card')].some(c => c.style.display !== 'none');
+    g.style.display = any ? '' : 'none';
+    if (g.previousElementSibling && g.previousElementSibling.classList.contains('gl-subh'))
+      g.previousElementSibling.style.display = any ? '' : 'none';
+  });
+  const nr = document.getElementById('gl-noresult');
+  if (nr) nr.style.display = shown ? 'none' : '';
 }
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────

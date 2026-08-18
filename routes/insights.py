@@ -826,6 +826,14 @@ def api_data_trust():
     from db.data_trust import get_data_trust
     return jsonify(get_data_trust())
 
+@bp.route('/api/glossary')
+@require_auth
+def api_glossary():
+    """Plain-language 'what this measures' for the user's own labs/vitals/meds,
+    plus the full reference set. Definitional only — never a verdict on a value."""
+    from db.glossary import get_glossary
+    return jsonify(get_glossary())
+
 # NOTE: /api/emergency (GET/POST) and /api/wellness/today live in
 # routes/wellness.py — the duplicate definitions here were dead code (wellness
 # registers first) and were removed.
