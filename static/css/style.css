@@ -843,6 +843,25 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .wr-hist-week { font-size:12px; font-weight:600; color:var(--gray-500, #666); }
 .wr-hist-line { font-size:13px; color:var(--gray-600, #555); margin-top:2px; }
 
+/* Today timeline (hour-by-hour single day) */
+.tl-count { font-size:12.5px; color:var(--gray-400, #999); margin-bottom:14px; }
+.tl-line { position:relative; }
+.tl-line::before { content:''; position:absolute; left:54px; top:6px; bottom:6px; width:2px; background:var(--gray-100, #eee); }
+.tl-row { display:flex; align-items:flex-start; gap:0; padding:7px 0; position:relative; }
+.tl-time { width:46px; flex-shrink:0; text-align:right; font-size:12px; color:var(--gray-400, #999);
+  font-variant-numeric:tabular-nums; padding-top:2px; }
+.tl-dot { width:11px; height:11px; border-radius:50%; flex-shrink:0; margin:4px 12px 0 3px;
+  background:var(--gray-300, #ccc); box-shadow:0 0 0 3px var(--surface, #fff); z-index:1; }
+.tl-dot.tl-dose { background:var(--sage-500, #5a8f7b); }
+.tl-dot.tl-vital { background:var(--terracotta-400, #c67b5c); }
+.tl-dot.tl-food { background:var(--amber-400, #e0a83e); }
+.tl-dot.tl-water { background:#5aa9d6; }
+.tl-dot.tl-symptom { background:#d68a5a; }
+.tl-dot.tl-sleep { background:#8a7bc6; }
+.tl-body { flex:1; min-width:0; padding-bottom:2px; }
+.tl-title { font-size:14px; font-weight:600; color:var(--gray-800, #333); }
+.tl-detail { font-size:12.5px; color:var(--gray-500, #666); margin-top:1px; }
+
 /* O2 quit tracker */
 .btn-sm { font-size:12.5px; padding:6px 12px; }
 .quit-card { padding:16px 18px; margin-bottom:12px; }

@@ -159,6 +159,13 @@ const I18N = {
     'e.g. take the evening dose on time': 'जैसे शाम की खुराक समय पर लेना',
     'Save reflection': 'चिंतन सेव करें', 'Reflection saved': 'चिंतन सेव हुआ', 'Saved': 'सेव हुआ',
     'Past reflections': 'पिछले चिंतन', 'Went well': 'अच्छा रहा', 'Focus': 'फोकस',
+    // Today timeline
+    'Today': 'आज', 'Could not load today’s timeline.': 'आज की टाइमलाइन लोड नहीं हो सकी।',
+    'Everything you logged today — doses, vitals, meals, water and more — in the order it happened.':
+      'आज आपने जो कुछ दर्ज किया — खुराक, वाइटल्स, भोजन, पानी आदि — जिस क्रम में हुआ।',
+    'Nothing logged today yet. As you take doses, log vitals, meals, water and more, they appear here in order.':
+      'आज अभी कुछ दर्ज नहीं। जैसे-जैसे आप खुराक लेंगे, वाइटल्स, भोजन, पानी दर्ज करेंगे, वे यहाँ क्रम में दिखेंगे।',
+    '%1 logged today': 'आज %1 दर्ज',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -2927,6 +2934,7 @@ function switchView(view) {
   if (view === 'datatrust')     loadDataTrust();
   if (view === 'glossary')      loadGlossary();
   if (view === 'weekreview')    loadWeekReview();
+  if (view === 'today')         loadToday();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12455,6 +12463,7 @@ const NAV_TARGETS = [
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},
+  {v:'today',         l:'Today',            k:'today timeline day hour by hour schedule what happened log diary of the day'},
 ];
 
 function _pageMatches(q) {
@@ -12484,10 +12493,10 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
+  {t: 'More',             v: ['today', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -16257,6 +16266,40 @@ async function saveWeekReflection() {
   }).then(x => x.json()).catch(() => null);
   if (r && r.success) { showToast(t('Reflection saved'), 'success'); loadWeekReview(); }
   else showToast(t('Could not save'), 'error');
+}
+
+// ── Today timeline: one hour-by-hour view of the day ─────────────────────────
+// Stitches today's doses, vitals, food, water, sleep and symptoms into a single
+// vertical timeline. Descriptive only — repeats what you logged.
+const _TL_KIND = {
+  dose: 'tl-dose', vital: 'tl-vital', food: 'tl-food',
+  water: 'tl-water', symptom: 'tl-symptom', sleep: 'tl-sleep',
+};
+async function loadToday() {
+  const el = document.getElementById('today-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/today-timeline', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load today’s timeline.')}</div>`; return; }
+  el.innerHTML = renderToday(d);
+}
+
+function renderToday(d) {
+  const events = d.events || [];
+  if (!events.length) {
+    return `<div class="dv-empty">${t('Nothing logged today yet. As you take doses, log vitals, meals, water and more, they appear here in order.')}</div>`;
+  }
+  const rows = events.map(e => `<div class="tl-row">
+      <div class="tl-time">${e.time ? escHtml(e.time) : '—'}</div>
+      <div class="tl-dot ${_TL_KIND[e.kind] || ''}"></div>
+      <div class="tl-body">
+        <div class="tl-title">${e.icon || '•'} ${escHtml(e.title)}</div>
+        ${e.detail ? `<div class="tl-detail">${escHtml(e.detail)}</div>` : ''}
+      </div>
+    </div>`).join('');
+  return `<div class="tl-count">${tformat('%1 logged today', events.length)}</div>
+    <div class="tl-line">${rows}</div>`;
 }
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────

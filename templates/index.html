@@ -412,6 +412,10 @@
         <svg class="nav-group-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div class="nav-group-items">
+        <a href="#" class="nav-item" data-view="today">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span data-i18n="Today">Today</span>
+        </a>
         <a href="#" class="nav-item" data-ev-click="openFeatureDirectory()">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
           <span data-i18n="Explore features">Explore features</span>
@@ -2637,6 +2641,18 @@
     </div>
   </div>
   <div id="weekreview-content"></div>
+</div>
+
+<!-- ═══════════ TODAY TIMELINE (hour-by-hour single day) ═══════════ -->
+<div id="view-today" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Your record">Your record</div>
+      <h1 class="page-title" data-i18n="Today">Today</h1>
+      <p class="page-subtitle" data-i18n="Everything you logged today — doses, vitals, meals, water and more — in the order it happened.">Everything you logged today — doses, vitals, meals, water and more — in the order it happened.</p>
+    </div>
+  </div>
+  <div id="today-content"></div>
 </div>
 
 <!-- ═══════════ PROCEDURES & HOSPITALIZATIONS (O1) ═══════════ -->

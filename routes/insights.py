@@ -849,6 +849,14 @@ def api_save_weekly_review():
     d = request.get_json(silent=True) or {}
     return jsonify({'success': True, 'saved': save_weekly_review(d.get('wins'), d.get('focus'))})
 
+@bp.route('/api/today-timeline')
+@require_auth
+def api_today_timeline():
+    """Today's logged events (doses, vitals, food, water, sleep, symptoms) in
+    clock order — a single-day, hour-by-hour view."""
+    from db.today_timeline import get_today_timeline
+    return jsonify(get_today_timeline())
+
 # NOTE: /api/emergency (GET/POST) and /api/wellness/today live in
 # routes/wellness.py — the duplicate definitions here were dead code (wellness
 # registers first) and were removed.
