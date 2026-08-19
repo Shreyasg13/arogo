@@ -2791,6 +2791,54 @@ function _a11yEnhance(root) {
 }
 document.addEventListener('DOMContentLoaded', () => { try { _a11yEnhance(document); } catch (e) {} });
 
+// ── Modern interaction layer: click ripple + animated count-up ───────────────
+function _prefersReducedMotion() {
+  try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  catch (e) { return false; }
+}
+
+// A material-style ripple on buttons. CSP-safe (element.style, not inline attrs).
+document.addEventListener('pointerdown', e => {
+  if (_prefersReducedMotion() || (e.button != null && e.button !== 0)) return;
+  const btn = e.target.closest && e.target.closest(
+    '.btn-primary, .btn-secondary, .btn-outline, .btn-outline-sm, .btn-connect, .btn-sm');
+  if (!btn) return;
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const ink = document.createElement('span');
+  ink.className = 'ripple-ink';
+  ink.style.width = ink.style.height = size + 'px';
+  ink.style.left = (e.clientX - rect.left - size / 2) + 'px';
+  ink.style.top = (e.clientY - rect.top - size / 2) + 'px';
+  btn.classList.add('ripple-host');
+  btn.appendChild(ink);
+  setTimeout(() => ink.remove(), 620);
+}, true);
+
+// Count a number up from 0 for any .count-up[data-to] in `root`. Snaps to the
+// final value under reduced-motion. Eased, tabular so width stays steady.
+function _fmtCount(n) { return (Math.round(n * 10) / 10 % 1 === 0) ? String(Math.round(n)) : n.toFixed(1); }
+function _animateCounts(root) {
+  if (!root || !root.querySelectorAll) return;
+  const reduce = _prefersReducedMotion();
+  root.querySelectorAll('.count-up[data-to]').forEach(el => {
+    if (el.dataset.counted) return;
+    const to = parseFloat(el.getAttribute('data-to'));
+    if (isNaN(to)) return;
+    el.dataset.counted = '1';
+    const suffix = el.getAttribute('data-suffix') || '';
+    if (reduce) { el.textContent = _fmtCount(to) + suffix; return; }
+    const dur = 700, start = performance.now();
+    const tick = now => {
+      const p = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = _fmtCount(to * eased) + suffix;
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
 // ── State ──
 let selectedTags = [], selectedFile = null, selectedIcon = '💊', selectedColor = 'teal', selectedActivityType = 'running';
 let notifPermission = 'default';
@@ -16166,7 +16214,7 @@ async function loadWeekReview() {
     .then(r => r.ok ? r.json() : null).catch(() => null);
   if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your weekly review.')}</div>`; return; }
   el.innerHTML = renderWeekReview(d);
-  try { _a11yEnhance(el); } catch (e) {}
+  try { _a11yEnhance(el); _animateCounts(el); } catch (e) {}
 }
 
 function _wrStep(n, title, inner) {
@@ -16187,7 +16235,7 @@ function renderWeekReview(d) {
   let adhInner;
   if (adh) {
     const cmp = adhDelta ? ` <span class="wr-cmp">(${t('last week')}: ${adhDelta.last}%)</span>` : '';
-    adhInner = `<div class="wr-big">${adh.pct}%</div><div class="wr-sub">${tformat('%1 of %2 scheduled doses taken', adh.taken, adh.total)}${cmp}</div>`;
+    adhInner = `<div class="wr-big count-up" data-to="${adh.pct}" data-suffix="%">${adh.pct}%</div><div class="wr-sub">${tformat('%1 of %2 scheduled doses taken', adh.taken, adh.total)}${cmp}</div>`;
   } else {
     adhInner = `<div class="wr-sub">${t('Not enough dose data this week to show adherence.')}</div>`;
   }

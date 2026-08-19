@@ -6927,3 +6927,94 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .vs-tir-seg.is-low { background:#5E8299; }
 .vs-tir-seg.is-high { background:#E0A34E; }
 .vs-foot { font-size:10.5px; color:var(--gray-400); margin-top:5px; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   MODERN INTERACTION LAYER
+   Depth, motion and micro-feedback on top of the calm Warm Healing base. Every
+   colour is a token (light + dark both hold), and ALL motion here is neutralised
+   by the global prefers-reduced-motion rule earlier in this file.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root { --shadow-hover:0 10px 30px rgba(58,45,30,.15), 0 3px 8px rgba(58,45,30,.09); }
+:root[data-theme="dark"], :root:not([data-theme="light"]) {
+  /* deeper, cooler shadows read better on a dark ground */
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --shadow-hover:0 12px 34px rgba(0,0,0,.5), 0 3px 10px rgba(0,0,0,.4); } }
+:root[data-theme="dark"] { --shadow-hover:0 12px 34px rgba(0,0,0,.5), 0 3px 10px rgba(0,0,0,.4); }
+
+/* Panels breathe a little on hover; no transform, so charts/sticky bits stay put. */
+.panel { transition: box-shadow .22s ease, border-color .22s ease, transform .22s ease; }
+.panel:hover { box-shadow: var(--shadow-md); }
+
+/* Small, self-contained cards get a real lift + shadow. */
+.dt-tile, .gl-card, .wr-step, .wr-hist-item, .appt-card, .fh-card, .quit-card,
+.dash-shortcut, .fd-item, .vd-tile, .care-card, .provider-card, .goal-card,
+.lab-card, .cond-card, .supply-card {
+  transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s ease, border-color .18s ease;
+}
+.dt-tile:hover, .gl-card:hover, .wr-step:hover, .appt-card:hover, .fh-card:hover,
+.quit-card:hover, .dash-shortcut:hover, .fd-item:hover, .vd-tile:hover,
+.care-card:hover, .provider-card:hover, .goal-card:hover, .lab-card:hover,
+.cond-card:hover, .supply-card:hover {
+  transform: translateY(-3px); box-shadow: var(--shadow-hover);
+}
+
+/* Primary buttons: subtle gradient + a soft lift; keep the press-scale. */
+.btn-primary {
+  background: linear-gradient(135deg, var(--teal-500), var(--teal-600));
+  box-shadow: 0 2px 6px rgba(46,91,75,.22);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+.btn-primary:hover { filter: brightness(1.06); transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(46,91,75,.30); background: linear-gradient(135deg, var(--teal-500), var(--teal-600)); }
+.btn-primary:active { transform: translateY(0) scale(.98); }
+.btn-outline, .btn-outline-sm, .btn-connect, .btn-secondary {
+  transition: transform .16s ease, box-shadow .16s ease, background .16s, border-color .16s, color .16s;
+}
+.btn-outline:hover, .btn-secondary:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+
+/* Click ripple (span injected by JS, then removed). */
+.ripple-host { position: relative; overflow: hidden; }
+.ripple-ink { position:absolute; border-radius:50%; transform:scale(0); pointer-events:none;
+  background: currentColor; opacity:.25; animation: rippleOut .6s ease-out forwards; }
+@keyframes rippleOut { to { transform: scale(2.6); opacity: 0; } }
+
+/* FAB: bolder shadow + a springy hover. */
+#quick-fab { box-shadow: 0 8px 24px rgba(46,91,75,.34);
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, background .2s ease; }
+#quick-fab:hover { transform: scale(1.08) translateY(-1px); box-shadow: 0 12px 30px rgba(46,91,75,.42); }
+#quick-fab:active { transform: scale(.95); }
+
+/* Nav: icon nudges on hover, active accent animates in. */
+.nav-item svg { transition: transform .18s ease; }
+.nav-item:hover svg { transform: translateX(1px) scale(1.08); }
+.nav-item.active::before { animation: navAccent .3s cubic-bezier(.2,.7,.3,1); }
+@keyframes navAccent { from { height:0; opacity:0; } to { height:18px; opacity:1; } }
+
+/* View entrance: a soft fade + rise each time a view becomes active. */
+.view.active { animation: viewIn .3s cubic-bezier(.2,.7,.3,1); }
+@keyframes viewIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: none; } }
+
+/* Modal entrance: backdrop fades, the sheet springs up. */
+.modal-overlay, .fd-overlay, .global-search-wrap { animation: overlayIn .2s ease; }
+@keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
+.modal-overlay .modal, .fd-overlay .fd-modal, .global-search-wrap .gs-modal {
+  animation: modalIn .28s cubic-bezier(.2,.8,.3,1);
+}
+@keyframes modalIn { from { opacity:0; transform: translateY(14px) scale(.985); } to { opacity:1; transform:none; } }
+
+/* Checks pop when you complete them. */
+.vd-check.on, .dash-dose-check.done { animation: checkPop .32s ease; }
+@keyframes checkPop { 0%{transform:scale(1);} 40%{transform:scale(1.32);} 100%{transform:scale(1);} }
+
+/* List rows: quiet hover highlight. */
+.tl-row, .vd-item { border-radius:8px; transition: background .15s ease; }
+.tl-row:hover, .vd-item:hover { background: var(--gray-25); }
+
+/* Skeleton shimmer for loading states. */
+.skeleton { background: linear-gradient(90deg, var(--gray-50) 25%, var(--gray-100) 37%, var(--gray-50) 63%);
+  background-size: 400% 100%; animation: shimmer 1.3s ease infinite; border-radius: 8px; color: transparent !important; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.skeleton-line { height: 12px; margin: 8px 0; }
+
+/* Count-up numbers: tabular figures so the width doesn't jitter mid-animation. */
+.count-up { font-variant-numeric: tabular-nums; }
