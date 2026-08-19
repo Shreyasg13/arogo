@@ -857,6 +857,15 @@ def api_today_timeline():
     from db.today_timeline import get_today_timeline
     return jsonify(get_today_timeline())
 
+@bp.route('/api/care-circle')
+@require_auth
+def api_care_circle():
+    """A caregiver at-a-glance board — today + week for each member who shares
+    their medicines with you. Composes existing consent-gated views; adds no new
+    data access."""
+    from db.care_circle import get_care_circle
+    return jsonify(get_care_circle())
+
 @bp.route('/api/ask')
 @require_auth
 def api_ask():

@@ -198,6 +198,18 @@ const I18N = {
     'Try asking': 'यह पूछकर देखें', 'Looking…': 'देख रहे हैं…',
     'Could not answer just now.': 'अभी जवाब नहीं दे सके।',
     'Ask by voice': 'बोलकर पूछें', 'Read answer aloud': 'जवाब सुनाएँ',
+    // Care circle
+    'Care circle': 'देखभाल मंडली', 'Could not load your care circle.': 'आपकी देखभाल मंडली लोड नहीं हो सकी।',
+    'At a glance for the people you help look after — today’s doses and this week, only what they’ve chosen to share.':
+      'जिनकी आप देखभाल में मदद करते हैं उनकी एक झलक — आज की खुराकें और यह सप्ताह, सिर्फ़ वही जो उन्होंने साझा करना चुना।',
+    'No one is sharing their medicines with you yet. When a family member shares their meds, they’ll appear here — and only what they choose to share.':
+      'अभी कोई अपनी दवाइयाँ आपके साथ साझा नहीं कर रहा। जब कोई परिवारजन अपनी दवाइयाँ साझा करेगा, वे यहाँ दिखेंगे — और सिर्फ़ वही जो वे चुनें।',
+    '%1 need a look': '%1 पर नज़र चाहिए', '%1 people in your circle': 'आपकी मंडली में %1 लोग', 'all keeping up': 'सब ठीक चल रहे',
+    '%1 overdue': '%1 देर से', '%1 low': '%1 कम', 'on track': 'सही राह पर',
+    'last dose': 'आख़िरी खुराक', 'just now': 'अभी-अभी', '%1 min ago': '%1 मिनट पहले', '%1h ago': '%1 घंटे पहले',
+    'This week: %1% of doses': 'इस सप्ताह: %1% खुराकें', '%1h sleep': '%1 घंटे नींद',
+    'You’re checking on this': 'आप इस पर नज़र रख रहे हैं', '%1 is checking': '%1 नज़र रख रहे हैं',
+    '%1 of %2 doses today': 'आज %2 में से %1 खुराकें',
     'Ask a plain question about your own data. Answers come only from what you’ve logged — nothing invented, nothing sent to the cloud.':
       'अपने डेटा के बारे में सीधा सवाल पूछें। जवाब सिर्फ़ आपके दर्ज किए से आते हैं — कुछ भी मनगढ़ंत नहीं, कुछ भी क्लाउड को नहीं भेजा जाता।',
     // Section headers in the side nav
@@ -3019,6 +3031,7 @@ function switchView(view) {
   if (view === 'today')         loadToday();
   if (view === 'yearstory')     loadYearStory();
   if (view === 'ask')           loadAsk();
+  if (view === 'carecircle')    loadCareCircle();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12550,6 +12563,7 @@ const NAV_TARGETS = [
   {v:'today',         l:'Today',            k:'today timeline day hour by hour schedule what happened log diary of the day'},
   {v:'yearstory',     l:'Year in health',   k:'year story recap milestones wrapped review annual consistency showed up shareable'},
   {v:'ask',           l:'Ask',              k:'ask question assistant when did i last average due answer query search my data help'},
+  {v:'carecircle',    l:'Care circle',      k:'caregiver family members command center at a glance manage elder parent status board watch over'},
 ];
 
 function _pageMatches(q) {
@@ -12576,13 +12590,13 @@ const FEATURE_SECTIONS = [
   {t: 'Medicines',        v: ['medicines', 'prescriptions', 'taper', 'med-budget']},
   {t: 'Vitals & records', v: ['reports', 'body', 'labs', 'conditions', 'immunizations', 'allergies']},
   {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'timeline']},
-  {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
+  {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'carecircle', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
   {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -16717,6 +16731,64 @@ function askVoice() {
   rec.onend = rec.onerror = () => { const m = document.querySelector('.ask-mic'); if (m) m.classList.remove('listening'); };
   try { rec.start(); } catch (e) {}
 }
+
+// ── Care circle: a caregiver command center ──────────────────────────────────
+async function loadCareCircle() {
+  const el = document.getElementById('carecircle-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/care-circle', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your care circle.')}</div>`; return; }
+  el.innerHTML = renderCareCircle(d);
+  try { _a11yEnhance(el); } catch (e) {}
+}
+
+let _ccSummaries = {};
+function _ccAgo(min) {
+  if (min == null) return '';
+  if (min < 1) return t('just now');
+  if (min < 60) return tformat('%1 min ago', Math.round(min));
+  return tformat('%1h ago', Math.round(min / 60));
+}
+function renderCareCircle(d) {
+  const members = d.members || [];
+  if (!members.length) {
+    return `<div class="dv-empty">${t('No one is sharing their medicines with you yet. When a family member shares their meds, they’ll appear here — and only what they choose to share.')}</div>`;
+  }
+  _ccSummaries = {};
+  const head = d.needs_attention
+    ? `<div class="cc-head cc-head-attn">${tformat('%1 need a look', d.needs_attention)} · ${tformat('%1 people in your circle', d.count)}</div>`
+    : `<div class="cc-head">${tformat('%1 people in your circle', d.count)} · ${t('all keeping up')}</div>`;
+
+  const cards = members.map(m => {
+    _ccSummaries[m.user_id] = m.summary || '';
+    const td = m.today || {}, wk = m.week || {};
+    const od = (td.overdue || []).length, ls = (td.low_stock || []).length;
+    const badges = [];
+    if (od) badges.push(`<span class="cc-badge cc-badge-attn">${tformat('%1 overdue', od)}</span>`);
+    if (ls) badges.push(`<span class="cc-badge cc-badge-low">${tformat('%1 low', ls)}</span>`);
+    if (!od && !ls && td.total) badges.push(`<span class="cc-badge cc-badge-ok">✓ ${t('on track')}</span>`);
+    const ago = td.last_ago_min != null ? `<span class="cc-ago">${t('last dose')} ${_ccAgo(td.last_ago_min)}</span>` : '';
+    const week = (wk.adherence_pct != null)
+      ? `<div class="cc-week">${tformat('This week: %1% of doses', wk.adherence_pct)}${wk.sleep_avg ? ' · ' + tformat('%1h sleep', wk.sleep_avg) : ''}</div>` : '';
+    const checking = m.checking_by
+      ? `<div class="cc-checking">👀 ${m.checking_is_me ? t('You’re checking on this') : tformat('%1 is checking', escHtml(m.checking_by))}</div>` : '';
+    return `<div class="panel cc-card ${m.attention ? 'cc-attn' : ''}">
+        <div class="cc-top">
+          <div class="cc-name">${escHtml(m.name)}</div>
+          ${_canSpeak() ? `<button class="cc-speak" title="${t('Read aloud')}" data-ev-click="speakCareMember('${m.user_id}')">🔊</button>` : ''}
+        </div>
+        <div class="cc-doses">${tformat('%1 of %2 doses today', td.taken || 0, td.total || 0)} ${ago}</div>
+        <div class="cc-badges">${badges.join('')}</div>
+        ${week}
+        ${checking}
+      </div>`;
+  }).join('');
+
+  return head + `<div class="cc-grid">${cards}</div>`;
+}
+function speakCareMember(uid) { const s = _ccSummaries[uid]; if (s) speakText(s); }
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────
 const _PROC_KIND = { surgery: 'Surgery', hospitalization: 'Hospital stay', procedure: 'Procedure' };
