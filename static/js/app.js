@@ -175,6 +175,21 @@ const I18N = {
     'Nothing logged today yet. As you take doses, log vitals, meals, water and more, they appear here in order.':
       'आज अभी कुछ दर्ज नहीं। जैसे-जैसे आप खुराक लेंगे, वाइटल्स, भोजन, पानी दर्ज करेंगे, वे यहाँ क्रम में दिखेंगे।',
     '%1 logged today': 'आज %1 दर्ज',
+    // Year in health
+    'Year in health': 'साल की सेहत', 'Could not load your story.': 'आपकी कहानी लोड नहीं हो सकी।',
+    'A look back at how you showed up — real milestones from your own logs, nothing invented.':
+      'आपने कैसे साथ दिया, उसकी एक झलक — आपके अपने रिकॉर्ड से असली पड़ाव, कुछ भी मनगढ़ंत नहीं।',
+    'Your health story is just getting started. As you log doses, vitals and more, this fills in with your real milestones.':
+      'आपकी सेहत की कहानी अभी शुरू हो रही है। जैसे-जैसे आप खुराक, वाइटल्स आदि दर्ज करेंगे, यह आपके असली पड़ावों से भरती जाएगी।',
+    'You showed up': 'आपने साथ दिया', 'of %1 days': '%1 दिनों में से',
+    'best perfect-dose streak': 'सर्वश्रेष्ठ पूर्ण-खुराक सिलसिला',
+    'Year': 'साल', '6 months': '6 महीने', '90 days': '90 दिन',
+    'doses taken': 'खुराकें लीं', 'vitals': 'वाइटल्स', 'workouts': 'वर्कआउट',
+    'lab results': 'लैब नतीजे', 'meals': 'भोजन', 'nights tracked': 'रातें दर्ज',
+    'Highlights': 'मुख्य बातें', 'Create a shareable link': 'साझा करने योग्य लिंक बनाएँ',
+    'Shares consistency & counts only — never a health value, symptom, journal, mood or cycle. Expiring, and you can turn it off anytime.':
+      'सिर्फ़ नियमितता व गिनती साझा करता है — कोई हेल्थ मान, लक्षण, डायरी, मूड या साइकल नहीं। समय-सीमित, और आप कभी भी बंद कर सकते हैं।',
+    'Preview the shared page ↗': 'साझा पेज देखें ↗',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -2992,6 +3007,7 @@ function switchView(view) {
   if (view === 'glossary')      loadGlossary();
   if (view === 'weekreview')    loadWeekReview();
   if (view === 'today')         loadToday();
+  if (view === 'yearstory')     loadYearStory();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12521,6 +12537,7 @@ const NAV_TARGETS = [
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},
   {v:'today',         l:'Today',            k:'today timeline day hour by hour schedule what happened log diary of the day'},
+  {v:'yearstory',     l:'Year in health',   k:'year story recap milestones wrapped review annual consistency showed up shareable'},
 ];
 
 function _pageMatches(q) {
@@ -12550,10 +12567,10 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['today', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
+  {t: 'More',             v: ['today', 'yearstory', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -16546,6 +16563,82 @@ function renderToday(d) {
   return `<div class="tl-count">${tformat('%1 logged today', events.length)}</div>
     <div class="tl-line">${rows}</div>`;
 }
+
+// ── Year in health: an honest, shareable recap ───────────────────────────────
+let _ysDays = 365;
+async function loadYearStory(days) {
+  if (days) _ysDays = days;
+  const el = document.getElementById('yearstory-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const s = await fetch('/api/year-story?days=' + _ysDays, { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!s) { el.innerHTML = `<div class="dv-empty">${t('Could not load your story.')}</div>`; return; }
+  el.innerHTML = renderYearStory(s);
+  try { _a11yEnhance(el); _animateCounts(el); } catch (e) {}
+}
+
+const _YS_TILES = [
+  ['doses_taken', '💊', 'doses taken'], ['vitals', '❤️', 'vitals'], ['workouts', '🏃', 'workouts'],
+  ['labs', '🧪', 'lab results'], ['foods', '🍽️', 'meals'], ['sleep_nights', '😴', 'nights tracked'],
+];
+
+function renderYearStory(s) {
+  const p = s.period || {};
+  const periods = [[365, 'Year'], [180, '6 months'], [90, '90 days']];
+  const sel = `<div class="ys-periods">${periods.map(([d, lbl]) =>
+    `<button class="ys-per ${_ysDays === d ? 'on' : ''}" data-ev-click="loadYearStory(${d})">${t(lbl)}</button>`).join('')}</div>`;
+
+  if (!s.started) {
+    return sel + `<div class="dv-empty">${t('Your health story is just getting started. As you log doses, vitals and more, this fills in with your real milestones.')}</div>`;
+  }
+
+  const hero = `<div class="ys-hero">
+      <div class="ys-eyebrow">${escHtml(p.label || '')}</div>
+      <div class="ys-showed">${t('You showed up')} <span class="count-up" data-to="${s.active_days}">${s.active_days}</span> ${tformat('of %1 days', s.total_days)}</div>
+    </div>`;
+
+  const best = (s.streak || {}).best || 0;
+  const streak = best >= 3 ? `<div class="ys-streak">🔥 <span class="count-up" data-to="${best}">${best}</span> ${t('best perfect-dose streak')}</div>` : '';
+
+  const c = Object.assign({ doses_taken: s.doses_taken }, s.counts || {});
+  const tiles = _YS_TILES.filter(([k]) => (c[k] || 0) > 0).map(([k, icon, lbl]) =>
+    `<div class="ys-tile"><div class="ys-tile-n count-up" data-to="${c[k]}">${c[k]}</div><div class="ys-tile-l">${icon} ${t(lbl)}</div></div>`).join('');
+  const grid = tiles ? `<div class="ys-grid">${tiles}</div>` : '';
+
+  const hls = (s.highlights || []).map(h => `<li>${escHtml(h.icon)} ${escHtml(h.text)}</li>`).join('');
+  const highlights = hls ? `<div class="ys-sec"><h2 class="section-title">${t('Highlights')}</h2><ul class="ys-hl">${hls}</ul></div>` : '';
+
+  const share = `<div class="ys-share">
+      <button class="btn-primary" data-ev-click="shareYearStory()">🔗 ${t('Create a shareable link')}</button>
+      <div class="ys-share-note">${t('Shares consistency & counts only — never a health value, symptom, journal, mood or cycle. Expiring, and you can turn it off anytime.')}</div>
+      <div id="ys-share-result"></div>
+    </div>`;
+
+  return sel + hero + streak + grid + highlights + share;
+}
+
+async function shareYearStory() {
+  const r = await fetch('/api/share/snapshot', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ label: t('Year in health'), days_valid: 30, scope: 'story' }),
+  }).then(x => x.json()).catch(() => null);
+  const box = document.getElementById('ys-share-result');
+  if (!r || !r.success || !box) { showToast(t('Could not create link'), 'error'); return; }
+  const url = window.location.origin + '/share/' + r.snapshot.token;
+  box.innerHTML = `<div class="ys-link">
+      <input type="text" class="form-input" value="${escHtml(url)}" readonly data-ev-click="selectAllText(this)">
+      <button class="btn-outline btn-sm" data-ev-click="copyYearStoryLink('${escHtml(r.snapshot.token)}')">${t('Copy')}</button>
+    </div>
+    <a href="${escHtml(url)}" target="_blank" rel="noopener" class="ys-preview">${t('Preview the shared page ↗')}</a>`;
+  showToast(t('Link created 🔗'));
+  try { _a11yEnhance(box); } catch (e) {}
+}
+function copyYearStoryLink(token) {
+  const url = window.location.origin + '/share/' + token;
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => showToast(t('Copied ✓'))).catch(() => {});
+}
+function selectAllText(el) { try { el && el.select && el.select(); } catch (e) {} }
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────
 const _PROC_KIND = { surgery: 'Surgery', hospitalization: 'Hospital stay', procedure: 'Procedure' };

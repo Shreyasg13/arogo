@@ -21,7 +21,7 @@ DEFAULT_DAYS = 7
 MAX_DAYS = 90
 
 
-SCOPES = ('summary', 'binder')
+SCOPES = ('summary', 'binder', 'story')
 
 
 def create_snapshot(label: str = '', days_valid: int = DEFAULT_DAYS, scope: str = 'summary') -> dict:
@@ -109,6 +109,20 @@ def compile_snapshot(owner_uid: str, snap_id: str = None, scope: str = 'summary'
     from .medicines import list_medicines, get_adherence_stats
     from .food import get_profile
     from .health import get_vitals
+
+    # A "year in health" story: consistency + counts only. story_public_safe()
+    # strips every health value, so this shares a motivating recap that can never
+    # leak a symptom name, a weight, a vital, or anything private.
+    if scope == 'story':
+        from .year_story import get_year_story, story_public_safe
+        with user_context(owner_uid):
+            safe = story_public_safe(get_year_story(365))
+            urow = execute("SELECT name FROM users WHERE id=?", (owner_uid,), fetchone=True)
+        if snap_id:
+            _bump_views(snap_id)
+        nm = (urow['name'] if urow and urow['name'] else '') or ''
+        return {'name': nm.split()[0] if nm else '', 'scope': 'story',
+                'story': safe, 'generated': dt.date.today().isoformat()}
 
     with user_context(owner_uid):
         profile = get_profile() or {}

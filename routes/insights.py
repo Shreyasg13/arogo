@@ -857,6 +857,18 @@ def api_today_timeline():
     from db.today_timeline import get_today_timeline
     return jsonify(get_today_timeline())
 
+@bp.route('/api/year-story')
+@require_auth
+def api_year_story():
+    """An honest 'year in health' recap — consistency + counts + milestones,
+    all from real logs. ?days= (30..366, default 365)."""
+    from db.year_story import get_year_story
+    try:
+        days = int(request.args.get('days', 365))
+    except (TypeError, ValueError):
+        days = 365
+    return jsonify(get_year_story(days))
+
 # NOTE: /api/emergency (GET/POST) and /api/wellness/today live in
 # routes/wellness.py — the duplicate definitions here were dead code (wellness
 # registers first) and were removed.

@@ -66,6 +66,40 @@ def public_snapshot(token):
 
 def _render_snapshot(d, resolved):
     e = lambda s: str(escape('' if s is None else s))
+
+    # "Year in health" story — consistency + counts only (no health values).
+    if d.get('scope') == 'story':
+        st = d.get('story') or {}
+        p = st.get('period') or {}
+        stk = st.get('streak') or {}
+        c = st.get('counts') or {}
+        tiles = [
+            ('💊', st.get('doses_taken', 0), 'doses taken'),
+            ('❤️', c.get('vitals', 0), 'vitals'),
+            ('🏃', c.get('workouts', 0), 'workouts'),
+            ('🧪', c.get('labs', 0), 'lab results'),
+            ('🍽️', c.get('foods', 0), 'meals'),
+            ('😴', c.get('sleep_nights', 0), 'nights of sleep'),
+        ]
+        tiles_html = ''.join(
+            f'<div class="stt"><div class="stt-n">{e(v)}</div><div class="stt-l">{e(ic)} {e(lbl)}</div></div>'
+            for ic, v, lbl in tiles if v)
+        hls = ''.join(f'<li>{e(h.get("icon"))} {e(h.get("text"))}</li>' for h in (st.get('highlights') or []))
+        streak_html = (f'<div class="big-streak">🔥 {e(stk.get("best"))} <span>best perfect-dose streak</span></div>'
+                       if stk.get('best', 0) >= 3 else '')
+        label = f' · {e(resolved["label"])}' if resolved.get('label') else ''
+        return f'''<div class="sheet story">
+      <div class="brand">🌱 Arogo — Year in health{label}</div>
+      <div class="name">{e(d.get("name") or "Someone")}</div>
+      <div class="meta">{e(p.get("label") or "")}</div>
+      <div class="showed-up">You showed up <b>{e(st.get("active_days", 0))}</b> of {e(st.get("total_days", 0))} days</div>
+      {streak_html}
+      {f'<div class="stt-grid">{tiles_html}</div>' if tiles_html else ''}
+      {f'<h2>Highlights</h2><ul class="hl">{hls}</ul>' if hls else ''}
+      <div class="foot muted">A self-tracked consistency recap shared from Arogo. Read-only, expiring link.
+      It contains no health values, and never any journal, cycle, mood, or symptom detail.</div>
+    </div>'''
+
     meta = ' · '.join(filter(None, [
         f'Age {e(d["age"])}' if d.get('age') else '',
         e(d['gender']) if d.get('gender') else '',
@@ -166,4 +200,14 @@ _PAGE_SHELL = '''<!doctype html><html lang="en"><head>
   .muted {{ color:var(--muted); }} .small {{ font-size:12px; margin-top:6px; }}
   .foot {{ font-size:11.5px; margin-top:20px; border-top:1px solid var(--line); padding-top:12px; }}
   .msg h1 {{ font-size:20px; }} .msg {{ text-align:center; }}
+  .story {{ text-align:center; }}
+  .showed-up {{ font-size:19px; margin-top:16px; }} .showed-up b {{ color:var(--sage); font-size:24px; }}
+  .big-streak {{ margin-top:12px; font-size:34px; font-weight:800; color:#C17A3E; }}
+  .big-streak span {{ display:block; font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }}
+  .stt-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:22px 0 6px; }}
+  .stt {{ background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:14px 8px; }}
+  .stt-n {{ font-size:26px; font-weight:800; color:var(--ink); }}
+  .stt-l {{ font-size:11px; color:var(--muted); margin-top:2px; }}
+  ul.hl {{ list-style:none; padding:0; margin:8px 0; text-align:left; max-width:340px; margin-inline:auto; }}
+  ul.hl li {{ padding:6px 0; border-top:1px solid var(--line); font-size:14px; }}
 </style></head><body>{body}</body></html>'''
