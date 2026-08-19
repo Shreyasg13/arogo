@@ -112,6 +112,29 @@ def test_route_requires_auth(app):
     assert c.get("/api/year-story").status_code in (401, 403)
 
 
+def test_prompt_decision_year_end_and_anniversary():
+    from db.year_story import _prompt_decision
+    # empty story → never prompt, even at year-end
+    assert _prompt_decision("2026-12-20", "2025-01-01", False)["show"] is False
+    # mid-December → calendar prompt
+    d = _prompt_decision("2026-12-20", "2026-11-01", True)
+    assert d["show"] and d["reason"] == "calendar" and d["year"] == 2026
+    # early December (before the 15th) → no calendar prompt
+    assert _prompt_decision("2026-12-05", "2026-11-01", True)["show"] is False
+    # ~1 year after signup (Aug) → anniversary prompt
+    d = _prompt_decision("2026-08-19", "2025-08-16", True)
+    assert d["show"] and d["reason"] == "anniversary" and d["years"] == 1
+    # 4 months in, not December → no prompt
+    assert _prompt_decision("2026-08-19", "2026-04-19", True)["show"] is False
+
+
+def test_prompt_route(app):
+    c, _ = _uid(app, "storyprompt@medeasy.test")
+    body = c.get("/api/year-story/prompt").get_json()
+    assert "show" in body            # new account, no data → show False
+    assert body["show"] is False
+
+
 def test_share_story_scope_is_safe(app):
     """A shared 'story' link must carry the safe subset only — no health values."""
     from db.shares import create_snapshot, resolve_snapshot, compile_snapshot

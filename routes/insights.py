@@ -886,6 +886,14 @@ def api_year_story():
         days = 365
     return jsonify(get_year_story(days))
 
+@bp.route('/api/year-story/prompt')
+@require_auth
+def api_year_story_prompt():
+    """Whether to gently offer the year story on the dashboard (year-end or a
+    account anniversary, and only if there's a real story)."""
+    from db.year_story import year_story_prompt
+    return jsonify(year_story_prompt())
+
 # NOTE: /api/emergency (GET/POST) and /api/wellness/today live in
 # routes/wellness.py — the duplicate definitions here were dead code (wellness
 # registers first) and were removed.

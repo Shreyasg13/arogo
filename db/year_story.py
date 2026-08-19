@@ -147,6 +147,43 @@ def get_year_story(days=365):
     }
 
 
+def _prompt_decision(today_iso, created_iso, started):
+    """Pure: should we offer the year story right now? Only near calendar
+    year-end, or within a week of an account anniversary, and only if there's a
+    real story to show. Kept separate so it's unit-testable without the clock."""
+    if not started:
+        return {'show': False}
+    try:
+        today = dt.date.fromisoformat(today_iso)
+    except (TypeError, ValueError):
+        return {'show': False}
+    # Calendar year-end (mid-to-late December).
+    if today.month == 12 and today.day >= 15:
+        return {'show': True, 'reason': 'calendar', 'year': today.year}
+    # Account anniversary — within ±7 days of each full year with Arogo.
+    if created_iso:
+        try:
+            created = dt.date.fromisoformat(str(created_iso)[:10])
+            age = (today - created).days
+            if age >= 358:
+                m = age % 365
+                if m <= 7 or m >= 358:
+                    return {'show': True, 'reason': 'anniversary', 'years': max(1, round(age / 365))}
+        except (TypeError, ValueError):
+            pass
+    return {'show': False}
+
+
+def year_story_prompt():
+    """Whether to gently offer the year story on the dashboard right now."""
+    from .core import execute, current_user_id
+    uid = current_user_id()
+    row = execute("SELECT created_at FROM users WHERE id=?", (uid,), fetchone=True)
+    created = row['created_at'] if row else None
+    started = get_year_story(365).get('started', False)
+    return _prompt_decision(user_today(), created, started)
+
+
 def story_public_safe(story):
     """The shareable subset of a story: consistency + counts only. Strips every
     health value and keeps only highlights flagged public — so a shared story can

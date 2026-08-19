@@ -806,6 +806,21 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
   color:var(--gray-600,#555); border-radius:16px; padding:6px 12px; margin:0 6px 6px 0; cursor:pointer; }
 .ask-eg:hover { background:var(--gray-100,#E9E1D4); }
 
+/* Ask answer surfaced inside the global search */
+.gs-ask-row { align-items:flex-start; }
+.gs-ask-answer { font-size:14.5px; color:var(--gray-800,#333); line-height:1.5; }
+.gs-ask-speak { background:none; border:none; cursor:pointer; font-size:16px; opacity:.7; flex-shrink:0; }
+.gs-ask-speak:hover { opacity:1; }
+
+/* Year-story dashboard auto-offer (year-end / anniversary) */
+.ys-prompt { display:flex; align-items:center; gap:14px; padding:16px 18px;
+  background:linear-gradient(135deg, var(--teal-50,#ECF3EF), var(--sand-50,#faf6ef)); }
+.ys-prompt-emoji { font-size:28px; flex-shrink:0; }
+.ys-prompt-main { flex:1; min-width:0; }
+.ys-prompt-title { font-size:15px; font-weight:700; color:var(--gray-800,#333); }
+.ys-prompt-sub { font-size:13px; color:var(--gray-600,#555); margin-top:2px; }
+.ys-prompt-x { color:var(--gray-400,#999); flex-shrink:0; }
+
 /* Year in health (honest shareable story) */
 .ys-periods { display:flex; gap:8px; margin-bottom:18px; }
 .ys-per { font-size:13px; padding:6px 14px; border-radius:99px; border:1px solid var(--gray-200,#D7CCBB);

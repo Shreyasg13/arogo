@@ -190,6 +190,14 @@ const I18N = {
     'Shares consistency & counts only — never a health value, symptom, journal, mood or cycle. Expiring, and you can turn it off anytime.':
       'सिर्फ़ नियमितता व गिनती साझा करता है — कोई हेल्थ मान, लक्षण, डायरी, मूड या साइकल नहीं। समय-सीमित, और आप कभी भी बंद कर सकते हैं।',
     'Preview the shared page ↗': 'साझा पेज देखें ↗',
+    // Year-story: search answer + dashboard auto-offer
+    'Answer': 'जवाब', 'Open in Ask': 'पूछें में खोलें', 'Ask more about your own data': 'अपने डेटा के बारे में और पूछें',
+    'Your %1 in health is ready': '%1 की आपकी सेहत तैयार है',
+    '%1 years with Arogo — see your story': 'Arogo के साथ %1 साल — अपनी कहानी देखें',
+    'Your first year with Arogo is here': 'Arogo के साथ आपका पहला साल आ गया',
+    'See how you showed up — an honest look back from your own logs.':
+      'देखें आपने कैसे साथ दिया — आपके अपने रिकॉर्ड से एक ईमानदार झलक।',
+    'See it': 'देखें', 'Dismiss': 'हटाएँ',
     // Ask your health (chrome only — example questions stay English so the matcher works)
     'Ask': 'पूछें', 'Ask your health': 'अपनी सेहत से पूछें',
     'Ask about your own health data…': 'अपने ही हेल्थ डेटा के बारे में पूछें…',
@@ -3710,6 +3718,7 @@ function _watchInsightGroups() {
 // ── Dashboard ──
 async function loadDashboard() {
   try { checkFirstRun(); }      catch (e) {}
+  try { maybeYearStoryPrompt(); } catch (e) {}
   try { renderDashShortcuts(); } catch (e) {}
   try { loadInsightCards(); }   catch (e) {}
   try { loadWeekOverWeek(); }   catch (e) {}
@@ -13196,6 +13205,35 @@ function hlText(text, query) {
   } catch { return escHtml(text); }
 }
 
+// Does this query read like a question the local assistant can answer?
+function _looksLikeQuestion(q) {
+  const s = String(q || '').trim().toLowerCase();
+  return /^(when|what|whats|what's|how|why|which|who|where|do i|does|did i|am i|is my|are my|have i|when's|whens)\b/.test(s)
+    || /\?\s*$/.test(s);
+}
+let _gsAskAnswer = '', _gsAskQ = '';
+function _gsAskHtml(answer) {
+  const speak = _canSpeak() ? `<button class="gs-ask-speak" data-ev-click="gsSpeakAnswer()" aria-label="${t('Read aloud')}">🔊</button>` : '';
+  return `<div class="gs-section-label">💬 ${t('Answer')}</div>
+    <div class="gs-result-row gs-ask-row">
+      <div class="gs-result-icon">💬</div>
+      <div class="gs-result-main"><div class="gs-ask-answer">${escHtml(answer)}</div></div>
+      ${speak}
+    </div>
+    <div class="gs-result-row" data-ev-click="openAskFromSearch()">
+      <div class="gs-result-icon">🧭</div>
+      <div class="gs-result-main"><div class="gs-result-title">${t('Open in Ask')}</div>
+        <div class="gs-result-meta">${t('Ask more about your own data')}</div></div>
+    </div>`;
+}
+function gsSpeakAnswer() { if (_gsAskAnswer) speakText(_gsAskAnswer); }
+function openAskFromSearch() {
+  const q = _gsAskQ;
+  closeGlobalSearch();
+  switchView('ask');
+  setTimeout(() => { const i = document.getElementById('ask-input'); if (i) { i.value = q || ''; askQuestion(); } }, 140);
+}
+
 async function runGlobalSearch(q) {
   clearTimeout(_gsTimer);
   const res   = document.getElementById('global-search-results');
@@ -13223,6 +13261,22 @@ async function runGlobalSearch(q) {
     _gsSelectedIdx = 0;
     highlightRow([...res.querySelectorAll('.gs-result-row')]);
     return;
+  }
+
+  // ── Ask your health: a question gets a direct, deterministic answer ──
+  if (_gsSearchType === 'all' && _looksLikeQuestion(q)) {
+    res.innerHTML = `<div class="gs-empty" style="padding:20px;font-size:13px">${t('Looking…')}</div>`;
+    const a = await fetch('/api/ask?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+      .then(r => r.ok ? r.json() : null).catch(() => null);
+    // user kept typing while we waited — drop this stale result
+    if (((document.getElementById('global-search-input')?.value) || '').trim() !== q) return;
+    if (a && a.matched) {
+      _gsAskAnswer = a.answer; _gsAskQ = q;
+      res.innerHTML = _gsAskHtml(a.answer);
+      _gsSelectedIdx = -1;
+      return;
+    }
+    // no match (or walled while acting-as) → fall through to normal history search
   }
 
   // ── Natural-language food logging: "2 rotis and dal for lunch" ──
@@ -16591,6 +16645,37 @@ function renderToday(d) {
 }
 
 // ── Year in health: an honest, shareable recap ───────────────────────────────
+// Dashboard auto-offer near year-end or an account anniversary (once per year).
+async function maybeYearStoryPrompt() {
+  const box = document.getElementById('yearstory-prompt');
+  if (!box) return;
+  const d = await fetch('/api/year-story/prompt', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d || !d.show) { box.innerHTML = ''; return; }
+  const key = 'me_ys_prompt_' + (d.reason === 'calendar' ? 'y' + d.year : 'a' + d.years);
+  try { if (localStorage.getItem(key)) { box.innerHTML = ''; return; } } catch (e) {}
+  box._ysKey = key;
+  const title = d.reason === 'calendar'
+    ? tformat('Your %1 in health is ready', d.year)
+    : (d.years > 1 ? tformat('%1 years with Arogo — see your story', d.years) : t('Your first year with Arogo is here'));
+  box.innerHTML = `<div class="panel ys-prompt">
+      <div class="ys-prompt-emoji">🎉</div>
+      <div class="ys-prompt-main">
+        <div class="ys-prompt-title">${escHtml(title)}</div>
+        <div class="ys-prompt-sub">${t('See how you showed up — an honest look back from your own logs.')}</div>
+      </div>
+      <button class="btn-primary btn-sm" data-ev-click="openYearStoryFromPrompt()">${t('See it')}</button>
+      <button class="btn-icon ys-prompt-x" title="${t('Dismiss')}" data-ev-click="dismissYearStoryPrompt()">✕</button>
+    </div>`;
+  try { _a11yEnhance(box); } catch (e) {}
+}
+function openYearStoryFromPrompt() { dismissYearStoryPrompt(); switchView('yearstory'); }
+function dismissYearStoryPrompt() {
+  const box = document.getElementById('yearstory-prompt');
+  try { if (box && box._ysKey) localStorage.setItem(box._ysKey, '1'); } catch (e) {}
+  if (box) box.innerHTML = '';
+}
+
 let _ysDays = 365;
 async function loadYearStory(days) {
   if (days) _ysDays = days;
