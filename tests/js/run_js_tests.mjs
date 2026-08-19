@@ -137,6 +137,44 @@ test('parseQuickCommand: rejects out-of-range and normal queries', () => {
   eq(S.parseQuickCommand('sugarcane juice'), null);
 });
 
+// ── Voice command parser (natural spoken phrasing) ──
+test('parseVoiceCommand: blood pressure, natural phrasing', () => {
+  const c = S.parseVoiceCommand('blood pressure 120 over 80');
+  eq(c.kind, 'vital'); eq(c.type, 'blood_pressure'); eq(c.value1, 120); eq(c.value2, 80);
+  eq(S.parseVoiceCommand('BP 128 / 82').value1, 128);
+});
+test('parseVoiceCommand: sugar / heart rate / oxygen / weight', () => {
+  eq(S.parseVoiceCommand('blood sugar 110').type, 'blood_sugar');
+  eq(S.parseVoiceCommand('my heart rate is 72').type, 'heart_rate');
+  eq(S.parseVoiceCommand('pulse 58').value1, 58);
+  eq(S.parseVoiceCommand('oxygen 97').type, 'spo2');
+  eq(S.parseVoiceCommand('weight 70 kilos').kg, 70);
+});
+test('parseVoiceCommand: water defaults to a glass, or uses the amount', () => {
+  eq(S.parseVoiceCommand('a glass of water').ml, 250);
+  eq(S.parseVoiceCommand('i drank 500 ml of water').ml, 500);
+});
+test('parseVoiceCommand: mark a dose taken', () => {
+  eq(S.parseVoiceCommand('I took my morning pills').kind, 'dose');
+  eq(S.parseVoiceCommand('marked my dose as taken').kind, 'dose');
+});
+test('parseVoiceCommand: spoken number-words fold to digits', () => {
+  eq(S._spokenNumbers('seventy two'), '72');
+  eq(S._spokenNumbers('one hundred twenty'), '120');
+  eq(S.parseVoiceCommand('heart rate seventy two').value1, 72);
+});
+test('parseVoiceCommand: rejects chatter and impossible readings', () => {
+  eq(S.parseVoiceCommand('hello how are you'), null);
+  eq(S.parseVoiceCommand(''), null);
+  eq(S.parseVoiceCommand('blood pressure 400 over 300'), null);   // out of range
+  eq(S.parseVoiceCommand('blood pressure 80 over 120'), null);    // systolic must exceed diastolic
+});
+test('parseVoiceCommand: never fabricates a value it did not hear', () => {
+  // a bare vital word with no number must not invent a reading
+  eq(S.parseVoiceCommand('blood pressure'), null);
+  eq(S.parseVoiceCommand('what is my sugar'), null);
+});
+
 // ── Vital flags ──
 // The rule: never vouch for a reading. A flag means "worth a look"; silence
 // means "we're not judging this". A green "Normal" on a bad reading is the

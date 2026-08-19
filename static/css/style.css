@@ -766,6 +766,28 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dt-week   .dt-dot { background:var(--amber-400, #e0a83e); }
 .dt-stale  .dt-dot { background:var(--terracotta-400, #c67b5c); }
 
+/* Voice log (voice-first hands-free capture) */
+.voice-status { font-size:14px; color:var(--gray-600, #555); text-align:center; margin-bottom:14px; line-height:1.5; }
+.voice-status.voice-warn { color:var(--clay-600, #b96539); }
+.voice-mic-wrap { display:flex; justify-content:center; margin:6px 0 16px; }
+.voice-mic { width:88px; height:88px; border-radius:50%; border:none; cursor:pointer; font-size:36px;
+  background:linear-gradient(135deg, var(--teal-500,#4F8D74), var(--teal-600,#3E7862)); color:#fff;
+  box-shadow:0 8px 24px rgba(46,91,75,.34); transition:transform .2s cubic-bezier(.34,1.56,.64,1); }
+.voice-mic:hover { transform:scale(1.06); }
+.voice-mic:active { transform:scale(.95); }
+.voice-mic.listening { animation:voicePulse 1.3s ease-in-out infinite; }
+@keyframes voicePulse { 0%,100%{ box-shadow:0 0 0 0 rgba(79,141,116,.5); } 50%{ box-shadow:0 0 0 16px rgba(79,141,116,0); } }
+.voice-confirm { background:var(--teal-50,#ECF3EF); border:1px solid var(--teal-200,#AECEC0); border-radius:12px; padding:14px 16px; margin-bottom:14px; text-align:center; }
+.voice-parsed { font-size:16px; font-weight:700; color:var(--teal-700,#2E5B4B); margin-bottom:12px; }
+.voice-confirm-btns { display:flex; gap:8px; justify-content:center; }
+.voice-examples { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:6px; }
+.voice-eg { font-size:12.5px; background:var(--gray-50,#F4EEE4); border:1px solid var(--gray-100,#E9E1D4); color:var(--gray-600,#555);
+  border-radius:16px; padding:5px 11px; cursor:pointer; }
+.voice-eg:hover { background:var(--gray-100,#E9E1D4); }
+.voice-typed { display:flex; gap:8px; margin:10px 0 4px; }
+.voice-typed .form-input { flex:1; }
+.voice-note { font-size:11.5px; color:var(--gray-400,#999); text-align:center; margin-top:16px; line-height:1.5; }
+
 /* Welcome tour (guided intro modal) */
 .tour-slide { text-align:center; padding:10px 6px 4px; }
 .tour-icon { font-size:44px; line-height:1; margin-bottom:10px; }

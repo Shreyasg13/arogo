@@ -90,6 +90,15 @@ const I18N = {
     'Only %1 entry(ies) — no trend yet': 'केवल %1 प्रविष्टि — अभी कोई ट्रेंड नहीं',
     'Up to date': 'अद्यतित', 'A little old': 'थोड़ा पुराना', 'Out of date': 'पुराना',
     'Skip to main content': 'मुख्य सामग्री पर जाएँ',
+    // Voice log (displayed chrome only — spoken strings stay English for the TTS voice)
+    'Voice log': 'वॉइस लॉग', 'Start listening': 'सुनना शुरू करें',
+    'Listening… say a health entry': 'सुन रहे हैं… कोई हेल्थ एंट्री बोलें',
+    'You said': 'आपने कहा',
+    'I didn’t catch a health entry. Try one of these:': 'कोई हेल्थ एंट्री समझ नहीं आई। इनमें से आज़माएँ:',
+    'Tap the mic and speak, or pick an example.': 'माइक दबाकर बोलें, या एक उदाहरण चुनें।',
+    'Voice isn’t supported here — type a command below.': 'यहाँ वॉइस समर्थित नहीं — नीचे कमांड टाइप करें।',
+    'Confirm & save': 'पुष्टि करके सेव करें', 'Try again': 'फिर कोशिश करें', 'Go': 'जाएँ',
+    'Nothing is saved until you confirm. Voice recognition runs on your device.': 'पुष्टि करने तक कुछ सेव नहीं होता। वॉइस पहचान आपके डिवाइस पर चलती है।',
     // Welcome tour
     'Take a tour': 'एक टूर लें', 'Next': 'आगे', 'Open': 'खोलें', 'Take me there': 'वहाँ ले चलें',
     'Welcome to Arogo': 'Arogo में आपका स्वागत है',
@@ -12823,6 +12832,194 @@ async function quickLogVital(type, value1, value2, unit) {
   showToast(tformat('✓ Logged %1 %2', shown, unit || '').trim(), 'success');
   try { loadVitals(); } catch (e) {}
   try { loadVitalsView(); } catch (e) {}
+}
+
+// ── Voice-first: speak to log, with a spoken confirm-before-save loop ────────
+// parseVoiceCommand is PURE (unit-tested): it turns natural spoken phrasing —
+// "blood pressure 120 over 80", "I took my morning pills", "log a glass of
+// water" — into a structured action. We ALWAYS show + speak what we heard and
+// wait for a Confirm before writing, so a misheard vital is never saved silently.
+const _NUM_WORDS = { zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7,
+  eight:8, nine:9, ten:10, eleven:11, twelve:12, thirteen:13, fourteen:14, fifteen:15,
+  sixteen:16, seventeen:17, eighteen:18, nineteen:19, twenty:20, thirty:30, forty:40,
+  fifty:50, sixty:60, seventy:70, eighty:80, ninety:90, hundred:100 };
+
+// Fold spoken number-words into digits: "seventy two" → "72", "one hundred twenty" → "120".
+function _spokenNumbers(str) {
+  const toks = String(str || '').split(/\s+/);
+  const out = []; let cur = 0, has = false;
+  const flush = () => { if (has) out.push(String(cur)); cur = 0; has = false; };
+  for (const raw of toks) {
+    const w = raw.toLowerCase().replace(/[^a-z]/g, '');
+    if (w === 'hundred') { if (has) { cur = (cur || 1) * 100; } else { flush(); out.push(raw); } continue; }
+    if (Object.prototype.hasOwnProperty.call(_NUM_WORDS, w)) { cur += _NUM_WORDS[w]; has = true; continue; }
+    flush(); out.push(raw);
+  }
+  flush();
+  return out.join(' ');
+}
+
+function parseVoiceCommand(text) {
+  let s = String(text || '').toLowerCase().trim();
+  if (!s) return null;
+  s = s.replace(/\bover\b/g, '/').replace(/\bslash\b/g, '/');
+  s = _spokenNumbers(s).replace(/\s+/g, ' ').trim();
+  const num = re => { const m = s.match(re); return m ? parseFloat(m[1]) : null; };
+
+  // Blood pressure — a pair.
+  let m = s.match(/(?:blood pressure|\bbp\b|pressure)\D*(\d{2,3})\s*\/\s*(\d{2,3})/);
+  if (m) {
+    const sys = +m[1], dia = +m[2];
+    if (sys >= 60 && sys <= 260 && dia >= 30 && dia <= 160 && sys > dia)
+      return { kind:'vital', type:'blood_pressure', value1:sys, value2:dia, unit:'mmHg',
+               label:`Blood pressure ${sys}/${dia}`, speak:`Log blood pressure ${sys} over ${dia}?` };
+  }
+  // Heart rate / pulse (check before generic sugar to avoid clashes).
+  let v = num(/(?:heart rate|pulse rate|pulse|heartbeat|heart beat)\D*(\d{2,3})/);
+  if (v != null && v >= 30 && v <= 220)
+    return { kind:'vital', type:'heart_rate', value1:v, value2:0, unit:'bpm',
+             label:`Heart rate ${v} bpm`, speak:`Log heart rate ${v}?` };
+  // Blood sugar / glucose.
+  v = num(/(?:blood sugar|sugar|glucose)\D*(\d{2,3})/);
+  if (v != null && v >= 20 && v <= 600)
+    return { kind:'vital', type:'blood_sugar', value1:v, value2:0, unit:'mg/dL',
+             label:`Blood sugar ${v} mg/dL`, speak:`Log blood sugar ${v}?` };
+  // Oxygen / SpO2.
+  v = num(/(?:oxygen|spo2|sats?|saturation)\D*(\d{2,3})/);
+  if (v != null && v >= 50 && v <= 100)
+    return { kind:'vital', type:'spo2', value1:v, value2:0, unit:'%',
+             label:`Oxygen ${v}%`, speak:`Log oxygen ${v} percent?` };
+  // Weight.
+  v = num(/(?:weight|weigh)\D*(\d{2,3}(?:\.\d)?)/);
+  if (v != null && v >= 20 && v <= 400)
+    return { kind:'weight', kg:v, label:`Weight ${v} kg`, speak:`Log weight ${v} kilograms?` };
+  // Water (a spoken amount, else a sensible glass).
+  if (/\bwater\b|glass of|\bdrank\b|hydrat/.test(s)) {
+    const ml = num(/(\d{2,4})\s*(?:ml|milliliters?)?/);
+    const amt = (ml != null && ml >= 50 && ml <= 3000) ? ml : 250;
+    return { kind:'water', ml:amt, label:`${amt} ml water`, speak:`Log ${amt} millilitres of water?` };
+  }
+  // Mark a dose taken.
+  if (/(took|taken|had|finished|done|swallow).*(pill|dose|medicine|med|tablet|meds)/.test(s) ||
+      /(pill|dose|medicine|meds|tablet)s?.*(taken|took|done|finished)/.test(s)) {
+    return { kind:'dose', label:'Mark your next dose as taken', speak:'Mark your next dose as taken?' };
+  }
+  return null;
+}
+
+// ── Voice-log modal: listen → interpret → confirm → save ─────────────────────
+let _voicePending = null, _voiceRecLog = null, _voiceListening = false;
+
+function openVoiceLog() {
+  const m = document.getElementById('voice-modal');
+  if (!m) return;
+  _voicePending = null;
+  m.style.display = 'flex';
+  _renderVoice('idle');
+  // Auto-start listening when the device supports it.
+  if (_speechSupported()) setTimeout(voiceListen, 350);
+}
+function closeVoiceLog() {
+  try { if (_voiceRecLog) _voiceRecLog.stop(); } catch (e) {}
+  try { stopSpeaking(); } catch (e) {}
+  _voiceListening = false; _voicePending = null;
+  const m = document.getElementById('voice-modal');
+  if (m) m.style.display = 'none';
+}
+
+const _VOICE_EXAMPLES = ['Blood pressure 120 over 80', 'Blood sugar 110', 'Heart rate 72', 'I took my morning pills', 'A glass of water', 'Weight 70 kilos'];
+
+function _renderVoice(state, extra) {
+  const body = document.getElementById('voice-body');
+  if (!body) return;
+  const supported = _speechSupported();
+  const mic = `<button class="voice-mic ${_voiceListening ? 'listening' : ''}" data-ev-click="voiceListen()" aria-label="${t('Start listening')}">🎤</button>`;
+  const examples = `<div class="voice-examples">${_VOICE_EXAMPLES.map(e => `<button class="voice-eg" data-ev-click="voiceTry('${e.replace(/'/g, "\\'")}')">“${escHtml(t(e))}”</button>`).join('')}</div>`;
+  let head = '';
+  if (state === 'listening') head = `<div class="voice-status">${t('Listening… say a health entry')}</div>`;
+  else if (state === 'heard') head = `<div class="voice-status">${t('You said')}: “${escHtml(extra || '')}”</div>`;
+  else if (state === 'none') head = `<div class="voice-status voice-warn">${t('I didn’t catch a health entry. Try one of these:')}</div>`;
+  else head = `<div class="voice-status">${supported ? t('Tap the mic and speak, or pick an example.') : t('Voice isn’t supported here — type a command below.')}</div>`;
+
+  let confirmBlock = '';
+  if (_voicePending) {
+    confirmBlock = `<div class="voice-confirm">
+        <div class="voice-parsed">✓ ${escHtml(_voicePending.label)}</div>
+        <div class="voice-confirm-btns">
+          <button class="btn-primary" data-ev-click="voiceConfirm()">${t('Confirm & save')}</button>
+          <button class="btn-outline" data-ev-click="voiceRetry()">${t('Try again')}</button>
+        </div>
+      </div>`;
+  }
+  const typed = supported ? '' : `<div class="voice-typed">
+      <input type="text" class="form-input" id="voice-typed-input" placeholder="${t('e.g. blood pressure 120 over 80')}" data-ev-keydown="voiceTypedKey(event)">
+      <button class="btn-primary" data-ev-click="voiceTypedSubmit()">${t('Go')}</button></div>`;
+
+  body.innerHTML = `${head}
+    ${supported ? `<div class="voice-mic-wrap">${mic}</div>` : ''}
+    ${confirmBlock}
+    ${typed}
+    ${_voicePending ? '' : examples}
+    <div class="voice-note">${t('Nothing is saved until you confirm. Voice recognition runs on your device.')}</div>`;
+  try { _a11yEnhance(body); } catch (e) {}
+}
+
+function voiceListen() {
+  if (!_speechSupported()) return;
+  if (_voiceListening) { try { _voiceRecLog && _voiceRecLog.stop(); } catch (e) {} return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR();
+  _voiceRecLog = rec;
+  rec.lang = navigator.language && /^en/.test(navigator.language) ? navigator.language : 'en-IN';
+  rec.interimResults = false; rec.maxAlternatives = 1;
+  _voiceListening = true; _voicePending = null; _renderVoice('listening');
+  rec.onresult = e => {
+    const txt = Array.from(e.results).map(r => r[0].transcript).join(' ').trim();
+    _voiceInterpret(txt);
+  };
+  rec.onerror = () => { _voiceListening = false; _renderVoice('idle'); };
+  rec.onend = () => { _voiceListening = false; if (!_voicePending) { const b = document.getElementById('voice-body'); if (b && !b.querySelector('.voice-status')) _renderVoice('idle'); } };
+  try { rec.start(); } catch (e) { _voiceListening = false; }
+}
+
+function voiceTry(text) { _voiceInterpret(text); }        // tapping an example
+function voiceTypedSubmit() { _voiceInterpret((document.getElementById('voice-typed-input') || {}).value || ''); }
+function voiceTypedKey(e) { if (e && e.key === 'Enter') voiceTypedSubmit(); }
+
+function _voiceInterpret(text) {
+  _voiceListening = false;
+  const cmd = parseVoiceCommand(text);
+  _voicePending = cmd;
+  if (!cmd) { _renderVoice('none'); try { speakText(t('I didn’t catch a health entry. Try, for example, blood pressure 120 over 80.')); } catch (e) {} return; }
+  _renderVoice('heard', text);
+  try { speakText(cmd.speak); } catch (e) {}
+}
+
+function voiceRetry() { _voicePending = null; _renderVoice('idle'); if (_speechSupported()) setTimeout(voiceListen, 200); }
+
+async function voiceConfirm() {
+  const cmd = _voicePending;
+  if (!cmd) return;
+  _voicePending = null;
+  try {
+    if (cmd.kind === 'vital') { await quickLogVital(cmd.type, cmd.value1, cmd.value2, cmd.unit); speakText(t('Saved.')); }
+    else if (cmd.kind === 'weight') { await quickLogWeight(cmd.kg); speakText(t('Saved.')); }
+    else if (cmd.kind === 'water') { await quickWater(cmd.ml); speakText(t('Saved.')); }
+    else if (cmd.kind === 'dose') { await voiceMarkNextDose(); }
+  } catch (e) {}
+  closeVoiceLog();
+}
+
+// Mark the earliest still-untaken dose today as taken (reuses markDoseTaken).
+async function voiceMarkNextDose() {
+  const doses = await fetch('/api/medicines/today').then(r => r.json()).catch(() => []);
+  const list = Array.isArray(doses) ? doses : [];
+  const untaken = list.filter(d => !d.taken && d.time).sort((a, b) => a.time.localeCompare(b.time));
+  if (!list.length) { showToast(t('No doses scheduled today'), 'error'); speakText(t('You have no doses scheduled today.')); return; }
+  if (!untaken.length) { showToast(t('All doses already taken ✓')); speakText(t('You have already taken all your doses today.')); return; }
+  const next = untaken[0];
+  await markDoseTaken(next.med_id, next.time);
+  speakText(tformat('Marked %1 as taken.', next.med_name));
 }
 
 function closeGlobalSearch() {
