@@ -766,6 +766,26 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dt-week   .dt-dot { background:var(--amber-400, #e0a83e); }
 .dt-stale  .dt-dot { background:var(--terracotta-400, #c67b5c); }
 
+/* Ask your health (private deterministic assistant) */
+.ask-bar { display:flex; gap:8px; align-items:center; }
+.ask-input { flex:1; font-size:15px; padding:11px 14px; }
+.ask-mic { width:42px; height:42px; flex-shrink:0; border-radius:50%; border:1px solid var(--gray-200,#D7CCBB);
+  background:var(--surface,#fff); cursor:pointer; font-size:18px; }
+.ask-mic.listening { animation:voicePulse 1.3s ease-in-out infinite; background:var(--teal-500,#4F8D74); }
+.ask-note { font-size:12px; color:var(--gray-400,#999); margin:8px 2px 16px; }
+.ask-thinking, .ask-a { font-size:15px; }
+.ask-card { display:flex; align-items:flex-start; gap:10px; border-radius:14px; padding:16px 18px; margin:6px 0 14px; line-height:1.55; }
+.ask-card.ask-ok { background:var(--teal-50,#ECF3EF); border:1px solid var(--teal-200,#AECEC0); color:var(--gray-800,#333); }
+.ask-card.ask-none { background:var(--sand-50,#faf6ef); border:1px solid var(--gray-100,#E9E1D4); color:var(--gray-600,#555); }
+.ask-a { flex:1; }
+.ask-speak { background:none; border:none; cursor:pointer; font-size:18px; flex-shrink:0; opacity:.7; }
+.ask-speak:hover { opacity:1; }
+.ask-egs { margin-top:8px; }
+.ask-egs-h { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-400,#999); margin-bottom:8px; }
+.ask-eg { display:inline-block; font-size:13px; background:var(--gray-50,#F4EEE4); border:1px solid var(--gray-100,#E9E1D4);
+  color:var(--gray-600,#555); border-radius:16px; padding:6px 12px; margin:0 6px 6px 0; cursor:pointer; }
+.ask-eg:hover { background:var(--gray-100,#E9E1D4); }
+
 /* Year in health (honest shareable story) */
 .ys-periods { display:flex; gap:8px; margin-bottom:18px; }
 .ys-per { font-size:13px; padding:6px 14px; border-radius:99px; border:1px solid var(--gray-200,#D7CCBB);

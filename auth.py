@@ -341,7 +341,11 @@ _ACTING_AS_EXCLUDED = ('/auth', '/api/account', '/api/family')
 #     (v1-normalized) path, so /api/v1/backup etc. are covered as well.
 _ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
                       '/api/menopause', '/api/pregnancy',
-                      '/api/backup', '/api/import', '/api/export', '/api/search')
+                      '/api/backup', '/api/import', '/api/export', '/api/search',
+                      # The assistant reads personal aggregates bypassing the
+                      # per-category consent gate, so a caregiver can't use it to
+                      # extract a member's data — they have member_summary instead.
+                      '/api/ask')
 
 
 def _canonical_path(path):

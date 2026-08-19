@@ -857,6 +857,14 @@ def api_today_timeline():
     from db.today_timeline import get_today_timeline
     return jsonify(get_today_timeline())
 
+@bp.route('/api/ask')
+@require_auth
+def api_ask():
+    """A private, deterministic Q&A over the user's own data — no LLM, no cloud,
+    no fabrication. Walled from a caregiver acting-as (see _ACTING_AS_PRIVATE)."""
+    from db.ask import answer_question
+    return jsonify(answer_question(request.args.get('q', '')))
+
 @bp.route('/api/year-story')
 @require_auth
 def api_year_story():

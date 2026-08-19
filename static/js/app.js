@@ -190,6 +190,16 @@ const I18N = {
     'Shares consistency & counts only — never a health value, symptom, journal, mood or cycle. Expiring, and you can turn it off anytime.':
       'सिर्फ़ नियमितता व गिनती साझा करता है — कोई हेल्थ मान, लक्षण, डायरी, मूड या साइकल नहीं। समय-सीमित, और आप कभी भी बंद कर सकते हैं।',
     'Preview the shared page ↗': 'साझा पेज देखें ↗',
+    // Ask your health (chrome only — example questions stay English so the matcher works)
+    'Ask': 'पूछें', 'Ask your health': 'अपनी सेहत से पूछें',
+    'Ask about your own health data…': 'अपने ही हेल्थ डेटा के बारे में पूछें…',
+    'Private & on-device. It only answers from what you’ve logged — no cloud, no guessing.':
+      'निजी और आपके डिवाइस पर। यह सिर्फ़ आपके दर्ज किए से जवाब देता है — कोई क्लाउड नहीं, कोई अनुमान नहीं।',
+    'Try asking': 'यह पूछकर देखें', 'Looking…': 'देख रहे हैं…',
+    'Could not answer just now.': 'अभी जवाब नहीं दे सके।',
+    'Ask by voice': 'बोलकर पूछें', 'Read answer aloud': 'जवाब सुनाएँ',
+    'Ask a plain question about your own data. Answers come only from what you’ve logged — nothing invented, nothing sent to the cloud.':
+      'अपने डेटा के बारे में सीधा सवाल पूछें। जवाब सिर्फ़ आपके दर्ज किए से आते हैं — कुछ भी मनगढ़ंत नहीं, कुछ भी क्लाउड को नहीं भेजा जाता।',
     // Section headers in the side nav
     'Care': 'देखभाल', 'Track': 'ट्रैक', 'Wellness': 'स्वास्थ्य',
     // The toggle itself
@@ -3008,6 +3018,7 @@ function switchView(view) {
   if (view === 'weekreview')    loadWeekReview();
   if (view === 'today')         loadToday();
   if (view === 'yearstory')     loadYearStory();
+  if (view === 'ask')           loadAsk();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12538,6 +12549,7 @@ const NAV_TARGETS = [
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},
   {v:'today',         l:'Today',            k:'today timeline day hour by hour schedule what happened log diary of the day'},
   {v:'yearstory',     l:'Year in health',   k:'year story recap milestones wrapped review annual consistency showed up shareable'},
+  {v:'ask',           l:'Ask',              k:'ask question assistant when did i last average due answer query search my data help'},
 ];
 
 function _pageMatches(q) {
@@ -12567,10 +12579,10 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['today', 'yearstory', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
+  {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -16639,6 +16651,72 @@ function copyYearStoryLink(token) {
   if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => showToast(t('Copied ✓'))).catch(() => {});
 }
 function selectAllText(el) { try { el && el.select && el.select(); } catch (e) {} }
+
+// ── Ask your health: a private, deterministic assistant ──────────────────────
+const _ASK_EXAMPLES = [
+  'When did I last log my blood pressure?', "What's my average sleep?",
+  'Am I due for any labs?', 'When is my next appointment?',
+  'What medicines am I taking?', 'How am I doing with my doses?',
+];
+let _askRec = null;
+function loadAsk() {
+  const el = document.getElementById('ask-content');
+  if (!el) return;
+  const mic = _speechSupported()
+    ? `<button class="ask-mic" data-ev-click="askVoice()" aria-label="${t('Ask by voice')}">🎤</button>` : '';
+  el.innerHTML = `
+    <div class="ask-bar">
+      <input type="text" class="form-input ask-input" id="ask-input" placeholder="${t('Ask about your own health data…')}" data-ev-keydown="askKey(event)">
+      ${mic}
+      <button class="btn-primary" data-ev-click="askQuestion()">${t('Ask')}</button>
+    </div>
+    <div class="ask-note">${t('Private & on-device. It only answers from what you’ve logged — no cloud, no guessing.')}</div>
+    <div id="ask-answer"></div>
+    <div class="ask-egs"><div class="ask-egs-h">${t('Try asking')}</div>
+      ${_ASK_EXAMPLES.map(e => `<button class="ask-eg" data-ev-click="askExample('${e.replace(/'/g, "\\'")}')">${escHtml(t(e))}</button>`).join('')}
+    </div>`;
+  try { _a11yEnhance(el); document.getElementById('ask-input')?.focus(); } catch (e) {}
+}
+function askKey(e) { if (e && e.key === 'Enter') askQuestion(); }
+function askExample(q) { const i = document.getElementById('ask-input'); if (i) i.value = q; askQuestion(); }
+
+async function askQuestion() {
+  const q = (document.getElementById('ask-input') || {}).value || '';
+  const box = document.getElementById('ask-answer');
+  if (!q.trim() || !box) return;
+  box.innerHTML = `<div class="ask-thinking">${t('Looking…')}</div>`;
+  const r = await fetch('/api/ask?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+    .then(x => x.ok ? x.json() : null).catch(() => null);
+  if (!r) { box.innerHTML = `<div class="dv-empty">${t('Could not answer just now.')}</div>`; return; }
+  const speakBtn = _canSpeak() ? `<button class="ask-speak" data-ev-click="askSpeak()" aria-label="${t('Read answer aloud')}">🔊</button>` : '';
+  box.innerHTML = `<div class="ask-card ${r.matched ? 'ask-ok' : 'ask-none'}">
+      <div class="ask-a" id="ask-a-text">${escHtml(r.answer || '')}</div>${speakBtn}
+    </div>`;
+  _lastAnswer = r.answer || '';
+  if (!r.matched && r.suggestions) {
+    box.innerHTML += `<div class="ask-egs">${r.suggestions.map(s => `<button class="ask-eg" data-ev-click="askExample('${s.replace(/'/g, "\\'")}')">${escHtml(t(s))}</button>`).join('')}</div>`;
+  }
+  try { _a11yEnhance(box); } catch (e) {}
+}
+let _lastAnswer = '';
+function askSpeak() { if (_lastAnswer) speakText(_lastAnswer); }
+
+function askVoice() {
+  if (!_speechSupported()) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR();
+  _askRec = rec;
+  rec.lang = navigator.language && /^en/.test(navigator.language) ? navigator.language : 'en-IN';
+  rec.interimResults = false; rec.maxAlternatives = 1;
+  const mic = document.querySelector('.ask-mic'); if (mic) mic.classList.add('listening');
+  rec.onresult = e => {
+    const txt = Array.from(e.results).map(x => x[0].transcript).join(' ').trim();
+    const i = document.getElementById('ask-input'); if (i) i.value = txt;
+    askQuestion();
+  };
+  rec.onend = rec.onerror = () => { const m = document.querySelector('.ask-mic'); if (m) m.classList.remove('listening'); };
+  try { rec.start(); } catch (e) {}
+}
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────
 const _PROC_KIND = { surgery: 'Surgery', hospitalization: 'Hospital stay', procedure: 'Procedure' };
