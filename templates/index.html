@@ -2415,6 +2415,7 @@
       <h1 class="page-title" data-i18n="Body &amp; Vitals">Body &amp; Vitals</h1>
       <p class="page-subtitle">Weight, BMI, blood pressure, and more</p>
     </div>
+    <button class="btn-outline-sm page-ask-btn" data-ev-click="openAskWith('average blood pressure')">💬 <span data-i18n="Ask about this">Ask about this</span></button>
   </div>
   <div id="body-view-content"></div>
 </div>
@@ -2427,6 +2428,7 @@
       <h1 class="page-title" data-i18n="Lab results">Lab results</h1>
       <p class="page-subtitle" data-i18n="Keep your blood-test numbers in one place and watch the trends">Keep your blood-test numbers in one place and watch the trends</p>
     </div>
+    <button class="btn-outline-sm page-ask-btn" data-ev-click="openAskWith('am I due for any labs')">💬 <span data-i18n="Ask about this">Ask about this</span></button>
   </div>
   <div id="labs-view-content"></div>
 </div>
@@ -4002,6 +4004,12 @@
 <div id="quick-log-sheet" style="display:none" data-ev-click="backdropClose(event,this,'closeQuickLog')">
   <div class="qlg-panel">
     <div class="qlg-title">Quick log</div>
+
+    <button class="qlg-voice" data-ev-click="closeQuickLog();openVoiceLog()">
+      <span class="qlg-voice-mic">🎤</span>
+      <span><span class="qlg-voice-t" data-i18n="Speak to log">Speak to log</span>
+        <span class="qlg-voice-eg" data-i18n="“blood pressure 120 over 80”">“blood pressure 120 over 80”</span></span>
+    </button>
 
     <div class="qlg-label">💧 Water</div>
     <div class="qlg-row">

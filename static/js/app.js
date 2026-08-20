@@ -206,6 +206,7 @@ const I18N = {
     'Try asking': 'यह पूछकर देखें', 'Looking…': 'देख रहे हैं…',
     'Could not answer just now.': 'अभी जवाब नहीं दे सके।',
     'Ask by voice': 'बोलकर पूछें', 'Read answer aloud': 'जवाब सुनाएँ',
+    'Speak to log': 'बोलकर दर्ज करें', 'Ask about this': 'इसके बारे में पूछें',
     // Care circle
     'Care circle': 'देखभाल मंडली', 'Could not load your care circle.': 'आपकी देखभाल मंडली लोड नहीं हो सकी।',
     'At a glance for the people you help look after — today’s doses and this week, only what they’ve chosen to share.':
@@ -16778,6 +16779,12 @@ function loadAsk() {
 }
 function askKey(e) { if (e && e.key === 'Enter') askQuestion(); }
 function askExample(q) { const i = document.getElementById('ask-input'); if (i) i.value = q; askQuestion(); }
+// Open the assistant from anywhere, pre-filled and answered (e.g. the "Ask about
+// this" buttons on the Vitals / Labs pages). Waits for the view's input to render.
+function openAskWith(q) {
+  switchView('ask');
+  setTimeout(() => { const i = document.getElementById('ask-input'); if (i) { i.value = q || ''; askQuestion(); } }, 160);
+}
 
 async function askQuestion() {
   const q = (document.getElementById('ask-input') || {}).value || '';
