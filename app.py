@@ -61,6 +61,7 @@ def create_app(config=Config):
     from routes.prescriptions import bp as prescriptions_bp
     from routes.claims     import bp as claims_bp
     from routes.experiments import bp as experiments_bp
+    from routes.environment import bp as environment_bp
     from routes.allergies  import bp as allergies_bp
     from routes.upcoming   import bp as upcoming_bp
     from routes.meal_plan  import bp as meal_plan_bp
@@ -100,6 +101,7 @@ def create_app(config=Config):
     app.register_blueprint(prescriptions_bp)
     app.register_blueprint(claims_bp)
     app.register_blueprint(experiments_bp)
+    app.register_blueprint(environment_bp)
     app.register_blueprint(allergies_bp)
     app.register_blueprint(upcoming_bp)
     app.register_blueprint(meal_plan_bp)

@@ -766,6 +766,29 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dt-week   .dt-dot { background:var(--amber-400, #e0a83e); }
 .dt-stale  .dt-dot { background:var(--terracotta-400, #c67b5c); }
 
+/* Environment ↔ how you feel (AQI) */
+.env-import { margin-bottom:16px; }
+.env-help { font-size:12.5px; color:var(--gray-500,#666); line-height:1.5; }
+.env-preview-msg { font-size:12.5px; color:var(--gray-600,#555); }
+.env-corr { margin-bottom:16px; }
+.env-corr-head { display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; color:var(--gray-700,#444); margin-bottom:12px; }
+.env-r { font-size:30px; font-weight:800; color:var(--teal-600,#3E7862); }
+.env-phrase { font-size:14.5px; color:var(--gray-800,#333); margin-top:4px; line-height:1.5; }
+.env-n { font-size:12px; color:var(--gray-400,#999); margin-top:4px; }
+.env-thin { font-size:13px; color:var(--gray-500,#666); }
+.env-caveat { font-size:12px; color:var(--gray-500,#666); background:var(--sand-50,#faf6ef); border:1px solid var(--gray-100,#E9E1D4);
+  border-radius:10px; padding:10px 12px; margin-top:12px; line-height:1.55; }
+.env-recent-h { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-400,#999); margin-bottom:10px; }
+.env-recent { display:flex; flex-wrap:wrap; gap:8px; }
+.env-day { display:flex; align-items:center; gap:8px; font-size:12.5px; background:var(--gray-25,#FBF8F3); border:1px solid var(--gray-100,#E9E1D4); border-radius:10px; padding:6px 10px; }
+.env-day-date { color:var(--gray-500,#666); font-variant-numeric:tabular-nums; }
+.env-aqi { font-weight:700; padding:1px 6px; border-radius:6px; }
+.env-aqi-good { background:var(--green-50,#EBF3ED); color:var(--green-600,#468A5B); }
+.env-aqi-ok { background:var(--amber-50,#FBF3E6); color:var(--amber-600,#B9803A); }
+.env-aqi-mod { background:var(--clay-100,#F9EBE0); color:var(--clay-600,#B96539); }
+.env-aqi-high { background:var(--red-50,#FBEDE9); color:var(--red-600,#A6432F); }
+.env-extra { color:var(--gray-400,#999); }
+
 /* Tax & spend organizer */
 .tax-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
 .tax-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }

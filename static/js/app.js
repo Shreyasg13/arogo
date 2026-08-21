@@ -241,6 +241,26 @@ const I18N = {
     'Claimed %1': '%1 दावा किया', 'reimbursed %1': '%1 वापस मिला', '%1 outstanding': '%1 बकाया',
     'Download itemised CSV for your accountant': 'अपने अकाउंटेंट के लिए विस्तृत CSV डाउनलोड करें',
     'Consultations': 'परामर्श', 'Lab tests': 'लैब जाँच', 'Hospital': 'अस्पताल',
+    // Environment ↔ how you feel
+    'Air & weather': 'हवा व मौसम', 'Could not load environment data.': 'पर्यावरण डेटा लोड नहीं हो सका।',
+    'Import your local air quality and see whether it lined up with how you felt — a correlation from your own logs, never a claim of cause.':
+      'अपनी स्थानीय वायु गुणवत्ता आयात करें और देखें कि यह आपकी तबीयत से मेल खाती है या नहीं — आपके अपने रिकॉर्ड से एक संबंध, कारण का दावा नहीं।',
+    'Import air quality': 'वायु गुणवत्ता आयात करें',
+    'Paste a daily CSV with a date column and an AQI column (temperature & humidity optional). Get it from your city’s AQI site or app. Nothing is saved until you confirm.':
+      'तारीख़ और AQI कॉलम वाली दैनिक CSV पेस्ट करें (तापमान व नमी वैकल्पिक)। अपने शहर की AQI साइट/ऐप से लें। पुष्टि करने तक कुछ सेव नहीं होता।',
+    'Preview': 'पूर्वावलोकन', 'Couldn’t find a date and AQI column. Check the headers.': 'तारीख़ और AQI कॉलम नहीं मिले। हेडर जाँचें।',
+    'Found %1 day(s)%2': '%1 दिन मिले%2', ' · %1 skipped': ' · %1 छोड़े गए',
+    'Import %1 day(s)': '%1 दिन आयात करें', 'Imported %1 day(s)': '%1 दिन आयात हुए', 'Could not import': 'आयात नहीं हो सका',
+    'No air-quality data yet. Import a few weeks of daily AQI, keep logging your symptoms, and this shows whether they moved together.':
+      'अभी कोई वायु-गुणवत्ता डेटा नहीं। कुछ हफ़्तों का दैनिक AQI आयात करें, लक्षण दर्ज करते रहें, और यह दिखाएगा कि वे साथ चले या नहीं।',
+    'AQI vs': 'AQI बनाम', 'Imported days (%1)': 'आयातित दिन (%1)',
+    'Could not work that out.': 'यह पता नहीं लगा सके।', 'Not enough data yet.': 'अभी पर्याप्त डेटा नहीं।',
+    'On higher-AQI days you tended to log more %1 — they moved together.':
+      'अधिक-AQI वाले दिनों में आपने अधिक %1 दर्ज किए — वे साथ चले।',
+    'Higher-AQI days lined up with less %1 — they moved in opposite directions.':
+      'अधिक-AQI वाले दिन कम %1 से मेल खाए — वे विपरीत दिशा में चले।',
+    'No clear link between AQI and %1 in your data.': 'आपके डेटा में AQI और %1 के बीच कोई स्पष्ट संबंध नहीं।',
+    'from %1 shared days': '%1 साझा दिनों से',
     // Document scan (OCR → confirm-before-save)
     'Nothing checked to add': 'जोड़ने के लिए कुछ चुना नहीं', 'Adding…': 'जोड़ रहे हैं…',
     'Added %1 reading(s) to vitals': 'वाइटल्स में %1 रीडिंग जोड़ी',
@@ -3085,6 +3105,7 @@ function switchView(view) {
   if (view === 'carecircle')    loadCareCircle();
   if (view === 'experiments')   loadExperiments();
   if (view === 'taxsummary')    loadTaxSummary();
+  if (view === 'environment')   loadEnvironment();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12616,6 +12637,7 @@ const NAV_TARGETS = [
   {v:'carecircle',    l:'Care circle',      k:'caregiver family members command center at a glance manage elder parent status board watch over'},
   {v:'experiments',   l:'Experiments',      k:'experiment n-of-1 self test try before after compare change what if does affect trial'},
   {v:'taxsummary',    l:'Tax & spend',      k:'tax 80d deduction financial year medical spend accountant reimbursement claim summary insurance premium csv'},
+  {v:'environment',   l:'Air & weather',    k:'environment air quality aqi pollution weather temperature humidity correlation symptoms how i feel import'},
 ];
 
 function _pageMatches(q) {
@@ -12644,11 +12666,11 @@ const FEATURE_SECTIONS = [
   {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'timeline']},
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'carecircle', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
-  {t: 'Goals & tracking', v: ['goals', 'experiments', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
+  {t: 'Goals & tracking', v: ['goals', 'experiments', 'environment', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
   {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'taxsummary', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments', 'taxsummary']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments', 'taxsummary', 'environment']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -17082,6 +17104,96 @@ function renderTaxSummary(d) {
 function downloadTaxCsv() {
   if (_taxFy == null) return;
   window.location.href = '/api/tax-summary/csv?fy=' + _taxFy;
+}
+
+// ── Environment ↔ how you feel (AQI import + correlation) ────────────────────
+let _envTargets = [], _envPreview = null, _envTarget = 'symptoms';
+async function loadEnvironment() {
+  const el = document.getElementById('environment-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/environment?days=30', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load environment data.')}</div>`; return; }
+  _envTargets = d.targets || [];
+  el.innerHTML = renderEnvironment(d);
+  try { _a11yEnhance(el); } catch (e) {}
+  if ((d.days || []).length) loadEnvCorrelation(_envTarget);
+}
+
+function renderEnvironment(d) {
+  const importPanel = `<div class="panel env-import">
+      <h2 class="panel-title" style="margin-bottom:8px">${t('Import air quality')}</h2>
+      <div class="env-help">${t('Paste a daily CSV with a date column and an AQI column (temperature & humidity optional). Get it from your city’s AQI site or app. Nothing is saved until you confirm.')}</div>
+      <textarea class="form-input" id="env-csv" rows="4" placeholder="date,aqi,temperature,humidity&#10;2026-08-01,142,31,70" style="font-family:monospace;font-size:12.5px;margin-top:10px"></textarea>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+        <button class="btn-secondary btn-sm" data-ev-click="previewEnvImport()">${t('Preview')}</button>
+        <span id="env-preview-msg" class="env-preview-msg"></span>
+      </div>
+      <div id="env-preview-actions"></div>
+    </div>`;
+
+  const days = d.days || [];
+  if (!days.length) {
+    return importPanel + `<div class="dv-empty">${t('No air-quality data yet. Import a few weeks of daily AQI, keep logging your symptoms, and this shows whether they moved together.')}</div>`;
+  }
+
+  const opts = _envTargets.map(x => `<option value="${escHtml(x.key)}" ${x.key === _envTarget ? 'selected' : ''}>${escHtml(t(x.label))}</option>`).join('');
+  const corr = `<div class="panel env-corr">
+      <div class="env-corr-head">
+        <span>${t('AQI vs')}</span>
+        <select class="form-input" id="env-target" data-ev-change="loadEnvCorrelation(this.value)" style="max-width:220px">${opts}</select>
+      </div>
+      <div id="env-corr-body"><div style="font-size:13px;color:var(--gray-400)">${t('Loading…')}</div></div>
+    </div>`;
+
+  const recent = `<div class="panel"><div class="env-recent-h">${tformat('Imported days (%1)', days.length)}</div>
+      <div class="env-recent">${days.slice(0, 14).map(r => `<div class="env-day"><span class="env-day-date">${escHtml(r.date_key)}</span><span class="env-aqi env-aqi-${_aqiBand(r.aqi)}">AQI ${Math.round(r.aqi)}</span>${r.temp_c != null ? `<span class="env-extra">${Math.round(r.temp_c)}°C</span>` : ''}</div>`).join('')}</div></div>`;
+
+  return importPanel + corr + recent;
+}
+
+function _aqiBand(a) { return a <= 50 ? 'good' : a <= 100 ? 'ok' : a <= 200 ? 'mod' : 'high'; }
+
+async function previewEnvImport() {
+  const csv = (document.getElementById('env-csv') || {}).value || '';
+  const msg = document.getElementById('env-preview-msg');
+  const actions = document.getElementById('env-preview-actions');
+  const d = await fetch('/api/environment/import/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify({ csv }) }).then(r => r.json()).catch(() => null);
+  if (!d || !d.detected) { if (msg) msg.textContent = t('Couldn’t find a date and AQI column. Check the headers.'); if (actions) actions.innerHTML = ''; return; }
+  _envPreview = d.candidates;
+  if (msg) msg.textContent = tformat('Found %1 day(s)%2', d.candidates.length, d.skipped ? tformat(' · %1 skipped', d.skipped) : '');
+  if (actions) actions.innerHTML = d.candidates.length
+    ? `<button class="btn-primary btn-sm" style="margin-top:8px" data-ev-click="commitEnvImport()">${tformat('Import %1 day(s)', d.candidates.length)}</button>` : '';
+}
+
+async function commitEnvImport() {
+  if (!_envPreview || !_envPreview.length) return;
+  const r = await fetch('/api/environment/import/commit', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify({ candidates: _envPreview }) }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(tformat('Imported %1 day(s)', r.saved)); _envPreview = null; loadEnvironment(); }
+  else showToast(t('Could not import'), 'error');
+}
+
+async function loadEnvCorrelation(target) {
+  _envTarget = target || 'symptoms';
+  const box = document.getElementById('env-corr-body');
+  if (!box) return;
+  box.innerHTML = `<div style="font-size:13px;color:var(--gray-400)">${t('Looking…')}</div>`;
+  const d = await fetch('/api/environment/correlation?target=' + encodeURIComponent(_envTarget) + '&days=90', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { box.innerHTML = `<div class="dv-empty">${t('Could not work that out.')}</div>`; return; }
+  const caveat = `<div class="env-caveat">${escHtml(d.caveat)}</div>`;
+  if (!d.has_data) { box.innerHTML = `<div class="env-thin">${escHtml(d.reason || t('Not enough data yet.'))}</div>${caveat}`; return; }
+  const phrase = d.direction === 'together'
+    ? tformat('On higher-AQI days you tended to log more %1 — they moved together.', t(d.target_label).toLowerCase())
+    : d.direction === 'opposite'
+    ? tformat('Higher-AQI days lined up with less %1 — they moved in opposite directions.', t(d.target_label).toLowerCase())
+    : tformat('No clear link between AQI and %1 in your data.', t(d.target_label).toLowerCase());
+  box.innerHTML = `<div class="env-r">r = ${d.r == null ? '—' : d.r}</div>
+      <div class="env-phrase">${escHtml(phrase)}</div>
+      <div class="env-n">${tformat('from %1 shared days', d.n)}</div>${caveat}`;
 }
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────

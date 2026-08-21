@@ -546,6 +546,11 @@ CREATE TABLE IF NOT EXISTS experiments (
     status TEXT DEFAULT 'active', end_date TEXT DEFAULT NULL,
     notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS environment_days (
+    id TEXT PRIMARY KEY, date_key TEXT NOT NULL, aqi REAL DEFAULT NULL,
+    temp_c REAL DEFAULT NULL, humidity REAL DEFAULT NULL,
+    source TEXT DEFAULT 'import', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS lab_rechecks (
     id TEXT PRIMARY KEY, lab_key TEXT NOT NULL, interval_days INTEGER DEFAULT 180,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
@@ -1434,6 +1439,7 @@ DATA_TABLES = [
     'visit_action_items',
     'weekly_reviews',
     'experiments',
+    'environment_days',
 ]
 
 
