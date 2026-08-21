@@ -228,6 +228,19 @@ const I18N = {
     'Experiment started': 'प्रयोग शुरू हुआ', 'Could not start it': 'शुरू नहीं कर सके',
     'Blood pressure (systolic)': 'रक्तचाप (सिस्टोलिक)', 'Blood pressure (diastolic)': 'रक्तचाप (डायस्टोलिक)',
     'Blood sugar': 'ब्लड शुगर', 'Heart rate': 'हृदय गति', 'Symptom entries': 'लक्षण प्रविष्टियाँ',
+    // Tax & spend organizer
+    'Tax & spend': 'टैक्स व ख़र्च', 'Money': 'पैसा', 'Could not load your spend summary.': 'आपका ख़र्च सारांश लोड नहीं हो सका।',
+    'Your medical spending, organised by financial year to hand to your accountant. An organiser of what you logged — not tax advice.':
+      'आपका चिकित्सा ख़र्च, वित्तीय वर्ष के अनुसार व्यवस्थित — अपने अकाउंटेंट को देने के लिए। आपके दर्ज किए का आयोजक — टैक्स सलाह नहीं।',
+    'FY %1': 'वित्त वर्ष %1',
+    'No medical spending logged for FY %1. Add expenses in Spending, and they’ll organise here.':
+      'वित्त वर्ष %1 के लिए कोई चिकित्सा ख़र्च दर्ज नहीं। ख़र्च को Spending में जोड़ें, वे यहाँ व्यवस्थित होंगे।',
+    'Total medical spend': 'कुल चिकित्सा ख़र्च', 'Out of pocket': 'अपनी जेब से', 'Insurance premium': 'बीमा प्रीमियम',
+    'Category': 'श्रेणी', 'Amount': 'राशि', 'Reimbursed': 'वापस मिला', 'Net': 'शुद्ध',
+    'Insurance claims this year': 'इस वर्ष बीमा दावे',
+    'Claimed %1': '%1 दावा किया', 'reimbursed %1': '%1 वापस मिला', '%1 outstanding': '%1 बकाया',
+    'Download itemised CSV for your accountant': 'अपने अकाउंटेंट के लिए विस्तृत CSV डाउनलोड करें',
+    'Consultations': 'परामर्श', 'Lab tests': 'लैब जाँच', 'Hospital': 'अस्पताल',
     // Care circle
     'Care circle': 'देखभाल मंडली', 'Could not load your care circle.': 'आपकी देखभाल मंडली लोड नहीं हो सकी।',
     'At a glance for the people you help look after — today’s doses and this week, only what they’ve chosen to share.':
@@ -3063,6 +3076,7 @@ function switchView(view) {
   if (view === 'ask')           loadAsk();
   if (view === 'carecircle')    loadCareCircle();
   if (view === 'experiments')   loadExperiments();
+  if (view === 'taxsummary')    loadTaxSummary();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12597,6 +12611,7 @@ const NAV_TARGETS = [
   {v:'ask',           l:'Ask',              k:'ask question assistant when did i last average due answer query search my data help'},
   {v:'carecircle',    l:'Care circle',      k:'caregiver family members command center at a glance manage elder parent status board watch over'},
   {v:'experiments',   l:'Experiments',      k:'experiment n-of-1 self test try before after compare change what if does affect trial'},
+  {v:'taxsummary',    l:'Tax & spend',      k:'tax 80d deduction financial year medical spend accountant reimbursement claim summary insurance premium csv'},
 ];
 
 function _pageMatches(q) {
@@ -12626,10 +12641,10 @@ const FEATURE_SECTIONS = [
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'carecircle', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'experiments', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
-  {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
+  {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'taxsummary', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments', 'taxsummary']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -17000,6 +17015,72 @@ async function deleteExperiment(id) {
   await fetch('/api/experiments/' + id, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
   loadExperiments();
 }
+
+// ── Tax & spend organizer (India FY / 80D) ───────────────────────────────────
+// Organises the medical spend you logged for a financial year, to hand to an
+// accountant. NOT tax advice — no deduction calc, no "you can claim X".
+let _taxFy = null;
+async function loadTaxSummary(fy) {
+  const el = document.getElementById('taxsummary-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const url = '/api/tax-summary' + (fy != null ? '?fy=' + fy : '');
+  const d = await fetch(url, { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your spend summary.')}</div>`; return; }
+  _taxFy = d.summary.fy;
+  el.innerHTML = renderTaxSummary(d);
+  try { _a11yEnhance(el); } catch (e) {}
+}
+
+function renderTaxSummary(d) {
+  const s = d.summary;
+  const years = d.years || [];
+  const sel = `<select class="form-input tax-fy" id="tax-fy" data-ev-change="loadTaxSummary(this.value)" style="max-width:200px">
+      ${years.map(y => `<option value="${y.fy}" ${y.fy === s.fy ? 'selected' : ''}>${tformat('FY %1', y.label)}</option>`).join('')}
+    </select>`;
+
+  const disclaimer = `<div class="tax-disclaimer">⚠️ ${escHtml(s.disclaimer)}</div>`;
+
+  if (!s.has_data) {
+    return `<div class="tax-bar">${sel}</div>${disclaimer}
+      <div class="dv-empty">${tformat('No medical spending logged for FY %1. Add expenses in Spending, and they’ll organise here.', s.label)}</div>`;
+  }
+
+  const tiles = `<div class="tax-tiles">
+      <div class="tax-tile"><div class="tax-tile-n">${_rupee(s.total)}</div><div class="tax-tile-l">${t('Total medical spend')}</div></div>
+      <div class="tax-tile"><div class="tax-tile-n">${_rupee(s.out_of_pocket)}</div><div class="tax-tile-l">${t('Out of pocket')}</div></div>
+      <div class="tax-tile"><div class="tax-tile-n">${_rupee(s.insurance_premiums)}</div><div class="tax-tile-l">${t('Insurance premium')}</div></div>
+    </div>`;
+
+  const rows = s.categories.map(c => `<tr>
+      <td>${escHtml(t(c.label))}</td>
+      <td class="tax-num">${_rupee(c.amount)}</td>
+      <td class="tax-num">${c.covered ? _rupee(c.covered) : '—'}</td>
+      <td class="tax-num">${_rupee(c.net)}</td>
+    </tr>`).join('');
+  const table = `<div class="panel"><table class="tax-table">
+      <thead><tr><th>${t('Category')}</th><th class="tax-num">${t('Amount')}</th><th class="tax-num">${t('Reimbursed')}</th><th class="tax-num">${t('Net')}</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>${t('Total')}</td><td class="tax-num">${_rupee(s.total)}</td><td class="tax-num">${_rupee(s.covered)}</td><td class="tax-num">${_rupee(s.out_of_pocket)}</td></tr></tfoot>
+    </table></div>`;
+
+  let claims = '';
+  if (s.claims && s.claims.n) {
+    claims = `<div class="panel tax-claims"><div class="tax-claims-h">${t('Insurance claims this year')}</div>
+        <div class="tax-claims-row">${tformat('Claimed %1', _rupee(s.claims.claimed))} · ${tformat('reimbursed %1', _rupee(s.claims.reimbursed))} · ${tformat('%1 outstanding', _rupee(s.claims.outstanding))}</div></div>`;
+  }
+
+  const dl = `<button class="btn-outline" data-ev-click="downloadTaxCsv()">⬇️ ${t('Download itemised CSV for your accountant')}</button>`;
+
+  return `<div class="tax-bar">${sel}${dl}</div>${tiles}${table}${claims}${disclaimer}`;
+}
+
+function downloadTaxCsv() {
+  if (_taxFy == null) return;
+  window.location.href = '/api/tax-summary/csv?fy=' + _taxFy;
+}
+
+// ── Procedures & hospitalizations (O1) ───────────────────────────────────────
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────
 const _PROC_KIND = { surgery: 'Surgery', hospitalization: 'Hospital stay', procedure: 'Procedure' };

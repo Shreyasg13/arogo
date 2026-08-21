@@ -766,6 +766,23 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dt-week   .dt-dot { background:var(--amber-400, #e0a83e); }
 .dt-stale  .dt-dot { background:var(--terracotta-400, #c67b5c); }
 
+/* Tax & spend organizer */
+.tax-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+.tax-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px; }
+.tax-tile { background:var(--surface,#fff); border:1px solid var(--gray-100,#E9E1D4); border-radius:14px; padding:16px; text-align:center; }
+.tax-tile-n { font-size:24px; font-weight:800; color:var(--teal-700,#2E5B4B); }
+.tax-tile-l { font-size:12px; color:var(--gray-500,#666); margin-top:3px; }
+.tax-table { width:100%; border-collapse:collapse; font-size:13.5px; }
+.tax-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--gray-400,#999); padding:6px 8px; border-bottom:1px solid var(--gray-100,#E9E1D4); }
+.tax-table td { padding:8px; border-bottom:1px solid var(--gray-50,#F4EEE4); }
+.tax-table .tax-num { text-align:right; font-variant-numeric:tabular-nums; }
+.tax-table tfoot td { font-weight:700; border-top:2px solid var(--gray-100,#E9E1D4); border-bottom:none; color:var(--gray-800,#333); }
+.tax-claims { margin-top:16px; padding:14px 18px; }
+.tax-claims-h { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-400,#999); margin-bottom:6px; }
+.tax-claims-row { font-size:14px; color:var(--gray-700,#444); }
+.tax-disclaimer { font-size:12.5px; color:var(--gray-600,#555); background:var(--amber-50,#FBF3E6); border:1px solid var(--amber-100,#F5E4C8);
+  border-radius:10px; padding:12px 14px; margin-top:16px; line-height:1.55; }
+
 /* Self-experiments (N-of-1) */
 .exp-form { margin-bottom:16px; }
 .exp-form-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
