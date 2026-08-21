@@ -540,6 +540,12 @@ CREATE TABLE IF NOT EXISTS weekly_reviews (
     focus TEXT DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
     user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS experiments (
+    id TEXT PRIMARY KEY, title TEXT NOT NULL, metric TEXT NOT NULL,
+    start_date TEXT NOT NULL, baseline_days INTEGER DEFAULT 14,
+    status TEXT DEFAULT 'active', end_date TEXT DEFAULT NULL,
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS lab_rechecks (
     id TEXT PRIMARY KEY, lab_key TEXT NOT NULL, interval_days INTEGER DEFAULT 180,
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
@@ -1427,6 +1433,7 @@ DATA_TABLES = [
     'health_reminders',
     'visit_action_items',
     'weekly_reviews',
+    'experiments',
 ]
 
 

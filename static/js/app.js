@@ -207,6 +207,27 @@ const I18N = {
     'Could not answer just now.': 'अभी जवाब नहीं दे सके।',
     'Ask by voice': 'बोलकर पूछें', 'Read answer aloud': 'जवाब सुनाएँ',
     'Speak to log': 'बोलकर दर्ज करें', 'Ask about this': 'इसके बारे में पूछें',
+    // Self-experiments (N-of-1)
+    'Experiments': 'प्रयोग', 'Could not load your experiments.': 'आपके प्रयोग लोड नहीं हो सके।',
+    'Try one small change and see what your own numbers do — an honest before-and-after, never a claim of cause.':
+      'एक छोटा बदलाव आज़माएँ और देखें आपके अपने आँकड़े क्या करते हैं — एक ईमानदार पहले-और-बाद, कभी कारण का दावा नहीं।',
+    'Start an experiment': 'एक प्रयोग शुरू करें',
+    'What are you trying? e.g. no screens after 10pm': 'आप क्या आज़मा रहे हैं? जैसे रात 10 बजे के बाद कोई स्क्रीन नहीं',
+    'Watch': 'देखें', 'Started': 'शुरू', 'Compare to': 'तुलना',
+    'This compares your own logs before and after — an honest clue about what changed, never proof of cause. Many things move at once.':
+      'यह आपके अपने रिकॉर्ड की पहले और बाद में तुलना करता है — क्या बदला उसका एक ईमानदार संकेत, कारण का प्रमाण नहीं। एक साथ कई चीज़ें बदलती हैं।',
+    'No experiments yet. Try one small change and see what your numbers do.':
+      'अभी कोई प्रयोग नहीं। एक छोटा बदलाव आज़माएँ और देखें आपके आँकड़े क्या करते हैं।',
+    'Not enough readings yet — need %1 on each side (before: %2, after: %3).':
+      'अभी पर्याप्त रीडिंग नहीं — हर तरफ %1 चाहिए (पहले: %2, बाद: %3)।',
+    'Before': 'पहले', 'After': 'बाद', '%1 readings': '%1 रीडिंग',
+    'What your data shows over these dates — a clue, not proof.':
+      'इन तारीख़ों में आपका डेटा जो दिखाता है — एक संकेत, प्रमाण नहीं।',
+    'started %1': '%1 को शुरू', 'ended': 'समाप्त', 'Running': 'चालू', 'Ended': 'समाप्त',
+    'End experiment': 'प्रयोग समाप्त करें', 'What are you trying?': 'आप क्या आज़मा रहे हैं?',
+    'Experiment started': 'प्रयोग शुरू हुआ', 'Could not start it': 'शुरू नहीं कर सके',
+    'Blood pressure (systolic)': 'रक्तचाप (सिस्टोलिक)', 'Blood pressure (diastolic)': 'रक्तचाप (डायस्टोलिक)',
+    'Blood sugar': 'ब्लड शुगर', 'Heart rate': 'हृदय गति', 'Symptom entries': 'लक्षण प्रविष्टियाँ',
     // Care circle
     'Care circle': 'देखभाल मंडली', 'Could not load your care circle.': 'आपकी देखभाल मंडली लोड नहीं हो सकी।',
     'At a glance for the people you help look after — today’s doses and this week, only what they’ve chosen to share.':
@@ -3041,6 +3062,7 @@ function switchView(view) {
   if (view === 'yearstory')     loadYearStory();
   if (view === 'ask')           loadAsk();
   if (view === 'carecircle')    loadCareCircle();
+  if (view === 'experiments')   loadExperiments();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12574,6 +12596,7 @@ const NAV_TARGETS = [
   {v:'yearstory',     l:'Year in health',   k:'year story recap milestones wrapped review annual consistency showed up shareable'},
   {v:'ask',           l:'Ask',              k:'ask question assistant when did i last average due answer query search my data help'},
   {v:'carecircle',    l:'Care circle',      k:'caregiver family members command center at a glance manage elder parent status board watch over'},
+  {v:'experiments',   l:'Experiments',      k:'experiment n-of-1 self test try before after compare change what if does affect trial'},
 ];
 
 function _pageMatches(q) {
@@ -12602,11 +12625,11 @@ const FEATURE_SECTIONS = [
   {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'timeline']},
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'carecircle', 'dependents', 'claims', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
-  {t: 'Goals & tracking', v: ['goals', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
+  {t: 'Goals & tracking', v: ['goals', 'experiments', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
   {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -16881,6 +16904,102 @@ function renderCareCircle(d) {
   return head + `<div class="cc-grid">${cards}</div>`;
 }
 function speakCareMember(uid) { const s = _ccSummaries[uid]; if (s) speakText(s); }
+
+// ── Self-experiments (N-of-1): try a change, see what your data shows ─────────
+let _expMetrics = [];
+async function loadExperiments() {
+  const el = document.getElementById('experiments-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/experiments', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your experiments.')}</div>`; return; }
+  _expMetrics = d.metrics || [];
+  el.innerHTML = renderExperiments(d);
+  try { _a11yEnhance(el); } catch (e) {}
+}
+
+function renderExperiments(d) {
+  const opts = _expMetrics.map(m => `<option value="${escHtml(m.key)}">${escHtml(t(m.label))} (${escHtml(m.unit)})</option>`).join('');
+  const form = `<div class="panel exp-form">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Start an experiment')}</h2>
+      <div class="exp-form-row">
+        <input type="text" class="form-input" id="exp-title" placeholder="${t('What are you trying? e.g. no screens after 10pm')}" maxlength="160" style="flex:2;min-width:200px">
+      </div>
+      <div class="exp-form-row" style="margin-top:8px">
+        <label class="exp-lbl">${t('Watch')}</label>
+        <select class="form-input" id="exp-metric">${opts}</select>
+        <label class="exp-lbl">${t('Started')}</label>
+        <input type="date" class="form-input" id="exp-start" value="${localToday()}" style="max-width:160px">
+        <label class="exp-lbl">${t('Compare to')}</label>
+        <select class="form-input" id="exp-baseline" style="max-width:150px">
+          <option value="7">${tformat('%1 days before', 7)}</option>
+          <option value="14" selected>${tformat('%1 days before', 14)}</option>
+          <option value="30">${tformat('%1 days before', 30)}</option>
+        </select>
+        <button class="btn-primary" data-ev-click="submitExperiment()">${t('Start')}</button>
+      </div>
+      <div class="exp-caveat">${t('This compares your own logs before and after — an honest clue about what changed, never proof of cause. Many things move at once.')}</div>
+    </div>`;
+
+  const exps = d.experiments || [];
+  if (!exps.length) {
+    return form + `<div class="dv-empty">${t('No experiments yet. Try one small change and see what your numbers do.')}</div>`;
+  }
+  return form + exps.map(_expCard).join('');
+}
+
+function _expCard(e) {
+  const r = e.result || {};
+  const active = e.status === 'active';
+  let body;
+  if (!r.enough_data) {
+    body = `<div class="exp-thin">${tformat('Not enough readings yet — need %1 on each side (before: %2, after: %3).',
+      r.min_readings, (r.before && r.before.n) || 0, (r.after && r.after.n) || 0)}</div>`;
+  } else {
+    const b = r.before.avg, a = r.after.avg, dlt = r.delta;
+    const arrow = dlt > 0 ? '↑' : dlt < 0 ? '↓' : '→';
+    const sign = dlt > 0 ? '+' : '';
+    body = `<div class="exp-compare">
+        <div class="exp-side"><div class="exp-side-lbl">${t('Before')}</div><div class="exp-val">${escHtml(String(b))}<span>${escHtml(r.unit)}</span></div><div class="exp-n">${tformat('%1 readings', r.before.n)}</div></div>
+        <div class="exp-arrow">${arrow}</div>
+        <div class="exp-side"><div class="exp-side-lbl">${t('After')}</div><div class="exp-val">${escHtml(String(a))}<span>${escHtml(r.unit)}</span></div><div class="exp-n">${tformat('%1 readings', r.after.n)}</div></div>
+        <div class="exp-delta">${sign}${escHtml(String(dlt))} ${escHtml(r.unit)}</div>
+      </div>
+      <div class="exp-note">${t('What your data shows over these dates — a clue, not proof.')}</div>`;
+  }
+  return `<div class="panel exp-card">
+      <div class="exp-head">
+        <div style="flex:1;min-width:0">
+          <div class="exp-title">${escHtml(e.title)}</div>
+          <div class="exp-meta">${escHtml(t(r.metric_label || e.metric))} · ${tformat('started %1', escHtml(e.start_date))}${active ? '' : ' · ' + t('ended')}</div>
+        </div>
+        <span class="exp-badge ${active ? 'exp-on' : 'exp-off'}">${active ? t('Running') : t('Ended')}</span>
+        <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteExperiment('${e.id}')" style="color:var(--gray-300)">✕</button>
+      </div>
+      ${body}
+      ${active ? `<button class="btn-outline btn-sm" style="margin-top:12px" data-ev-click="endExperiment('${e.id}')">${t('End experiment')}</button>` : ''}
+    </div>`;
+}
+
+async function submitExperiment() {
+  const val = id => (document.getElementById(id) || {}).value || '';
+  const body = { title: val('exp-title'), metric: val('exp-metric'),
+                 start_date: val('exp-start'), baseline_days: val('exp-baseline') };
+  if (!body.title.trim()) { showToast(t('What are you trying?'), 'error'); return; }
+  const r = await fetch('/api/experiments', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify(body) }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Experiment started')); loadExperiments(); }
+  else showToast((r && r.error) || t('Could not start it'), 'error');
+}
+async function endExperiment(id) {
+  await fetch('/api/experiments/' + id + '/end', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+  loadExperiments();
+}
+async function deleteExperiment(id) {
+  await fetch('/api/experiments/' + id, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+  loadExperiments();
+}
 
 // ── Procedures & hospitalizations (O1) ───────────────────────────────────────
 const _PROC_KIND = { surgery: 'Surgery', hospitalization: 'Hospital stay', procedure: 'Procedure' };
