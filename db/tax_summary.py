@@ -1,11 +1,11 @@
 """
 db/tax_summary.py — a medical-spend organizer for tax & reimbursement.
 
-India-first: Section 80D lets people claim health-insurance premiums and some
-medical spend, and every March people scramble to total their year's receipts.
-This ORGANIZES the expenses you already logged into an Indian financial year
-(Apr–Mar), grouped by category, with net out-of-pocket and reimbursement status,
-and an itemised CSV to hand to an accountant.
+Every year people scramble to total their medical receipts. This ORGANIZES the
+expenses you already logged into your country's financial year, grouped by
+category, with net out-of-pocket and reimbursement status, and an itemised CSV to
+hand to an accountant. The financial-year boundary follows your chosen country
+(e.g. Apr–Mar in India/UK, Jul–Jun in Australia, Jan–Dec elsewhere).
 
 HONESTY — this is NOT tax advice and NOT a deduction calculation. It only sums
 what you logged; whether any of it is deductible, and how much, depends on the
@@ -17,30 +17,56 @@ from __future__ import annotations
 import datetime as dt
 
 from .core import execute, current_user_id, user_today
+from .locale_config import country_of, country_info, currency_of
 
 _CAT_LABEL = {
     'medicines': 'Medicines', 'consultation': 'Consultations', 'lab': 'Lab tests',
     'hospital': 'Hospital', 'insurance': 'Insurance premium', 'other': 'Other',
 }
 
+
+def _fy_start_month():
+    return country_info(country_of())['fy_start_month']
+
+
+def _disclaimer():
+    note = country_info(country_of()).get('tax_note')
+    ref = f" (in some places, {note})" if note else ""
+    return ("This organises the medical spending you logged for the financial year. "
+            "It is not tax advice and not a deduction calculation — whether any of it "
+            f"is eligible{ref}, and how much, depends on the rules and your situation. "
+            "Please confirm with a qualified professional before filing.")
+
+
+# Kept as a module attribute for tests / callers that want the base text.
 DISCLAIMER = ("This organises the medical spending you logged for the financial year. "
               "It is not tax advice and not a deduction calculation — whether any of it "
-              "is eligible under Section 80D, and how much, depends on the rules and your "
-              "situation. Please confirm with a qualified professional before filing.")
+              "is eligible, and how much, depends on the rules and your situation. "
+              "Please confirm with a qualified professional before filing.")
 
 
-def fy_of(iso_date):
-    """The Indian financial-year START year for a date (FY runs Apr 1 – Mar 31)."""
+def fy_of(iso_date, start_month=None):
+    """The financial-year START year for a date, given the FY start month
+    (defaults to the user's country's)."""
+    if start_month is None:
+        start_month = _fy_start_month()
     d = dt.date.fromisoformat(str(iso_date)[:10])
-    return d.year if d.month >= 4 else d.year - 1
+    return d.year if d.month >= start_month else d.year - 1
 
 
-def _fy_bounds(fy):
-    return f"{fy}-04-01", f"{fy + 1}-03-31"
+def _fy_bounds(fy, start_month=None):
+    if start_month is None:
+        start_month = _fy_start_month()
+    start = dt.date(fy, start_month, 1)
+    end = dt.date(fy + 1, start_month, 1) - dt.timedelta(days=1) if start_month > 1 \
+        else dt.date(fy, 12, 31)
+    return start.isoformat(), end.isoformat()
 
 
-def _fy_label(fy):
-    return f"{fy}–{str(fy + 1)[2:]}"       # e.g. 2025–26
+def _fy_label(fy, start_month=None):
+    if start_month is None:
+        start_month = _fy_start_month()
+    return str(fy) if start_month == 1 else f"{fy}–{str(fy + 1)[2:]}"   # 2025 vs 2025–26
 
 
 def financial_years():
@@ -89,6 +115,7 @@ def get_tax_summary(fy):
 
     return {
         'fy': fy, 'label': _fy_label(fy), 'start': start, 'end': end,
+        'currency': currency_of(),
         'categories': categories,
         'total': round(total, 2),
         'covered': round(covered, 2),
@@ -98,7 +125,7 @@ def get_tax_summary(fy):
         'claims': {'claimed': claimed, 'reimbursed': reimb,
                    'outstanding': round(claimed - reimb, 2), 'n': int(cl['n'] or 0) if cl else 0},
         'has_data': bool(categories),
-        'disclaimer': DISCLAIMER,
+        'disclaimer': _disclaimer(),
     }
 
 
@@ -113,7 +140,8 @@ def tax_csv_rows(fy):
     rows = execute("""SELECT date_key, category, description, amount, covered
                       FROM health_expenses WHERE user_id=? AND date_key BETWEEN ? AND ?
                       ORDER BY date_key""", (uid, start, end), fetchall=True) or []
-    out = [['Date', 'Category', 'Description', 'Amount (INR)', 'Reimbursed (INR)', 'Net (INR)']]
+    ccy = currency_of()['code']
+    out = [['Date', 'Category', 'Description', f'Amount ({ccy})', f'Reimbursed ({ccy})', f'Net ({ccy})']]
     for r in rows:
         amt = round(r['amount'] or 0, 2)
         cov = round(r['covered'] or 0, 2)

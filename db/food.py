@@ -81,9 +81,17 @@ def update_profile(data: dict) -> dict:
     elif language not in (None, 'en', 'hi'):
         language = p.get('language')  # ignore garbage, keep existing
 
+    # Country: validate against the known set; keep existing on garbage. Drives
+    # currency + financial year (see db/locale_config).
+    if 'country' in data:
+        from .locale_config import valid_country
+        country = valid_country(data.get('country')) or p.get('country')
+    else:
+        country = p.get('country')
+
     execute("""UPDATE user_profile SET
         name=?, weight_kg=?, height_cm=?, age=?, gender=?,
-        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, ui_mode=?, language=?, updated_at=?
+        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, ui_mode=?, language=?, country=?, updated_at=?
         WHERE id=? AND user_id=?""",
         (data.get('name', p.get('name')) or '',
          _float('weight_kg', p.get('weight_kg')),
@@ -97,6 +105,7 @@ def update_profile(data: dict) -> dict:
          diet_pref,
          ui_mode,
          language,
+         country,
          now_iso(), p['id'], current_user_id()), commit=True)
     return get_profile()
 

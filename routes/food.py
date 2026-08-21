@@ -236,6 +236,17 @@ def save_profile():
     return jsonify({'success': True, 'profile': p, 'targets': t})
 
 
+@bp.route('/api/locale')
+@require_auth
+def api_locale():
+    """The user's country + resolved currency (symbol/locale) and the pickable
+    country list. Drives money formatting and the medical-spend financial year."""
+    from db.locale_config import country_of, currency_of, country_list
+    country = country_of()
+    return jsonify({'country': country, 'currency': currency_of(country),
+                    'countries': country_list()})
+
+
 @bp.route('/api/body/recomp')
 @require_auth
 def api_recomp_signal():

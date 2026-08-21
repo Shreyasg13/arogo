@@ -241,6 +241,10 @@ const I18N = {
     'Claimed %1': '%1 दावा किया', 'reimbursed %1': '%1 वापस मिला', '%1 outstanding': '%1 बकाया',
     'Download itemised CSV for your accountant': 'अपने अकाउंटेंट के लिए विस्तृत CSV डाउनलोड करें',
     'Consultations': 'परामर्श', 'Lab tests': 'लैब जाँच', 'Hospital': 'अस्पताल',
+    'Country': 'देश',
+    'Sets your currency and the financial year used for the medical-spend summary.':
+      'आपकी मुद्रा और चिकित्सा-ख़र्च सारांश का वित्तीय वर्ष तय करता है।',
+    'Cost each %1 (optional)': 'प्रति लागत %1 (वैकल्पिक)', 'covered %1': '%1 कवर',
     // Environment ↔ how you feel
     'Air & weather': 'हवा व मौसम', 'Could not load environment data.': 'पर्यावरण डेटा लोड नहीं हो सका।',
     'Import your local air quality and see whether it lined up with how you felt — a correlation from your own logs, never a claim of cause.':
@@ -2162,6 +2166,14 @@ function showApp() {
     }).catch(() => switchView('dashboard'));
     return;
   }
+
+  // Resolve the user's currency/country, then refresh the dashboard so money
+  // shows in the right currency (no-op for the India default).
+  try {
+    loadUserLocale().then(() => {
+      try { if (document.getElementById('view-dashboard')?.classList.contains('active')) loadDashboard(); } catch (e) {}
+    });
+  } catch (e) {}
 
   // Load the dashboard
   switchView('dashboard');
@@ -5556,7 +5568,7 @@ async function loadMedCost() {
   if (!el) return;
   const d = await fetch('/api/medicines/cost').then(r => r.json()).catch(() => null);
   if (!d || !d.count) { el.style.display = 'none'; return; }
-  const fmt = n => '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN');
+  const fmt = n => _money(n);
   el.style.display = 'block';
   el.innerHTML = `<div class="med-cost-card">
     <span class="med-cost-total">${fmt(d.total)}<span class="med-cost-per">/month</span></span>
@@ -6179,7 +6191,7 @@ function renderMedicinesGrid(meds) {
         ${isPRN ? `<span class="time-chip">${t('🕐 As needed')}</span>`
                 : (m.times?.map(t => `<span class="time-chip">⏰ ${t}</span>`).join('') || '')}
         ${medTimingText(m) ? `<span class="med-food-badge">${m.timing === 'bedtime' ? '🌙' : m.timing === 'with_water' ? '💧' : m.timing === 'empty_stomach' ? '⏳' : '🍽️'} ${escHtml(medTimingText(m))}</span>` : ''}
-        ${m.cost != null ? `<span class="med-cost-badge">₹${(Math.round(m.cost * 100) / 100).toLocaleString('en-IN')}/mo</span>` : ''}
+        ${m.cost != null ? `<span class="med-cost-badge">${_money(m.cost)}/mo</span>` : ''}
         ${_expiryBadge(m)}
       </div>
       ${isPRN ? `
@@ -9654,6 +9666,14 @@ async function openProfileModal() {
   ['name','age'].forEach(k => { if (form[k]) form[k].value = p[k] || ''; });
   if (form.gender)         form.gender.value         = p.gender         || 'male';
   if (form.activity_level) form.activity_level.value = p.activity_level || 'moderate';
+
+  // Country picker → drives currency + the medical-spend financial year.
+  const csel = document.getElementById('prof-country');
+  if (csel) {
+    if (!_countryList.length) { try { await loadUserLocale(); } catch (e) {} }
+    csel.innerHTML = _countryList.map(c => `<option value="${escHtml(c.code)}">${escHtml(c.name)} (${escHtml(c.symbol)})</option>`).join('');
+    csel.value = p.country || _userCountry || 'IN';
+  }
   const goalRadio = form.querySelector(`input[name=goal][value="${p.goal||'maintain'}"]`);
   if (goalRadio) goalRadio.checked = true;
 
@@ -9696,6 +9716,7 @@ document.addEventListener('DOMContentLoaded', () => {
       height_cm:      window._heightCm || parseFloat(form.height_cm?.value) || 170,
       gender:         form.gender?.value,
       activity_level: form.activity_level?.value,
+      country:        document.getElementById('prof-country')?.value,
       goal:           form.querySelector('input[name=goal]:checked')?.value || 'maintain'
     };
     const r = await fetch('/api/food/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
@@ -9706,9 +9727,16 @@ document.addEventListener('DOMContentLoaded', () => {
       foodTargets = d.targets;
       closeModal('profile-modal-overlay');
       updateSidebarUser();
-      // Refresh all pages that show calorie data
+      // Country may have changed → refresh currency, then re-render money views.
+      try { await loadUserLocale(); } catch (e) {}
       loadDashboard();
       loadFoodTracker();
+      try {
+        const active = document.querySelector('.view.active')?.id || '';
+        if (active === 'view-spending') loadSpendingView();
+        else if (active === 'view-taxsummary') loadTaxSummary();
+        else if (active === 'view-claims') loadClaims();
+      } catch (e) {}
       if (document.getElementById('view-fitness')?.classList.contains('active')) loadFitness();
     }
   });
@@ -15666,8 +15694,8 @@ function renderClaims(d) {
       <h2 class="panel-title" style="margin-bottom:12px" id="clm-form-title">${t('Add a claim')}</h2>
       <div class="clm-form">
         <input type="text" id="clm-insurer" class="form-input" placeholder="${t('Insurer (e.g. Star Health)')}" style="flex:2;min-width:170px">
-        <input type="number" step="any" min="0" id="clm-amount" class="form-input" placeholder="₹ ${t('claimed')}" style="max-width:120px">
-        <input type="number" step="any" min="0" id="clm-reimbursed" class="form-input" placeholder="₹ ${t('reimbursed')}" style="max-width:130px">
+        <input type="number" step="any" min="0" id="clm-amount" class="form-input" placeholder="${_userCurrency.symbol} ${t('claimed')}" style="max-width:120px">
+        <input type="number" step="any" min="0" id="clm-reimbursed" class="form-input" placeholder="${_userCurrency.symbol} ${t('reimbursed')}" style="max-width:130px">
         <select id="clm-status" class="form-input" style="max-width:150px">${statusOpts}</select>
         <input type="date" id="clm-date" class="form-input" value="${today}" max="${today}" style="max-width:160px">
         <button class="btn-primary" data-ev-click="saveClaim()" id="clm-save-btn">${t('Add')}</button>
@@ -17283,7 +17311,7 @@ function renderQuit(plans) {
       </div>
       <div class="dv-form" style="margin-top:8px">
         <input type="number" id="quit-baseline" class="form-input" placeholder="${t('Per day before (optional)')}" min="0" step="any" style="max-width:180px">
-        <input type="number" id="quit-cost" class="form-input" placeholder="${t('Cost each ₹ (optional)')}" min="0" step="any" style="max-width:170px">
+        <input type="number" id="quit-cost" class="form-input" placeholder="${tformat('Cost each %1 (optional)', _userCurrency.symbol)}" min="0" step="any" style="max-width:170px">
         <button class="btn-primary" data-ev-click="saveQuit()">${t('Start')}</button>
       </div>
     </div>`;
@@ -17292,7 +17320,7 @@ function renderQuit(plans) {
     const unit = t(_QUIT_UNIT[p.kind] || 'units');
     const stats = [];
     if (p.units_avoided != null) stats.push(`<div class="quit-stat"><div class="quit-stat-n">${trimG(p.units_avoided)}</div><div class="quit-stat-l">${tformat('%1 avoided', unit)}</div></div>`);
-    if (p.money_saved != null) stats.push(`<div class="quit-stat"><div class="quit-stat-n">₹${escHtml(String(p.money_saved))}</div><div class="quit-stat-l">${t('saved')}</div></div>`);
+    if (p.money_saved != null) stats.push(`<div class="quit-stat"><div class="quit-stat-n">${_money(p.money_saved)}</div><div class="quit-stat-l">${t('saved')}</div></div>`);
     return `<div class="panel quit-card">
         <div class="quit-head">
           <div><div class="quit-kind">${t(_QUIT_KIND[p.kind] || p.kind)}${p.label ? ' · ' + escHtml(p.label) : ''}</div>
@@ -17886,7 +17914,7 @@ async function loadCostPerDay() {
   const d = await fetch('/api/medicines/cost-per-day', {credentials:'same-origin'})
     .then(r => r.json()).catch(() => null);
   if (!d || !d.has_data) { el.innerHTML = ''; return; }
-  const inr = n => '₹' + (Math.round(n * 100) / 100).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const inr = n => _money(n, {minimumFractionDigits: 2, maximumFractionDigits: 2});
   const maxDay = Math.max(...d.items.map(i => i.per_day), 0.01);
   const rows = d.items.map(i => `
     <div class="cpd-row">
@@ -18625,7 +18653,28 @@ const SPEND_CATS = {
   other:        '📌 Other',
 };
 
-function _rupee(n) { return '₹' + Math.round(n || 0).toLocaleString('en-IN'); }
+// The user's currency, resolved from their country (see /api/locale). Defaults
+// to India so nothing changes before it loads / for existing users.
+let _userCurrency = { code: 'INR', symbol: '₹', locale: 'en-IN' };
+let _userCountry = 'IN';
+let _countryList = [];
+function _money(n, opts) {
+  const v = Math.round((n || 0) * 100) / 100;
+  try { return _userCurrency.symbol + v.toLocaleString(_userCurrency.locale, opts || {}); }
+  catch (e) { return _userCurrency.symbol + v.toLocaleString('en-US', opts || {}); }
+}
+// Kept for callers that want a whole-number amount; now country-aware.
+function _rupee(n) {
+  try { return _userCurrency.symbol + Math.round(n || 0).toLocaleString(_userCurrency.locale); }
+  catch (e) { return _userCurrency.symbol + Math.round(n || 0).toLocaleString('en-US'); }
+}
+async function loadUserLocale() {
+  const d = await fetch('/api/locale', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) return;
+  if (d.currency) _userCurrency = d.currency;
+  if (d.country) _userCountry = d.country;
+  _countryList = d.countries || [];
+}
 function _spendCatLabel(k) {
   const meta = SPEND_CATS[k] || ('📌 ' + k);
   const [emoji, ...rest] = meta.split(' ');
@@ -18680,8 +18729,8 @@ function renderSpendingView(d, trendMonths) {
       <div class="spend-form">
         <select id="spend-cat" class="form-input" style="max-width:190px">${catOptions}</select>
         <input type="text" id="spend-desc" class="form-input" placeholder="${t('What for? (optional)')}" style="max-width:200px">
-        <input type="number" step="any" min="0" id="spend-amount" class="form-input" placeholder="₹ ${t('amount')}" style="max-width:120px">
-        <input type="number" step="any" min="0" id="spend-covered" class="form-input" placeholder="${t('covered ₹0')}" title="${t('Reimbursed by insurance or a scheme')}" style="max-width:130px">
+        <input type="number" step="any" min="0" id="spend-amount" class="form-input" placeholder="${_userCurrency.symbol} ${t('amount')}" style="max-width:120px">
+        <input type="number" step="any" min="0" id="spend-covered" class="form-input" placeholder="${tformat('covered %1', _userCurrency.symbol + '0')}" title="${t('Reimbursed by insurance or a scheme')}" style="max-width:130px">
         <input type="date" id="spend-date" class="form-input" value="${today}" max="${today}" style="max-width:160px">
         <button class="btn-primary" data-ev-click="logExpense()">${t('Add')}</button>
       </div>

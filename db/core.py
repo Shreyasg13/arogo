@@ -798,6 +798,16 @@ def migrate_add_language():
         pass  # already exists
 
 
+def migrate_add_country():
+    """Add country column to user_profile. Drives currency, number formatting and
+    the medical-spend financial year (see db/locale_config). NULL → India default,
+    so existing accounts are unchanged until they choose a country."""
+    try:
+        execute("ALTER TABLE user_profile ADD COLUMN country TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_symptom_region():
     """Add an optional body-region tag to symptoms (I7 body-map). '' = unset /
     non-localized. Validated against a fixed enum at the write path."""
@@ -1476,6 +1486,7 @@ def init_db():
     migrate_add_diet_pref()
     migrate_add_ui_mode()
     migrate_add_language()
+    migrate_add_country()
     migrate_add_schedule_days()
     migrate_add_interval_days()
     migrate_add_family_display()

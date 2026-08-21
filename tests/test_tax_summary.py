@@ -62,13 +62,28 @@ def test_disclaimer_present_and_no_advice_language(app):
     _, uid = _uid(app, "taxfy2@medeasy.test")
     with user_context(uid):
         s = get_tax_summary(2025)
-    assert s["disclaimer"] == DISCLAIMER
     # honesty: never asserts a deductible amount or tells the user what to claim
     txt = s["disclaimer"].lower()
-    assert "not tax advice" in txt
+    assert "not tax advice" in txt and "not a deduction calculation" in txt
     assert not re.search(r"you can claim|deductible amount|eligible amount|you will save", txt)
     # the payload must not carry a computed "deduction"/"savings" field
     assert "deduction" not in s and "savings" not in s and "tax_saved" not in s
+
+
+def test_country_drives_fy_and_currency(app):
+    from db.food import update_profile
+    from db.locale_config import currency_of
+    _, uid = _uid(app, "taxus@medeasy.test")
+    with user_context(uid):
+        # India default → Apr–Mar, ₹
+        assert get_tax_summary(2025)["label"] == "2025–26"
+        assert currency_of()["symbol"] == "₹"
+        # switch to the US → calendar year Jan–Dec, $
+        update_profile({"country": "US"})
+        s = get_tax_summary(2025)
+    assert s["label"] == "2025"                    # calendar year, not 2025–26
+    assert s["start"] == "2025-01-01" and s["end"] == "2025-12-31"
+    assert s["currency"]["code"] == "USD" and s["currency"]["symbol"] == "$"
 
 
 def test_claims_within_fy(app):
