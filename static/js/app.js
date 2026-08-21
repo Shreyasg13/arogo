@@ -241,6 +241,14 @@ const I18N = {
     'Claimed %1': '%1 दावा किया', 'reimbursed %1': '%1 वापस मिला', '%1 outstanding': '%1 बकाया',
     'Download itemised CSV for your accountant': 'अपने अकाउंटेंट के लिए विस्तृत CSV डाउनलोड करें',
     'Consultations': 'परामर्श', 'Lab tests': 'लैब जाँच', 'Hospital': 'अस्पताल',
+    // Document scan (OCR → confirm-before-save)
+    'Nothing checked to add': 'जोड़ने के लिए कुछ चुना नहीं', 'Adding…': 'जोड़ रहे हैं…',
+    'Added %1 reading(s) to vitals': 'वाइटल्स में %1 रीडिंग जोड़ी',
+    'Added %1 of %2 — check the rest by hand': '%2 में से %1 जोड़ी — बाक़ी हाथ से जाँचें',
+    'We read these off the report — check them against it, then add the ones you want. Nothing is saved to your vitals until you do.':
+      'हमने ये रिपोर्ट से पढ़े — इन्हें रिपोर्ट से मिलाएँ, फिर जो चाहें जोड़ें। जब तक आप न जोड़ें, कुछ भी आपके वाइटल्स में सेव नहीं होता।',
+    'Read from a photo — scanning can misread digits, so double-check each value against the report.':
+      'फ़ोटो से पढ़ा गया — स्कैनिंग अंक ग़लत पढ़ सकती है, इसलिए हर मान को रिपोर्ट से मिलाकर जाँचें।',
     // Care circle
     'Care circle': 'देखभाल मंडली', 'Could not load your care circle.': 'आपकी देखभाल मंडली लोड नहीं हो सकी।',
     'At a glance for the people you help look after — today’s doses and this week, only what they’ve chosen to share.':
@@ -5270,7 +5278,7 @@ function openReportDetail(r) {
 // back. We read the numbers out of it and *offer* them — the user confirms
 // every one. Wrong data in a health chart is worse than no data, so nothing
 // here writes a vital until they say so.
-let _reportReadings = [], _reportReadingsDate = '';
+let _reportReadings = [], _reportReadingsDate = '', _reportIsImage = false;
 
 function _readingValue(v) {
   return v.value2 ? `${+v.value1}/${+v.value2}` : `${+v.value1}`;
@@ -5287,6 +5295,7 @@ async function loadReportReadings(rid) {
 
   _reportReadings = d.readings || [];
   _reportReadingsDate = d.date_key || localToday();
+  _reportIsImage = !!d.is_image;
 
   if (!_reportReadings.length) {
     // Say why, rather than showing nothing and letting them wonder.
@@ -5301,9 +5310,9 @@ async function loadReportReadings(rid) {
       Readings in this report
     </div>
     <div style="font-size:12.5px;color:var(--gray-500);margin-bottom:10px">
-      We read these off the report — check them against it, then add the ones you want.
-      Nothing is saved to your vitals until you do.
+      ${t('We read these off the report — check them against it, then add the ones you want. Nothing is saved to your vitals until you do.')}
     </div>
+    ${_reportIsImage ? `<div style="font-size:12px;color:var(--clay-600,#B96539);background:var(--sand-50,#faf6ef);border:1px solid var(--gray-100);border-radius:var(--r-md);padding:8px 10px;margin-bottom:10px">📷 ${t('Read from a photo — scanning can misread digits, so double-check each value against the report.')}</div>` : ''}
     <div style="display:flex;flex-direction:column;gap:8px">
       ${_reportReadings.map((v, i) => `
         <label style="display:flex;gap:10px;align-items:flex-start;background:var(--gray-25);border:1px solid var(--gray-100);border-radius:var(--r-md);padding:10px 12px;cursor:pointer">
@@ -5326,37 +5335,32 @@ async function loadReportReadings(rid) {
   `;
 }
 
-async function addReportReadings() {
+async function addReportReadings(rid) {
   const btn = document.getElementById('rdetail-add-readings');
   const picked = [..._reportReadings.keys()].filter(i =>
     document.querySelector(`.rdetail-reading-cb[data-idx="${i}"]`)?.checked);
-  if (!picked.length) { showToast('Nothing checked to add', 'error'); return; }
-  if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+  if (!picked.length) { showToast(t('Nothing checked to add'), 'error'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = t('Adding…'); }
 
-  let added = 0;
-  for (const i of picked) {
+  // One request; the server re-validates each reading through log_vital, so a
+  // mis-read value is rejected there, never trusted.
+  const readings = picked.map(i => {
     const v = _reportReadings[i];
-    try {
-      const r = await fetch('/api/vitals', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: v.type, value1: v.value1, value2: v.value2, unit: v.unit,
-          // Date it to the day of the test, not the day it was uploaded.
-          date_key: _reportReadingsDate,
-          notes: 'From lab report',
-        }),
-      });
-      if ((await r.json()).success) added++;
-    } catch { /* counted as not added */ }
-  }
+    return { type: v.type, value1: v.value1, value2: v.value2, unit: v.unit };
+  });
+  const r = await fetch(`/api/reports/${rid}/readings/save`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin',
+    body: JSON.stringify({ date_key: _reportReadingsDate, readings }),
+  }).then(x => x.json()).catch(() => null);
+  const added = (r && r.saved) || 0;
 
   // Report honestly: if some failed the range check, don't claim they landed.
   showToast(added === picked.length
-      ? `Added ${added} reading${added > 1 ? 's' : ''} to vitals`
-      : `Added ${added} of ${picked.length} — check the rest by hand`,
+      ? tformat('Added %1 reading(s) to vitals', added)
+      : tformat('Added %1 of %2 — check the rest by hand', added, picked.length),
     added ? 'success' : 'error');
   if (added) { closeModal('report-detail-overlay'); loadDashboard(); }
-  else if (btn) { btn.disabled = false; btn.textContent = 'Add checked to vitals'; }
+  else if (btn) { btn.disabled = false; btn.textContent = t('Add checked to vitals'); }
 }
 
 function deleteReport(id) {

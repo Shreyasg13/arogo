@@ -81,10 +81,12 @@ def del_report(rid):
 def report_readings(rid):
     """Propose the vitals found in an uploaded report — never writes them.
 
-    The user confirms each reading before it becomes a health record; see
-    lab_parse for why we'd rather find nothing than find something wrong.
+    Handles photos (OCR via rx_parse when Tesseract is installed) as well as
+    PDF/txt/csv. The user confirms each reading before it becomes a health
+    record; see lab_parse for why we'd rather find nothing than find something
+    wrong. Images degrade honestly when OCR isn't available on the server.
     """
-    import lab_parse
+    import lab_parse, rx_parse
 
     r = get_report(rid)          # user-scoped: None for someone else's report
     if not r:
@@ -94,16 +96,46 @@ def report_readings(rid):
     if not os.path.exists(path):
         return jsonify({'readings': [], 'reason': "That file is no longer on the server."})
 
-    text, reason = lab_parse.extract_text(path, r.get('file_ext', ''))
+    ext = (r.get('file_ext', '') or '').lower().lstrip('.')
+    is_image = ext in lab_parse.IMAGE_EXTS
+    # rx_parse.extract_text is the unified extractor: OCR for images, the shared
+    # parser for PDF/txt/csv.
+    text, reason = rx_parse.extract_text(path, ext)
     if text is None:
-        return jsonify({'readings': [], 'reason': reason})
+        return jsonify({'readings': [], 'reason': reason,
+                        'is_image': is_image, 'ocr_available': rx_parse.ocr_available()})
 
     readings = lab_parse.find_readings(text)
     # Date the readings to the day of the test, not the day of the upload.
     return jsonify({'readings': readings,
                     'date_key': r.get('report_date') or today_iso(),
+                    'is_image': is_image, 'ocr_available': rx_parse.ocr_available(),
                     'reason': '' if readings else
                               "We read the report but couldn't find any readings we track."})
+
+
+@bp.route('/api/reports/<rid>/readings/save', methods=['POST'])
+@require_auth
+def save_report_readings(rid):
+    """Save the readings the user CONFIRMED from a scanned report. Each is
+    re-validated through log_vital (ranges/plausibility), so a mis-read OCR value
+    is rejected, never trusted. Returns saved/failed counts."""
+    from db.health import log_vital
+    r = get_report(rid)
+    if not r:
+        return jsonify({'error': 'Not found'}), 404
+    body = request.json or {}
+    items = body.get('readings') or []
+    date_key = body.get('date_key') or r.get('report_date') or today_iso()
+    saved, failed = 0, 0
+    for it in items:
+        try:
+            log_vital({'type': it.get('type'), 'value1': it.get('value1'),
+                       'value2': it.get('value2'), 'unit': it.get('unit'), 'date_key': date_key})
+            saved += 1
+        except Exception:
+            failed += 1
+    return jsonify({'success': True, 'saved': saved, 'failed': failed})
 
 
 @bp.route('/api/stats')
