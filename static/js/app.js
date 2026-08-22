@@ -245,6 +245,8 @@ const I18N = {
     'Sets your currency and the financial year used for the medical-spend summary.':
       'आपकी मुद्रा और चिकित्सा-ख़र्च सारांश का वित्तीय वर्ष तय करता है।',
     'Cost each %1 (optional)': 'प्रति लागत %1 (वैकल्पिक)', 'covered %1': '%1 कवर',
+    'Sets your currency and money formatting. You can change it later.':
+      'आपकी मुद्रा और पैसे का प्रारूप तय करता है। आप इसे बाद में बदल सकते हैं।',
     // Environment ↔ how you feel
     'Air & weather': 'हवा व मौसम', 'Could not load environment data.': 'पर्यावरण डेटा लोड नहीं हो सका।',
     'Import your local air quality and see whether it lined up with how you felt — a correlation from your own logs, never a claim of cause.':
@@ -22356,6 +22358,27 @@ function showOnboarding() {
   // Carry over the name from the create-account form so it isn't asked twice
   const obName = document.getElementById('ob-name');
   if (obName && !obName.value && _currentUser?.name) obName.value = _currentUser.name;
+  _obPopulateCountry();
+}
+
+// Guess the country from the browser locale (e.g. "en-GB" → GB), falling back to
+// India. Just a sensible default the user can change in the picker.
+function _guessCountry() {
+  try {
+    const langs = [navigator.language].concat(navigator.languages || []);
+    for (const l of langs) {
+      const m = /[-_]([A-Za-z]{2})$/.exec(l || '');
+      if (m) { const cc = m[1].toUpperCase(); if (_countryList.some(c => c.code === cc)) return cc; }
+    }
+  } catch (e) {}
+  return 'IN';
+}
+async function _obPopulateCountry() {
+  const sel = document.getElementById('ob-country');
+  if (!sel) return;
+  if (!_countryList.length) { try { await loadUserLocale(); } catch (e) {} }
+  sel.innerHTML = _countryList.map(c => `<option value="${escHtml(c.code)}">${escHtml(c.name)} (${escHtml(c.symbol)})</option>`).join('');
+  sel.value = _guessCountry();
 }
 
 function hideOnboarding() {
@@ -22371,9 +22394,11 @@ async function obSkip() {
   const name = (document.getElementById('ob-name')?.value || '').trim();
   const age  = parseInt(document.getElementById('ob-age')?.value);
   const gender = document.getElementById('ob-gender')?.value;
+  const country = document.getElementById('ob-country')?.value;
   if (name) payload.name = name;
   if (Number.isFinite(age) && age >= 1 && age <= 120) payload.age = age;
   if (gender) payload.gender = gender;
+  if (country) payload.country = country;
   try {
     await fetch('/api/food/profile', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -22483,6 +22508,8 @@ async function obSubmit() {
   // Only include weight/height if provided
   if (weight) payload.weight_kg  = weight;
   if (height) payload.height_cm  = height;
+  const country = document.getElementById('ob-country')?.value;
+  if (country) payload.country = country;
 
   const r = await fetch('/api/food/profile', {
     method: 'POST',
