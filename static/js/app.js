@@ -248,6 +248,24 @@ const I18N = {
     'Sets your currency and money formatting. You can change it later.':
       'आपकी मुद्रा और पैसे का प्रारूप तय करता है। आप इसे बाद में बदल सकते हैं।',
     'Units': 'इकाइयाँ', 'Weight': 'वज़न', 'Height': 'ऊँचाई', 'Temperature': 'तापमान',
+    // Insurance policies & renewals
+    'Insurance': 'बीमा', 'Could not load your policies.': 'आपकी पॉलिसियाँ लोड नहीं हो सकीं।',
+    'Your policies, premiums and renewal dates in one place — the facts you entered, so nothing lapses unnoticed.':
+      'आपकी पॉलिसियाँ, प्रीमियम और नवीनीकरण तिथियाँ एक जगह — आपके दर्ज तथ्य, ताकि कुछ चुपचाप समाप्त न हो।',
+    'Add a policy': 'पॉलिसी जोड़ें', 'Insurer': 'बीमाकर्ता', 'Policy number': 'पॉलिसी नंबर',
+    'Cover %1': 'कवर %1', 'Premium %1': 'प्रीमियम %1', 'Renews': 'नवीनीकरण',
+    'Who’s covered (optional)': 'किसका कवर है (वैकल्पिक)', 'Who is the insurer?': 'बीमाकर्ता कौन है?',
+    'Policy added': 'पॉलिसी जोड़ी गई',
+    'No policies yet. Add one so the renewal date and premium are somewhere you can find them.':
+      'अभी कोई पॉलिसी नहीं। एक जोड़ें ताकि नवीनीकरण तिथि और प्रीमियम आपको मिल सकें।',
+    'active policies': 'सक्रिय पॉलिसियाँ', 'premiums per year': 'प्रति वर्ष प्रीमियम',
+    'renews in %1 days': '%1 दिनों में नवीनीकरण', 'renews today': 'आज नवीनीकरण',
+    'lapsed %1 days ago': '%1 दिन पहले समाप्त', 'lapsed': 'समाप्त', 'active': 'सक्रिय',
+    '%1 days': '%1 दिन', 'cover %1': 'कवर %1', 'Renews %1': 'नवीनीकरण %1',
+    'No renewal date set': 'कोई नवीनीकरण तिथि नहीं', 'per year': 'प्रति वर्ष',
+    'per quarter': 'प्रति तिमाही', 'per month': 'प्रति माह',
+    'Health': 'स्वास्थ्य', 'Accident': 'दुर्घटना', 'Critical illness': 'गंभीर बीमारी',
+    'Life': 'जीवन', 'Travel': 'यात्रा',
     // Emergency numbers (ICE card)
     'In an emergency, call': 'आपात स्थिति में कॉल करें',
     'Public emergency numbers for %1.': '%1 के सार्वजनिक आपातकालीन नंबर।',
@@ -3134,6 +3152,7 @@ function switchView(view) {
   if (view === 'experiments')   loadExperiments();
   if (view === 'taxsummary')    loadTaxSummary();
   if (view === 'environment')   loadEnvironment();
+  if (view === 'insurance')     loadInsurance();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12706,6 +12725,7 @@ const NAV_TARGETS = [
   {v:'carecircle',    l:'Care circle',      k:'caregiver family members command center at a glance manage elder parent status board watch over'},
   {v:'experiments',   l:'Experiments',      k:'experiment n-of-1 self test try before after compare change what if does affect trial'},
   {v:'taxsummary',    l:'Tax & spend',      k:'tax 80d deduction financial year medical spend accountant reimbursement claim summary insurance premium csv'},
+  {v:'insurance',     l:'Insurance',        k:'insurance policy policies premium renewal cover insurer mediclaim health cover expiry'},
   {v:'environment',   l:'Air & weather',    k:'environment air quality aqi pollution weather temperature humidity correlation symptoms how i feel import'},
 ];
 
@@ -12733,13 +12753,13 @@ const FEATURE_SECTIONS = [
   {t: 'Medicines',        v: ['medicines', 'prescriptions', 'taper', 'med-budget']},
   {t: 'Vitals & records', v: ['reports', 'body', 'labs', 'conditions', 'immunizations', 'allergies']},
   {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'timeline']},
-  {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'carecircle', 'dependents', 'claims', 'health-id', 'binder']},
+  {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'carecircle', 'dependents', 'claims', 'insurance', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'experiments', 'environment', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
   {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'taxsummary', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments', 'taxsummary', 'environment']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments', 'taxsummary', 'environment', 'insurance']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -17195,6 +17215,112 @@ function renderTaxSummary(d) {
 function downloadTaxCsv() {
   if (_taxFy == null) return;
   window.location.href = '/api/tax-summary/csv?fy=' + _taxFy;
+}
+
+// ── Insurance policies & renewals ────────────────────────────────────────────
+// Holds what you entered — insurer, cover, premium, renewal date — and counts
+// down to renewal. Never rates a policy or suggests buying anything.
+const _INS_KIND = { health: 'Health', accident: 'Accident', critical_illness: 'Critical illness',
+                    life: 'Life', travel: 'Travel', other: 'Other' };
+const _INS_PERIOD = { year: 'per year', quarter: 'per quarter', month: 'per month' };
+
+async function loadInsurance() {
+  const el = document.getElementById('insurance-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const d = await fetch('/api/insurance', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your policies.')}</div>`; return; }
+  el.innerHTML = renderInsurance(d);
+  try { _a11yEnhance(el); } catch (e) {}
+}
+
+function renderInsurance(d) {
+  const kinds = Object.keys(_INS_KIND).map(k => `<option value="${k}">${t(_INS_KIND[k])}</option>`).join('');
+  const periods = Object.keys(_INS_PERIOD).map(k => `<option value="${k}">${t(_INS_PERIOD[k])}</option>`).join('');
+  const form = `<div class="panel ins-form">
+      <h2 class="panel-title" style="margin-bottom:12px">${t('Add a policy')}</h2>
+      <div class="ins-row">
+        <input type="text" class="form-input" id="ins-insurer" placeholder="${t('Insurer')}" maxlength="120" style="flex:2;min-width:160px">
+        <input type="text" class="form-input" id="ins-no" placeholder="${t('Policy number')}" maxlength="80" style="flex:1;min-width:130px">
+        <select class="form-input" id="ins-kind" style="max-width:160px">${kinds}</select>
+      </div>
+      <div class="ins-row" style="margin-top:8px">
+        <input type="number" class="form-input" id="ins-cover" placeholder="${tformat('Cover %1', _userCurrency.symbol)}" min="0" step="any" style="max-width:160px">
+        <input type="number" class="form-input" id="ins-premium" placeholder="${tformat('Premium %1', _userCurrency.symbol)}" min="0" step="any" style="max-width:160px">
+        <select class="form-input" id="ins-period" style="max-width:150px">${periods}</select>
+        <label class="ins-lbl">${t('Renews')}</label>
+        <input type="date" class="form-input" id="ins-renewal" style="max-width:165px">
+        <button class="btn-primary" data-ev-click="submitPolicy()">${t('Add')}</button>
+      </div>
+      <div class="ins-row" style="margin-top:8px">
+        <input type="text" class="form-input" id="ins-members" placeholder="${t('Who’s covered (optional)')}" maxlength="200" style="flex:1;min-width:200px">
+      </div>
+    </div>`;
+
+  const s = d.summary || {};
+  let banner = '';
+  if ((s.renewing_soon || []).length) {
+    const items = s.renewing_soon.map(r => {
+      const when = r.days < 0 ? tformat('lapsed %1 days ago', Math.abs(r.days))
+                 : r.days === 0 ? t('renews today') : tformat('renews in %1 days', r.days);
+      return `${escHtml(r.insurer)} — ${when}`;
+    }).join(' · ');
+    banner = `<div class="ins-banner">⏰ ${items}</div>`;
+  }
+
+  const pols = d.policies || [];
+  if (!pols.length) {
+    return form + `<div class="dv-empty">${t('No policies yet. Add one so the renewal date and premium are somewhere you can find them.')}</div>`;
+  }
+
+  const tiles = (s.yearly_premium != null || s.active) ? `<div class="ins-tiles">
+      <div class="ins-tile"><div class="ins-tile-n">${s.active || 0}</div><div class="ins-tile-l">${t('active policies')}</div></div>
+      ${s.yearly_premium != null ? `<div class="ins-tile"><div class="ins-tile-n">${_money(s.yearly_premium)}</div><div class="ins-tile-l">${t('premiums per year')}</div></div>` : ''}
+    </div>` : '';
+
+  const cards = pols.map(p => {
+    const badge = p.renewal_status === 'expired' ? `<span class="ins-badge ins-exp">${t('lapsed')}</span>`
+                : p.renewal_status === 'soon' ? `<span class="ins-badge ins-soon">${tformat('%1 days', p.days_to_renewal)}</span>`
+                : p.renewal_status === 'ok' ? `<span class="ins-badge ins-ok">${t('active')}</span>` : '';
+    const bits = [
+      p.policy_no ? `#${escHtml(p.policy_no)}` : '',
+      t(_INS_KIND[p.kind] || 'Other'),
+      p.cover_amount != null ? tformat('cover %1', _money(p.cover_amount)) : '',
+      p.premium != null ? `${_money(p.premium)} ${t(_INS_PERIOD[p.premium_period] || 'per year')}` : '',
+    ].filter(Boolean).join(' · ');
+    return `<div class="panel ins-card ${p.renewal_status === 'expired' ? 'ins-card-exp' : ''}">
+        <div class="ins-head">
+          <div style="flex:1;min-width:0">
+            <div class="ins-name">${escHtml(p.insurer)} ${badge}</div>
+            <div class="ins-meta">${bits}</div>
+            ${p.renewal_date ? `<div class="ins-renew">${tformat('Renews %1', escHtml(p.renewal_date))}</div>` : `<div class="ins-renew ins-dim">${t('No renewal date set')}</div>`}
+            ${p.members ? `<div class="ins-members">👪 ${escHtml(p.members)}</div>` : ''}
+          </div>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deletePolicy('${p.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  return form + banner + tiles + cards;
+}
+
+async function submitPolicy() {
+  const val = id => (document.getElementById(id) || {}).value || '';
+  const body = { insurer: val('ins-insurer'), policy_no: val('ins-no'), kind: val('ins-kind'),
+                 cover_amount: val('ins-cover') || null, premium: val('ins-premium') || null,
+                 premium_period: val('ins-period'), renewal_date: val('ins-renewal') || null,
+                 members: val('ins-members') };
+  if (!body.insurer.trim()) { showToast(t('Who is the insurer?'), 'error'); return; }
+  const r = await fetch('/api/insurance', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify(body) }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Policy added')); loadInsurance(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
+async function deletePolicy(id) {
+  await fetch('/api/insurance/' + id, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+  loadInsurance();
 }
 
 // ── Environment ↔ how you feel (AQI import + correlation) ────────────────────

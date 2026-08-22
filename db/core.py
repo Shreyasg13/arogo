@@ -546,6 +546,14 @@ CREATE TABLE IF NOT EXISTS experiments (
     status TEXT DEFAULT 'active', end_date TEXT DEFAULT NULL,
     notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS insurance_policies (
+    id TEXT PRIMARY KEY, insurer TEXT NOT NULL, policy_no TEXT DEFAULT '',
+    kind TEXT DEFAULT 'health', cover_amount REAL DEFAULT NULL,
+    premium REAL DEFAULT NULL, premium_period TEXT DEFAULT 'year',
+    start_date TEXT DEFAULT NULL, renewal_date TEXT DEFAULT NULL,
+    members TEXT DEFAULT '', notes TEXT DEFAULT '', active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS environment_days (
     id TEXT PRIMARY KEY, date_key TEXT NOT NULL, aqi REAL DEFAULT NULL,
     temp_c REAL DEFAULT NULL, humidity REAL DEFAULT NULL,
@@ -1460,6 +1468,7 @@ DATA_TABLES = [
     'weekly_reviews',
     'experiments',
     'environment_days',
+    'insurance_policies',
 ]
 
 
