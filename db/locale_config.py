@@ -104,6 +104,54 @@ def _country_default_units(code):
     }
 
 
+# ── Emergency numbers ───────────────────────────────────────────────────────
+# Public emergency numbers by country. These are widely-published facts, not
+# medical advice; each entry is a labelled list so we never guess which service
+# a number reaches. "112" works across the EU and as a GSM fallback in many
+# places. Countries not listed fall back to 112 + a note to check locally.
+EMERGENCY_NUMBERS = {
+    'IN': [('Ambulance', '108'), ('Police', '100'), ('Fire', '101'), ('All-in-one', '112')],
+    'US': [('Emergency (all)', '911')],
+    'CA': [('Emergency (all)', '911')],
+    'GB': [('Emergency (all)', '999'), ('Non-emergency medical', '111'), ('EU standard', '112')],
+    'IE': [('Emergency (all)', '112'), ('Emergency (all)', '999')],
+    'AU': [('Emergency (all)', '000')],
+    'NZ': [('Emergency (all)', '111')],
+    'AE': [('Ambulance', '998'), ('Police', '999'), ('Fire', '997')],
+    'SG': [('Ambulance & Fire', '995'), ('Police', '999')],
+    'ZA': [('Ambulance', '10177'), ('Emergency (all)', '112')],
+    'JP': [('Ambulance & Fire', '119'), ('Police', '110')],
+    'CN': [('Ambulance', '120'), ('Police', '110'), ('Fire', '119')],
+    'DE': [('Emergency (all)', '112'), ('Police', '110')],
+    'FR': [('Emergency (all)', '112'), ('Ambulance (SAMU)', '15')],
+    'ES': [('Emergency (all)', '112')],
+    'IT': [('Emergency (all)', '112')],
+    'NL': [('Emergency (all)', '112')],
+    'BR': [('Ambulance (SAMU)', '192'), ('Fire & rescue', '193')],
+    'MX': [('Emergency (all)', '911')],
+    'PK': [('Ambulance (Edhi)', '115'), ('Police', '15'), ('Rescue', '1122')],
+    'BD': [('Emergency (all)', '999')],
+    'LK': [('Ambulance (Suwa Seriya)', '1990'), ('Emergency (all)', '119')],
+    'NP': [('Ambulance', '102'), ('Police', '100')],
+}
+_EMERGENCY_FALLBACK = [('International / GSM standard', '112')]
+
+
+def emergency_numbers(country=None):
+    """Public emergency numbers for the user's country. Returns
+    {country, name, numbers:[{label, number}], verified} — `verified` is False
+    for the generic fallback, so the UI can tell the user to confirm locally."""
+    code = valid_country(country) if country is not None else country_of()
+    code = code or DEFAULT_COUNTRY
+    rows = EMERGENCY_NUMBERS.get(code)
+    return {
+        'country': code,
+        'country_name': COUNTRIES[code]['name'],
+        'numbers': [{'label': l, 'number': n} for l, n in (rows or _EMERGENCY_FALLBACK)],
+        'listed': bool(rows),
+    }
+
+
 def units_of(profile=None):
     """The calling user's units — country defaults, overridden by any explicit
     per-unit preference on the profile."""

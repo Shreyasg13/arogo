@@ -106,6 +106,36 @@ def test_explicit_unit_overrides_country(app):
         assert units_of()["weight"] == "kg"
 
 
+def test_emergency_numbers_by_country(app):
+    from db.locale_config import emergency_numbers
+    _, uid = _client_uid(app, "loc7@medeasy.test")
+    with user_context(uid):
+        e = emergency_numbers()                      # India default
+        nums = {x["number"] for x in e["numbers"]}
+        assert "108" in nums and e["listed"] is True
+        update_profile({"country": "US"})
+        e = emergency_numbers()
+        assert [x["number"] for x in e["numbers"]] == ["911"]
+        update_profile({"country": "GB"})
+        assert "999" in {x["number"] for x in emergency_numbers()["numbers"]}
+
+
+def test_emergency_fallback_is_flagged_unlisted():
+    from db.locale_config import emergency_numbers
+    e = emergency_numbers("OT")                      # "Other" has no listed numbers
+    assert e["listed"] is False                      # UI must tell the user to check locally
+    assert e["numbers"][0]["number"] == "112"
+
+
+def test_emergency_numbers_on_health_id(app):
+    from db.health_id import get_health_id
+    _, uid = _client_uid(app, "loc8@medeasy.test")
+    with user_context(uid):
+        card = get_health_id()
+    assert "emergency_numbers" in card
+    assert any(n["number"] == "108" for n in card["emergency_numbers"]["numbers"])
+
+
 def test_units_in_locale_route(app):
     c, _ = _client_uid(app, "loc6@medeasy.test")
     u = c.get("/api/locale").get_json()["units"]

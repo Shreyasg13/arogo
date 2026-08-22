@@ -73,4 +73,15 @@ def get_health_id() -> dict:
             'directive_wishes': _s(e.get('directive_wishes')),
             'directive_location': _s(e.get('directive_location')),
         },
+        # Public emergency numbers for the user's country — so the card is
+        # useful abroad and to a bystander who doesn't know the local number.
+        'emergency_numbers': _emergency_numbers_safe(),
     }
+
+
+def _emergency_numbers_safe():
+    try:
+        from .locale_config import emergency_numbers
+        return emergency_numbers()
+    except Exception:
+        return {'numbers': [], 'listed': False}
