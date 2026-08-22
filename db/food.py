@@ -89,9 +89,20 @@ def update_profile(data: dict) -> dict:
     else:
         country = p.get('country')
 
+    # Display-unit preferences: validate per kind, keep existing on garbage.
+    # These never change stored data — only how it's shown/entered.
+    from .locale_config import valid_unit
+    units = {}
+    for kind, col in (('weight', 'weight_unit'), ('height', 'height_unit'),
+                      ('temp', 'temp_unit'), ('glucose', 'glucose_unit')):
+        units[col] = valid_unit(kind, data.get(col)) if col in data else p.get(col)
+        if col in data and units[col] is None:
+            units[col] = p.get(col)          # ignore garbage, keep what was set
+
     execute("""UPDATE user_profile SET
         name=?, weight_kg=?, height_cm=?, age=?, gender=?,
-        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, ui_mode=?, language=?, country=?, updated_at=?
+        activity_level=?, goal=?, target_weight_kg=?, timezone=?, diet_pref=?, ui_mode=?, language=?, country=?,
+        weight_unit=?, height_unit=?, temp_unit=?, glucose_unit=?, updated_at=?
         WHERE id=? AND user_id=?""",
         (data.get('name', p.get('name')) or '',
          _float('weight_kg', p.get('weight_kg')),
@@ -106,6 +117,7 @@ def update_profile(data: dict) -> dict:
          ui_mode,
          language,
          country,
+         units['weight_unit'], units['height_unit'], units['temp_unit'], units['glucose_unit'],
          now_iso(), p['id'], current_user_id()), commit=True)
     return get_profile()
 

@@ -74,3 +74,40 @@ def test_locale_requires_auth(app):
 def test_country_list_sorted_with_other_last():
     lst = country_list()
     assert lst[-1]["code"] == "OT"                  # "Other" sinks to the bottom
+
+
+# ── units of measurement ────────────────────────────────────────────────────
+
+def test_units_default_by_country(app):
+    from db.locale_config import units_of
+    _, uid = _client_uid(app, "loc4@medeasy.test")
+    with user_context(uid):
+        u = units_of()                               # India default
+        assert u == {"weight": "kg", "height": "cm", "temp": "c", "glucose": "mgdl"}
+        update_profile({"country": "US"})
+        u = units_of()                               # US → imperial + mg/dL
+        assert u["weight"] == "lb" and u["height"] == "ft" and u["temp"] == "f"
+        assert u["glucose"] == "mgdl"
+        update_profile({"country": "GB"})
+        u = units_of()                               # UK → stone-free kg, ft, °C, mmol
+        assert u["weight"] == "kg" and u["height"] == "ft"
+        assert u["temp"] == "c" and u["glucose"] == "mmol"
+
+
+def test_explicit_unit_overrides_country(app):
+    from db.locale_config import units_of
+    _, uid = _client_uid(app, "loc5@medeasy.test")
+    with user_context(uid):
+        update_profile({"country": "US"})            # defaults to lb
+        update_profile({"weight_unit": "kg"})        # user overrides
+        assert units_of()["weight"] == "kg"
+        assert units_of()["temp"] == "f"             # others still follow the country
+        update_profile({"weight_unit": "nonsense"})  # garbage ignored
+        assert units_of()["weight"] == "kg"
+
+
+def test_units_in_locale_route(app):
+    c, _ = _client_uid(app, "loc6@medeasy.test")
+    u = c.get("/api/locale").get_json()["units"]
+    assert set(u) == {"weight", "height", "temp", "glucose"}
+    assert u["weight"] == "kg"                       # India default

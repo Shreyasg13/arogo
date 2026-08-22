@@ -137,6 +137,46 @@ test('parseQuickCommand: rejects out-of-range and normal queries', () => {
   eq(S.parseQuickCommand('sugarcane juice'), null);
 });
 
+// ── Unit converters ──
+// Data is stored canonically (kg / mg-dL / °C-or-°F as logged); these only
+// convert at the display and input edges. A round-trip must not drift, or a
+// user toggling units would slowly corrupt their own record.
+test('kg↔lb converts and round-trips without drift', () => {
+  eq(S.kgToLb(70), 154.3);
+  eq(S.lbToKg(154.3), 69.99);
+  // a realistic entry survives a there-and-back trip within a rounding step
+  const back = S.lbToKg(S.kgToLb(82.5));
+  eq(Math.abs(back - 82.5) < 0.05, true);
+});
+test('mg/dL ↔ mmol/L uses the 18 factor and round-trips', () => {
+  eq(S.mgdlToMmol(180), 10);
+  eq(S.mmolToMgdl(10), 180);
+  eq(S.mgdlToMmol(99), 5.5);
+  const back = S.mmolToMgdl(S.mgdlToMmol(126));
+  eq(Math.abs(back - 126) <= 2, true);          // within one 0.1 mmol step
+});
+test('°C ↔ °F converts at the known anchors', () => {
+  eq(S.cToF(37), 98.6);
+  eq(S.fToC(98.6), 37);
+  eq(S.cToF(0), 32);
+  eq(S.fToC(212), 100);
+});
+test('converters treat blank/garbage as zero, never NaN', () => {
+  for (const f of ['kgToLb', 'lbToKg', 'cToF', 'mgdlToMmol', 'mmolToMgdl']) {
+    eq(Number.isNaN(S[f](null)), false);
+    eq(Number.isNaN(S[f]('abc')), false);
+  }
+});
+test('fmtWeight / fmtGlucose render the requested unit', () => {
+  eq(S.fmtWeight(70, {unit: 'kg'}), '70 kg');
+  eq(S.fmtWeight(70, {unit: 'lb'}), '154.3 lb');
+  eq(S.fmtGlucose(180, {unit: 'mgdl'}), '180 mg/dL');
+  eq(S.fmtGlucose(180, {unit: 'mmol'}), '10 mmol/L');
+  // nothing logged → nothing shown (never a fabricated 0)
+  eq(S.fmtWeight(null), '');
+  eq(S.fmtGlucose(null), '');
+});
+
 // ── Voice command parser (natural spoken phrasing) ──
 test('parseVoiceCommand: blood pressure, natural phrasing', () => {
   const c = S.parseVoiceCommand('blood pressure 120 over 80');

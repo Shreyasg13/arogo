@@ -76,3 +76,46 @@ def country_list():
     """For the picker — sorted by name, with India + common ones staying usable."""
     return [{'code': k, 'name': v['name'], 'symbol': v['symbol'], 'currency': v['currency']}
             for k, v in sorted(COUNTRIES.items(), key=lambda kv: (kv[0] == 'OT', kv[1]['name']))]
+
+
+# ── Units of measurement ────────────────────────────────────────────────────
+# Data is always STORED canonically (weight kg, height cm, glucose mg/dL,
+# temperature carries its own unit). These are display/input preferences only.
+_UNIT_VALUES = {'weight': {'kg', 'lb'}, 'height': {'cm', 'ft'},
+                'temp': {'c', 'f'}, 'glucose': {'mgdl', 'mmol'}}
+# Country conventions (best-effort defaults the user can override per unit).
+_IMPERIAL_WEIGHT = {'US'}
+_IMPERIAL_HEIGHT = {'US', 'GB'}
+_FAHRENHEIT = {'US'}
+_MMOL = {'GB', 'CA', 'AU', 'NZ', 'IE', 'DE', 'FR', 'ES', 'IT', 'NL', 'ZA', 'CN'}
+
+
+def valid_unit(kind, v):
+    v = str(v or '').strip().lower()
+    return v if v in _UNIT_VALUES.get(kind, set()) else None
+
+
+def _country_default_units(code):
+    return {
+        'weight':  'lb' if code in _IMPERIAL_WEIGHT else 'kg',
+        'height':  'ft' if code in _IMPERIAL_HEIGHT else 'cm',
+        'temp':    'f'  if code in _FAHRENHEIT else 'c',
+        'glucose': 'mmol' if code in _MMOL else 'mgdl',
+    }
+
+
+def units_of(profile=None):
+    """The calling user's units — country defaults, overridden by any explicit
+    per-unit preference on the profile."""
+    if profile is None:
+        try:
+            from .food import get_profile
+            profile = get_profile() or {}
+        except Exception:
+            profile = {}
+    d = _country_default_units(country_of(profile))
+    for kind in list(d):
+        v = valid_unit(kind, (profile or {}).get(kind + '_unit'))
+        if v:
+            d[kind] = v
+    return d

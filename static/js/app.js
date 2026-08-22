@@ -247,6 +247,11 @@ const I18N = {
     'Cost each %1 (optional)': 'प्रति लागत %1 (वैकल्पिक)', 'covered %1': '%1 कवर',
     'Sets your currency and money formatting. You can change it later.':
       'आपकी मुद्रा और पैसे का प्रारूप तय करता है। आप इसे बाद में बदल सकते हैं।',
+    'Units': 'इकाइयाँ', 'Weight': 'वज़न', 'Height': 'ऊँचाई', 'Temperature': 'तापमान',
+    'Only changes how values are shown and entered — your saved readings stay exactly as recorded.':
+      'सिर्फ़ यह बदलता है कि मान कैसे दिखें और दर्ज हों — आपकी सहेजी रीडिंग जैसी दर्ज हुई वैसी ही रहती हैं।',
+    'Enter a weight in %1': '%1 में वज़न दर्ज करें', '⚖️ %1 saved': '⚖️ %1 सहेजा',
+    'avg glucose %1': 'औसत ग्लूकोज़ %1',
     // Environment ↔ how you feel
     'Air & weather': 'हवा व मौसम', 'Could not load environment data.': 'पर्यावरण डेटा लोड नहीं हो सका।',
     'Import your local air quality and see whether it lined up with how you felt — a correlation from your own logs, never a claim of cause.':
@@ -2681,16 +2686,18 @@ async function quickMood(mood) {
 
 async function quickWeight() {
   const val = parseFloat(document.getElementById('qlg-weight')?.value);
-  if (!val || val < 20 || val > 400) { showToast('Enter a weight in kg', 'error'); return; }
+  // The number is in the user's chosen unit; convert to kg (canonical) to save.
+  const kg = weightInputToKg(val);
+  if (!val || kg < 20 || kg > 400) { showToast(tformat('Enter a weight in %1', weightUnitLabel()), 'error'); return; }
   const r = await fetch('/api/body-metrics', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     credentials: 'same-origin',
-    body: JSON.stringify({date_key: localToday(), weight_kg: val}),
+    body: JSON.stringify({date_key: localToday(), weight_kg: kg}),
   }).then(r => r.json()).catch(() => null);
   if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
   document.getElementById('qlg-weight').value = '';
   closeQuickLog();
-  showToast(tformat('⚖️ %1kg saved', val));
+  showToast(tformat('⚖️ %1 saved', fmtWeight(kg)));
 }
 
 async function quickToggleHabit(id) {
@@ -6403,7 +6410,7 @@ async function loadEstimatedA1c() {
         <div class="a1c-label">${t('estimated HbA1c')}</div>
       </div>
       <div class="a1c-side">
-        <div class="a1c-side-row">${tformat('avg glucose %1 mg/dL', d.avg_glucose)}</div>
+        <div class="a1c-side-row">${tformat('avg glucose %1', fmtGlucose(d.avg_glucose))}</div>
         <div class="a1c-side-row">${tformat('from %1 readings · %2 days', d.count, d.days)}</div>
         <div class="a1c-note">${t('A rough estimate from your logged readings, not a lab test. Discuss the real number with your doctor.')}</div>
       </div>
@@ -9676,6 +9683,12 @@ async function openProfileModal() {
     csel.innerHTML = _countryList.map(c => `<option value="${escHtml(c.code)}">${escHtml(c.name)} (${escHtml(c.symbol)})</option>`).join('');
     csel.value = p.country || _userCountry || 'IN';
   }
+  // Unit pickers show the effective units (explicit choice, else country default).
+  const setU = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+  setU('prof-weight-unit',  p.weight_unit  || _userUnits.weight);
+  setU('prof-glucose-unit', p.glucose_unit || _userUnits.glucose);
+  setU('prof-height-unit',  p.height_unit  || _userUnits.height);
+  setU('prof-temp-unit',    p.temp_unit    || _userUnits.temp);
   const goalRadio = form.querySelector(`input[name=goal][value="${p.goal||'maintain'}"]`);
   if (goalRadio) goalRadio.checked = true;
 
@@ -9719,6 +9732,10 @@ document.addEventListener('DOMContentLoaded', () => {
       gender:         form.gender?.value,
       activity_level: form.activity_level?.value,
       country:        document.getElementById('prof-country')?.value,
+      weight_unit:    document.getElementById('prof-weight-unit')?.value,
+      glucose_unit:   document.getElementById('prof-glucose-unit')?.value,
+      height_unit:    document.getElementById('prof-height-unit')?.value,
+      temp_unit:      document.getElementById('prof-temp-unit')?.value,
       goal:           form.querySelector('input[name=goal]:checked')?.value || 'maintain'
     };
     const r = await fetch('/api/food/profile', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
@@ -9738,6 +9755,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (active === 'view-spending') loadSpendingView();
         else if (active === 'view-taxsummary') loadTaxSummary();
         else if (active === 'view-claims') loadClaims();
+        else if (active === 'view-body') loadBodyView();      // units may have changed
       } catch (e) {}
       if (document.getElementById('view-fitness')?.classList.contains('active')) loadFitness();
     }
@@ -11887,7 +11905,7 @@ const VITAL_CONFIG = {
   },
   blood_sugar: {
     icon:'🩸', label:'Blood Sugar',
-    fields:[{id:'vf1',label:'mg/dL',ph:'100'}],
+    fields:[{id:'vf1',label:'mg/dL',ph:'100'}],   // label swapped at render by glucoseUnitLabel()
     unit:'mg/dL',
     // We never ask whether the sample was fasting or post-meal, so 110 could be
     // textbook-normal or worth a conversation — we can't tell, so we don't say.
@@ -11966,8 +11984,16 @@ function renderVitalFields() {
       </div></div>`;
   }
   el.innerHTML = `<div class="form-row" style="margin-bottom:8px">` +
-    cfg.fields.map(f => `<div class="form-group"><label class="form-label">${f.label}</label>
-      <input type="number" class="form-input" id="${f.id}" placeholder="${f.ph}" step="0.1"></div>`).join('') +
+    cfg.fields.map(f => {
+      // Show the unit the user actually enters in (glucose mg/dL vs mmol/L,
+      // temperature °C vs °F); the value is converted back to canonical on save.
+      const lbl = selectedVitalType === 'blood_sugar' ? glucoseUnitLabel()
+                : selectedVitalType === 'temperature' ? tempUnitLabel() : f.label;
+      const ph = selectedVitalType === 'blood_sugar' && _userUnits.glucose === 'mmol' ? '5.5'
+               : selectedVitalType === 'temperature' && _userUnits.temp === 'c' ? '37' : f.ph;
+      return `<div class="form-group"><label class="form-label">${escHtml(lbl)}</label>
+      <input type="number" class="form-input" id="${f.id}" placeholder="${escHtml(ph)}" step="0.1"></div>`;
+    }).join('') +
     `</div>` + ctxHtml +
     (cfg.reference ? `<div class="vital-ref-range">📊 ${cfg.reference}${catHtml}</div>` : '');
 }
@@ -11993,7 +12019,7 @@ async function loadGlucoseLogbook() {
   if (!d || !d.has_data) { el.innerHTML = ''; return; }   // no sugar readings → panel stays hidden
   const tgt = d.target;
   const tgtLine = tgt
-    ? `${t('Your target')}: ${tgt.target_min != null ? tgt.target_min : '–'}–${tgt.target_max != null ? tgt.target_max : '–'} mg/dL`
+    ? `${t('Your target')}: ${tgt.target_min != null ? _gl(tgt.target_min) : '–'}–${tgt.target_max != null ? _gl(tgt.target_max) : '–'} ${glucoseUnitLabel()}`
     : t('Set a blood-sugar target to flag out-of-range readings');
   const cards = d.summary.map(g => {
     const flags = [];
@@ -12001,7 +12027,7 @@ async function loadGlucoseLogbook() {
     if (g.low)  flags.push(`<span style="color:${GL_FLAG_COLOR.below};font-weight:600">${tformat('%1 low', g.low)}</span>`);
     return `<div class="gl-stat">
       <div class="gl-stat-ctx">${t(GLUCOSE_CTX_LABEL[g.context] || g.context)}</div>
-      <div class="gl-stat-avg">${g.avg}<span class="gl-stat-unit"> mg/dL ${t('avg')}</span></div>
+      <div class="gl-stat-avg">${_gl(g.avg)}<span class="gl-stat-unit"> ${glucoseUnitLabel()} ${t('avg')}</span></div>
       <div class="gl-stat-meta">${tformat('%1 readings', g.count)} · ${g.min}–${g.max}${flags.length ? ' · ' + flags.join(' · ') : ''}</div>
     </div>`;
   }).join('');
@@ -12034,8 +12060,14 @@ async function logVital() {
     // late-night reading east of UTC lands yesterday — while the same reading
     // typed as "bp 120/80" in the command bar lands today. Every other vitals
     // path sends localToday(); this one didn't.
-    body: JSON.stringify({ type:selectedVitalType, value1:v1, value2:v2||null,
-      unit:cfg.unit, date_key: localToday(),
+    // Glucose is stored canonically in mg/dL — if the user enters mmol/L we
+    // convert here so the stored value and its ranges stay comparable.
+    body: JSON.stringify({ type:selectedVitalType,
+      value1: selectedVitalType === 'blood_sugar' ? glucoseInputToMgdl(v1) : v1,
+      value2: v2 || null,
+      unit: selectedVitalType === 'blood_sugar' ? 'mg/dL'
+          : selectedVitalType === 'temperature' ? tempUnitLabel() : cfg.unit,
+      date_key: localToday(),
       context: selectedVitalType === 'blood_sugar' ? selectedGlucoseContext
              : selectedVitalType === 'blood_pressure' ? selectedBpContext : '',
       notes:document.getElementById('vital-notes')?.value||'' })
@@ -12953,14 +12985,16 @@ function parseQuickCommand(q) {
   return null;
 }
 
-async function quickLogWeight(kg) {
+async function quickLogWeight(val) {
+  // `val` is in the user's chosen unit; store canonical kg.
+  const kg = weightInputToKg(val);
   const r = await fetch('/api/body-metrics', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     credentials: 'same-origin',
     body: JSON.stringify({date_key: localToday(), weight_kg: kg}),
   }).then(r => r.json()).catch(() => null);
   if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
-  showToast(tformat('⚖️ %1kg saved', kg));
+  showToast(tformat('⚖️ %1 saved', fmtWeight(kg)));
 }
 
 // One text box logs a vital: "bp 120/80", "sugar 110", "hr 72".
@@ -13804,7 +13838,7 @@ function renderProgress(r) {
           ? `<div style="font-size:22px;font-weight:700;color:var(--gray-900)">${GOAL_LABELS[r.profile.goal]||''}</div>`
           : `<a href="#" data-ev-click="switchView('food');return false"
                 style="font-size:14px;font-weight:600;color:var(--teal-600)">${t('Set your goal →')}</a>`}
-        ${latest ? `<div style="font-size:13px;color:var(--gray-500)">${t('Current weight:')} <strong>${latest.weight}kg</strong> · ${t('BMI:')} <strong>${latest.bmi||'—'}</strong></div>` : ''}
+        ${latest ? `<div style="font-size:13px;color:var(--gray-500)">${t('Current weight:')} <strong>${fmtWeight(latest.weight)}</strong> · ${t('BMI:')} <strong>${latest.bmi||'—'}</strong></div>` : ''}
         <div style="margin-left:auto;font-size:13px;color:${overallColor};font-weight:700">${overallLabel}</div>
       </div>
     </div>
@@ -14089,7 +14123,7 @@ async function loadReport() {
           `<div class="rpt-sub" style="margin-top:8px">${t('No body metrics logged')}</div>`}
         <div class="rpt-detail-rows" style="margin-top:10px">
           ${r.vitals?.blood_pressure ? `<div class="rpt-detail-row"><span>${t('Blood Pressure')}</span><span>${r.vitals.blood_pressure.value1}/${r.vitals.blood_pressure.value2} mmHg</span></div>` : ''}
-          ${r.vitals?.blood_sugar ? `<div class="rpt-detail-row"><span>${t('Blood Sugar')}</span><span>${r.vitals.blood_sugar.value1} mg/dL</span></div>` : ''}
+          ${r.vitals?.blood_sugar ? `<div class="rpt-detail-row"><span>${t('Blood Sugar')}</span><span>${fmtGlucose(r.vitals.blood_sugar.value1)}</span></div>` : ''}
           ${r.vitals?.heart_rate ? `<div class="rpt-detail-row"><span>${t('Heart Rate')}</span><span>${r.vitals.heart_rate.value1} bpm</span></div>` : ''}
           ${!r.vitals?.blood_pressure && !r.vitals?.blood_sugar && !r.vitals?.heart_rate ? `<div style="color:var(--gray-400);font-size:13px">${t('No vitals recorded')}</div>` : ''}
         </div>
@@ -15251,7 +15285,7 @@ function renderHealthId(d) {
   if (id.blood_type || d.blood_type) { /* shown as its own row */ }
   const bio = [];
   if (id.height_cm) bio.push(id.height_cm + ' cm');
-  if (id.weight_kg) bio.push(id.weight_kg + ' kg');
+  if (id.weight_kg) bio.push(fmtWeight(id.weight_kg));
 
   // Active meds — the live list. Fall back to the emergency free-text if the
   // tracker is empty (honest: it's what they typed, labelled as such).
@@ -16265,7 +16299,7 @@ function renderHealthBinder(d) {
   if (id.age != null) sub.push(tformat('%1 yrs', id.age));
   if (id.gender) sub.push(escHtml(t(id.gender)));
   if (id.height_cm) sub.push(escHtml(id.height_cm) + ' cm');
-  if (id.weight_kg) sub.push(escHtml(id.weight_kg) + ' kg');
+  if (id.weight_kg) sub.push(escHtml(fmtWeight(id.weight_kg)));
 
   // Critical: blood type, allergies, conditions.
   const critRows = [];
@@ -17477,7 +17511,7 @@ function renderPregnancy(preg, logs) {
     </div>`;
 
   const list = logs.length ? logs.map(l => {
-    const bits = [l.weight_kg != null ? trimG(l.weight_kg) + ' kg' : '', l.kicks != null ? tformat('%1 kicks', l.kicks) : '', l.notes ? escHtml(l.notes) : ''].filter(Boolean).join(' · ');
+    const bits = [l.weight_kg != null ? fmtWeight(l.weight_kg) : '', l.kicks != null ? tformat('%1 kicks', l.kicks) : '', l.notes ? escHtml(l.notes) : ''].filter(Boolean).join(' · ');
     return `<div class="panel fh-card"><div class="fh-head"><div style="flex:1;min-width:0">
         <div class="fh-cond" style="font-size:13.5px">${escHtml(_fmtShortDate(l.date_key))}</div>
         <div class="fh-meta">${bits || '—'}</div>
@@ -18670,13 +18704,49 @@ function _rupee(n) {
   try { return _userCurrency.symbol + Math.round(n || 0).toLocaleString(_userCurrency.locale); }
   catch (e) { return _userCurrency.symbol + Math.round(n || 0).toLocaleString('en-US'); }
 }
+// Display/input units. Data is always STORED canonically (weight kg, height cm,
+// glucose mg/dL); these only decide how it's shown and what an entered number
+// means. Defaults follow the country until the user overrides a unit.
+let _userUnits = { weight: 'kg', height: 'cm', temp: 'c', glucose: 'mgdl' };
+
 async function loadUserLocale() {
   const d = await fetch('/api/locale', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!d) return;
   if (d.currency) _userCurrency = d.currency;
   if (d.country) _userCountry = d.country;
+  if (d.units) _userUnits = d.units;
   _countryList = d.countries || [];
 }
+
+// ── Pure unit converters (top-level so the JS unit tests can reach them) ─────
+const LB_PER_KG = 2.20462, CM_PER_IN = 2.54, MGDL_PER_MMOL = 18;
+function kgToLb(kg)   { return Math.round((Number(kg) || 0) * LB_PER_KG * 10) / 10; }
+function lbToKg(lb)   { return Math.round((Number(lb) || 0) / LB_PER_KG * 100) / 100; }
+function cToF(c)      { return Math.round(((Number(c) || 0) * 9 / 5 + 32) * 10) / 10; }
+function fToC(f)      { return Math.round((((Number(f) || 0) - 32) * 5 / 9) * 10) / 10; }
+function mgdlToMmol(m) { return Math.round((Number(m) || 0) / MGDL_PER_MMOL * 10) / 10; }
+function mmolToMgdl(m) { return Math.round((Number(m) || 0) * MGDL_PER_MMOL); }
+
+// Display helpers: canonical value in → string in the user's unit.
+function fmtWeight(kg, opts) {
+  if (kg == null || kg === '') return '';
+  const unit = (opts && opts.unit) || _userUnits.weight;
+  return unit === 'lb' ? `${kgToLb(kg)} lb` : `${Math.round(Number(kg) * 10) / 10} kg`;
+}
+function weightUnitLabel() { return _userUnits.weight === 'lb' ? 'lb' : 'kg'; }
+// Glucose is stored mg/dL; mmol/L shows one decimal.
+function fmtGlucose(mgdl, opts) {
+  if (mgdl == null || mgdl === '') return '';
+  const unit = (opts && opts.unit) || _userUnits.glucose;
+  return unit === 'mmol' ? `${mgdlToMmol(mgdl)} mmol/L` : `${Math.round(Number(mgdl))} mg/dL`;
+}
+function glucoseUnitLabel() { return _userUnits.glucose === 'mmol' ? 'mmol/L' : 'mg/dL'; }
+// Bare number in the user's glucose unit (no unit suffix) — for tables/axes.
+function _gl(mgdl) { return _userUnits.glucose === 'mmol' ? mgdlToMmol(mgdl) : Math.round(Number(mgdl) || 0); }
+// Input helpers: a number the user typed (in their unit) → canonical.
+function weightInputToKg(v) { return _userUnits.weight === 'lb' ? lbToKg(v) : (Number(v) || 0); }
+function glucoseInputToMgdl(v) { return _userUnits.glucose === 'mmol' ? mmolToMgdl(v) : (Number(v) || 0); }
+function tempUnitLabel() { return _userUnits.temp === 'f' ? '°F' : '°C'; }
 function _spendCatLabel(k) {
   const meta = SPEND_CATS[k] || ('📌 ' + k);
   const [emoji, ...rest] = meta.split(' ');
@@ -19359,7 +19429,7 @@ function selectVitalTypeView(btn) {
 
 async function saveBodyMetricFromView() {
   const data = {
-    weight_kg:    parseFloat(document.getElementById('bv-weight')?.value) || null,
+    weight_kg:    document.getElementById('bv-weight')?.value ? weightInputToKg(document.getElementById('bv-weight').value) : null,
     body_fat_pct: parseFloat(document.getElementById('bv-bodyfat')?.value) || null,
     waist_cm:     parseFloat(document.getElementById('bv-waist')?.value) || null,
     date_key:     document.getElementById('bv-date')?.value || localToday(),
@@ -19399,7 +19469,7 @@ async function loadBodyMetricsView() {
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-50)">
       <div style="font-size:12px;color:var(--gray-400)">${m.date_key}</div>
       <div style="font-size:13px;font-weight:600;color:var(--gray-800)">
-        ${m.weight_kg ? m.weight_kg + ' kg' : ''}
+        ${m.weight_kg ? fmtWeight(m.weight_kg) : ''}
         ${m.bmi ? ' · BMI ' + m.bmi : ''}
         ${m.body_fat_pct ? ' · ' + m.body_fat_pct + '% fat' : ''}
       </div>
@@ -21965,12 +22035,12 @@ async function loadWeightProgressChart(days) {
 
   // Stat cards
   const statCards = [
-    {label: 'Current',   val: `${s.latest_weight} kg`,                 show: true},
-    {label: 'Starting',  val: `${s.start_weight} kg`,                  show: !!s.start_weight},
-    {label: 'Change',    val: `${changeDir} ${Math.abs(change)} kg`,   show: change !== 0, color: changeColor},
-    {label: 'Target',    val: `${s.target_weight} kg`,                  show: hasGoal},
+    {label: 'Current',   val: fmtWeight(s.latest_weight),              show: true},
+    {label: 'Starting',  val: fmtWeight(s.start_weight),               show: !!s.start_weight},
+    {label: 'Change',    val: `${changeDir} ${fmtWeight(Math.abs(change))}`, show: change !== 0, color: changeColor},
+    {label: 'Target',    val: fmtWeight(s.target_weight),               show: hasGoal},
     {label: 'Progress',  val: `${s.pct_to_goal}%`,                      show: hasGoal && s.pct_to_goal != null},
-    {label: 'Actual pace', val: `${mDir} ${Math.abs(mRate)}kg/wk`,      show: mRate != null && mRate !== 0},
+    {label: 'Actual pace', val: `${mDir} ${fmtWeight(Math.abs(mRate))}/wk`, show: mRate != null && mRate !== 0},
   ].filter(c => c.show);
 
   const statsHTML = statCards.map(c => `
@@ -22032,11 +22102,11 @@ async function loadWeightProgressChart(days) {
         ${hasGoal && projection.length ? `
           <span style="display:flex;align-items:center;gap:5px">
             <span style="width:18px;height:2px;background:#F59E0B;display:inline-block;border-radius:1px;border-top:2px dashed #F59E0B;height:0"></span>
-            Projected at ${Math.abs(s.rate_per_week)} kg/week
+            Projected at ${fmtWeight(Math.abs(s.rate_per_week))}/week
           </span>
           <span style="display:flex;align-items:center;gap:5px">
             <span style="width:18px;height:2px;background:#22C55E;display:inline-block;border-radius:1px;border-top:2px dashed #22C55E;height:0"></span>
-            Goal: ${s.target_weight} kg
+            Goal: ${fmtWeight(s.target_weight)}
           </span>` : ''}
       </div>
     </div>`;
@@ -22183,7 +22253,7 @@ async function renderWeightChart(logs, projection, stats) {
           grid:   { color: gridCol },
           ticks:  {
             color: tickCol, font: {size: 10},
-            callback: v => v + ' kg',
+            callback: v => v + ' ' + weightUnitLabel(),
             maxTicksLimit: 6,
           },
           border: { display: false },

@@ -808,6 +808,16 @@ def migrate_add_country():
         pass  # already exists
 
 
+def migrate_add_unit_prefs():
+    """Add display-unit preferences to user_profile. Data stays canonical (kg/cm/
+    mg-dL); these only choose how it's shown/entered. NULL → the country default."""
+    for col in ('weight_unit', 'height_unit', 'temp_unit', 'glucose_unit'):
+        try:
+            execute(f"ALTER TABLE user_profile ADD COLUMN {col} TEXT DEFAULT NULL")
+        except Exception:
+            pass  # already exists
+
+
 def migrate_add_symptom_region():
     """Add an optional body-region tag to symptoms (I7 body-map). '' = unset /
     non-localized. Validated against a fixed enum at the write path."""
@@ -1487,6 +1497,7 @@ def init_db():
     migrate_add_ui_mode()
     migrate_add_language()
     migrate_add_country()
+    migrate_add_unit_prefs()
     migrate_add_schedule_days()
     migrate_add_interval_days()
     migrate_add_family_display()
