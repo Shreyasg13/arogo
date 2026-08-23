@@ -221,6 +221,18 @@ def add_medicine():
         return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'medicine': med})
 
+@bp.route('/api/medicines/<mid>', methods=['PATCH'])
+@require_auth
+def edit_medicine(mid):
+    """Edit a medicine in place — above all its dose times, which previously
+    required delete + re-add (which destroyed the med's whole dose history)."""
+    from db.medicines import update_medicine
+    try:
+        return jsonify({'success': True, 'medicine': update_medicine(mid, request.json or {})})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 404
+
+
 @bp.route('/api/medicines/<mid>', methods=['DELETE'])
 @require_auth
 def del_medicine(mid):

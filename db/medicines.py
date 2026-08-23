@@ -57,7 +57,7 @@ def _clean_times(raw):
 
 
 # ── Medicine history (a dated record of what changed) ────────────────────────
-_EVENT_KINDS = {'started', 'stopped', 'resumed', 'deleted', 'restocked'}
+_EVENT_KINDS = {'started', 'stopped', 'resumed', 'deleted', 'restocked', 'edited'}
 
 
 def log_medicine_event(medicine_id, kind, med_name='', detail=''):
@@ -147,6 +147,108 @@ def get_medicine(mid):
     r = execute("SELECT * FROM medicines WHERE id=? AND user_id=?",
                 (mid, current_user_id()), fetchone=True)
     return _fmt_med(r) if r else None
+
+
+def update_medicine(mid: str, data: dict) -> dict:
+    """Edit an existing medicine — above all, its dose TIMES, which previously
+    could only be changed by deleting and re-adding it (destroying its whole
+    dose history). Only the caller's own row; unknown fields are ignored and
+    every value is validated exactly as on create, so an edit can't put the row
+    into a state insert_medicine would have rejected.
+
+    Re-timing and history: dose_logs are keyed by (medicine_id, date_key,
+    time_key). Changing 08:00 → 09:00 would orphan every past log for that slot,
+    so we move only TODAY's not-yet-taken slots onto the new time and leave the
+    past exactly as it was recorded. History stays true to what happened; the new
+    schedule applies from today forward.
+    """
+    cur = get_medicine(mid)
+    if not cur:
+        raise ValueError('Medicine not found')
+    uid = current_user_id()
+
+    name = str(data.get('name', cur['name'])).strip() or cur['name']
+    frequency = data.get('frequency', cur['frequency'])
+
+    timing = (data.get('timing', cur['timing']) or '').strip()
+    if timing not in TIMING_LABELS:
+        timing = cur['timing'] or ''
+    with_food = 1 if timing == 'with_food' else 0
+
+    old_times = list(cur.get('times') or [])
+    if 'times' in data or frequency == 'as_needed':
+        new_times = [] if frequency == 'as_needed' else _clean_times(data.get('times', old_times))
+    else:
+        new_times = old_times
+
+    if 'reminder_lead_min' in data:
+        try:
+            lead = max(0, min(int(data.get('reminder_lead_min') or 0), 120))
+        except (TypeError, ValueError):
+            lead = cur.get('reminder_lead_min') or 0
+    else:
+        lead = cur.get('reminder_lead_min') or 0
+
+    if 'cost' in data:
+        cost = data.get('cost')
+        if cost in (None, ''):
+            cost = None
+        else:
+            try:
+                cost = round(max(0.0, float(cost)), 2)
+            except (TypeError, ValueError):
+                cost = cur.get('cost')
+    else:
+        cost = cur.get('cost')
+
+    interval = None if frequency == 'as_needed' else (
+        clean_interval_days(data['interval_days']) if 'interval_days' in data
+        else cur.get('interval_days'))
+    if interval or frequency == 'as_needed':
+        sched = None
+    elif 'schedule_days' in data:
+        sched = clean_schedule_days(data.get('schedule_days'))
+    else:
+        sched = cur.get('schedule_days')
+
+    raw_icon = str(data.get('icon', cur.get('icon')) or '💊')
+    icon = raw_icon[:8] if ('<' not in raw_icon and '>' not in raw_icon) else '💊'
+    icon = icon or '💊'
+
+    expiry = data.get('expiry_date', cur.get('expiry_date') or '')
+    expiry = expiry if (expiry and valid_date(expiry)) else ''
+
+    execute("""UPDATE medicines SET name=?, dosage=?, unit=?, frequency=?, times=?,
+               with_food=?, timing=?, reminder_lead_min=?, cost=?, notes=?, purpose=?,
+               color=?, icon=?, start_date=?, end_date=?, schedule_days=?, interval_days=?,
+               expiry_date=? WHERE id=? AND user_id=?""",
+            (name[:120],
+             str(data.get('dosage', cur.get('dosage') or '')).strip()[:60],
+             data.get('unit', cur.get('unit') or 'mg'),
+             frequency, jdump(new_times), with_food, timing, lead, cost,
+             data.get('notes', cur.get('notes') or ''),
+             str(data.get('purpose', cur.get('purpose') or '')).strip()[:120],
+             data.get('color', cur.get('color') or 'teal'), icon,
+             data.get('start_date', cur.get('start_date') or today_iso()),
+             data.get('end_date', cur.get('end_date') or ''),
+             jdump(sched) if sched else None, interval, expiry,
+             mid, uid), commit=True)
+
+    # Move today's UNTAKEN slots to the new times, positionally, so a simple
+    # re-time doesn't leave today's dose sitting under a slot that no longer
+    # exists. Taken doses are never moved — they record what actually happened.
+    if new_times != old_times and new_times:
+        today = user_today()
+        for i, old_t in enumerate(old_times):
+            if i >= len(new_times) or new_times[i] == old_t:
+                continue
+            execute("""UPDATE dose_logs SET time_key=?
+                       WHERE medicine_id=? AND user_id=? AND date_key=? AND time_key=?
+                         AND (taken IS NULL OR taken=0)""",
+                    (new_times[i], mid, uid, today, old_t), commit=True)
+        log_medicine_event(mid, 'edited', name,
+                           f"times {', '.join(old_times) or '—'} → {', '.join(new_times)}")
+    return get_medicine(mid)
 
 
 def list_medicines():

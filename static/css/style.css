@@ -785,6 +785,15 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .note-date { font-size:11.5px; color:var(--gray-400,#999); margin-left:auto; }
 .note-body { font-size:14px; line-height:1.55; color:var(--gray-700,#444); white-space:pre-wrap; }
 
+/* Re-time a medicine (inline editor on the med card) */
+.med-times-edit { border-top:1px solid var(--gray-100,#E9E1D4); margin-top:10px; padding-top:10px; }
+.mte-head { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--gray-400,#999); margin-bottom:8px; }
+.mte-rows { display:flex; flex-wrap:wrap; gap:8px; }
+.mte-row { display:flex; align-items:center; gap:4px; }
+.mte-time { max-width:120px; }
+.mte-actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.mte-note { font-size:11.5px; color:var(--gray-400,#999); margin-top:8px; line-height:1.5; }
+
 /* Insurance policies & renewals */
 .ins-form { margin-bottom:16px; }
 .ins-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }

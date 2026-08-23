@@ -8,7 +8,7 @@ from .core        import (execute, executemany, commit, init_db, jdump, jload,
                           now_iso, today_iso, new_id, current_user_id, user_context,
                           to_num, to_int, valid_date)
 from .reports     import insert_report, list_reports, get_report, delete_report, report_stats
-from .medicines   import (insert_medicine, list_medicines, get_medicine, toggle_medicine, delete_medicine,
+from .medicines   import (insert_medicine, update_medicine, list_medicines, get_medicine, toggle_medicine, delete_medicine,
                           log_dose, get_today_doses, get_adherence_stats, get_dose_calendar,
                           get_adherence_by_timeofday, get_adherence_by_weekday, get_new_med_watch, get_cost_per_day, get_prn_frequency, set_medicine_expiry, get_expiring_medicines, get_pill_burden, get_at_risk_dose_today, get_med_spend_timeline,
                           get_adherence_goal, set_adherence_goal, get_adherence_forecast,
@@ -63,7 +63,7 @@ __all__ = [
     "execute", "executemany", "commit", "init_db", "jdump", "jload", "now_iso", "today_iso", "new_id",
     "current_user_id", "user_context", "to_num", "to_int", "valid_date",
     "insert_report", "list_reports", "get_report", "delete_report", "report_stats",
-    "insert_medicine", "list_medicines", "get_medicine", "toggle_medicine", "delete_medicine",
+    "insert_medicine", "update_medicine", "list_medicines", "get_medicine", "toggle_medicine", "delete_medicine",
     "log_dose", "get_today_doses", "get_adherence_stats", "get_dose_calendar",
     "get_adherence_by_timeofday", "get_adherence_by_weekday", "get_new_med_watch", "get_cost_per_day", "get_prn_frequency", "set_medicine_expiry", "get_expiring_medicines", "get_pill_burden", "get_at_risk_dose_today", "get_med_spend_timeline",
     "get_adherence_goal", "set_adherence_goal", "get_adherence_forecast",

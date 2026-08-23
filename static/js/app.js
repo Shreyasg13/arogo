@@ -262,6 +262,12 @@ const I18N = {
       'अभी कोई नोट नहीं। लिखें कि कुछ क्यों बदला — भविष्य के आप (और आपके डॉक्टर) धन्यवाद देंगे।',
     'All': 'सभी', 'General': 'सामान्य', 'Medicine': 'दवा', 'Condition': 'स्थिति',
     'Doctor / provider': 'डॉक्टर / प्रदाता', 'Appointment': 'मुलाक़ात', 'Lab test': 'लैब जाँच',
+    // Re-time a medicine
+    'Edit dose times': 'खुराक के समय बदलें', 'Dose times': 'खुराक के समय',
+    'Add a time': 'समय जोड़ें', 'Save times': 'समय सेव करें',
+    'Add at least one time': 'कम से कम एक समय जोड़ें', 'Times updated: %1': 'समय अपडेट हुए: %1',
+    'Your past doses stay exactly as recorded — the new times apply from today.':
+      'आपकी पिछली खुराकें जैसी दर्ज थीं वैसी ही रहती हैं — नए समय आज से लागू होते हैं।',
     // Insurance policies & renewals
     'Insurance': 'बीमा', 'Could not load your policies.': 'आपकी पॉलिसियाँ लोड नहीं हो सकीं।',
     'Your policies, premiums and renewal dates in one place — the facts you entered, so nothing lapses unnoticed.':
@@ -6275,6 +6281,9 @@ function renderMedicinesGrid(meds) {
           <button class="btn-icon" title="${m.active ? t('Pause') : t('Activate')}" data-ev-click="toggleMed('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">${m.active ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>' : '<polygon points="5 3 19 12 5 21 5 3"/>'}</svg>
           </button>
+          <button class="btn-icon" title="${t('Edit dose times')}" data-ev-click="editMedTimes('${m.id}')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          </button>
           <button class="btn-icon" title="${m.expiry_date ? t('Edit expiry date') : t('Set expiry date')}" data-ev-click="editMedExpiry('${m.id}')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </button>
@@ -6283,6 +6292,7 @@ function renderMedicinesGrid(meds) {
           </button>
         </div>
       </div>
+      <div class="med-times-edit" id="med-times-edit-${m.id}" style="display:none"></div>
       <div class="med-expiry-edit" id="med-expiry-edit-${m.id}" style="display:none">
         <input type="date" class="form-input" id="med-expiry-input-${m.id}" value="${m.expiry_date || ''}" style="max-width:170px">
         <button class="btn-primary" style="padding:8px 12px" data-ev-click="saveMedExpiry('${m.id}')">${t('Save')}</button>
@@ -6340,6 +6350,65 @@ function _expiryBadge(m) {
   if (days <= 60) return `<span class="med-expiry-badge med-expiry-badge--soon">📅 ${tformat('Expires in %1d', days)}</span>`;
   return `<span class="med-expiry-badge">📅 ${tformat('Expires %1', _fmtShortDate(exp))}</span>`;
 }
+// ── Re-time a medicine ───────────────────────────────────────────────────────
+// Until now a dose time could only be changed by deleting the medicine and
+// re-adding it — which threw away its entire dose history. This edits in place.
+// Past logs are never rewritten; only today's not-yet-taken slots move.
+function editMedTimes(id) {
+  const box = document.getElementById('med-times-edit-' + id);
+  if (!box) return;
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  const m = _medsById[id];
+  if (!m) return;
+  const times = (m.times || []).length ? m.times : ['08:00'];
+  box.innerHTML = `
+    <div class="mte-head">${t('Dose times')}</div>
+    <div class="mte-rows" id="mte-rows-${id}">
+      ${times.map((tm, i) => `<div class="mte-row">
+          <input type="time" class="form-input mte-time" value="${escHtml(tm)}">
+          <button class="btn-icon" title="${t('Remove')}" data-ev-click="mteRemove('${id}',${i})">✕</button>
+        </div>`).join('')}
+    </div>
+    <div class="mte-actions">
+      <button class="btn-outline btn-sm" data-ev-click="mteAdd('${id}')">+ ${t('Add a time')}</button>
+      <button class="btn-primary btn-sm" data-ev-click="saveMedTimes('${id}')">${t('Save times')}</button>
+    </div>
+    <div class="mte-note">${t('Your past doses stay exactly as recorded — the new times apply from today.')}</div>`;
+  box.style.display = '';
+  try { _a11yEnhance(box); } catch (e) {}
+}
+function mteAdd(id) {
+  const rows = document.getElementById('mte-rows-' + id);
+  if (!rows) return;
+  const d = document.createElement('div');
+  d.className = 'mte-row';
+  d.innerHTML = `<input type="time" class="form-input mte-time" value="12:00">
+    <button class="btn-icon" title="${t('Remove')}" data-ev-click="mteRemoveEl(this)">✕</button>`;
+  rows.appendChild(d);
+  try { _a11yEnhance(d); } catch (e) {}
+}
+function mteRemoveEl(el) { const r = el && el.closest('.mte-row'); if (r) r.remove(); }
+function mteRemove(id, i) {
+  const rows = document.getElementById('mte-rows-' + id);
+  const row = rows && rows.querySelectorAll('.mte-row')[i];
+  if (row) row.remove();
+}
+async function saveMedTimes(id) {
+  const rows = document.getElementById('mte-rows-' + id);
+  const times = [...(rows ? rows.querySelectorAll('.mte-time') : [])]
+    .map(i => i.value).filter(Boolean);
+  if (!times.length) { showToast(t('Add at least one time'), 'error'); return; }
+  const r = await fetch('/api/medicines/' + id, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify({ times }),
+  }).then(x => x.json()).catch(() => null);
+  if (r && r.success) {
+    showToast(tformat('Times updated: %1', (r.medicine.times || []).join(', ')));
+    loadMedicines();
+    loadDashboard();
+  } else showToast((r && r.error) || t('Could not save'), 'error');
+}
+
 function editMedExpiry(id) {
   const box = document.getElementById('med-expiry-edit-' + id);
   if (box) box.style.display = box.style.display === 'none' ? 'flex' : 'none';
