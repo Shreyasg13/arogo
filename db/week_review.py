@@ -70,6 +70,15 @@ def _delta(this_v, last_v):
     return round(this_v - last_v, 2)
 
 
+def _weight_unit_label():
+    """The user's weight unit, so the week-over-week card doesn't assert kg."""
+    try:
+        from .locale_config import units_of
+        return 'lb' if units_of().get('weight') == 'lb' else 'kg'
+    except Exception:
+        return 'kg'
+
+
 def get_week_over_week() -> dict:
     """Per-metric {this, last, delta, dir, higher_better}, only for metrics with
     data in both weeks."""
@@ -82,7 +91,7 @@ def get_week_over_week() -> dict:
         ('sleep', 'Sleep', 'h',
          _metric_avg('sleep_logs', 'duration_h', this_w),
          _metric_avg('sleep_logs', 'duration_h', last_w), True),
-        ('weight', 'Weight', 'kg',
+        ('weight', 'Weight', _weight_unit_label(),
          _metric_avg('body_metrics', 'weight_kg', this_w),
          _metric_avg('body_metrics', 'weight_kg', last_w), None),
         ('bp_systolic', 'BP (systolic)', 'mmHg',

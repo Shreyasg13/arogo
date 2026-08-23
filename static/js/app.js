@@ -10784,7 +10784,7 @@ async function saveBodyMetric() {
   const r = await fetch('/api/body-metrics', {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
-      weight_kg:    w,
+      weight_kg:    weightInputToKg(w),   // typed in the user's unit → canonical kg
       body_fat_pct: parseFloat(document.getElementById('body-fat')?.value) || null,
       waist_cm:     parseFloat(document.getElementById('body-waist')?.value) || null,
       notes:        document.getElementById('body-notes')?.value || '',
@@ -12076,13 +12076,13 @@ async function loadGlucoseLogbook() {
     return `<div class="gl-stat">
       <div class="gl-stat-ctx">${t(GLUCOSE_CTX_LABEL[g.context] || g.context)}</div>
       <div class="gl-stat-avg">${_gl(g.avg)}<span class="gl-stat-unit"> ${glucoseUnitLabel()} ${t('avg')}</span></div>
-      <div class="gl-stat-meta">${tformat('%1 readings', g.count)} · ${g.min}–${g.max}${flags.length ? ' · ' + flags.join(' · ') : ''}</div>
+      <div class="gl-stat-meta">${tformat('%1 readings', g.count)} · ${_gl(g.min)}–${_gl(g.max)}${flags.length ? ' · ' + flags.join(' · ') : ''}</div>
     </div>`;
   }).join('');
   const rows = d.readings.slice(0, 40).map(r => {
     const col = r.flag ? GL_FLAG_COLOR[r.flag] : 'var(--gray-400)';
     return `<div class="gl-row">
-      <span class="gl-row-val" style="color:${col}">${r.value}</span>
+      <span class="gl-row-val" style="color:${col}">${_gl(r.value)}</span>
       <span class="gl-row-ctx">${t(GLUCOSE_CTX_LABEL[r.context] || r.context)}</span>
       <span class="gl-row-date">${escHtml(r.date_key)}</span>
     </div>`;
@@ -17804,7 +17804,7 @@ function renderPregnancy(preg, logs) {
       <h2 class="panel-title" style="margin-bottom:10px">${t('Add a log')}</h2>
       <div class="dv-form">
         <input type="date" id="preg-log-date" class="form-input" max="${today}" value="${today}" style="max-width:160px">
-        <input type="number" id="preg-weight" class="form-input" placeholder="${t('Weight kg (optional)')}" min="20" max="250" step="any" style="max-width:170px">
+        <input type="number" id="preg-weight" class="form-input" placeholder="${tformat('Weight %1 (optional)', weightUnitLabel())}" min="0" step="any" style="max-width:170px">
         <input type="number" id="preg-kicks" class="form-input" placeholder="${t('Kicks (optional)')}" min="0" style="max-width:150px">
         <button class="btn-primary" data-ev-click="savePregnancyLog()">${t('Add')}</button>
       </div>
@@ -17833,7 +17833,10 @@ async function savePregnancy() {
 
 async function savePregnancyLog() {
   const v = id => (document.getElementById(id) || {}).value || '';
-  const body = { date_key: v('preg-log-date'), weight_kg: v('preg-weight') || null, kicks: v('preg-kicks') || null };
+  // Entered in the user's unit; the column is canonical kg.
+  const _pw = v('preg-weight');
+  const body = { date_key: v('preg-log-date'), weight_kg: _pw ? weightInputToKg(_pw) : null,
+                 kicks: v('preg-kicks') || null };
   const r = await fetch('/api/pregnancy/log', {method:'POST', headers:{'Content-Type':'application/json'},
     credentials:'same-origin', body: JSON.stringify(body)}).then(x => x.json()).catch(() => null);
   if (r && r.success) { showToast('Logged'); loadPregnancy(); }
@@ -19052,6 +19055,32 @@ function _gl(mgdl) { return _userUnits.glucose === 'mmol' ? mgdlToMmol(mgdl) : M
 function weightInputToKg(v) { return _userUnits.weight === 'lb' ? lbToKg(v) : (Number(v) || 0); }
 function glucoseInputToMgdl(v) { return _userUnits.glucose === 'mmol' ? mmolToMgdl(v) : (Number(v) || 0); }
 function tempUnitLabel() { return _userUnits.temp === 'f' ? '°F' : '°C'; }
+
+// ── Generic per-vital unit mapping ───────────────────────────────────────────
+// Vitals are stored canonically (glucose mg/dL, weight kg; BP/HR/SpO2 have no
+// alternative unit). These map a CANONICAL value to what the user should see,
+// and a value the user TYPED back to canonical. Anything without an alternative
+// unit passes straight through, so callers can use them uniformly.
+function vitalUnitLabel(vtype) {
+  if (vtype === 'blood_sugar') return glucoseUnitLabel();
+  if (vtype === 'weight') return weightUnitLabel();
+  if (vtype === 'temperature') return tempUnitLabel();
+  return { blood_pressure: 'mmHg', heart_rate: 'bpm', spo2: '%' }[vtype] || '';
+}
+// canonical → display number (bare, no unit suffix)
+function vitalToDisplay(vtype, v) {
+  if (v == null || v === '') return v;
+  if (vtype === 'blood_sugar') return _gl(v);
+  if (vtype === 'weight') return _userUnits.weight === 'lb' ? kgToLb(v) : Math.round(Number(v) * 10) / 10;
+  return Number(v);
+}
+// what the user typed (in their unit) → canonical
+function vitalToCanonical(vtype, v) {
+  if (v == null || v === '') return v;
+  if (vtype === 'blood_sugar') return glucoseInputToMgdl(v);
+  if (vtype === 'weight') return weightInputToKg(v);
+  return Number(v);
+}
 function _spendCatLabel(k) {
   const meta = SPEND_CATS[k] || ('📌 ' + k);
   const [emoji, ...rest] = meta.split(' ');
@@ -19979,13 +20008,15 @@ function _vtFlag(t, val) {
 function renderVitalTargets(types, targets, latest) {
   const rows = types.map(vt => {
     const tg = targets[vt];
-    const band = tg ? `${tg.target_min != null ? tg.target_min : ''}${(tg.target_min != null && tg.target_max != null) ? '–' : ''}${tg.target_max != null ? tg.target_max : (tg.target_min != null ? '+' : '')}` : '';
+    const _d = x => x != null ? vitalToDisplay(vt, x) : x;
+    const band = tg ? `${tg.target_min != null ? _d(tg.target_min) : ''}${(tg.target_min != null && tg.target_max != null) ? '–' : ''}${tg.target_max != null ? _d(tg.target_max) : (tg.target_min != null ? '+' : '')}` : '';
     const flag = _vtFlag(tg, latest[vt]);
-    const flagHtml = flag === 'below' ? `<span class="vt-flag vt-below">${tformat('latest %1 · below', latest[vt])}</span>`
-      : flag === 'above' ? `<span class="vt-flag vt-above">${tformat('latest %1 · above', latest[vt])}</span>`
-      : flag === 'in' ? `<span class="vt-flag vt-in">${tformat('latest %1 · in range', latest[vt])}</span>` : '';
+    const _lv = latest[vt] != null ? vitalToDisplay(vt, latest[vt]) : latest[vt];
+    const flagHtml = flag === 'below' ? `<span class="vt-flag vt-below">${tformat('latest %1 · below', _lv)}</span>`
+      : flag === 'above' ? `<span class="vt-flag vt-above">${tformat('latest %1 · above', _lv)}</span>`
+      : flag === 'in' ? `<span class="vt-flag vt-in">${tformat('latest %1 · in range', _lv)}</span>` : '';
     return `<div class="vt-row">
-        <div class="vt-name">${tg ? '🎯 ' : ''}${t(VT_LABEL[vt] || vt)} <span class="vt-unit">${VT_UNIT[vt] || ''}</span></div>
+        <div class="vt-name">${tg ? '🎯 ' : ''}${t(VT_LABEL[vt] || vt)} <span class="vt-unit">${vitalUnitLabel(vt) || VT_UNIT[vt] || ''}</span></div>
         <div class="vt-band">${tg ? tformat('target %1', band) : `<span class="vt-none">${t('no target set')}</span>`}</div>
         ${flagHtml}
         <button class="btn-icon vt-edit" title="${t('Set target')}" data-ev-click="editVitalTarget('${vt}')">✎</button>
@@ -20005,18 +20036,22 @@ function editVitalTarget(vt) {
   if (row.querySelector('.vt-editor')) { row.querySelector('.vt-editor').remove(); return; }
   const box = document.createElement('div');
   box.className = 'vt-editor';
-  box.innerHTML = `<input type="number" step="any" class="form-input" id="vt-min-${vt}" placeholder="${t('min')}" style="max-width:80px">
-    <input type="number" step="any" class="form-input" id="vt-max-${vt}" placeholder="${t('max')}" style="max-width:80px">
+  box.innerHTML = `<input type="number" step="any" class="form-input" id="vt-min-${vt}" placeholder="${t('min')} ${vitalUnitLabel(vt)}" style="max-width:110px">
+    <input type="number" step="any" class="form-input" id="vt-max-${vt}" placeholder="${t('max')} ${vitalUnitLabel(vt)}" style="max-width:110px">
     <button class="btn-primary" data-ev-click="saveVitalTarget('${vt}')" style="padding:6px 12px">${t('Save')}</button>
     <button class="btn-icon" data-ev-click="clearVitalTarget('${vt}')" title="${t('Remove')}">✕</button>`;
   row.appendChild(box);
 }
 
 async function saveVitalTarget(vt) {
-  const mn = document.getElementById('vt-min-' + vt)?.value;
-  const mx = document.getElementById('vt-max-' + vt)?.value;
+  const mnRaw = document.getElementById('vt-min-' + vt)?.value;
+  const mxRaw = document.getElementById('vt-max-' + vt)?.value;
+  // Typed in the user's unit; targets are compared against CANONICAL readings,
+  // so convert before saving or every reading would flag out-of-range.
+  const mn = mnRaw ? vitalToCanonical(vt, mnRaw) : null;
+  const mx = mxRaw ? vitalToCanonical(vt, mxRaw) : null;
   const r = await fetch('/api/vital-targets', {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
-    body: JSON.stringify({vtype: vt, target_min: mn || null, target_max: mx || null})}).then(x => x.json()).catch(() => null);
+    body: JSON.stringify({vtype: vt, target_min: mn, target_max: mx})}).then(x => x.json()).catch(() => null);
   if (r && r.success) { showToast(t('Target set 🎯')); loadVitalTargets(); }
   else showToast((r && r.error) || t('Give a low, a high, or both'), 'error');
 }
@@ -22382,10 +22417,10 @@ async function loadWeightProgressChart(days) {
       <div class="wpc-goal-row">
         <label style="font-size:12.5px;color:var(--gray-600);flex-shrink:0">Target weight</label>
         <input type="number" class="form-input wpc-goal-input" id="wpc-target-weight"
-               placeholder="e.g. 68.0" step="0.5"
-               value="${s.target_weight || ''}"
+               placeholder="${_userUnits.weight === 'lb' ? 'e.g. 150' : 'e.g. 68.0'}" step="0.5"
+               value="${s.target_weight != null ? vitalToDisplay('weight', s.target_weight) : ''}"
                data-ev-change="saveTargetWeight(this.value)">
-        <span style="font-size:12.5px;color:var(--gray-500);flex-shrink:0">kg</span>
+        <span style="font-size:12.5px;color:var(--gray-500);flex-shrink:0">${weightUnitLabel()}</span>
         ${hasGoal && s.pct_to_goal != null ? `
           <div class="wpc-progress-pill">
             <div class="wpc-progress-fill" style="width:${s.pct_to_goal}%"></div>
@@ -22447,15 +22482,18 @@ async function renderWeightChart(logs, projection, stats) {
     const d = new Date(l.date_key + 'T12:00:00');
     return (d.getMonth()+1) + '/' + d.getDate();
   });
-  const actualData = logs.map(l => l.weight_kg);
+  // Convert the series ONCE to the user's unit so the axis, min/max, tooltip,
+  // projection and goal line can never disagree with each other.
+  const _w = kg => vitalToDisplay('weight', kg);
+  const actualData = logs.map(l => _w(l.weight_kg));
 
   // Combined date range for projection overlay
   const hasProjection = projection && projection.length > 0 && stats.target_weight;
 
   // Y-axis range
   const allWeights = actualData.slice();
-  if (hasProjection) projection.forEach(p => allWeights.push(p.weight));
-  if (stats.target_weight) allWeights.push(stats.target_weight);
+  if (hasProjection) projection.forEach(p => allWeights.push(_w(p.weight)));
+  if (stats.target_weight) allWeights.push(_w(stats.target_weight));
   const minW = Math.floor(Math.min(...allWeights) - 2);
   const maxW = Math.ceil(Math.max(...allWeights) + 2);
 
@@ -22482,12 +22520,12 @@ async function renderWeightChart(logs, projection, stats) {
   const lastActualIdx = actualLabels.length - 1;
   const projPadded = [
     ...actualLabels.map((_, i) => i === lastActualIdx ? actualData[lastActualIdx] : null),
-    ...projFuture.map(p => p.weight),
+    ...projFuture.map(p => _w(p.weight)),
   ];
 
   // Goal line
   const goalLine = stats.target_weight
-    ? allLabels.map(() => stats.target_weight)
+    ? allLabels.map(() => _w(stats.target_weight))
     : null;
 
   const datasets = [
@@ -22546,7 +22584,7 @@ async function renderWeightChart(logs, projection, stats) {
           callbacks: {
             label: ctx => {
               if (ctx.parsed.y == null) return 'Not logged';
-              return ` ${ctx.dataset.label}: ${ctx.parsed.y} kg`;
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y} ${weightUnitLabel()}`;
             },
           },
         },
@@ -22573,15 +22611,18 @@ async function renderWeightChart(logs, projection, stats) {
 }
 
 async function saveTargetWeight(val) {
-  const kg = parseFloat(val);
-  if (!kg || kg < 20 || kg > 300) return;
+  // Typed in the user's unit; the profile column is canonical kg.
+  const typed = parseFloat(val);
+  if (!typed) return;
+  const kg = weightInputToKg(typed);
+  if (kg < 20 || kg > 300) return;
   const r = await fetch('/api/food/profile', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ target_weight_kg: kg }),
   }).then(r => r.json()).catch(() => null);
   if (r?.success) {
-    showToast(tformat('Target weight set: %1 kg', kg), 'success');
+    showToast(tformat('Target weight set: %1', fmtWeight(kg)), 'success');
     loadWeightProgressChart();
   }
 }
@@ -22752,12 +22793,28 @@ function _guessCountry() {
   } catch (e) {}
   return 'IN';
 }
+// Keep the optional weight label honest about the unit we'll interpret.
+function _obSyncWeightLabel() {
+  const lbl = document.getElementById('ob-weight-label');
+  const sel = document.getElementById('ob-country');
+  if (!lbl) return;
+  // Derive from the country chosen on this screen (units aren't saved yet).
+  const cc = sel ? sel.value : _userCountry;
+  const lb = cc === 'US';
+  lbl.textContent = `${t('Weight')} (${lb ? 'lb' : 'kg'})`;
+  const inp = document.getElementById('ob-weight');
+  if (inp) inp.placeholder = lb ? 'e.g. 160' : 'e.g. 72';
+  _userUnits.weight = lb ? 'lb' : 'kg';   // so weightInputToKg agrees on submit
+}
+
 async function _obPopulateCountry() {
   const sel = document.getElementById('ob-country');
   if (!sel) return;
   if (!_countryList.length) { try { await loadUserLocale(); } catch (e) {} }
   sel.innerHTML = _countryList.map(c => `<option value="${escHtml(c.code)}">${escHtml(c.name)} (${escHtml(c.symbol)})</option>`).join('');
   sel.value = _guessCountry();
+  sel.setAttribute('data-ev-change', '_obSyncWeightLabel()');
+  _obSyncWeightLabel();
 }
 
 function hideOnboarding() {
@@ -22869,7 +22926,9 @@ async function obSubmit() {
   const name   = (document.getElementById('ob-name')?.value || '').trim();
   const age    = parseInt(document.getElementById('ob-age')?.value);
   const gender = document.getElementById('ob-gender')?.value;
-  const weight = parseFloat(document.getElementById('ob-weight')?.value) || null;
+  // Entered in the unit implied by the country picked on this same screen.
+  const weightRaw = parseFloat(document.getElementById('ob-weight')?.value) || null;
+  const weight = weightRaw ? weightInputToKg(weightRaw) : null;
   const height = parseFloat(document.getElementById('ob-height')?.value) || null;
 
   const btn = document.getElementById('ob-submit-btn');

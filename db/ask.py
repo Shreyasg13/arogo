@@ -116,8 +116,10 @@ def _handle_average(q):
         return {'matched': True, 'kind': 'average', 'answer': "You have no blood-pressure readings in the last 30 days."}
     if re.search(r'blood sugar|sugar|glucose', q) and get_vitals:
         rows = vitals_avg('blood_sugar'); a = _avg([r['value1'] for r in rows])
+        # Answer in the unit the user reads their own numbers in.
+        shown, unit = _in_user_glucose(a)
         return {'matched': True, 'kind': 'average',
-                'answer': f"Your average blood sugar over the last {days} days is {round(a)} mg/dL (from {len(rows)} readings)."
+                'answer': f"Your average blood sugar over the last {days} days is {shown} {unit} (from {len(rows)} readings)."
                 if a else "You have no blood-sugar readings in the last 30 days."}
     if re.search(r'heart rate|pulse', q) and get_vitals:
         rows = vitals_avg('heart_rate'); a = _avg([r['value1'] for r in rows])
@@ -139,10 +141,37 @@ def _handle_average(q):
                           AND weight_kg IS NOT NULL ORDER BY date_key""",
                        (current_user_id(), _cutoff(days)), fetchall=True) or []
         a = _avg([r['weight_kg'] for r in rows])
+        shown, unit = _in_user_weight(a)
         return {'matched': True, 'kind': 'average',
-                'answer': f"Your average logged weight over the last {days} days is {a} kg (from {len(rows)} entries)."
+                'answer': f"Your average logged weight over the last {days} days is {shown} {unit} (from {len(rows)} entries)."
                 if a else "You have no weight entries in the last 30 days."}
     return _fail(q)
+
+
+def _user_units():
+    try:
+        from .locale_config import units_of
+        return units_of()
+    except Exception:
+        return {'glucose': 'mgdl', 'weight': 'kg'}
+
+
+def _in_user_glucose(mgdl):
+    """(value, unit) for a canonical mg/dL number, in the user's unit."""
+    if mgdl is None:
+        return None, 'mg/dL'
+    if _user_units().get('glucose') == 'mmol':
+        return round(mgdl / 18.0, 1), 'mmol/L'
+    return round(mgdl), 'mg/dL'
+
+
+def _in_user_weight(kg):
+    """(value, unit) for a canonical kg number, in the user's unit."""
+    if kg is None:
+        return None, 'kg'
+    if _user_units().get('weight') == 'lb':
+        return round(kg * 2.20462, 1), 'lb'
+    return kg, 'kg'
 
 
 def _cutoff(days):

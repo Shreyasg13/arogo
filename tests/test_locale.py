@@ -163,3 +163,36 @@ def test_units_in_locale_route(app):
     u = c.get("/api/locale").get_json()["units"]
     assert set(u) == {"weight", "height", "temp", "glucose"}
     assert u["weight"] == "kg"                       # India default
+
+
+# ── server-generated strings follow the unit preference ─────────────────────
+
+def test_ask_answers_in_the_users_glucose_unit(app):
+    from db.ask import answer_question
+    from db.core import new_id, now_iso
+    import datetime as dt
+    _, uid = _client_uid(app, "locask@medeasy.test")
+    with user_context(uid):
+        d = dt.date.today().isoformat()
+        execute("INSERT INTO vitals (id,date_key,type,value1,unit,logged_at,user_id) VALUES (?,?,?,?,?,?,?)",
+                (new_id(), d, "blood_sugar", 180, "mg/dL", now_iso(), uid), commit=True)
+        mgdl = answer_question("what's my average blood sugar")["answer"]
+        update_profile({"glucose_unit": "mmol"})
+        mmol = answer_question("what's my average blood sugar")["answer"]
+    assert "180 mg/dL" in mgdl
+    assert "10.0 mmol/L" in mmol or "10 mmol/L" in mmol   # converted, not raw
+    assert "mg/dL" not in mmol
+
+
+def test_ask_answers_in_the_users_weight_unit(app):
+    from db.ask import answer_question
+    from db.core import new_id, now_iso
+    import datetime as dt
+    _, uid = _client_uid(app, "locaskw@medeasy.test")
+    with user_context(uid):
+        d = dt.date.today().isoformat()
+        execute("INSERT INTO body_metrics (id,date_key,weight_kg,created_at,user_id) VALUES (?,?,?,?,?)",
+                (new_id(), d, 70, now_iso(), uid), commit=True)
+        update_profile({"weight_unit": "lb"})
+        ans = answer_question("what's my average weight")["answer"]
+    assert "154.3 lb" in ans and "kg" not in ans

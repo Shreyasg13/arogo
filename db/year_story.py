@@ -127,7 +127,14 @@ def get_year_story(days=365):
     # Private (in-app only) highlights.
     if weight_change and weight_change['delta']:
         d = weight_change['delta']
-        hl.append({'icon': '⚖️', 'text': f'Weight {"down" if d < 0 else "up"} {abs(d)} kg over the period', 'public': False})
+        try:
+            from .locale_config import units_of
+            _lb = units_of().get('weight') == 'lb'
+        except Exception:
+            _lb = False
+        _amt = round(abs(d) * 2.20462, 1) if _lb else abs(d)
+        _u = 'lb' if _lb else 'kg'
+        hl.append({'icon': '⚖️', 'text': f'Weight {"down" if d < 0 else "up"} {_amt} {_u} over the period', 'public': False})
     if top_symptom:
         hl.append({'icon': '📝', 'text': f'Most-noted symptom: {top_symptom["name"]} ({top_symptom["count"]}×)', 'public': False})
 
