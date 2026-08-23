@@ -105,6 +105,37 @@ def test_update_and_delete_and_isolation(app):
         assert get_policy(p["id"]) is None
 
 
+def test_deactivate_works_and_survives_an_unrelated_edit(app):
+    """An archived policy must stay archived — and must not silently rejoin the
+    active count / yearly premium after an unrelated PATCH."""
+    _, uid = _uid(app, "pol9@medeasy.test")
+    with user_context(uid):
+        p = create_policy({"insurer": "Old cover", "premium": 5000, "premium_period": "year"})
+        # both the JSON boolean and the number 0 must deactivate
+        assert update_policy(p["id"], {"active": False})["active"] == 0
+        assert update_policy(p["id"], {"active": True})["active"] == 1
+        assert update_policy(p["id"], {"active": 0})["active"] == 0
+        # an unrelated edit must NOT resurrect it
+        after = update_policy(p["id"], {"premium": 6000})
+        assert after["active"] == 0, "an unrelated PATCH silently reactivated the policy"
+        s = list_policies()["summary"]
+    assert s["active"] == 0
+    assert s["yearly_premium"] is None       # an inactive policy's premium isn't counted
+
+
+def test_absurd_premium_cannot_break_the_response(app):
+    """A huge premium must not overflow the yearly rollup to Infinity, which
+    serialises as invalid JSON and would make the page permanently unloadable."""
+    import json, math
+    _, uid = _uid(app, "pol10@medeasy.test")
+    with user_context(uid):
+        create_policy({"insurer": "Boom", "premium": 1e308, "premium_period": "month"})
+        s = list_policies()["summary"]
+    yp = s["yearly_premium"]
+    assert yp is None or math.isfinite(yp)
+    json.dumps({"summary": s}, allow_nan=False)   # raises if Infinity/NaN leaked in
+
+
 def test_routes(app):
     c, _ = _uid(app, "pol8@medeasy.test")
     assert c.get("/api/insurance").status_code == 200

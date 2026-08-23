@@ -2675,6 +2675,11 @@ async function openQuickLog() {
   const sheet = document.getElementById('quick-log-sheet');
   if (!sheet) return;
   sheet.style.display = 'flex';
+  // Label the weight box with the unit we'll actually interpret it as, so a
+  // lb-preference user is never asked for "kg" and silently converted.
+  sheet.querySelectorAll('[data-unit-ph="weight"]').forEach(el => {
+    el.placeholder = weightUnitLabel();
+  });
 
   // Habits: toggle chips for today
   const habitsBox = document.getElementById('qlg-habits');
@@ -4107,7 +4112,9 @@ async function logConditionSugar(context, key) {
   const v = parseFloat(document.getElementById('cchk-' + key)?.value);
   if (!v) { showToast(t('Enter a reading'), 'error'); return; }
   const r = await fetch('/api/vitals', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: 'blood_sugar', value1: v, context, unit: 'mg/dL', date_key: localToday() }) })
+    // The user types in THEIR unit; store canonical mg/dL.
+    body: JSON.stringify({ type: 'blood_sugar', value1: glucoseInputToMgdl(v), context,
+                           unit: 'mg/dL', date_key: localToday() }) })
     .then(r => r.json()).catch(() => null);
   if (r && r.success) { showToast(t('Logged ✓')); loadConditionCheckin(); loadTodayGlance(); }
   else showToast((r && r.error) || t('Could not save'), 'error');
@@ -12997,12 +13004,17 @@ function parseQuickCommand(q) {
       return {icon: '💧', label: `Log ${ml}ml water`,
               ev: `closeGlobalSearch();quickWater(${ml})`};
   }
-  m = q.trim().toLowerCase().match(/^weight\s+(\d{2,3}(?:\.\d+)?)\s*(?:kg)?$/);
+  m = q.trim().toLowerCase().match(/^weight\s+(\d{2,3}(?:\.\d+)?)\s*(kg|kgs|lb|lbs|pounds?)?$/);
   if (m) {
-    const kg = parseFloat(m[1]);
+    // An explicit unit in the command WINS over the display preference — the
+    // user said what they meant, so never silently reinterpret it.
+    const typed = parseFloat(m[1]);
+    const said = (m[2] || '').replace(/s$/, '');
+    const asLb = said ? (said === 'lb' || said === 'pound') : (_userUnits.weight === 'lb');
+    const kg = asLb ? lbToKg(typed) : typed;
     if (kg >= 20 && kg <= 400)
-      return {icon: '⚖️', label: `Log weight ${kg}kg`,
-              ev: `closeGlobalSearch();quickLogWeight(${kg})`};
+      return {icon: '⚖️', label: `Log weight ${typed} ${asLb ? 'lb' : 'kg'}`,
+              ev: `closeGlobalSearch();quickLogWeightKg(${kg})`};
   }
   // bp 120/80
   m = q.trim().toLowerCase().match(/^bp\s+(\d{2,3})\s*\/\s*(\d{2,3})$/);
@@ -13012,11 +13024,13 @@ function parseQuickCommand(q) {
             ev: `closeGlobalSearch();quickLogVital('blood_pressure',${sys},${dia},'mmHg')`};
   }
   // sugar 110 / glucose 110
-  m = q.trim().toLowerCase().match(/^(?:sugar|glucose)\s+(\d{2,3})$/);
+  m = q.trim().toLowerCase().match(/^(?:sugar|glucose)\s+(\d{1,3}(?:\.\d)?)$/);
   if (m) {
-    const v = parseInt(m[1], 10);
-    return {icon: '🩸', label: `Log blood sugar ${v} mg/dL`,
-            ev: `closeGlobalSearch();quickLogVital('blood_sugar',${v},0,'mg/dL')`};
+    // Typed in the user's unit; convert to canonical mg/dL and label it honestly.
+    const typed = parseFloat(m[1]);
+    const mgdl = glucoseInputToMgdl(typed);
+    return {icon: '🩸', label: `Log blood sugar ${typed} ${glucoseUnitLabel()}`,
+            ev: `closeGlobalSearch();quickLogVital('blood_sugar',${mgdl},0,'mg/dL')`};
   }
   // hr 72 / pulse 72
   m = q.trim().toLowerCase().match(/^(?:hr|pulse)\s+(\d{2,3})$/);
@@ -13026,6 +13040,18 @@ function parseQuickCommand(q) {
             ev: `closeGlobalSearch();quickLogVital('heart_rate',${v},0,'bpm')`};
   }
   return null;
+}
+
+// Save a weight already in canonical kg (callers that resolved the unit
+// themselves, e.g. the command bar and voice, which honour an explicit unit).
+async function quickLogWeightKg(kg) {
+  const r = await fetch('/api/body-metrics', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ date_key: localToday(), weight_kg: kg }),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
+  showToast(tformat('⚖️ %1 saved', fmtWeight(kg)));
 }
 
 async function quickLogWeight(val) {
@@ -13104,10 +13130,17 @@ function parseVoiceCommand(text) {
     return { kind:'vital', type:'heart_rate', value1:v, value2:0, unit:'bpm',
              label:`Heart rate ${v} bpm`, speak:`Log heart rate ${v}?` };
   // Blood sugar / glucose.
-  v = num(/(?:blood sugar|sugar|glucose)\D*(\d{2,3})/);
-  if (v != null && v >= 20 && v <= 600)
-    return { kind:'vital', type:'blood_sugar', value1:v, value2:0, unit:'mg/dL',
-             label:`Blood sugar ${v} mg/dL`, speak:`Log blood sugar ${v}?` };
+  v = num(/(?:blood sugar|sugar|glucose)\D*(\d{1,3}(?:\.\d)?)/);
+  if (v != null) {
+    // Spoken in the user's unit; store canonical mg/dL. Plausibility is checked
+    // in the unit the user actually spoke.
+    const lo = _userUnits.glucose === 'mmol' ? 1 : 20;
+    const hi = _userUnits.glucose === 'mmol' ? 40 : 600;
+    if (v >= lo && v <= hi)
+      return { kind:'vital', type:'blood_sugar', value1:glucoseInputToMgdl(v), value2:0, unit:'mg/dL',
+               label:`Blood sugar ${v} ${glucoseUnitLabel()}`,
+               speak:`Log blood sugar ${v} ${glucoseUnitLabel()}?` };
+  }
   // Oxygen / SpO2.
   v = num(/(?:oxygen|spo2|sats?|saturation)\D*(\d{2,3})/);
   if (v != null && v >= 50 && v <= 100)
@@ -13116,7 +13149,15 @@ function parseVoiceCommand(text) {
   // Weight.
   v = num(/(?:weight|weigh)\D*(\d{2,3}(?:\.\d)?)/);
   if (v != null && v >= 20 && v <= 400)
-    return { kind:'weight', kg:v, label:`Weight ${v} kg`, speak:`Log weight ${v} kilograms?` };
+  {
+    // Honour a spoken unit ("70 kilos" / "154 pounds"); else the preference.
+    const saidLb = /\b(lb|lbs|pound|pounds)\b/.test(s);
+    const saidKg = /\b(kg|kgs|kilo|kilos|kilogram|kilograms)\b/.test(s);
+    const asLb = saidLb || (!saidKg && _userUnits.weight === 'lb');
+    const kg = asLb ? lbToKg(v) : v;
+    const u = asLb ? 'lb' : 'kg';
+    return { kind:'weight', kg, label:`Weight ${v} ${u}`, speak:`Log weight ${v} ${u}?` };
+  }
   // Water (a spoken amount, else a sensible glass).
   if (/\bwater\b|glass of|\bdrank\b|hydrat/.test(s)) {
     const ml = num(/(\d{2,4})\s*(?:ml|milliliters?)?/);
@@ -13227,7 +13268,7 @@ async function voiceConfirm() {
   _voicePending = null;
   try {
     if (cmd.kind === 'vital') { await quickLogVital(cmd.type, cmd.value1, cmd.value2, cmd.unit); speakText(t('Saved.')); }
-    else if (cmd.kind === 'weight') { await quickLogWeight(cmd.kg); speakText(t('Saved.')); }
+    else if (cmd.kind === 'weight') { await quickLogWeightKg(cmd.kg); speakText(t('Saved.')); }
     else if (cmd.kind === 'water') { await quickWater(cmd.ml); speakText(t('Saved.')); }
     else if (cmd.kind === 'dose') { await voiceMarkNextDose(); }
   } catch (e) {}
@@ -18967,6 +19008,11 @@ function _rupee(n) {
 // glucose mg/dL); these only decide how it's shown and what an entered number
 // means. Defaults follow the country until the user overrides a unit.
 let _userUnits = { weight: 'kg', height: 'cm', temp: 'c', glucose: 'mgdl' };
+// Top-level setter so the unit-conversion paths are testable with a non-default
+// preference — the input converters decide what gets WRITTEN to the database, so
+// they must be exercised as 'lb'/'mmol', not just at their kg/mg-dL defaults.
+function setUserUnits(u) { _userUnits = Object.assign({}, _userUnits, u || {}); }
+function getUserUnits() { return Object.assign({}, _userUnits); }
 
 async function loadUserLocale() {
   const d = await fetch('/api/locale', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -19386,8 +19432,8 @@ async function loadBodyView() {
         <div style="padding:16px 20px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="form-group">
-              <label class="form-label">Weight (kg)</label>
-              <input type="number" class="form-input" id="bv-weight" placeholder="72.5" step="0.1">
+              <label class="form-label">${t('Weight')} (${weightUnitLabel()})</label>
+              <input type="number" class="form-input" id="bv-weight" placeholder="${_userUnits.weight === 'lb' ? '160' : '72.5'}" step="0.1">
             </div>
             <div class="form-group">
               <label class="form-label">Body fat %</label>
@@ -19711,8 +19757,12 @@ async function saveVitalFromView() {
   if (!v1) { showToast('Enter a value', 'error'); return; }
   const r = await fetch('/api/vitals', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ type: window._bvVitalType, value1: v1, value2: v2,
-                           unit: window._bvVitalUnit, date_key: localToday() })
+    // Glucose entered in mmol/L is converted to canonical mg/dL before saving.
+    body: JSON.stringify({ type: window._bvVitalType,
+                           value1: window._bvVitalType === 'blood_sugar' ? glucoseInputToMgdl(v1) : v1,
+                           value2: v2,
+                           unit: window._bvVitalType === 'blood_sugar' ? 'mg/dL' : window._bvVitalUnit,
+                           date_key: localToday() })
   }).then(r => r.json()).catch(() => null);
   if (r?.success) { showToast('Logged ✓', 'success'); loadVitalsView(); }
   else showToast(r?.error || 'Failed to save', 'error');

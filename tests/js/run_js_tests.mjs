@@ -114,9 +114,14 @@ test('parseQuickCommand: water variants', () => {
   eq(S.parseQuickCommand('w 250').label, 'Log 250ml water');
   eq(S.parseQuickCommand('WATER 750ml').label, 'Log 750ml water');
 });
-test('parseQuickCommand: weight', () => {
-  eq(S.parseQuickCommand('weight 72.5').label, 'Log weight 72.5kg');
-  eq(S.parseQuickCommand('weight 90kg').label, 'Log weight 90kg');
+test('parseQuickCommand: weight states the unit it will store', () => {
+  // Default preference is kg, so a bare number is kg and the label says so.
+  eq(S.parseQuickCommand('weight 72.5').label, 'Log weight 72.5 kg');
+  eq(S.parseQuickCommand('weight 90kg').label, 'Log weight 90 kg');
+  // An EXPLICIT unit must win and be reflected honestly in the label — a user
+  // who says "lb" must never be told (or have stored) kg.
+  eq(S.parseQuickCommand('weight 154 lb').label, 'Log weight 154 lb');
+  eq(S.parseQuickCommand('weight 154 pounds').label, 'Log weight 154 lb');
 });
 test('parseQuickCommand: vitals — bp / sugar / hr', () => {
   eq(S.parseQuickCommand('bp 120/80').label, 'Log BP 120/80');
@@ -167,6 +172,56 @@ test('converters treat blank/garbage as zero, never NaN', () => {
     eq(Number.isNaN(S[f]('abc')), false);
   }
 });
+// The INPUT converters decide what is written to the database. A missed or
+// doubled conversion here silently corrupts a health record, so they are tested
+// at a NON-default preference — the gap that let the first cut ship broken.
+test('weightInputToKg converts only when the preference is lb', () => {
+  S.setUserUnits({ weight: 'kg' });
+  eq(S.weightInputToKg(70), 70);                 // kg user: stored as typed
+  S.setUserUnits({ weight: 'lb' });
+  eq(S.weightInputToKg(154.3), 69.99);           // lb user: converted to kg
+  S.setUserUnits({ weight: 'kg' });               // restore
+});
+test('glucoseInputToMgdl converts only when the preference is mmol', () => {
+  S.setUserUnits({ glucose: 'mgdl' });
+  eq(S.glucoseInputToMgdl(110), 110);            // mg/dL user: stored as typed
+  S.setUserUnits({ glucose: 'mmol' });
+  eq(S.glucoseInputToMgdl(7.2), 130);            // mmol user: 7.2 → 130 mg/dL
+  eq(S.glucoseInputToMgdl(22), 396);             // a high reading stays high
+  S.setUserUnits({ glucose: 'mgdl' });            // restore
+});
+test('an mmol reading never lands in the mg/dL "low" band', () => {
+  // The bug this guards: 22 mmol/L (an emergency) stored raw as 22 mg/dL would
+  // be flagged "low" — the exact inverse of the truth.
+  S.setUserUnits({ glucose: 'mmol' });
+  const stored = S.glucoseInputToMgdl(22);
+  eq(stored > 125, true);                        // reads as high, not low
+  S.setUserUnits({ glucose: 'mgdl' });
+});
+test('display helpers follow the preference without an explicit opt', () => {
+  S.setUserUnits({ weight: 'lb', glucose: 'mmol' });
+  eq(S.fmtWeight(70), '154.3 lb');
+  eq(S.fmtGlucose(180), '10 mmol/L');
+  eq(S.weightUnitLabel(), 'lb');
+  eq(S.glucoseUnitLabel(), 'mmol/L');
+  S.setUserUnits({ weight: 'kg', glucose: 'mgdl' });
+  eq(S.fmtWeight(70), '70 kg');
+  eq(S.fmtGlucose(180), '180 mg/dL');
+});
+test('quick-command glucose converts and labels in the user unit', () => {
+  S.setUserUnits({ glucose: 'mmol' });
+  const c = S.parseQuickCommand('sugar 7.2');
+  eq(c.label, 'Log blood sugar 7.2 mmol/L');     // honest label
+  eq(/130/.test(c.ev), true);                    // stores canonical mg/dL
+  S.setUserUnits({ glucose: 'mgdl' });
+});
+test('voice weight honours a spoken unit over the preference', () => {
+  S.setUserUnits({ weight: 'kg' });
+  const spoken = S.parseVoiceCommand('weight 154 pounds');
+  eq(spoken.label, 'Weight 154 lb');              // says what it heard
+  eq(Math.abs(spoken.kg - 69.85) < 0.2, true);    // stores kg
+});
+
 test('fmtWeight / fmtGlucose render the requested unit', () => {
   eq(S.fmtWeight(70, {unit: 'kg'}), '70 kg');
   eq(S.fmtWeight(70, {unit: 'lb'}), '154.3 lb');

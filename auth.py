@@ -345,7 +345,15 @@ _ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
                       # The assistant reads personal aggregates bypassing the
                       # per-category consent gate, so a caregiver can't use it to
                       # extract a member's data — they have member_summary instead.
-                      '/api/ask')
+                      '/api/ask',
+                      # Personal free-text annotations ("why I switched", "what I'm
+                      # afraid of"). Same privacy class as the journal above, and the
+                      # caregiver would get destructive write as well as read.
+                      '/api/notes',
+                      # Policy numbers are financial identifiers usable for fraud
+                      # against the member's insurer; there is no consent gate for
+                      # them, so a caregiver acting-as cannot read or edit policies.
+                      '/api/insurance')
 
 
 def _canonical_path(path):

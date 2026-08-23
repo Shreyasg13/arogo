@@ -81,8 +81,12 @@ def list_notes(entity_type=None, entity_id=None, q=None):
         sql += " AND entity_id=?"
         params.append(str(entity_id)[:64])
     if q:
-        sql += " AND LOWER(body) LIKE ?"
-        params.append('%' + str(q).strip().lower() + '%')
+        # Escape LIKE metacharacters so searching for a literal "%" or "_"
+        # doesn't match every note (the value is parameterised either way).
+        esc = (str(q).strip().lower()
+               .replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_'))
+        sql += " AND LOWER(body) LIKE ? ESCAPE '\\'"
+        params.append('%' + esc + '%')
     sql += " ORDER BY pinned DESC, updated_at DESC"
     rows = execute(sql, tuple(params), fetchall=True) or []
     return [dict(r) for r in rows]

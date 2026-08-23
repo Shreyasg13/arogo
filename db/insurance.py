@@ -14,12 +14,18 @@ date; if you didn't enter one, we say nothing rather than guess.
 from __future__ import annotations
 
 import datetime as dt
+import math
 
 from .core import execute, current_user_id, new_id, now_iso, user_today, valid_date, to_num
 
 KINDS = ('health', 'accident', 'critical_illness', 'life', 'travel', 'other')
 PERIODS = ('year', 'month', 'quarter')
 RENEWAL_SOON_DAYS = 30          # inside this window we surface it as "coming up"
+# Amounts are bounded so a huge premium can't overflow the yearly rollup to
+# Infinity — jsonify emits a bare `Infinity` token, which is invalid JSON and
+# would make the whole page unloadable (and unfixable, since the delete button
+# lives in the list that never renders).
+_MAX_MONEY = 1e12
 
 
 def _clean_kind(k):
@@ -30,6 +36,17 @@ def _clean_kind(k):
 def _clean_period(p):
     p = str(p or '').strip().lower()
     return p if p in PERIODS else 'year'
+
+
+def _clean_active(v):
+    """Truthy → 1. Accepts booleans, 0/1 and the usual string forms; anything
+    else keeps the row active. Callers pass the CURRENT value as the default so
+    an unrelated PATCH can never silently resurrect an archived policy."""
+    if v is None:
+        return 1
+    if isinstance(v, str):
+        return 0 if v.strip().lower() in ('0', 'false', 'no', '') else 1
+    return 0 if v in (False, 0) else 1
 
 
 def _decorate(row):
@@ -60,8 +77,8 @@ def create_policy(data):
                VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?)""",
             (pid, insurer[:120], str((data or {}).get('policy_no') or '')[:80],
              _clean_kind((data or {}).get('kind')),
-             to_num((data or {}).get('cover_amount'), None),
-             to_num((data or {}).get('premium'), None),
+             to_num((data or {}).get('cover_amount'), None, lo=0, hi=_MAX_MONEY),
+             to_num((data or {}).get('premium'), None, lo=0, hi=_MAX_MONEY),
              _clean_period((data or {}).get('premium_period')),
              start if valid_date(start) else None,
              renewal if valid_date(renewal) else None,
@@ -89,14 +106,14 @@ def update_policy(pid, data):
             (str(data.get('insurer', cur['insurer']) or cur['insurer'])[:120],
              str(data.get('policy_no', cur.get('policy_no')) or '')[:80],
              _clean_kind(data.get('kind', cur.get('kind'))),
-             to_num(data.get('cover_amount', cur.get('cover_amount')), None),
-             to_num(data.get('premium', cur.get('premium')), None),
+             to_num(data.get('cover_amount', cur.get('cover_amount')), None, lo=0, hi=_MAX_MONEY),
+             to_num(data.get('premium', cur.get('premium')), None, lo=0, hi=_MAX_MONEY),
              _clean_period(data.get('premium_period', cur.get('premium_period'))),
              start if valid_date(start) else None,
              renewal if valid_date(renewal) else None,
              str(data.get('members', cur.get('members')) or '')[:200],
              str(data.get('notes', cur.get('notes')) or '')[:500],
-             0 if data.get('active') is False else 1,
+             _clean_active(data.get('active', cur.get('active'))),
              pid, current_user_id()), commit=True)
     return get_policy(pid)
 
@@ -125,7 +142,9 @@ def list_policies():
         'policies': out,
         'summary': {
             'active': sum(1 for p in out if p['active']),
-            'yearly_premium': round(yearly, 2) if yearly else None,
+            # isfinite: amounts are bounded on write, but an older row written
+            # before that bound must not serialise as invalid-JSON `Infinity`.
+            'yearly_premium': round(yearly, 2) if yearly and math.isfinite(yearly) else None,
             'renewing_soon': [
                 {'id': p['id'], 'insurer': p['insurer'], 'renewal_date': p['renewal_date'],
                  'days': p['days_to_renewal']}

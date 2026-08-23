@@ -53,6 +53,26 @@ def test_empty_or_unknown_categories_export_nothing(app):
     assert [k for k in d2 if not k.startswith("_")] == []
 
 
+def test_every_health_table_belongs_to_a_category(app):
+    """A scoped export must not silently omit a health table. Anything genuinely
+    non-health (account/settings/secret meta) is listed here explicitly, so
+    adding a new feature table forces a conscious choice rather than a gap."""
+    from db.account import EXPORT_CATEGORIES
+    from db.core import DATA_TABLES
+    covered = set()
+    for _key, _label, tables in EXPORT_CATEGORIES:
+        covered.update(tables)
+    # Deliberately NOT exportable by category: account/settings/secret meta.
+    not_health = {
+        'notification_log', 'reminder_settings', 'user_profile', 'oauth_tokens',
+        'sync_log', 'measurement_reminders', 'share_snapshots',
+    }
+    missing = [t for t in DATA_TABLES if t not in covered and t not in not_health]
+    assert not missing, (
+        "these health tables are in no export category, so a scoped export "
+        f"silently drops them: {missing}")
+
+
 def test_never_exports_account_or_secret_tables(app):
     c = _reg(app, "sx4@medeasy.test")
     _seed(c)

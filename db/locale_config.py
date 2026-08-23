@@ -26,7 +26,7 @@ COUNTRIES = {
     'AE': {'name': 'United Arab Emirates', 'currency': 'AED', 'symbol': 'د.إ', 'locale': 'en-AE', 'fy_start_month': 1, 'tax_note': ''},
     'SG': {'name': 'Singapore',          'currency': 'SGD', 'symbol': '$',  'locale': 'en-SG', 'fy_start_month': 1, 'tax_note': ''},
     'ZA': {'name': 'South Africa',       'currency': 'ZAR', 'symbol': 'R',  'locale': 'en-ZA', 'fy_start_month': 3, 'tax_note': ''},
-    'JP': {'name': 'Japan',              'currency': 'JPY', 'symbol': '¥',  'locale': 'ja-JP', 'fy_start_month': 4, 'tax_note': ''},
+    'JP': {'name': 'Japan',              'currency': 'JPY', 'symbol': '¥',  'locale': 'ja-JP', 'fy_start_month': 1, 'tax_note': ''},
     'CN': {'name': 'China',              'currency': 'CNY', 'symbol': '¥',  'locale': 'zh-CN', 'fy_start_month': 1, 'tax_note': ''},
     'DE': {'name': 'Germany',            'currency': 'EUR', 'symbol': '€',  'locale': 'de-DE', 'fy_start_month': 1, 'tax_note': ''},
     'FR': {'name': 'France',             'currency': 'EUR', 'symbol': '€',  'locale': 'fr-FR', 'fy_start_month': 1, 'tax_note': ''},
@@ -39,7 +39,7 @@ COUNTRIES = {
     'PK': {'name': 'Pakistan',           'currency': 'PKR', 'symbol': '₨',  'locale': 'en-PK', 'fy_start_month': 7, 'tax_note': ''},
     'BD': {'name': 'Bangladesh',         'currency': 'BDT', 'symbol': '৳',  'locale': 'en-BD', 'fy_start_month': 7, 'tax_note': ''},
     'LK': {'name': 'Sri Lanka',          'currency': 'LKR', 'symbol': '₨',  'locale': 'en-LK', 'fy_start_month': 4, 'tax_note': ''},
-    'NP': {'name': 'Nepal',              'currency': 'NPR', 'symbol': 'रू', 'locale': 'en-IN', 'fy_start_month': 4, 'tax_note': ''},
+    'NP': {'name': 'Nepal',              'currency': 'NPR', 'symbol': 'रू', 'locale': 'en-IN', 'fy_start_month': 1, 'tax_note': ''},
     'OT': {'name': 'Other',              'currency': 'USD', 'symbol': '$',  'locale': 'en-US', 'fy_start_month': 1, 'tax_note': ''},
 }
 
@@ -114,7 +114,7 @@ EMERGENCY_NUMBERS = {
     'US': [('Emergency (all)', '911')],
     'CA': [('Emergency (all)', '911')],
     'GB': [('Emergency (all)', '999'), ('Non-emergency medical', '111'), ('EU standard', '112')],
-    'IE': [('Emergency (all)', '112'), ('Emergency (all)', '999')],
+    'IE': [('Emergency (all)', '112'), ('Emergency (all, alternative)', '999')],
     'AU': [('Emergency (all)', '000')],
     'NZ': [('Emergency (all)', '111')],
     'AE': [('Ambulance', '998'), ('Police', '999'), ('Fire', '997')],
@@ -131,7 +131,9 @@ EMERGENCY_NUMBERS = {
     'MX': [('Emergency (all)', '911')],
     'PK': [('Ambulance (Edhi)', '115'), ('Police', '15'), ('Rescue', '1122')],
     'BD': [('Emergency (all)', '999')],
-    'LK': [('Ambulance (Suwa Seriya)', '1990'), ('Emergency (all)', '119')],
+    # 119 in Sri Lanka is POLICE, not a general emergency line — mislabelling it
+    # would send someone in a medical emergency to the wrong service.
+    'LK': [('Ambulance (Suwa Seriya)', '1990'), ('Police', '119'), ('Fire & rescue', '110')],
     'NP': [('Ambulance', '102'), ('Police', '100')],
 }
 _EMERGENCY_FALLBACK = [('International / GSM standard', '112')]

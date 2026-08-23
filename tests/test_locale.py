@@ -120,6 +120,28 @@ def test_emergency_numbers_by_country(app):
         assert "999" in {x["number"] for x in emergency_numbers()["numbers"]}
 
 
+def test_every_emergency_entry_is_well_formed():
+    """Every listed number must have a specific service label and digits only.
+    A number labelled as something it isn't sends someone to the wrong service."""
+    from db.locale_config import EMERGENCY_NUMBERS
+    for code, rows in EMERGENCY_NUMBERS.items():
+        assert rows, f"{code} has an empty list"
+        seen_labels = set()
+        for label, number in rows:
+            assert label and label.strip(), f"{code}: empty label"
+            assert number.isdigit(), f"{code}: non-numeric {number!r}"
+            assert label not in seen_labels, f"{code}: duplicate label {label!r} is ambiguous on an ICE card"
+            seen_labels.add(label)
+
+
+def test_sri_lanka_119_is_labelled_police():
+    """119 in Sri Lanka is the police line, not a general emergency number."""
+    from db.locale_config import EMERGENCY_NUMBERS
+    lk = dict((n, l) for l, n in EMERGENCY_NUMBERS['LK'])
+    assert lk['119'] == 'Police'
+    assert lk['1990'].startswith('Ambulance')
+
+
 def test_emergency_fallback_is_flagged_unlisted():
     from db.locale_config import emergency_numbers
     e = emergency_numbers("OT")                      # "Other" has no listed numbers

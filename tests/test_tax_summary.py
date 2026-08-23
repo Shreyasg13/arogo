@@ -70,6 +70,36 @@ def test_disclaimer_present_and_no_advice_language(app):
     assert "deduction" not in s and "savings" not in s and "tax_saved" not in s
 
 
+def test_fy_bounds_for_every_configured_start_month():
+    """Each start month must produce a correct, contiguous 12-month window.
+    Only months 1 and 4 were covered before; 7 (AU/PK/BD) and 3 (ZA) are live."""
+    import datetime as dt
+    from db.tax_summary import _fy_bounds
+    for month, (exp_start, exp_end) in {
+        1: ("2025-01-01", "2025-12-31"),
+        3: ("2025-03-01", "2026-02-28"),
+        4: ("2025-04-01", "2026-03-31"),
+        7: ("2025-07-01", "2026-06-30"),
+    }.items():
+        start, end = _fy_bounds(2025, start_month=month)
+        assert (start, end) == (exp_start, exp_end), f"start_month={month}"
+        # the window must be a contiguous year: the next FY starts the next day
+        nxt_start, _ = _fy_bounds(2026, start_month=month)
+        assert dt.date.fromisoformat(nxt_start) - dt.date.fromisoformat(end) == dt.timedelta(days=1)
+
+
+def test_disclaimer_holds_for_a_non_india_country(app):
+    """The 'not tax advice' promise must survive the country-specific branch."""
+    from db.food import update_profile
+    _, uid = _uid(app, "taxus2@medeasy.test")
+    with user_context(uid):
+        update_profile({"country": "US"})
+        s = get_tax_summary(2025)
+    txt = s["disclaimer"].lower()
+    assert "not tax advice" in txt and "not a deduction calculation" in txt
+    assert "80d" not in txt                       # no India-specific scheme for a US user
+
+
 def test_country_drives_fy_and_currency(app):
     from db.food import update_profile
     from db.locale_config import currency_of

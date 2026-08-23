@@ -198,6 +198,24 @@ class TestPrivateCategoriesWalledFromManaging:
         assert carol.get("/api/cycle").status_code == 403
         carol.post("/api/family/act-as/stop")
 
+    def test_personal_notes_blocked_while_managing(self, carol, dave, group):
+        """Notes are personal free-text annotations — same privacy class as the
+        journal. A caregiver must not be able to read them, and (critically)
+        must not be able to delete them either."""
+        self._start(carol, dave)
+        r = carol.get("/api/notes")
+        assert r.status_code == 403
+        assert r.get_json().get("code") == "PRIVATE_WHILE_ACTING"
+        assert carol.post("/api/notes", json={"body": "x"}).status_code == 403
+        assert carol.delete("/api/notes/anything").status_code == 403
+        carol.post("/api/family/act-as/stop")
+
+    def test_insurance_blocked_while_managing(self, carol, dave, group):
+        """Policy numbers are financial identifiers with no consent gate."""
+        self._start(carol, dave)
+        assert carol.get("/api/insurance").status_code == 403
+        carol.post("/api/family/act-as/stop")
+
     def test_mood_correlation_blocked_while_managing(self, carol, dave, group):
         self._start(carol, dave)
         assert carol.get("/api/mood-sleep/correlation").status_code == 403
