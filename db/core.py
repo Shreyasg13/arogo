@@ -546,6 +546,11 @@ CREATE TABLE IF NOT EXISTS experiments (
     status TEXT DEFAULT 'active', end_date TEXT DEFAULT NULL,
     notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS health_notes (
+    id TEXT PRIMARY KEY, entity_type TEXT NOT NULL, entity_id TEXT DEFAULT '',
+    entity_label TEXT DEFAULT '', body TEXT NOT NULL, pinned INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS insurance_policies (
     id TEXT PRIMARY KEY, insurer TEXT NOT NULL, policy_no TEXT DEFAULT '',
     kind TEXT DEFAULT 'health', cover_amount REAL DEFAULT NULL,
@@ -1469,6 +1474,7 @@ DATA_TABLES = [
     'experiments',
     'environment_days',
     'insurance_policies',
+    'health_notes',
 ]
 
 

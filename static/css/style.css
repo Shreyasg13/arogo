@@ -766,6 +766,25 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .dt-week   .dt-dot { background:var(--amber-400, #e0a83e); }
 .dt-stale  .dt-dot { background:var(--terracotta-400, #c67b5c); }
 
+/* Personal health notes */
+.note-form { margin-bottom:14px; }
+.note-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px; }
+.note-lbl { font-size:12.5px; color:var(--gray-500,#666); font-weight:600; }
+.note-pin { font-size:12.5px; color:var(--gray-600,#555); display:flex; align-items:center; gap:5px; }
+.note-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+.note-chips { display:flex; gap:6px; flex-wrap:wrap; flex:1; }
+.note-chip { font-size:12.5px; padding:5px 12px; border-radius:99px; cursor:pointer;
+  border:1px solid var(--gray-200,#D7CCBB); background:var(--surface,#fff); color:var(--gray-600,#555); }
+.note-chip.on { background:var(--teal-600,#3E7862); border-color:var(--teal-600,#3E7862); color:#fff; }
+.note-search { max-width:220px; }
+.note-card { padding:13px 16px; margin-bottom:9px; }
+.note-card.note-pinned { border-left:3px solid var(--amber-500,#E0A34E); }
+.note-head { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.note-ico { font-size:15px; }
+.note-about { font-size:12.5px; font-weight:700; color:var(--gray-700,#444); }
+.note-date { font-size:11.5px; color:var(--gray-400,#999); margin-left:auto; }
+.note-body { font-size:14px; line-height:1.55; color:var(--gray-700,#444); white-space:pre-wrap; }
+
 /* Insurance policies & renewals */
 .ins-form { margin-bottom:16px; }
 .ins-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }

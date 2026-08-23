@@ -248,6 +248,20 @@ const I18N = {
     'Sets your currency and money formatting. You can change it later.':
       'आपकी मुद्रा और पैसे का प्रारूप तय करता है। आप इसे बाद में बदल सकते हैं।',
     'Units': 'इकाइयाँ', 'Weight': 'वज़न', 'Height': 'ऊँचाई', 'Temperature': 'तापमान',
+    // Personal health notes
+    'Notes': 'नोट्स', 'Could not load your notes.': 'आपके नोट्स लोड नहीं हो सके।',
+    'The why behind your record — attach a note to a medicine, condition, doctor or visit. Your words, kept private.':
+      'आपके रिकॉर्ड के पीछे का कारण — किसी दवा, स्थिति, डॉक्टर या मुलाक़ात से नोट जोड़ें। आपके शब्द, निजी रहते हैं।',
+    'What happened, and why? e.g. “switched brands — the old one upset my stomach”':
+      'क्या हुआ, और क्यों? जैसे “ब्रांड बदला — पुराने से पेट ख़राब होता था”',
+    'About': 'किसके बारे में', 'Which one? (optional)': 'कौन सा? (वैकल्पिक)',
+    'Pin': 'पिन', 'Unpin': 'पिन हटाएँ', 'Save note': 'नोट सेव करें', 'Note saved': 'नोट सेव हुआ',
+    'Write something first.': 'पहले कुछ लिखें।', 'Search notes…': 'नोट्स खोजें…',
+    'No notes match that.': 'उससे कोई नोट मेल नहीं खाता।',
+    'No notes yet. Jot down why something changed — future you (and your doctor) will thank you.':
+      'अभी कोई नोट नहीं। लिखें कि कुछ क्यों बदला — भविष्य के आप (और आपके डॉक्टर) धन्यवाद देंगे।',
+    'All': 'सभी', 'General': 'सामान्य', 'Medicine': 'दवा', 'Condition': 'स्थिति',
+    'Doctor / provider': 'डॉक्टर / प्रदाता', 'Appointment': 'मुलाक़ात', 'Lab test': 'लैब जाँच',
     // Insurance policies & renewals
     'Insurance': 'बीमा', 'Could not load your policies.': 'आपकी पॉलिसियाँ लोड नहीं हो सकीं।',
     'Your policies, premiums and renewal dates in one place — the facts you entered, so nothing lapses unnoticed.':
@@ -3153,6 +3167,7 @@ function switchView(view) {
   if (view === 'taxsummary')    loadTaxSummary();
   if (view === 'environment')   loadEnvironment();
   if (view === 'insurance')     loadInsurance();
+  if (view === 'notes')         loadNotes();
   if (view === 'family')        loadFamily();
   if (view === 'notifications') loadNotifications();
 }
@@ -12726,6 +12741,7 @@ const NAV_TARGETS = [
   {v:'experiments',   l:'Experiments',      k:'experiment n-of-1 self test try before after compare change what if does affect trial'},
   {v:'taxsummary',    l:'Tax & spend',      k:'tax 80d deduction financial year medical spend accountant reimbursement claim summary insurance premium csv'},
   {v:'insurance',     l:'Insurance',        k:'insurance policy policies premium renewal cover insurer mediclaim health cover expiry'},
+  {v:'notes',         l:'Notes',            k:'notes note why reason remember annotation memo context switched because doctor said'},
   {v:'environment',   l:'Air & weather',    k:'environment air quality aqi pollution weather temperature humidity correlation symptoms how i feel import'},
 ];
 
@@ -12752,14 +12768,14 @@ function _pageMatches(q) {
 const FEATURE_SECTIONS = [
   {t: 'Medicines',        v: ['medicines', 'prescriptions', 'taper', 'med-budget']},
   {t: 'Vitals & records', v: ['reports', 'body', 'labs', 'conditions', 'immunizations', 'allergies']},
-  {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'timeline']},
+  {t: 'Personal records', v: ['dentalvision', 'supplies', 'symptomphotos', 'familyhistory', 'procedures', 'notes', 'timeline']},
   {t: 'Care & family',    v: ['upcoming', 'reminders', 'care-plan', 'care-team', 'family', 'carecircle', 'dependents', 'claims', 'insurance', 'health-id', 'binder']},
   {t: 'Lifestyle',        v: ['food', 'meal-plan', 'fitness', 'strength', 'sleep']},
   {t: 'Goals & tracking', v: ['goals', 'experiments', 'environment', 'fasting', 'habits', 'quit', 'menopause', 'pregnancy', 'thoughts', 'todos']},
   {t: 'More',             v: ['ask', 'today', 'yearstory', 'spending', 'taxsummary', 'progress', 'datatrust', 'weekreview', 'glossary', 'notifications', 'export']},
 ];
 const NEW_FEATURES = new Set(['dentalvision', 'supplies', 'symptomphotos', 'familyhistory',
-  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments', 'taxsummary', 'environment', 'insurance']);
+  'procedures', 'binder', 'quit', 'menopause', 'pregnancy', 'datatrust', 'glossary', 'weekreview', 'today', 'yearstory', 'ask', 'carecircle', 'experiments', 'taxsummary', 'environment', 'insurance', 'notes']);
 
 function _navLabel(v) {
   const t0 = NAV_TARGETS.find(x => x.v === v);
@@ -17215,6 +17231,96 @@ function renderTaxSummary(d) {
 function downloadTaxCsv() {
   if (_taxFy == null) return;
   window.location.href = '/api/tax-summary/csv?fy=' + _taxFy;
+}
+
+// ── Personal health notes ────────────────────────────────────────────────────
+// The "why" behind your record, attached to a medicine / condition / doctor /
+// appointment. Your own words, shown verbatim — never interpreted, never shared.
+const _NOTE_ICON = { general: '📝', medicine: '💊', condition: '🩺', provider: '👩‍⚕️',
+                     appointment: '📅', lab: '🧪' };
+let _noteTypes = [], _noteFilter = '', _noteQuery = '';
+
+async function loadNotes() {
+  const el = document.getElementById('notes-content');
+  if (!el) return;
+  el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--gray-400)">${t('Loading…')}</div>`;
+  const qs = new URLSearchParams();
+  if (_noteFilter) qs.set('entity_type', _noteFilter);
+  if (_noteQuery) qs.set('q', _noteQuery);
+  const d = await fetch('/api/notes' + (qs.toString() ? '?' + qs : ''), { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your notes.')}</div>`; return; }
+  _noteTypes = d.types || [];
+  el.innerHTML = renderNotes(d);
+  try { _a11yEnhance(el); } catch (e) {}
+}
+
+function renderNotes(d) {
+  const opts = _noteTypes.map(x => `<option value="${escHtml(x.key)}">${escHtml(t(x.label))}</option>`).join('');
+  const form = `<div class="panel note-form">
+      <textarea class="form-input" id="note-body" rows="3" placeholder="${t('What happened, and why? e.g. “switched brands — the old one upset my stomach”')}" maxlength="4000"></textarea>
+      <div class="note-row">
+        <label class="note-lbl">${t('About')}</label>
+        <select class="form-input" id="note-type" style="max-width:180px">${opts}</select>
+        <input type="text" class="form-input" id="note-label" placeholder="${t('Which one? (optional)')}" maxlength="120" style="flex:1;min-width:150px">
+        <label class="note-pin"><input type="checkbox" id="note-pin"> ${t('Pin')}</label>
+        <button class="btn-primary" data-ev-click="submitNote()">${t('Save note')}</button>
+      </div>
+    </div>`;
+
+  const chips = [{key: '', label: 'All'}].concat(_noteTypes).map(x =>
+    `<button class="note-chip ${(_noteFilter || '') === x.key ? 'on' : ''}" data-ev-click="filterNotes('${escHtml(x.key)}')">${escHtml(t(x.label))}</button>`).join('');
+  const bar = `<div class="note-bar">
+      <div class="note-chips">${chips}</div>
+      <input type="text" class="form-input note-search" id="note-q" value="${escHtml(_noteQuery)}" placeholder="${t('Search notes…')}" data-ev-keydown="noteSearchKey(event)">
+    </div>`;
+
+  const notes = d.notes || [];
+  if (!notes.length) {
+    return form + bar + `<div class="dv-empty">${_noteQuery || _noteFilter ? t('No notes match that.') : t('No notes yet. Jot down why something changed — future you (and your doctor) will thank you.')}</div>`;
+  }
+  const cards = notes.map(n => {
+    const when = (n.updated_at || '').slice(0, 10);
+    const about = n.entity_label ? escHtml(n.entity_label)
+                : (n.entity_type && n.entity_type !== 'general' ? escHtml(t(_noteLabel(n.entity_type))) : '');
+    return `<div class="panel note-card ${n.pinned ? 'note-pinned' : ''}">
+        <div class="note-head">
+          <span class="note-ico">${_NOTE_ICON[n.entity_type] || '📝'}</span>
+          ${about ? `<span class="note-about">${about}</span>` : ''}
+          <span class="note-date">${escHtml(when)}</span>
+          <button class="btn-icon" title="${n.pinned ? t('Unpin') : t('Pin')}" data-ev-click="toggleNotePin('${n.id}',${n.pinned ? 0 : 1})">${n.pinned ? '📌' : '📍'}</button>
+          <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteNote('${n.id}')" style="color:var(--gray-300)">✕</button>
+        </div>
+        <div class="note-body">${escHtml(n.body)}</div>
+      </div>`;
+  }).join('');
+  return form + bar + cards;
+}
+function _noteLabel(k) { const x = _noteTypes.find(y => y.key === k); return x ? x.label : k; }
+
+function filterNotes(k) { _noteFilter = k || ''; loadNotes(); }
+function noteSearchKey(e) { if (e && e.key === 'Enter') { _noteQuery = (document.getElementById('note-q') || {}).value || ''; loadNotes(); } }
+
+async function submitNote() {
+  const body = (document.getElementById('note-body') || {}).value || '';
+  if (!body.trim()) { showToast(t('Write something first.'), 'error'); return; }
+  const r = await fetch('/api/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify({
+      body, entity_type: (document.getElementById('note-type') || {}).value || 'general',
+      entity_label: (document.getElementById('note-label') || {}).value || '',
+      pinned: !!(document.getElementById('note-pin') || {}).checked,
+    }) }).then(x => x.json()).catch(() => null);
+  if (r && r.success) { showToast(t('Note saved')); loadNotes(); }
+  else showToast((r && r.error) || t('Could not save'), 'error');
+}
+async function toggleNotePin(id, pinned) {
+  await fetch('/api/notes/' + id, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify({ pinned: !!pinned }) }).catch(() => {});
+  loadNotes();
+}
+async function deleteNote(id) {
+  await fetch('/api/notes/' + id, { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
+  loadNotes();
 }
 
 // ── Insurance policies & renewals ────────────────────────────────────────────
