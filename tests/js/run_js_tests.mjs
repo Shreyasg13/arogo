@@ -222,6 +222,22 @@ test('voice weight honours a spoken unit over the preference', () => {
   eq(Math.abs(spoken.kg - 69.85) < 0.2, true);    // stores kg
 });
 
+test('chart meta converts bounds and reference lines with the unit', () => {
+  // Converting only the axis LABEL is how a chart ends up contradicting its own
+  // data — bounds and reference lines must move together.
+  const meta = { unit: 'mg/dL', yMin: 50, yMax: 200,
+                 refLines: [{ value: 70, label: 'Low' }, { value: 125, label: 'Pre-diabetic' }] };
+  S.setUserUnits({ glucose: 'mgdl' });
+  eq(S._metaInUserUnit('blood_sugar', meta), meta);          // untouched at the default
+  S.setUserUnits({ glucose: 'mmol' });
+  const m = S._metaInUserUnit('blood_sugar', meta);
+  eq(m.unit, 'mmol/L');
+  eq(m.yMin, 2);                                             // 50 mg/dL → 2.8 → floor 2
+  eq(m.yMax, 12);                                            // 200 mg/dL → 11.1 → ceil 12
+  eq(m.refLines.map(r => r.value), [3.9, 6.9]);              // both lines converted
+  S.setUserUnits({ glucose: 'mgdl' });
+});
+
 test('fmtWeight / fmtGlucose render the requested unit', () => {
   eq(S.fmtWeight(70, {unit: 'kg'}), '70 kg');
   eq(S.fmtWeight(70, {unit: 'lb'}), '154.3 lb');

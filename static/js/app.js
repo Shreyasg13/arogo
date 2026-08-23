@@ -9743,8 +9743,18 @@ async function openProfileModal() {
   // Populate unit-aware weight/height fields
   window._weightKg = parseFloat(p.weight_kg) || 70;
   window._heightCm = parseFloat(p.height_cm) || 170;
-  setWeightUnit(window._weightUnit || 'kg', true);
-  setHeightUnit(window._heightUnit || 'cm', true);
+  // Seed this modal's own kg/lb + cm/ft toggles from the saved preference, so a
+  // lb-preference user isn't shown kg here while every other screen says lb.
+  // Seeded on each open (not just first) because the boot default is 'kg', which
+  // would otherwise win forever; the toggle still lets them switch per-session.
+  // Prefer the profile row we just fetched (authoritative and fresh) over the
+  // cached _userUnits, which may predate a preference change made this session.
+  const _pw = p.weight_unit || _userUnits.weight;
+  const _ph = p.height_unit || _userUnits.height;
+  if (!window._weightUnitTouched) window._weightUnit = _pw === 'lb' ? 'lbs' : 'kg';
+  if (!window._heightUnitTouched) window._heightUnit = _ph === 'ft' ? 'ft' : 'cm';
+  setWeightUnit(window._weightUnit, true);
+  setHeightUnit(window._heightUnit, true);
 
   updateTDEEPreview(r.targets);
   document.getElementById('profile-modal-overlay').style.display = 'flex';
@@ -9860,6 +9870,9 @@ fetch('/api/food/db?limit=100').then(r => r.json()).then(d => {
 
 function setWeightUnit(unit, suppressLiveTDEE) {
   window._weightUnit = unit;
+  // A click (no suppress flag) is a deliberate per-session choice — remember it
+  // so re-opening the modal doesn't snap back to the saved preference.
+  if (!suppressLiveTDEE) window._weightUnitTouched = true;
   // Toggle button states
   document.querySelectorAll('#weight-unit-toggle .unit-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.unit === unit);
@@ -9904,6 +9917,7 @@ function syncWeightInput(val) {
 
 function setHeightUnit(unit, suppressLiveTDEE) {
   window._heightUnit = unit;
+  if (!suppressLiveTDEE) window._heightUnitTouched = true;
   document.querySelectorAll('#height-unit-toggle .unit-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.unit === unit);
   });
@@ -20999,9 +21013,33 @@ async function loadVitalTrends(days) {
   });
 }
 
+// Re-express a vital's chart config in the user's unit. The stored values are
+// canonical, so the axis bounds, reference lines and unit label must all be
+// converted together — converting only the label is how a chart ends up
+// contradicting its own data.
+function _metaInUserUnit(type, meta) {
+  const conv = type === 'blood_sugar' && _userUnits.glucose === 'mmol' ? (v => mgdlToMmol(v))
+             : type === 'weight' && _userUnits.weight === 'lb' ? (v => kgToLb(v))
+             : null;
+  if (!conv) return meta;
+  return Object.assign({}, meta, {
+    unit: vitalUnitLabel(type),
+    yMin: Math.floor(conv(meta.yMin)),
+    yMax: Math.ceil(conv(meta.yMax)),
+    refLines: (meta.refLines || []).map(r => Object.assign({}, r, { value: conv(r.value) })),
+  });
+}
+
 function renderVitalChart(type, entries, meta) {
   const canvas = document.getElementById('vchart-' + type);
   if (!canvas) return;
+  meta = _metaInUserUnit(type, meta);
+  // Convert the series to match the (now converted) axis.
+  if (type === 'blood_sugar' && _userUnits.glucose === 'mmol') {
+    entries = entries.map(e => Object.assign({}, e, {
+      value1: e.value1 != null ? mgdlToMmol(e.value1) : e.value1,
+    }));
+  }
 
   // Destroy previous instance if exists
   if (_vitalCharts[type]) {
