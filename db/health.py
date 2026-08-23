@@ -137,14 +137,20 @@ def log_symptom(data: dict) -> dict:
     name = str(data.get('name', '')).strip()
     if not name:
         raise ValueError('Symptom name is required')
+    from .core import clean_idem_key, find_by_idem_key
+    idem = clean_idem_key(data.get('idem_key'))
+    if idem:
+        prior = find_by_idem_key('symptoms', idem)
+        if prior:
+            return prior            # replayed offline write — already recorded
     sid = new_id()
-    execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,notes,region,logged_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+    execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,notes,region,logged_at,user_id,idem_key)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (sid, name[:120], to_int(data.get('severity', 5), 5, lo=1, hi=10),
              data.get('date_key', today_iso()),
              data.get('time_of_day','morning'), data.get('notes',''),
              _clean_region(data.get('region')), now_iso(),
-             current_user_id()), commit=True)
+             current_user_id(), idem), commit=True)
     return dict(execute("SELECT * FROM symptoms WHERE id=?", (sid,), fetchone=True))
 
 
@@ -297,13 +303,21 @@ def log_vital(data: dict) -> dict:
     date_key = data.get('date_key') or today_iso()
     if not valid_date(date_key):
         date_key = today_iso()
+    # A replayed offline write carries the original action's key — return the
+    # row we already stored instead of inserting a duplicate reading.
+    from .core import clean_idem_key, find_by_idem_key
+    idem = clean_idem_key(data.get('idem_key'))
+    if idem:
+        prior = find_by_idem_key('vitals', idem)
+        if prior:
+            return prior
     vid = new_id()
-    execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,notes,context,logged_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+    execute("""INSERT INTO vitals (id,date_key,type,value1,value2,unit,notes,context,logged_at,user_id,idem_key)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (vid, date_key, vtype,
              value1, value2,
              data.get('unit',''), data.get('notes',''), context, now_iso(),
-             current_user_id()), commit=True)
+             current_user_id(), idem), commit=True)
     return dict(execute("SELECT * FROM vitals WHERE id=?", (vid,), fetchone=True))
 
 

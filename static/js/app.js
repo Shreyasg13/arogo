@@ -2712,14 +2712,12 @@ async function openQuickLog() {
 }
 
 async function quickWater(ml) {
-  const r = await fetch('/api/hydration', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    credentials: 'same-origin',
-    body: JSON.stringify({amount_ml: ml, drink_type: 'water', date_key: localToday()}),
-  }).then(r => r.json()).catch(() => null);
+  const r = await loggedFetch('/api/hydration',
+    { amount_ml: ml, drink_type: 'water', date_key: localToday() });
   if (r?.success === false) { showToast('Could not log water', 'error'); return; }
   closeQuickLog();
-  showToast(tformat('💧 +%1ml logged', ml));
+  showToast(r?.queued ? t("Saved offline — it'll sync when you're back online")
+                      : tformat('💧 +%1ml logged', ml));
   try { loadWellnessStrip(); } catch (e) {}
 }
 
@@ -6961,6 +6959,28 @@ async function _updateOutboxBadge() {
 
 // Like fetch(), but a *write* that fails on the network is queued instead of
 // lost, and reported back as {queued:true} so callers can message honestly.
+// A unique key per USER ACTION. The same key rides along when a queued write is
+// replayed, so the server recognises it as already-applied instead of inserting
+// a second reading. Without this, queuing these endpoints would corrupt data.
+function _idemKey() {
+  try {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, '');
+  } catch (e) {}
+  return 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+// POST a health log that must survive a flaky connection: stamps an idempotency
+// key, sends it through the offline outbox, and reports honestly whether it
+// landed or was queued. Returns the parsed body (with .queued when offline).
+async function loggedFetch(url, payload) {
+  const body = Object.assign({ idem_key: _idemKey() }, payload || {});
+  const r = await syncableFetch(url, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin', body: JSON.stringify(body),
+  });
+  try { return await r.json(); } catch (e) { return r && r.queued ? { success: true, queued: true } : null; }
+}
+
 async function syncableFetch(url, opts = {}) {
   try {
     return await fetch(url, opts);
@@ -6987,8 +7007,14 @@ async function flushOutbox() {
     const items = await _outboxAll().catch(() => []);
     for (const it of items) {
       try {
-        const r = await fetch(it.url, {method: it.method, headers: it.headers, body: it.body});
+        // credentials: the session cookie MUST ride along, or every replay 401s
+        // and the 4xx branch below silently deletes the user's logged data.
+        const r = await fetch(it.url, {method: it.method, headers: it.headers,
+                                       body: it.body, credentials: 'same-origin'});
         if (r.ok) { await _outboxDelete(it.id); synced++; }
+        // 401/403 is "not signed in yet", NOT a bad row — keep it and retry after
+        // login, rather than throwing away something the user logged.
+        else if (r.status === 401 || r.status === 403) break;
         else if (r.status >= 400 && r.status < 500) { await _outboxDelete(it.id); }  // a bad row won't fix itself — drop it
         else break;                                   // server hiccup — keep it for next time
       } catch (e) { break; }                           // still offline
@@ -13128,13 +13154,10 @@ function parseQuickCommand(q) {
 // Save a weight already in canonical kg (callers that resolved the unit
 // themselves, e.g. the command bar and voice, which honour an explicit unit).
 async function quickLogWeightKg(kg) {
-  const r = await fetch('/api/body-metrics', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    credentials: 'same-origin',
-    body: JSON.stringify({ date_key: localToday(), weight_kg: kg }),
-  }).then(r => r.json()).catch(() => null);
+  const r = await loggedFetch('/api/body-metrics', { date_key: localToday(), weight_kg: kg });
   if (!r || r.error) { showToast('Could not save weight', 'error'); return; }
-  showToast(tformat('⚖️ %1 saved', fmtWeight(kg)));
+  showToast(r.queued ? t("Saved offline — it'll sync when you're back online")
+                     : tformat('⚖️ %1 saved', fmtWeight(kg)));
 }
 
 async function quickLogWeight(val) {
@@ -13152,17 +13175,13 @@ async function quickLogWeight(val) {
 // One text box logs a vital: "bp 120/80", "sugar 110", "hr 72".
 // value2 = 0 means "single value" (only BP is a pair).
 async function quickLogVital(type, value1, value2, unit) {
-  const r = await fetch('/api/vitals', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    credentials: 'same-origin',
-    body: JSON.stringify({
-      type, value1, value2: value2 || null, unit: unit || '', date_key: localToday(),
-    }),
-  }).then(r => r.json()).catch(() => null);
+  const r = await loggedFetch('/api/vitals',
+    { type, value1, value2: value2 || null, unit: unit || '', date_key: localToday() });
   // Surfaces the server's plausibility message ("that reading looks off")
   if (!r?.success) { showToast(r?.error || 'Could not log that reading', 'error'); return; }
   const shown = value2 ? `${value1}/${value2}` : value1;
-  showToast(tformat('✓ Logged %1 %2', shown, unit || '').trim(), 'success');
+  showToast(r?.queued ? t("Saved offline — it'll sync when you're back online")
+                      : tformat('✓ Logged %1 %2', shown, unit || '').trim(), 'success');
   try { loadVitals(); } catch (e) {}
   try { loadVitalsView(); } catch (e) {}
 }

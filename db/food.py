@@ -189,11 +189,19 @@ def _beverage_ml(food_id: str, quantity_g) -> int:
 
 
 def log_food(data: dict) -> dict:
+    # A replayed offline write must not double-log the meal — nor double-credit
+    # the hydration this function auto-adds for a beverage.
+    from .core import clean_idem_key, find_by_idem_key
+    idem = clean_idem_key(data.get('idem_key'))
+    if idem:
+        prior = find_by_idem_key('food_logs', idem)
+        if prior:
+            return prior
     fid = new_id()
     execute("""INSERT INTO food_logs
         (id,food_id,food_name,meal_type,date_key,quantity_g,
-         calories,protein,carbs,fat,fiber,sugar,sodium,nutrients,logged_at,user_id)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+         calories,protein,carbs,fat,fiber,sugar,sodium,nutrients,logged_at,user_id,idem_key)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (fid, data.get('food_id','custom'), data.get('food_name',''),
          data.get('meal_type','lunch'), data.get('date_key', today_iso()),
          to_num(data.get('quantity_g'), 100, lo=0, hi=100000),
@@ -201,7 +209,7 @@ def log_food(data: dict) -> dict:
          to_num(data.get('carbs'), 0, lo=0), to_num(data.get('fat'), 0, lo=0),
          to_num(data.get('fiber'), 0, lo=0), to_num(data.get('sugar'), 0, lo=0),
          to_num(data.get('sodium'), 0, lo=0), jdump(data.get('nutrients',{})),
-         now_iso(), current_user_id()), commit=True)
+         now_iso(), current_user_id(), idem), commit=True)
 
     # A logged drink is fluid the user already told us about — count it toward
     # hydration instead of making them log the same latte twice. Attributed by

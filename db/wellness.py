@@ -258,18 +258,24 @@ def log_sleep(data: dict) -> dict:
 # ── Hydration ─────────────────────────────────────────────────────────────────
 
 def log_hydration(amount_ml: int, drink_type: str, date_key: str,
-                  source_id: str = None) -> dict:
+                  source_id: str = None, idem_key: str = None) -> dict:
     # Coerce & clamp: a non-numeric amount would otherwise brick the whole
     # day view (sum() over a mix of ints and strings raises forever).
     # `source_id` links an auto-credited drink back to the food log it came
     # from, so deleting that food log removes the credit too.
     amount_ml = to_int(amount_ml, default=250, lo=0, hi=10000)
+    from .core import clean_idem_key, find_by_idem_key
+    idem = clean_idem_key(idem_key)
+    if idem:
+        prior = find_by_idem_key('hydration_logs', idem)
+        if prior:
+            return prior            # replayed offline write — don't double-count
     hid = new_id()
     execute("""INSERT INTO hydration_logs
-                 (id,amount_ml,drink_type,date_key,logged_at,user_id,source_id)
-               VALUES (?,?,?,?,?,?,?)""",
+                 (id,amount_ml,drink_type,date_key,logged_at,user_id,source_id,idem_key)
+               VALUES (?,?,?,?,?,?,?,?)""",
             (hid, amount_ml, drink_type, date_key, now_iso(), current_user_id(),
-             source_id), commit=True)
+             source_id, idem), commit=True)
     return dict(execute("SELECT * FROM hydration_logs WHERE id=?", (hid,), fetchone=True))
 
 def usual_sip_ml(uid: str = None, default: int = 250) -> int:
@@ -492,6 +498,12 @@ def _plausible_weight(raw, coerced):
 
 
 def log_body_metric(data: dict) -> dict:
+    from .core import clean_idem_key, find_by_idem_key
+    idem = clean_idem_key(data.get('idem_key'))
+    if idem:
+        prior = find_by_idem_key('body_metrics', idem)
+        if prior:
+            return prior            # replayed offline write — already recorded
     bid = new_id()
     # Coerce all numerics: a string weight used to TypeError on the BMI math,
     # and negatives/NaN would flow straight into the weight-trend chart.
@@ -521,11 +533,11 @@ def log_body_metric(data: dict) -> dict:
     if not valid_date(date_key):
         date_key = user_today()
     execute("""INSERT INTO body_metrics
-                 (id,date_key,weight_kg,body_fat_pct,waist_cm,hip_cm,chest_cm,arm_cm,bmi,notes,created_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (id,date_key,weight_kg,body_fat_pct,waist_cm,hip_cm,chest_cm,arm_cm,bmi,notes,created_at,user_id,idem_key)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (bid, date_key, w, bf,
              waist, hip, chest, arm, bmi, str(data.get('notes','') or ''), now_iso(),
-             current_user_id()), commit=True)
+             current_user_id(), idem), commit=True)
 
     # Logging your weight should move the things that depend on your weight.
     # body_metrics feeds the trend chart; user_profile.weight_kg feeds the

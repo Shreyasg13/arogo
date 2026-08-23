@@ -40,6 +40,33 @@ def to_int(v, default=0, lo=None, hi=None):
     return None if n is None else int(n)
 
 
+def clean_idem_key(v):
+    """A client-supplied idempotency key, or None. Bounded and charset-limited so
+    it can only ever be an opaque token, never a payload."""
+    v = str(v or '').strip()
+    if not v or len(v) > 64:
+        return None
+    return v if all(c.isalnum() or c in '-_' for c in v) else None
+
+
+def find_by_idem_key(table, key):
+    """The row already written for this idempotency key, or None.
+
+    Replayed offline writes carry the key of the ORIGINAL user action, so this
+    turns an append-only INSERT into a safe no-op on replay instead of a
+    duplicate reading. Table names come from a fixed internal set, never input.
+    """
+    key = clean_idem_key(key)
+    if not key:
+        return None
+    try:
+        r = execute(f"SELECT * FROM {table} WHERE user_id=? AND idem_key=? LIMIT 1",
+                    (current_user_id(), key), fetchone=True)
+        return dict(r) if r else None
+    except Exception:
+        return None       # column missing on an old schema → behave as before
+
+
 def valid_date(v):
     """True if `v` is a real ISO (YYYY-MM-DD) calendar date. Used to reject
     garbage date_keys before they orphan a log on a non-navigable day."""
@@ -105,6 +132,20 @@ def get_db():
         return _conn
 
 
+def _reconnect():
+    """Drop the shared connection and open a fresh one. Used to recover from a
+    poisoned sqlite3 statement cache after an in-process schema change."""
+    global _conn
+    with _mutex:
+        try:
+            if _conn is not None:
+                _conn.close()
+        except Exception:
+            pass
+        _conn = _connect_postgres() if IS_POSTGRES else _connect_sqlite()
+        return _conn
+
+
 # ── Query helper ──────────────────────────────────────────────────────────────
 def _adapt(sql: str) -> str:
     # No SQL in this codebase contains a literal '?', so plain replace is safe.
@@ -118,7 +159,16 @@ def execute(sql: str, params=(), *, fetchone=False, fetchall=False, commit=False
         # psycopg2 %-formats the SQL only when params is not None
         cur.execute(_adapt(sql), tuple(params) if params else None)
     else:
-        cur = conn.execute(sql, params)
+        try:
+            cur = conn.execute(sql, params)
+        except KeyError:
+            # sqlite3's per-connection statement cache can be left holding a
+            # stale prepared statement after the schema changes underneath a
+            # long-lived connection (a migration adding a column/index while
+            # the process is up). It surfaces as a KeyError naming an unrelated
+            # SQL string. Reconnect once and retry — the alternative is every
+            # subsequent query on that connection failing until a full restart.
+            cur = _reconnect().execute(sql, params)
     # commit kwarg kept for API compatibility; in autocommit mode every
     # statement commits itself, so this is a no-op but harmless.
     if fetchone:
@@ -821,6 +871,26 @@ def migrate_add_country():
         pass  # already exists
 
 
+def migrate_add_idem_keys():
+    """Add a client-supplied idempotency key to the append-only log tables.
+
+    These are blind INSERTs, so replaying a queued offline write would create a
+    duplicate reading/drink/meal. The client stamps a unique key per user action;
+    a replay carries the SAME key and is recognised as already-applied. NULL for
+    everything written before this (and for any client that doesn't send one)."""
+    for table in ('vitals', 'hydration_logs', 'symptoms', 'body_metrics', 'food_logs'):
+        try:
+            execute(f"ALTER TABLE {table} ADD COLUMN idem_key TEXT DEFAULT NULL")
+        except Exception:
+            pass  # already exists
+        try:
+            execute(f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{table}_idem "
+                    f"ON {table}(user_id, idem_key) WHERE idem_key IS NOT NULL")
+        except Exception:
+            pass  # partial-index syntax unsupported (older SQLite) — the
+                  # application-level check below is the real guard
+
+
 def migrate_add_unit_prefs():
     """Add display-unit preferences to user_profile. Data stays canonical (kg/cm/
     mg-dL); these only choose how it's shown/entered. NULL → the country default."""
@@ -1513,6 +1583,7 @@ def init_db():
     migrate_add_language()
     migrate_add_country()
     migrate_add_unit_prefs()
+    migrate_add_idem_keys()
     migrate_add_schedule_days()
     migrate_add_interval_days()
     migrate_add_family_display()

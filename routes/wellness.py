@@ -315,7 +315,7 @@ def api_log_hydration():
     # provenance (source_id also links food-log credits, which it must not forge).
     source = HYDRATION_SOURCE_NOTIF if d.get('source') == 'notification' else None
     log_hydration(d.get('amount_ml', 250), d.get('drink_type', 'water'), date_key,
-                  source_id=source)
+                  source_id=source, idem_key=d.get('idem_key'))
     return jsonify({'success': True})
 
 @bp.route('/api/hydration/<lid>', methods=['DELETE'])
