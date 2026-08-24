@@ -288,6 +288,14 @@ def import_all_data(uid: str, data: dict) -> dict:
             continue                          # not a user-owned table on this schema
         plan.append((t, rows, cols))
 
+    # Which files this user's rows point at right now. A restore replaces those
+    # rows, and the backup's rows usually name the SAME files — so the set that
+    # is genuinely orphaned is only what disappears, computed after the commit.
+    # Deleting all of them up front would break every record the restore brings
+    # back; deleting none leaves the SD card filling with files nothing can find.
+    from .storage import files_owned_by, delete_files
+    files_before = files_owned_by(uid)
+
     restored, skipped, deleted = {}, {}, {}
     with transaction():
         for t, rows, cols in plan:
@@ -317,7 +325,14 @@ def import_all_data(uid: str, data: dict) -> dict:
             restored[t] = n
             if bad:
                 skipped[t] = bad
-    return {'restored': restored, 'skipped': skipped, 'deleted': deleted}
+
+    # Only after the transaction commits — a rollback must not take files with
+    # it, because the rows that reference them are still there.
+    orphaned = files_before - files_owned_by(uid)
+    files_removed = delete_files(orphaned) if orphaned else 0
+
+    return {'restored': restored, 'skipped': skipped, 'deleted': deleted,
+            'files_removed': files_removed}
 
 
 def delete_account(uid: str) -> None:
@@ -326,7 +341,17 @@ def delete_account(uid: str) -> None:
     A group the user OWNS is removed entirely (its other members lose the shared
     group but keep all their own data); the user is also removed from any group
     they merely joined.
+
+    Uploaded files go too. This used to delete rows only, so someone exercising
+    their deletion right left every scan of a lab report, prescription photo and
+    picture of a rash sitting in uploads/ — with the row that identified them
+    gone, so nothing could ever find them again. Files are collected BEFORE the
+    rows are deleted, because the rows are the only record of which files are
+    theirs.
     """
+    from .storage import files_owned_by, delete_files
+    doomed_files = files_owned_by(uid)
+
     owned = execute("SELECT id FROM family_groups WHERE owner_id=?", (uid,), fetchall=True) or []
     for grp in owned:
         gid = grp["id"]
@@ -361,5 +386,9 @@ def delete_account(uid: str) -> None:
             execute(f"DELETE FROM {t} WHERE user_id=?", (uid,), commit=True)
         except Exception:
             pass
+
+    # Last, so a failure while deleting rows doesn't destroy files that are
+    # still referenced by rows which survived.
+    delete_files(doomed_files)
 
     execute("DELETE FROM users WHERE id=?", (uid,), commit=True)

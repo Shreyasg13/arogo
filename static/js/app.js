@@ -12677,6 +12677,80 @@ loadThoughts = async function() {
 // ════════════════════════════════════════════════════════════
 
 // Render pending todos on dashboard
+// ── Storage ────────────────────────────────────────────────────────────────
+// Uploads live on an SD card with a hard limit and nobody watching it. When it
+// fills, SQLite writes start failing — which in this app means a logged dose
+// quietly not saving, with the person holding the pill none the wiser.
+function fmtBytes(n) {
+  if (n === null || n === undefined) return '—';       // unknown, not zero
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0, v = Number(n) || 0;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
+}
+
+async function loadStorage() {
+  const el = document.getElementById('storage-report');
+  if (!el) return;
+  const s = await coalescedGet('/api/storage').catch(() => null);
+  if (!s) { el.innerHTML = `<div class="restore-row">${t('Could not read storage')}</div>`; return; }
+
+  const row = (label, value, extra) =>
+    `<div class="restore-row"><span>${escHtml(label)}</span>
+       <span>${extra || ''}<b>${escHtml(value)}</b></span></div>`;
+
+  let html = '';
+  if (s.low_space) {
+    html += `<div class="rh-banner" role="status" style="margin-bottom:12px">
+      <span aria-hidden="true">⚠️</span>
+      <div class="rh-body"><b>${t('This server is nearly out of space')}</b><br>
+        ${tformat('%1 free. Below this, Arogo may stop being able to save what you log.',
+                  fmtBytes(s.disk.free_bytes))}</div></div>`;
+  }
+  html += '<div class="restore-list">';
+  html += row(t('Your files'), fmtBytes(s.mine.bytes),
+              `<span class="restore-removes">${tformat('%1 files', s.mine.files)}</span>`);
+  html += row(t('All uploads on this server'), fmtBytes(s.uploads.bytes),
+              `<span class="restore-removes">${tformat('%1 files', s.uploads.files)}</span>`);
+  if (s.database_bytes !== null) html += row(t('Database'), fmtBytes(s.database_bytes));
+  html += row(t('Free space'), fmtBytes(s.disk.free_bytes));
+  html += '</div>';
+
+  // A file no row points at. Never removed automatically: the app can no longer
+  // say whose it was or what it showed, so that call belongs to whoever owns
+  // the machine.
+  if (s.orphans.count) {
+    html += `<div class="restore-note">
+      ${tformat('%1 files (%2) are no longer linked to any record — left over from deleted accounts or restores.',
+                s.orphans.count, fmtBytes(s.orphans.bytes))}
+      <button class="btn-outline" style="font-size:12px;margin-left:8px"
+              data-ev-click="cleanOrphans()">${t('Delete them')}</button></div>`;
+  }
+  // A record promising a document that isn't there. Not a space problem — the
+  // page will offer a file that won't open.
+  if (s.missing && s.missing.length) {
+    html += `<div class="restore-note">${tformat(
+      '%1 records point at a file that is no longer on the server.', s.missing.length)}</div>`;
+  }
+  el.innerHTML = html;
+}
+
+function cleanOrphans() {
+  // undoable(), like every other destructive action here — a window to change
+  // your mind rather than a modal to click through. Nothing is sent until the
+  // bar times out, so Undo genuinely leaves the files in place.
+  undoable(t('Deleting files that no longer belong to any record'), async () => {
+    const r = await fetch('/api/storage/orphans', {method: 'DELETE', credentials: 'same-origin'})
+      .then(r => r.json()).catch(() => null);
+    if (r && r.success) {
+      showToast(tformat('✓ Removed %1 files', r.removed), 'success');
+      loadStorage();
+    } else {
+      showToast(t('Could not remove those files'), 'error');
+    }
+  });
+}
+
 // ── "Reminders aren't being sent" ───────────────────────────────────────────
 // The chain that delivers a dose reminder — push configured on the server, the
 // scheduler alive, this device subscribed — fails silently at every link. The
@@ -12989,7 +13063,7 @@ const NAV_TARGETS = [
   {v:'spending',      l:'Spending',         k:'expenses money cost'},
   {v:'progress',      l:'Progress',         k:'trends charts weight'},
   {v:'notifications', l:'Notifications',    k:'reminders alerts'},
-  {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability'},
+  {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability storage disk space full uploads orphaned files'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},
@@ -20437,6 +20511,7 @@ async function initExportView() {
   renderExportSections();
   await loadExportCounts();
   loadScopedExportCats();
+  try { loadStorage(); } catch (e) {}
 }
 
 async function loadExportCounts() {

@@ -3067,6 +3067,17 @@
     <div id="restore-preview" style="display:none;margin-top:14px"></div>
   </div>
 
+  <!-- Disk usage. Arogo self-hosts on a Pi, so uploads sit on an SD card with a
+       hard limit and nobody watching it — when it fills, writes start failing
+       and a logged dose quietly doesn't save. Rendered by loadStorage(). -->
+  <div class="panel" style="padding:18px 20px;margin-top:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="🗄️ Storage">🗄️ Storage</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+      How much room your files and database take on this server, and how much is
+      left. If the disk fills, Arogo can stop saving what you log.</p>
+    <div id="storage-report"><div class="restore-row">Checking…</div></div>
+  </div>
+
   <!-- Danger zone: account deletion -->
   <div class="panel" id="delete-account-panel" style="padding:18px 20px;margin-top:20px;border:1px solid #f3c2c2">
     <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C" data-i18n="Delete my account">Delete my account</h2>
