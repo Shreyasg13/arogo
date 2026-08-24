@@ -1,6 +1,6 @@
 """routes/insights.py — Health report, goal progress, global search, data export, notifications."""
 from db.food import get_user_timezone
-from flask import Blueprint, request, jsonify, send_from_directory, current_app
+from flask import Blueprint, request, jsonify, send_from_directory, current_app, g
 from auth import require_auth
 import os, json as json_mod
 from db import *
@@ -568,7 +568,12 @@ def api_global_search():
     q = request.args.get('q', '').strip()
     if len(q) < 2:
         return jsonify({'query': q, 'total': 0, 'sections': []})
-    return jsonify(global_search(q))
+    # /api/search is already in the acting-as private wall, so a caregiver never
+    # reaches this. Passing the flag anyway means the diary categories stay out
+    # of results even if that wall is ever narrowed — the privacy decision lives
+    # next to the data, not only in a path prefix list.
+    acting = bool(getattr(g, 'acting_as', None))
+    return jsonify(global_search(q, include_private=not acting))
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Data Export

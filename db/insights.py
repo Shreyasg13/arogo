@@ -2,7 +2,8 @@
 db/insights.py — Notification log, weekly report generator, global search, goal progress.
 
 """
-from .core import execute, executemany, jdump, jload, now_iso, today_iso, new_id, current_user_id
+from .core import (execute, executemany, jdump, jload, now_iso, today_iso, new_id,
+                   current_user_id, user_today)
 
 from .medicines import get_low_stock_medicines
 from .wellness  import get_thoughts_range
@@ -893,102 +894,11 @@ def _parse_date_query(query: str):
     return q.strip() or None, date_range
 
 
-def global_search(query: str, limit: int = 40) -> dict:
-    uid = current_user_id()
-    clean_q, date_range = _parse_date_query(query)
-    # If entire query was a date phrase and nothing else, search everything in that range
-    text_q = f'%{clean_q.lower()}%' if clean_q else '%'
-    results = {'query': query, 'total': 0, 'sections': [], 'date_range': date_range}
+# The registry-driven implementation lives in db/search.py — it covers every
+# data table instead of the seven this function used to reach. Re-exported here
+# so existing importers (db/__init__.py, routes) keep working unchanged.
+from .search import global_search    # noqa: E402,F401
 
-    def date_filter(col):
-        if not date_range: return '', []
-        return f' AND {col} BETWEEN ? AND ?', list(date_range)
-
-    # ── Food logs ──
-    df, dp = date_filter('date_key')
-    rows = execute(
-        f"SELECT food_name,date_key,calories,meal_type,quantity_g FROM food_logs"
-        f" WHERE (LOWER(food_name) LIKE ? OR LOWER(meal_type) LIKE ?){df} AND user_id=?"
-        f" ORDER BY date_key DESC LIMIT {limit//4}",
-        [text_q, text_q] + dp + [uid], fetchall=True)
-    if rows:
-        results['sections'].append({'type':'food','label':'Food Logs','icon':'🍽️',
-                                    'items':[dict(r) for r in rows]})
-        results['total'] += len(rows)
-
-    # ── Thoughts ──
-    df, dp = date_filter('date_key')
-    rows = execute(
-        f"SELECT id,content,mood,date_key,created_at FROM thoughts"
-        f" WHERE LOWER(content) LIKE ?{df} AND user_id=?"
-        f" ORDER BY created_at DESC LIMIT {limit//5}",
-        [text_q] + dp + [uid], fetchall=True)
-    if rows:
-        results['sections'].append({'type':'thought','label':'Thoughts','icon':'💭',
-                                    'items':[dict(r) for r in rows]})
-        results['total'] += len(rows)
-
-    # ── Symptoms ──
-    df, dp = date_filter('date_key')
-    rows = execute(
-        f"SELECT id,name,severity,date_key,time_of_day,notes FROM symptoms"
-        f" WHERE (LOWER(name) LIKE ? OR LOWER(notes) LIKE ?){df} AND user_id=?"
-        f" ORDER BY date_key DESC LIMIT {limit//5}",
-        [text_q, text_q] + dp + [uid], fetchall=True)
-    if rows:
-        results['sections'].append({'type':'symptom','label':'Symptoms','icon':'🩺',
-                                    'items':[dict(r) for r in rows]})
-        results['total'] += len(rows)
-
-    # ── Todos ──
-    df, dp = date_filter('created_at')
-    rows = execute(
-        f"SELECT id,title,notes,status,priority,due_date,created_at FROM todos"
-        f" WHERE (LOWER(title) LIKE ? OR LOWER(notes) LIKE ?){df} AND user_id=?"
-        f" ORDER BY created_at DESC LIMIT {limit//5}",
-        [text_q, text_q] + dp + [uid], fetchall=True)
-    if rows:
-        results['sections'].append({'type':'todo','label':'Tasks','icon':'✅',
-                                    'items':[dict(r) for r in rows]})
-        results['total'] += len(rows)
-
-    # ── Activities ──
-    df, dp = date_filter('date')
-    rows = execute(
-        f"SELECT id,name,type,date,duration,calories,distance FROM fitness_activities"
-        f" WHERE (LOWER(name) LIKE ? OR LOWER(type) LIKE ?){df} AND user_id=?"
-        f" ORDER BY date DESC LIMIT {limit//5}",
-        [text_q, text_q] + dp + [uid], fetchall=True)
-    if rows:
-        results['sections'].append({'type':'activity','label':'Workouts','icon':'🏃',
-                                    'items':[dict(r) for r in rows]})
-        results['total'] += len(rows)
-
-    # ── Medicines ──
-    if clean_q:
-        rows = execute(
-            "SELECT id,name,dosage,unit,frequency FROM medicines"
-            " WHERE LOWER(name) LIKE ? AND active=1 AND user_id=? ORDER BY name LIMIT 5",
-            (text_q, uid), fetchall=True)
-        if rows:
-            results['sections'].append({'type':'medicine','label':'Medicines','icon':'💊',
-                                        'items':[dict(r) for r in rows]})
-            results['total'] += len(rows)
-
-    # ── Reports ──
-    df, dp = date_filter('report_date')
-    rows = execute(
-        f"SELECT id,filename,patient_name,doctor,severity,report_date FROM reports"
-        f" WHERE (LOWER(filename) LIKE ? OR LOWER(patient_name) LIKE ? OR LOWER(doctor) LIKE ?){df} AND user_id=?"
-        f" ORDER BY report_date DESC LIMIT 5",
-        [text_q, text_q, text_q] + dp + [uid], fetchall=True)
-    if rows:
-        items = [{'id':r['id'],'filename':r['filename'],'patient':r['patient_name'],
-                  'doctor':r['doctor'],'severity':r['severity'],'date':r['report_date']} for r in rows]
-        results['sections'].append({'type':'report','label':'Medical Reports','icon':'📋','items':items})
-        results['total'] += len(rows)
-
-    return results
 
 # ── Goal progress data ────────────────────────────────────────────────────────
 

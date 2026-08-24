@@ -986,6 +986,15 @@ const I18N = {
     'Use one': 'एक उपयोग करें', 'Add one': 'एक जोड़ें', 'Item added': 'सामग्री जोड़ी गई',
     'Enter an item name': 'सामग्री का नाम भरें', 'Could not update': 'अपडेट नहीं हो सका',
     'Photo journal': 'फोटो जर्नल',
+    // Global-search section labels that aren't already nav items.
+    'Medicine history': 'दवा का इतिहास', 'Medical records': 'मेडिकल रिकॉर्ड',
+    'Questions for the doctor': 'डॉक्टर से पूछने के सवाल',
+    'Visit follow-ups': 'विज़िट के बाद के काम',
+    'Health reminders': 'स्वास्थ्य अनुस्मारक', 'Glasses & lenses': 'चश्मा और लेंस',
+    'My foods': 'मेरे खाद्य', 'Workouts': 'कसरत',
+    'Dependent records': 'आश्रित के रिकॉर्ड', 'Injections': 'इंजेक्शन',
+    'How a medicine felt': 'दवा कैसी लगी', 'Action plans': 'कार्य योजनाएँ',
+    'Cycle symptoms': 'चक्र के लक्षण', 'Pregnancy log': 'गर्भावस्था लॉग',
     'Photograph a rash, wound or swelling to see how it changes. Your photos, lined up by date — Arogo never reads a diagnosis from them': 'चकत्ते, घाव या सूजन की फोटो लें और बदलाव देखें। आपकी फोटो, तिथि अनुसार — Arogo इनसे कभी निदान नहीं पढ़ता',
     'Add a photo': 'फोटो जोड़ें', 'What is it? (e.g. Left forearm rash)': 'यह क्या है? (जैसे बायीं बाँह के चकत्ते)',
     'No photos yet. Add one above, using the same label each time to build a timeline.': 'अभी कोई फोटो नहीं। ऊपर जोड़ें, हर बार वही लेबल इस्तेमाल कर समयरेखा बनाएँ।',
@@ -13672,24 +13681,23 @@ async function runGlobalSearch(q) {
     // Filter sections if type filter is active
     const sections = _gsSearchType === 'all' ? r.sections : r.sections.filter(s => s.type === _gsSearchType);
 
+    // Search now spans every table the app writes to, so the row renderer is
+    // generic: the server sends a ready title and meta line per item (it is the
+    // side that knows which values are safe to print — a canonical mg/dL vitals
+    // number, for instance, is deliberately left out). The per-type branches
+    // below remain only as a fallback for the mood emoji and the task badge,
+    // which are genuinely client-side concerns.
     res.innerHTML = dateTag + pagesHtml + sections.map(s => {
+      const view = s.view || VIEW_MAP[s.type] || s.type;
+      const icon = s.icon || TYPE_ICON[s.type] || '📄';
       const rows = s.items.map(item => {
-        let title='', meta='', badge='';
+        let title = item._title || '', meta = item._meta || '', badge = '';
 
-        if (s.type==='food')     { title=item.food_name; meta=`${item.date_key} · ${item.meal_type||''} · ${Math.round(item.calories||0)} kcal`; }
-        if (s.type==='thought')  { title=item.content?.slice(0,90)+(item.content?.length>90?'…':''); meta=`${item.date_key} · ${item.mood ? moodEmoji(item.mood) : ''} ${item.mood||''}`; }
-        if (s.type==='symptom')  { title=item.name; meta=`${item.date_key} · ${(item.time_of_day||'').replace('_',' ')} · ${item.severity}/10 severity${item.notes?' · '+item.notes:''}`; }
-        if (s.type==='todo')     {
-          title=item.title;
-          meta=`${item.priority} priority${item.due_date?' · Due '+item.due_date:''}`;
-          badge=`<span class="gs-result-badge ${item.status}">${item.status}</span>`;
-        }
-        if (s.type==='activity') { title=item.name||item.type; meta=`${item.date} · ${item.duration||0}min · ${item.calories||0} kcal${item.distance?' · '+item.distance+'km':''}`; }
-        if (s.type==='report')   { title=item.filename||'Report'; meta=`${item.date||''} · ${item.severity||''}`; }
-        if (s.type==='medicine') { title=item.name; meta=`${item.dosage} ${item.unit} · ${(item.frequency||'').replace('_',' ')}`; }
+        if (s.type === 'thought' && item.mood) meta = `${item.date_key} · ${moodEmoji(item.mood)} ${item.mood}`;
+        if (s.type === 'todo' && item.status)  badge = `<span class="gs-result-badge ${escHtml(item.status)}">${escHtml(item.status)}</span>`;
 
-        return `<div class="gs-result-row" data-ev-click="closeGlobalSearch();switchView('${VIEW_MAP[s.type]||s.type}')">
-          <div class="gs-result-icon">${TYPE_ICON[s.type]||'📄'}</div>
+        return `<div class="gs-result-row" data-ev-click="closeGlobalSearch();switchView('${escHtml(view)}')">
+          <div class="gs-result-icon">${icon}</div>
           <div class="gs-result-main">
             <div class="gs-result-title">${hlText(title, q)}</div>
             <div class="gs-result-meta">${escHtml(meta)}</div>
@@ -13697,7 +13705,7 @@ async function runGlobalSearch(q) {
           ${badge}
         </div>`;
       }).join('');
-      return `<div class="gs-section-label">${s.icon} ${s.label}<span class="gs-section-count">${s.items.length}</span></div>${rows}`;
+      return `<div class="gs-section-label">${s.icon} ${t(s.label)}<span class="gs-section-count">${s.items.length}</span></div>${rows}`;
     }).join('');
     _gsSelectedIdx = -1;
   }, 200);
