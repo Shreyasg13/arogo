@@ -576,6 +576,13 @@
   </button>
 </div>
 
+<!-- Reminders-not-being-sent banner. A dead scheduler, an unconfigured server or
+     an unsubscribed device all stop reminders completely and silently, and
+     someone who has handed their medication schedule to this app has stopped
+     holding it themselves. Rendered by loadReminderHealth(); shown only to a
+     user who is actually relying on reminders. -->
+<div id="reminder-health-banner" style="display:none"></div>
+
 <!-- Acting-as banner: shown whenever a caregiver is managing a family member on
      this device. Deliberately loud — every health edit below is that member's. -->
 <div id="managing-banner" style="display:none;background:#3E7862;color:#fff;

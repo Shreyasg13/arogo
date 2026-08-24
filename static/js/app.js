@@ -3907,6 +3907,7 @@ async function loadDashboard() {
   try { loadTodayGlance(); }    catch (e) {}
   try { loadProfileCompleteness(); } catch (e) {}
   try { loadConditionCheckin(); } catch (e) {}
+  try { loadReminderHealth(); } catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -12676,6 +12677,55 @@ loadThoughts = async function() {
 // ════════════════════════════════════════════════════════════
 
 // Render pending todos on dashboard
+// ── "Reminders aren't being sent" ───────────────────────────────────────────
+// The chain that delivers a dose reminder — push configured on the server, the
+// scheduler alive, this device subscribed — fails silently at every link. The
+// app looks completely normal and the person finds out by missing medication,
+// which is precisely the thing they installed it to avoid.
+//
+// Shown only to someone actually relying on reminders (the server decides), and
+// dismissible for the session but not for good: if reminders really are down,
+// quietly forgetting about it is the failure we are trying to prevent.
+async function loadReminderHealth() {
+  const el = document.getElementById('reminder-health-banner');
+  if (!el) return;
+  const h = await coalescedGet('/api/reminders/health').catch(() => null);
+  if (!h || h.ok || !h.problems || !h.problems.length
+      || sessionStorage.getItem('me_rh_dismissed') === '1') {
+    el.style.display = 'none';
+    return;
+  }
+  // State the fact and, where the user can actually do something, the step.
+  // Nothing here claims a dose was missed — the app has no idea whether the
+  // medicine was taken, and saying so would be inventing a fact about them.
+  const rows = h.problems.map(p => `
+    <div style="margin-bottom:6px">
+      <b>${escHtml(t(p.title))}</b><br>
+      <span style="opacity:.9">${escHtml(p.detail)}</span>
+    </div>`).join('');
+  const fixable = h.problems.some(p => p.actionable_by_user);
+  el.innerHTML = `
+    <div class="rh-banner" role="status">
+      <span class="rh-icon" aria-hidden="true">🔕</span>
+      <div class="rh-body">${rows}</div>
+      <div class="rh-actions">
+        ${fixable ? `<button class="btn-outline"
+            data-ev-click="switchView('notifications')">${t('Notifications')}</button>` : ''}
+        <button class="btn-outline"
+                data-ev-click="dismissReminderHealth()">${t('Dismiss')}</button>
+      </div>
+    </div>`;
+  el.style.display = 'block';
+}
+
+function dismissReminderHealth() {
+  // Session-scoped on purpose. It comes back next time the app opens while the
+  // problem is still there.
+  sessionStorage.setItem('me_rh_dismissed', '1');
+  const el = document.getElementById('reminder-health-banner');
+  if (el) el.style.display = 'none';
+}
+
 async function loadDashboardTodos() {
   const r = await fetch('/api/todos?status=pending').then(r => r.json()).catch(() => null);
   const el = document.getElementById('dash-todos-list');

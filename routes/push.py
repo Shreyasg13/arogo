@@ -48,3 +48,17 @@ def unsubscribe():
     execute("DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?",
             (endpoint, g.user_id), commit=True)
     return jsonify({'success': True})
+
+
+@bp.route('/api/reminders/health')
+@require_auth
+def reminders_health():
+    """Whether anything is actually going to send this user a reminder.
+
+    A dead scheduler, an unconfigured server or an unsubscribed device all stop
+    reminders completely and silently — the app looks entirely normal. Someone
+    who has handed their medication schedule to this app deserves to be told
+    when it has stopped holding it, rather than finding out by missing a dose.
+    """
+    from db.reminder_health import reminder_health
+    return jsonify(reminder_health())

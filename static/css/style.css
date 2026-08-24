@@ -7095,6 +7095,24 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .restore-details > summary { cursor:pointer; color:var(--gray-500); padding:4px 0; }
 .restore-details[open] > summary { margin-bottom:4px; }
 
+/* "Reminders aren't being sent" banner.
+   Fixed light background in both themes (it is a warning, not chrome), and the
+   actions wrap below the message on a narrow screen — side-by-side flex squeezed
+   the text into a one-word-per-line column on a small phone. */
+.rh-banner { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start;
+  background:#FBECEC; border:1px solid #F0D2D2; border-radius:10px;
+  padding:12px 16px; margin-bottom:16px;
+  font-size:13px; color:#8a4a44; line-height:1.6; }
+.rh-icon { flex:0 0 auto; }
+.rh-body { flex:1 1 220px; min-width:0; }         /* min-width:0 lets it shrink, not collapse */
+.rh-body b { color:#7a3a34; }
+.rh-actions { display:flex; gap:6px; flex:0 0 auto; margin-left:auto; }
+.rh-actions .btn-outline { font-size:12px; white-space:nowrap; }
+@media (max-width:520px) {
+  .rh-actions { width:100%; margin-left:0; }      /* drop below the message */
+  .rh-actions .btn-outline { flex:1; }
+}
+
 /* Medicine history */
 .mh-list { display:flex; flex-direction:column; }
 .mh-row { display:flex; gap:12px; padding:11px 2px; border-bottom:1px solid var(--gray-50,#F0EDE6); }
