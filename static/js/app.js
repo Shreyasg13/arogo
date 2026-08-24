@@ -995,6 +995,24 @@ const I18N = {
     'Dependent records': 'आश्रित के रिकॉर्ड', 'Injections': 'इंजेक्शन',
     'How a medicine felt': 'दवा कैसी लगी', 'Action plans': 'कार्य योजनाएँ',
     'Cycle symptoms': 'चक्र के लक्षण', 'Pregnancy log': 'गर्भावस्था लॉग',
+    // Restore preview — a screen where the user agrees to delete data, so it
+    // must read correctly in their own language.
+    'Checking the file…': 'फ़ाइल जाँची जा रही है…',
+    "That file isn't valid JSON": 'वह फ़ाइल मान्य JSON नहीं है',
+    'No restorable health records were found in that file.': 'उस फ़ाइल में पुनर्स्थापित करने योग्य कोई रिकॉर्ड नहीं मिला।',
+    'This backup would empty these areas': 'यह बैकअप इन हिस्सों को खाली कर देगा',
+    'it lists them with no records, so what you have now is removed and nothing is put back:': 'इनमें कोई रिकॉर्ड नहीं है, इसलिए आपका मौजूदा डेटा हट जाएगा और बदले में कुछ नहीं आएगा:',
+    'This <b>replaces</b> your current data in every area listed below — your existing records there are removed first. This cannot be undone, so download a backup now if you are unsure.': 'यह नीचे दिए हर हिस्से में आपका मौजूदा डेटा <b>बदल देता है</b> — पहले वहाँ के रिकॉर्ड हटाए जाते हैं। यह पूर्वस्थिति में नहीं लाया जा सकता, इसलिए संदेह हो तो अभी बैकअप डाउनलोड करें।',
+    '%1 removed': '%1 हटाए गए', '%1 in': '%1 आ रहे', '%1 kept': '%1 बने रहेंगे',
+    '%1 unreadable': '%1 अपठनीय', '%1 record': '%1 रिकॉर्ड', '%1 records': '%1 रिकॉर्ड',
+    '%1 row': '%1 पंक्ति', '%1 rows': '%1 पंक्तियाँ',
+    '%1 to restore, replacing %2 of yours.': '%1 पुनर्स्थापित होंगे, आपके %2 की जगह।',
+    '%1 in the file could not be read and will be skipped.': 'फ़ाइल में %1 पढ़ी नहीं जा सकीं और छोड़ दी जाएँगी।',
+    '%1 areas are not in this file and will be left alone': '%1 हिस्से इस फ़ाइल में नहीं हैं और अछूते रहेंगे',
+    'Some things in this file are deliberately not restored': 'इस फ़ाइल की कुछ चीज़ें जानबूझकर पुनर्स्थापित नहीं की जातीं',
+    'Replace my data with this backup': 'मेरा डेटा इस बैकअप से बदलें',
+    'Restoring…': 'पुनर्स्थापित हो रहा है…', 'Restore failed': 'पुनर्स्थापना विफल',
+    'Restored %1 records — %2 could not be read and were skipped': '%1 रिकॉर्ड पुनर्स्थापित — %2 पढ़े नहीं जा सके और छोड़ दिए गए',
     'Photograph a rash, wound or swelling to see how it changes. Your photos, lined up by date — Arogo never reads a diagnosis from them': 'चकत्ते, घाव या सूजन की फोटो लें और बदलाव देखें। आपकी फोटो, तिथि अनुसार — Arogo इनसे कभी निदान नहीं पढ़ता',
     'Add a photo': 'फोटो जोड़ें', 'What is it? (e.g. Left forearm rash)': 'यह क्या है? (जैसे बायीं बाँह के चकत्ते)',
     'No photos yet. Add one above, using the same label each time to build a timeline.': 'अभी कोई फोटो नहीं। ऊपर जोड़ें, हर बार वही लेबल इस्तेमाल कर समयरेखा बनाएँ।',
@@ -20466,17 +20484,11 @@ async function downloadScopedData() {
 }
 
 // ── Backup & restore (self-hosting data safety) ─────────────────────────────
-const RESTORE_TABLE_NAMES = {
-  medicines:'Medicines', dose_logs:'Dose history', medicine_events:'Medicine history',
-  appointments:'Appointments', dose_snoozes:'Snoozes', measurement_reminders:'Measurement reminders',
-  vitals:'Vitals', symptoms:'Symptoms', body_metrics:'Body metrics', habits:'Habits',
-  habit_logs:'Habit history', sleep_logs:'Sleep', hydration_logs:'Hydration',
-  food_logs:'Food logs', custom_foods:'Custom foods', fitness_activities:'Workouts',
-  thoughts:'Journal', todos:'Tasks', reports:'Medical reports', emergency_info:'Emergency card',
-  user_profile:'Profile', reminder_settings:'Reminder settings',
-};
-function _prettyTable(k) { return RESTORE_TABLE_NAMES[k] || k.replace(/_/g, ' '); }
-
+// The confirmation screen used to be built here from a hardcoded list of 22
+// table names. A restore touches every table the file mentions, so the other 44
+// — labs, allergies, procedures, insurance, notes, the cycle diary — were
+// replaced without ever appearing on the screen the user agreed to. The preview
+// now comes from the server, which is the only side that knows the real list.
 let _restoreData = null;
 
 async function downloadBackup() {
@@ -20499,49 +20511,120 @@ function onRestoreFile(input) {
   const f = input.files && input.files[0];
   if (!f) return;
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     let data;
     try { data = JSON.parse(reader.result); }
-    catch { showToast("That file isn't valid JSON", 'error'); return; }
+    catch { showToast(t("That file isn't valid JSON"), 'error'); return; }
     _restoreData = data;
-    renderRestorePreview(data);
+    const el = document.getElementById('restore-preview');
+    if (el) { el.style.display = 'block'; el.innerHTML =
+      `<div class="restore-row">${t('Checking the file…')}</div>`; }
+    // Ask the server what this would actually do — it knows every table the
+    // restore touches, and how many of your rows each one would remove.
+    const p = await fetch('/api/import/preview', {
+      method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data),
+    }).then(r => r.json()).catch(() => null);
+    renderRestorePreview(p);
   };
   reader.readAsText(f);
   input.value = '';                    // allow re-selecting the same file later
 }
 
-function renderRestorePreview(data) {
+// "1 record" not "1 records" — a count the user is about to act on shouldn't
+// read like a placeholder.
+function _nRecords(n) { return tformat(n === 1 ? '%1 record' : '%1 records', n); }
+function _nRows(n)    { return tformat(n === 1 ? '%1 row' : '%1 rows', n); }
+
+function _restoreRow(e) {
+  // Both numbers, each labelled, because a restore is a replace and the layout
+  // alone doesn't say which figure is which.
+  const parts = [`<b>${tformat('%1 in', e.incoming)}</b>`];
+  if (e.current)    parts.unshift(`<span class="restore-removes">${tformat('%1 removed', e.current)}</span>`);
+  if (e.unreadable) parts.unshift(`<span class="restore-removes">${tformat('%1 unreadable', e.unreadable)}</span>`);
+  return `<div class="restore-row"><span>${escHtml(e.label)}</span>
+            <span>${parts.join(' · ')}</span></div>`;
+}
+
+function renderRestorePreview(p) {
   const el = document.getElementById('restore-preview');
   if (!el) return;
-  const entries = Object.entries(data || {})
-    .filter(([k, v]) => Array.isArray(v) && v.length && RESTORE_TABLE_NAMES[k]);
   el.style.display = 'block';
-  if (!entries.length) {
-    el.innerHTML = `<div class="restore-warn">No restorable health records were found in that file.</div>`;
+  if (!p || !p.ok) {
+    el.innerHTML = `<div class="restore-warn">${escHtml((p && p.error) ||
+      t('No restorable health records were found in that file.'))}</div>`;
     _restoreData = null;
     return;
   }
-  const rows = entries.map(([k, v]) =>
-    `<div class="restore-row"><span>${escHtml(_prettyTable(k))}</span><b>${v.length}</b></div>`).join('');
-  el.innerHTML = `
-    <div class="restore-warn">⚠️ This <b>replaces</b> your current data with the backup below. Your existing records in these areas are removed first — this can't be undone, so download a backup now if you're unsure.</div>
-    <div class="restore-list">${rows}</div>
-    <button class="btn-primary" style="margin-top:12px" data-ev-click="confirmRestore()">Replace my data with this backup</button>`;
+  const T = p.totals || {};
+  let html = '';
+
+  // The quiet data-loss case, stated first and plainly: the file lists these
+  // areas with nothing in them, so a restore empties what you have now.
+  if (p.emptying && p.emptying.length) {
+    html += `<div class="restore-warn">🚨 <b>${t('This backup would empty these areas')}</b> —
+      ${t('it lists them with no records, so what you have now is removed and nothing is put back:')}
+      <div class="restore-list" style="margin-top:8px">${
+        p.emptying.map(e => `<div class="restore-row"><span>${escHtml(e.label)}</span>
+          <b>${tformat('%1 removed', e.current)}</b></div>`).join('')}</div></div>`;
+  }
+
+  html += `<div class="restore-warn">⚠️ ${t('This <b>replaces</b> your current data in every area listed below — your existing records there are removed first. This cannot be undone, so download a backup now if you are unsure.')}</div>`;
+
+  if (p.tables && p.tables.length) {
+    html += `<div class="restore-list">${p.tables.map(_restoreRow).join('')}</div>
+      <div class="restore-note">${tformat('%1 to restore, replacing %2 of yours.',
+        _nRecords(T.incoming || 0), _nRecords(T.deleting || 0))}</div>`;
+  } else {
+    html += `<div class="restore-warn">${t('No restorable health records were found in that file.')}</div>`;
+    _restoreData = null;
+    el.innerHTML = html;
+    return;
+  }
+
+  if (T.unreadable) {
+    html += `<div class="restore-note">${tformat('%1 in the file could not be read and will be skipped.', _nRows(T.unreadable))}</div>`;
+  }
+  if (p.untouched && p.untouched.length) {
+    html += `<details class="restore-details"><summary>${
+      tformat('%1 areas are not in this file and will be left alone', p.untouched.length)
+      }</summary><div class="restore-list">${p.untouched.map(e =>
+        `<div class="restore-row"><span>${escHtml(e.label)}</span><b>${
+          tformat('%1 kept', e.current)}</b></div>`).join('')}</div></details>`;
+  }
+  if (p.not_restored && p.not_restored.length) {
+    html += `<details class="restore-details"><summary>${
+      t('Some things in this file are deliberately not restored')
+      }</summary>${p.not_restored.map(e =>
+        `<div class="restore-note"><b>${escHtml(e.label)}</b> — ${escHtml(e.reason)}</div>`).join('')}</details>`;
+  }
+  html += `<button class="btn-primary" style="margin-top:12px" data-ev-click="confirmRestore()">${
+    t('Replace my data with this backup')}</button>`;
+  el.innerHTML = html;
 }
 
 async function confirmRestore() {
   if (!_restoreData) return;
-  showToast('Restoring…', 'info');
+  showToast(t('Restoring…'), 'info');
   const r = await fetch('/api/import', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(_restoreData),
   }).then(r => r.json()).catch(() => null);
   if (r && r.success) {
-    showToast(tformat('✓ Restored %1 records — reloading', r.total), 'success');
     _restoreData = null;
-    setTimeout(() => location.reload(), 1000);
+    // Never report a clean restore when rows were dropped — "✓ Restored 3,100"
+    // while 900 silently failed tells someone their history is back when it
+    // isn't, and they'd have no reason to check.
+    if (r.skipped_total) {
+      showToast(tformat('Restored %1 records — %2 could not be read and were skipped',
+                        r.total, r.skipped_total), 'warn');
+    } else {
+      showToast(tformat('✓ Restored %1 records — reloading', r.total), 'success');
+    }
+    setTimeout(() => location.reload(), r.skipped_total ? 3500 : 1000);
   } else {
-    showToast((r && r.error) || 'Restore failed', 'error');
+    showToast((r && r.error) || t('Restore failed'), 'error');
   }
 }
 

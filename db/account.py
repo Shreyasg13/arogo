@@ -7,7 +7,7 @@ data for good. Both operate strictly on the calling user's own rows.
 """
 from __future__ import annotations
 
-from .core import execute, DATA_TABLES, table_columns
+from .core import execute, DATA_TABLES, table_columns, transaction
 
 # User-owned tables that aren't in DATA_TABLES, with the column that owns them.
 _EXTRA_OWNED = [
@@ -98,6 +98,69 @@ def export_all_data(uid: str) -> dict:
     return out
 
 
+# A human name for every restorable table. The restore confirmation is built
+# from this, so a table without a label would be silently replaced without ever
+# appearing on the screen where the user agrees to it — which is exactly what
+# used to happen to 44 of them. A test asserts the coverage.
+TABLE_LABELS = {
+    'medicines': 'Medicines', 'dose_logs': 'Dose history',
+    'dose_snoozes': 'Snoozed reminders', 'medicine_events': 'Medicine history',
+    'med_taper_steps': 'Dose tapers', 'med_effectiveness': 'How medicines felt',
+    'injection_logs': 'Injections', 'action_plans': 'Action plans',
+    'prescriptions': 'Prescriptions',
+    'vitals': 'Vitals', 'vital_targets': 'Vital targets',
+    'body_metrics': 'Body measurements',
+    'lab_results': 'Lab results', 'lab_rechecks': 'Lab recheck reminders',
+    'symptoms': 'Symptoms', 'symptom_photos': 'Symptom photos',
+    'reports': 'Medical records', 'appointments': 'Appointments',
+    'immunizations': 'Vaccines', 'allergies': 'Allergies',
+    'dental_vision_visits': 'Dental & vision visits',
+    'vision_prescriptions': 'Glasses & lenses',
+    'procedures': 'Procedures', 'family_history': 'Family history',
+    'doctor_questions': 'Questions for the doctor',
+    'visit_action_items': 'Visit follow-ups',
+    'care_plan_items': 'Care plan', 'providers': 'Care team',
+    'claims': 'Insurance claims', 'insurance_policies': 'Insurance policies',
+    'dependents': 'People you care for', 'dependent_records': 'Dependent records',
+    'health_reminders': 'Health reminders', 'home_supplies': 'Home supplies',
+    'emergency_info': 'Emergency card', 'health_notes': 'Notes',
+    'food_logs': 'Food logs', 'custom_foods': 'Your own foods',
+    'hydration_logs': 'Water', 'meal_plans': 'Meal plans',
+    'fitness_activities': 'Workouts', 'workout_sets': 'Strength log',
+    'habits': 'Habits', 'habit_logs': 'Habit history', 'sleep_logs': 'Sleep',
+    'environment_days': 'Air & weather',
+    'health_goals': 'Goals', 'fasting_sessions': 'Fasting',
+    'health_expenses': 'Health spending', 'experiments': 'Experiments',
+    'quit_plans': 'Quit tracker', 'weekly_reviews': 'Weekly reviews',
+    'todos': 'Tasks',
+    'thoughts': 'Journal', 'menstrual_cycles': 'Cycle',
+    'cycle_symptoms': 'Cycle symptoms', 'menopause_logs': 'Menopause',
+    'pregnancy': 'Pregnancy', 'pregnancy_logs': 'Pregnancy log',
+    'user_profile': 'Profile & preferences',
+    'reminder_settings': 'Reminder settings',
+    'measurement_reminders': 'Measurement reminders',
+    # Not restorable, but still named — the preview tells the user what it is
+    # skipping and why, and "oauth tokens" is not a thing anyone recognises.
+    'oauth_tokens': 'Connected apps', 'share_snapshots': 'Share links',
+    'sync_log': 'Sync history', 'notification_log': 'Notification history',
+}
+
+# Tables a restore deliberately leaves alone, with the reason. The export
+# redacts secrets, so writing these back would produce rows that look live and
+# aren't — an integration that reports "connected" with no usable token, or a
+# share link that resolves to nothing. Better to not restore them and say so.
+NOT_RESTORED = {
+    'oauth_tokens': 'the access token is redacted in a backup, so a restored row '
+                    'would show a connected service that cannot actually sync — '
+                    'reconnect it instead',
+    'share_snapshots': 'share links carry a token that is redacted in a backup; '
+                       'a restored link would never open',
+    'sync_log': 'diagnostics from a previous run, not your records',
+    'notification_log': 'reminders the app already sent; restoring them would '
+                        'refill your notification history with old alerts',
+}
+
+
 def looks_like_backup(data) -> bool:
     """A permissive sanity check so a random JSON file can't be mistaken for one
     of ours: it must be an object carrying at least one known data table."""
@@ -105,46 +168,143 @@ def looks_like_backup(data) -> bool:
         isinstance(data.get(t), list) for t in DATA_TABLES)
 
 
+def _restorable_tables():
+    return [t for t in DATA_TABLES if t not in NOT_RESTORED]
+
+
+def _row_columns(row, cols):
+    """The columns of `row` this schema can actually accept. Redacted secrets are
+    dropped rather than written back as the literal string."""
+    if not isinstance(row, dict):
+        return None
+    keys = [k for k, v in row.items()
+            if (not cols or k in cols) and v != '[redacted]' and k != 'user_id']
+    return keys or None
+
+
+def preview_import(uid: str, data) -> dict:
+    """Exactly what a restore would do, without doing any of it.
+
+    The confirmation screen used to be built client-side from a list of 22 table
+    names, so a restore silently replaced labs, allergies, procedures, insurance,
+    notes and the cycle diary without ever naming them — and a table present but
+    EMPTY in the file was hidden entirely while still deleting everything in it.
+    This is the authoritative answer: every table the file touches, how many rows
+    it brings, and how many of yours it would remove.
+    """
+    if not looks_like_backup(data):
+        return {'ok': False,
+                'error': "This doesn't look like an Arogo backup file."}
+
+    meta = data.get('_backup') if isinstance(data.get('_backup'), dict) else {}
+    tables, emptying, untouched, unreadable_total = [], [], [], 0
+    incoming_total = deleting_total = 0
+
+    for t in _restorable_tables():
+        rows = data.get(t)
+        cols = table_columns(t)
+        if cols and 'user_id' not in cols:
+            continue                       # not user-owned on this schema
+        try:
+            current = execute(f"SELECT COUNT(*) AS n FROM {t} WHERE user_id=?",
+                              (uid,), fetchone=True)['n']
+        except Exception:
+            continue                       # table not in this schema
+        if not isinstance(rows, list):
+            if current:
+                untouched.append({'table': t, 'label': label_for(t), 'current': current})
+            continue
+        usable = sum(1 for r in rows if _row_columns(r, cols))
+        unreadable = len(rows) - usable
+        unreadable_total += unreadable
+        incoming_total += usable
+        deleting_total += current
+        entry = {'table': t, 'label': label_for(t), 'incoming': usable,
+                 'current': current, 'unreadable': unreadable}
+        tables.append(entry)
+        # The quiet data-loss case: the file lists the table with nothing in it,
+        # so the restore removes what you have and puts nothing back.
+        if usable == 0 and current > 0:
+            emptying.append(entry)
+
+    known = set(DATA_TABLES) | {'_backup', '_categories', 'account'} | set(_EXTRA_OWNED_NAMES)
+    unknown = sorted(k for k in data if k not in known)
+
+    return {
+        'ok': True,
+        'error': None,
+        'backup': {'app': meta.get('app'), 'version': meta.get('version')} if meta else None,
+        'tables': sorted(tables, key=lambda e: -(e['incoming'] + e['current'])),
+        'emptying': emptying,
+        'untouched': sorted(untouched, key=lambda e: -e['current']),
+        'not_restored': [{'table': t, 'label': label_for(t), 'reason': why}
+                         for t, why in NOT_RESTORED.items() if isinstance(data.get(t), list)],
+        'unknown_keys': unknown,
+        'totals': {'incoming': incoming_total, 'deleting': deleting_total,
+                   'unreadable': unreadable_total},
+    }
+
+
+def label_for(table: str) -> str:
+    return TABLE_LABELS.get(table) or table.replace('_', ' ')
+
+
+_EXTRA_OWNED_NAMES = [t for t, _ in _EXTRA_OWNED]
+
+
 def import_all_data(uid: str, data: dict) -> dict:
     """Restore a backup into THIS user's rows, replacing what's there.
 
-    Safety: only the health-data tables are restored (never another user's
-    account, tokens, push keys, or family links); every inserted row's owner is
-    forced to `uid` so a snapshot can't write to someone else; columns not in the
+    Atomic. The old code deleted a table's rows and then inserted the backup's
+    one autocommitted statement at a time, so a failure partway through left the
+    user with neither their old data nor all of the new — the worst outcome a
+    restore can produce. Everything now happens in one transaction: it either all
+    lands or nothing changes.
+
+    Safety: only health-data tables are restored (never another user's account,
+    tokens, push keys or family links); every inserted row's owner is forced to
+    `uid` so a snapshot can't write to someone else; columns absent from the
     current schema are dropped (version drift) and redacted secrets are skipped.
-    Returns {table: rows_restored}. Caller is responsible for confirming intent —
-    this overwrites existing data.
+
+    Returns {'restored': {table: n}, 'skipped': {table: n}, 'deleted': {table: n}}
+    — skipped rows are reported rather than swallowed, because "✓ Restored 3,100
+    records" while 900 silently failed tells the user their history is back when
+    it isn't.
     """
     if not looks_like_backup(data):
         raise ValueError("This doesn't look like an Arogo backup file.")
-    summary = {}
-    for t in DATA_TABLES:
-        rows = data.get(t)
-        if not isinstance(rows, list):
-            continue
-        cols = table_columns(t)
-        if cols and "user_id" not in cols:
-            continue                          # not a user-owned table on this schema
-        execute(f"DELETE FROM {t} WHERE user_id=?", (uid,), commit=True)
-        n = 0
-        for row in rows:
-            if not isinstance(row, dict):
+    restored, skipped, deleted = {}, {}, {}
+    with transaction():
+        for t in _restorable_tables():
+            rows = data.get(t)
+            if not isinstance(rows, list):
                 continue
-            clean = {k: v for k, v in row.items()
-                     if (not cols or k in cols) and v != "[redacted]"}
-            clean["user_id"] = uid            # never trust the snapshot's owner
-            keys = [k for k in clean if not cols or k in cols]
-            if not keys:
-                continue
-            ph = ",".join("?" * len(keys))
+            cols = table_columns(t)
+            if cols and 'user_id' not in cols:
+                continue                      # not a user-owned table on this schema
             try:
-                execute(f"INSERT INTO {t} ({','.join(keys)}) VALUES ({ph})",
-                        tuple(clean[k] for k in keys), commit=True)
-                n += 1
+                gone = execute(f"DELETE FROM {t} WHERE user_id=?", (uid,)).rowcount
             except Exception:
-                pass                          # skip a malformed row, keep going
-        summary[t] = n
-    return summary
+                continue                      # table not in this schema
+            deleted[t] = gone if gone and gone > 0 else 0
+            n = bad = 0
+            for row in rows:
+                keys = _row_columns(row, cols)
+                if not keys:
+                    bad += 1
+                    continue
+                keys = keys + ['user_id']
+                vals = [row[k] for k in keys[:-1]] + [uid]   # never trust the file's owner
+                ph = ','.join('?' * len(keys))
+                try:
+                    execute(f"INSERT INTO {t} ({','.join(keys)}) VALUES ({ph})", tuple(vals))
+                    n += 1
+                except Exception:
+                    bad += 1                  # one malformed row, not the whole restore
+            restored[t] = n
+            if bad:
+                skipped[t] = bad
+    return {'restored': restored, 'skipped': skipped, 'deleted': deleted}
 
 
 def delete_account(uid: str) -> None:

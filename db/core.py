@@ -8,7 +8,7 @@ Backends:
     subset both engines accept; execute() rewrites '?' placeholders to '%s'
     for Postgres.
 """
-import os, json, math, datetime, uuid, threading
+import os, json, math, datetime, uuid, threading, contextlib
 
 
 # ── Safe numeric coercion ─────────────────────────────────────────────────────
@@ -86,6 +86,9 @@ IS_POSTGRES  = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 # ── Connection ────────────────────────────────────────────────────────────────
 _conn  = None
+# True while a transaction() block is open, so nesting joins instead of
+# committing the outer block early.
+_in_tx = False
 _mutex = threading.Lock()
 
 
@@ -190,6 +193,55 @@ def executemany(sql: str, param_list):
 def commit():
     # No-op in autocommit mode — kept so existing callers don't break.
     pass
+
+
+@contextlib.contextmanager
+def transaction():
+    """Run a block all-or-nothing.
+
+    Both backends are configured for autocommit, which is right for ordinary
+    request work — every statement is small and independent, and it avoids
+    holding write locks on an SD card. A restore is the exception: it deletes the
+    user's existing rows before inserting the backup's, so a failure partway
+    through autocommit leaves them with neither. That is the one operation where
+    a half-finished write is worse than no write at all.
+
+    Nesting is a no-op — an inner `with transaction()` joins the outer one rather
+    than committing early, so a helper that wants atomicity doesn't silently
+    break the atomicity of its caller.
+    """
+    global _in_tx
+    if _in_tx:
+        yield                          # already inside one; let the outer commit
+        return
+    conn = get_db()
+    prev_autocommit = None
+    if IS_POSTGRES:
+        prev_autocommit = conn.autocommit
+        conn.autocommit = False
+    else:
+        # isolation_level=None means sqlite3 issues no BEGIN of its own, so we
+        # open one explicitly. IMMEDIATE takes the write lock up front instead of
+        # discovering the conflict halfway through.
+        conn.execute("BEGIN IMMEDIATE")
+    _in_tx = True
+    try:
+        yield
+    except Exception:
+        try:
+            conn.rollback() if IS_POSTGRES else conn.execute("ROLLBACK")
+        except Exception:
+            pass
+        raise
+    else:
+        if IS_POSTGRES:
+            conn.commit()
+        else:
+            conn.execute("COMMIT")
+    finally:
+        _in_tx = False
+        if IS_POSTGRES and prev_autocommit is not None:
+            conn.autocommit = prev_autocommit
 
 
 # ── Tiny helpers ──────────────────────────────────────────────────────────────

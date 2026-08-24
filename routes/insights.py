@@ -626,20 +626,48 @@ def api_backup():
         'Content-Disposition': f'attachment; filename="arogo-backup-{stamp}.json"'})
 
 
+@bp.route('/api/import/preview', methods=['POST'])
+@require_auth
+def api_import_preview():
+    """What a restore would do, without doing any of it.
+
+    The confirmation used to be assembled in the browser from a hardcoded list of
+    22 table names, so a restore quietly replaced the other 44 — labs, allergies,
+    procedures, insurance, notes, the cycle diary — without naming them, and a
+    table present but empty in the file was hidden while still deleting
+    everything in it. This endpoint is the authoritative answer instead."""
+    from db.account import preview_import
+    from db.core import current_user_id
+    data = request.get_json(silent=True)
+    out = preview_import(current_user_id(), data)
+    return (jsonify(out), 200) if out.get('ok') else (jsonify(out), 400)
+
+
 @bp.route('/api/import', methods=['POST'])
 @require_auth
 def api_import():
-    """Restore a backup into this user's own data (replaces it). The client
-    previews the row counts and confirms before this is called."""
+    """Restore a backup into this user's own data (replaces it). Atomic — either
+    every row lands or nothing changes. The client previews first and confirms."""
     from db.account import import_all_data
     from db.core import current_user_id
     data = request.get_json(silent=True)
     try:
-        summary = import_all_data(current_user_id(), data or {})
+        res = import_all_data(current_user_id(), data or {})
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
-    return jsonify({'success': True, 'restored': summary,
-                    'total': sum(summary.values())})
+    except Exception:
+        # The transaction rolled back, so their data is exactly as it was. Say
+        # that plainly rather than leaving them wondering what state they're in.
+        current_app.logger.exception('restore failed')
+        return jsonify({'success': False,
+                        'error': 'The restore failed and was rolled back — your '
+                                 'data is unchanged. Nothing was deleted.'}), 500
+    restored, skipped = res['restored'], res['skipped']
+    return jsonify({'success': True,
+                    'restored': restored, 'skipped': skipped,
+                    'deleted': res['deleted'],
+                    'total': sum(restored.values()),
+                    'skipped_total': sum(skipped.values())})
 
 
 @bp.route('/api/export')

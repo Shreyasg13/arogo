@@ -7082,6 +7082,18 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .restore-row { display:flex; justify-content:space-between; font-size:13.5px; color:var(--gray-700);
   padding:8px 2px; border-bottom:1px solid var(--gray-50,#F0EDE6); }
 .restore-row:last-child { border-bottom:none; }
+/* "replaces 340" sits next to the incoming count — a restore is a replace, so
+   both numbers have to be visible before the user agrees to it. */
+.restore-removes { font-size:12px; color:#B45309; margin-right:8px; }
+/* The warn box has a fixed light background in both themes, so rows nested in
+   it must not inherit the theme's own text colour — in dark mode that came out
+   as pale grey on pink and the table names were barely readable. */
+.restore-warn .restore-row { color:inherit; border-bottom-color:rgba(138,74,68,.22); }
+.restore-warn .restore-row b { color:#8a4a44; }
+.restore-note { font-size:12.5px; color:var(--gray-400); line-height:1.6; margin-top:8px; }
+.restore-details { margin-top:10px; font-size:13px; }
+.restore-details > summary { cursor:pointer; color:var(--gray-500); padding:4px 0; }
+.restore-details[open] > summary { margin-bottom:4px; }
 
 /* Medicine history */
 .mh-list { display:flex; flex-direction:column; }
