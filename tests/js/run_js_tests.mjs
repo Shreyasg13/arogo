@@ -508,5 +508,79 @@ test('_pageMatches: short/empty queries return nothing, and caps at 6', () => {
   if (S._pageMatches('e').length > 6) throw new Error('should cap results at 6');
 });
 
-console.log(`\n${passed} passed, ${failed} failed`);
-process.exit(failed ? 1 : 0);
+// ── coalescedGet: share an in-flight request, never serve a stale one ───────
+// Several panels load independently and ask for the same endpoint within
+// milliseconds. Sharing the request is only safe because the entry is dropped
+// the moment it settles — a cache here would mask a dose the user just logged.
+const asyncTests = [];
+const atest = (name, fn) => asyncTests.push([name, fn]);
+
+function fakeFetch(bodyFor) {
+  const calls = [];
+  let resolveNext;
+  const fn = (url, opts) => {
+    calls.push({ url, opts });
+    return new Promise(res => {
+      resolveNext = () => res({ json: async () => bodyFor(url, calls.length) });
+    });
+  };
+  return { fn, calls, flush: () => resolveNext && resolveNext() };
+}
+
+atest('two callers during one flight share a single request', async () => {
+  const f = fakeFetch(() => ({ n: 1 }));
+  S.fetch = f.fn;
+  const a = S.coalescedGet('/api/hydration/2026-08-24');
+  const b = S.coalescedGet('/api/hydration/2026-08-24');
+  eq(f.calls.length, 1, 'only one network request');
+  f.flush();
+  eq(await a, { n: 1 });
+  eq(await b, { n: 1 }, 'both callers get the response');
+});
+
+atest('a request after the first settles is NOT served from a cache', async () => {
+  // The whole safety argument rests on this: log a drink, ask again, get the
+  // new number — never the one read a moment earlier.
+  let served = 0;
+  S.fetch = () => Promise.resolve({ json: async () => ({ total_ml: ++served * 250 }) });
+  eq(await S.coalescedGet('/api/hydration/x'), { total_ml: 250 });
+  eq(await S.coalescedGet('/api/hydration/x'), { total_ml: 500 }, 'must refetch');
+});
+
+atest('different URLs are never conflated', async () => {
+  S.fetch = url => Promise.resolve({ json: async () => ({ url }) });
+  const [a, b] = await Promise.all([
+    S.coalescedGet('/api/medicines/low-stock'),
+    S.coalescedGet('/api/medicines/today'),
+  ]);
+  eq(a.url, '/api/medicines/low-stock');
+  eq(b.url, '/api/medicines/today');
+});
+
+atest('a failed request is not remembered', async () => {
+  let attempt = 0;
+  S.fetch = () => (++attempt === 1
+    ? Promise.reject(new Error('offline'))
+    : Promise.resolve({ json: async () => ({ ok: true }) }));
+  let threw = false;
+  try { await S.coalescedGet('/api/x'); } catch (e) { threw = true; }
+  if (!threw) throw new Error('the rejection must reach the caller');
+  eq(await S.coalescedGet('/api/x'), { ok: true }, 'a retry must hit the network');
+});
+
+atest('credentials ride along, so a coalesced GET stays authenticated', async () => {
+  const seen = [];
+  S.fetch = (url, opts) => { seen.push(opts); return Promise.resolve({ json: async () => ({}) }); };
+  await S.coalescedGet('/api/wellness/today', { cache: 'no-store' });
+  eq(seen[0].credentials, 'same-origin');
+  eq(seen[0].cache, 'no-store', 'caller options are preserved');
+});
+
+(async () => {
+  for (const [name, fn] of asyncTests) {
+    try { await fn(); passed++; console.log(`  PASS  ${name}`); }
+    catch (e) { failed++; console.error(`  FAIL  ${name}\n        ${e.message}`); }
+  }
+  console.log(`\n${passed} passed, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+})();

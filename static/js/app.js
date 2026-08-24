@@ -2171,7 +2171,11 @@ function dismissInstallPrompt() {
   if (el) el.remove();
 }
 
-function showApp() {
+// async so the first render can wait on the user's locale (currency + units)
+// instead of rendering with defaults and re-fetching the whole dashboard to
+// correct itself. Callers don't await it; nothing after their call depends on
+// the dashboard having finished loading, which was already asynchronous.
+async function showApp() {
   const screen  = document.getElementById('auth-screen');
   const sidebar = document.getElementById('app-sidebar');
   const main    = document.getElementById('app-main');
@@ -2246,12 +2250,20 @@ function showApp() {
     return;
   }
 
-  // Resolve the user's currency/country, then refresh the dashboard so money
-  // shows in the right currency (no-op for the India default).
+  // Resolve the user's currency, country and units BEFORE the first render.
+  // This used to fire alongside switchView('dashboard') and then re-run
+  // loadDashboard() when it resolved — twenty endpoints fetched a second time,
+  // ~235ms apart, purely to restate money in the right currency. It also meant
+  // the first paint showed ₹ and kg to someone who uses $ and lb, then flipped.
+  //
+  // One cheap request, raced against a short timeout so a slow or dead /api/locale
+  // can never hold the app hostage: if it doesn't answer in time we render with
+  // the defaults, exactly as before.
   try {
-    loadUserLocale().then(() => {
-      try { if (document.getElementById('view-dashboard')?.classList.contains('active')) loadDashboard(); } catch (e) {}
-    });
+    await Promise.race([
+      loadUserLocale().catch(() => {}),
+      new Promise(res => setTimeout(res, 1200)),
+    ]);
   } catch (e) {}
 
   // Load the dashboard
@@ -4015,7 +4027,7 @@ async function renderBriefing(doses) {
       parts.push(`💊 ${untaken.length} dose${untaken.length > 1 ? 's' : ''} left today${next ? ` · next ${_mc12h(next)}` : ''}`);
     }
   }
-  const low = await fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []);
+  const low = await coalescedGet('/api/medicines/low-stock').catch(() => []);
   if (Array.isArray(low) && low.length) {
     parts.push(`🔄 ${low.length} to refill`);
   }
@@ -4082,7 +4094,7 @@ async function readDailyBriefing() {
   if (_speaking) { stopSpeaking(); return; }                 // tapping again stops
   const [doses, low] = await Promise.all([
     fetch('/api/medicines/today').then(r => r.json()).catch(() => []),
-    fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []),
+    coalescedGet('/api/medicines/low-stock').catch(() => []),
   ]);
   speakText(composeSpokenBriefing(doses, low, new Date().getHours()));
 }
@@ -4454,7 +4466,7 @@ async function dismissEncouragements() {
 async function loadLowStock() {
   const el = document.getElementById('dash-lowstock');
   if (!el) return;
-  const low = await fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []);
+  const low = await coalescedGet('/api/medicines/low-stock').catch(() => []);
   if (!Array.isArray(low) || !low.length) { el.style.display = 'none'; return; }
   const title = low.length === 1
     ? `${escHtml(low[0].name)} is running low`
@@ -7008,6 +7020,31 @@ async function loggedFetch(url, payload) {
   try { return await r.json(); } catch (e) { return r && r.queued ? { success: true, queued: true } : null; }
 }
 
+// ── In-flight GET coalescing ────────────────────────────────────────────────
+// Several panels load independently and happen to need the same endpoint, so a
+// single dashboard boot asked for today's hydration three times and low-stock
+// medicines twice, within milliseconds of each other. Callers that ask for the
+// same URL while a request is still in flight now share that one request.
+//
+// Deliberately NOT a cache: the entry is dropped the moment the response
+// settles, so this can never serve a stale reading. Two genuinely concurrent
+// requests had no ordering guarantee between them anyway — they would have
+// received the same server state — so sharing one is exactly equivalent, minus
+// the round-trip. Anything issued after the first has finished still hits the
+// network, which is what keeps a freshly logged dose or drink from being
+// masked by a value read a moment earlier.
+const _inFlightGets = new Map();
+
+function coalescedGet(url, opts) {
+  const pending = _inFlightGets.get(url);
+  if (pending) return pending;
+  const p = fetch(url, Object.assign({credentials: 'same-origin'}, opts || {}))
+    .then(r => r.json())
+    .finally(() => { _inFlightGets.delete(url); });
+  _inFlightGets.set(url, p);
+  return p;
+}
+
 async function syncableFetch(url, opts = {}) {
   try {
     return await fetch(url, opts);
@@ -7464,7 +7501,7 @@ async function loadFitness() {
     fetch('/api/fitness/activities').then(r => r.json()).catch(() => []),
     fetch('/api/fitness/consistency').then(r => r.json()).catch(() => ({})),
     fetch(`/api/food/log/${today}`).then(r => r.json()).catch(() => null),
-    fetch('/api/food/profile').then(r => r.json()).catch(() => null)
+    coalescedGet('/api/food/profile').catch(() => null)
   ]);
 
   setText('fit-week-acts', stats.week?.activities || 0);
@@ -9866,7 +9903,7 @@ async function editFoodQty(id, currentQty, foodName) {
 
 // ── User Profile Modal ────────────────────────────────────────────────────────
 async function openProfileModal() {
-  const r = await fetch('/api/food/profile').then(res => res.json()).catch(() => null);
+  const r = await coalescedGet('/api/food/profile').catch(() => null);
   if (!r) return;
   const p = r.profile;
   const form = document.getElementById('profile-form');
@@ -9985,7 +10022,7 @@ document.addEventListener('DOMContentLoaded', () => {
         goal: form.querySelector('input[name=goal]:checked')?.value || 'maintain'
       };
       // Preview without saving
-      const r = await fetch('/api/food/profile').then(res => res.json()).catch(() => null);
+      const r = await coalescedGet('/api/food/profile').catch(() => null);
       if (r) {
         // Quick local estimate using the TDEE formula
         const w=data.weight_kg, h=data.height_cm, a=data.age;
@@ -10773,8 +10810,8 @@ async function loadWellnessStrip() {
 
   // Fetch hydration directly — separate call ensures freshest data
   const [hyd, r] = await Promise.all([
-    fetch(`/api/hydration/${today}`, {cache: 'no-store'}).then(r => r.json()).catch(() => null),
-    fetch('/api/wellness/today', {cache: 'no-store'}).then(r => r.json()).catch(() => null),
+    coalescedGet(`/api/hydration/${today}`, {cache: 'no-store'}).catch(() => null),
+    coalescedGet('/api/wellness/today', {cache: 'no-store'}).catch(() => null),
   ]);
 
   // Hydration — use direct fetch (most accurate)
@@ -12700,7 +12737,7 @@ function dashAddTodoKey(e) { if (e.key === 'Enter') { e.preventDefault(); dashAd
 
 // Sidebar user info from profile
 async function updateSidebarUser() {
-  const r = await fetch('/api/food/profile').then(r => r.json()).catch(() => null);
+  const r = await coalescedGet('/api/food/profile').catch(() => null);
   if (!r?.profile) return;
   const p = r.profile;
   const name  = p.name || 'User';
@@ -13857,7 +13894,7 @@ async function logNotification(type, title, body = '') {
 
 // Check for low stock medicines and log notification
 async function checkLowStock() {
-  const r = await fetch('/api/medicines/low-stock').then(r=>r.json()).catch(()=>[]);
+  const r = await coalescedGet('/api/medicines/low-stock').catch(()=>[]);
   const banner = document.getElementById('low-stock-banner');
   if (r.length > 0) {
     r.forEach(m => {
@@ -14588,7 +14625,7 @@ async function saveRestock() {
 }
 
 async function checkLowStock() {
-  const r = await fetch('/api/medicines/low-stock').then(r => r.json()).catch(() => []);
+  const r = await coalescedGet('/api/medicines/low-stock').catch(() => []);
   const banner   = document.getElementById('med-low-stock-banner');
   const itemsEl  = document.getElementById('lsab-items');
   if (!banner || !itemsEl) return;
@@ -20725,7 +20762,7 @@ async function initDailyCheckin() {
   const [sleepLogs, thoughts, hydration] = await Promise.all([
     fetch('/api/sleep?days=2').then(r => r.json()).catch(() => []),
     fetch(`/api/thoughts/${today}`).then(r => r.json()).catch(() => []),
-    fetch(`/api/hydration/${today}`, {cache: 'no-store'}).then(r => r.json()).catch(() => null),
+    coalescedGet(`/api/hydration/${today}`, {cache: 'no-store'}).catch(() => null),
   ]);
 
   // Sleep: skip if logged for today or yesterday
