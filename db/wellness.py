@@ -49,21 +49,31 @@ def count_thoughts_today(date_key: str) -> int:
                 (date_key, current_user_id()), fetchone=True)
     return r['n'] if r else 0
 
-def save_thought(content: str, mood: str, date_key: str, triggers=None) -> dict:
+def save_thought(content: str, mood: str, date_key: str, triggers=None,
+                 idem_key=None) -> dict:
     content = str(content or '').strip()
     if not content:
         raise ValueError("Thought content is required")
     if not valid_date(date_key):
         date_key = today_iso()
+    # A mood check-in tapped from a notification while offline is queued and
+    # replayed; the same key must return the entry already written, not a second
+    # copy of the user's own words.
+    from .core import clean_idem_key, find_by_idem_key
+    idem_key = clean_idem_key(idem_key)
+    if idem_key:
+        prior = find_by_idem_key('thoughts', idem_key)
+        if prior:
+            return _row(prior)
     if count_thoughts_today(date_key) >= MAX_THOUGHTS_PER_DAY:
         raise ValueError(f"Max {MAX_THOUGHTS_PER_DAY} thoughts per day reached")
     tid = new_id()
     now = now_iso()
     trig = clean_triggers(triggers)
-    execute("""INSERT INTO thoughts (id,content,mood,triggers,date_key,created_at,updated_at,user_id)
-               VALUES (?,?,?,?,?,?,?,?)""",
+    execute("""INSERT INTO thoughts (id,content,mood,triggers,date_key,created_at,updated_at,user_id,idem_key)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
             (tid, content, str(mood or 'neutral'), jdump(trig) if trig else None,
-             date_key, now, now, current_user_id()), commit=True)
+             date_key, now, now, current_user_id(), idem_key), commit=True)
     return _row(execute("SELECT * FROM thoughts WHERE id=?", (tid,), fetchone=True))
 
 def update_thought(tid: str, content: str, mood: str, triggers=None) -> dict:

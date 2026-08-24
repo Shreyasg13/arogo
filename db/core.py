@@ -878,7 +878,8 @@ def migrate_add_idem_keys():
     duplicate reading/drink/meal. The client stamps a unique key per user action;
     a replay carries the SAME key and is recognised as already-applied. NULL for
     everything written before this (and for any client that doesn't send one)."""
-    for table in ('vitals', 'hydration_logs', 'symptoms', 'body_metrics', 'food_logs'):
+    for table in ('vitals', 'hydration_logs', 'symptoms', 'body_metrics', 'food_logs',
+                  'thoughts'):
         try:
             execute(f"ALTER TABLE {table} ADD COLUMN idem_key TEXT DEFAULT NULL")
         except Exception:

@@ -16,5 +16,6 @@ node --check static/sw.js
 
 echo "[pre-commit] JS unit tests..."
 node tests/js/run_js_tests.mjs
+node tests/js/run_sw_tests.mjs
 
 echo "[pre-commit] All checks passed."

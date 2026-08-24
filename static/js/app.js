@@ -6991,6 +6991,9 @@ async function syncableFetch(url, opts = {}) {
         await _outboxAdd({url, method, body: opts.body || null,
                           headers: {'Content-Type': 'application/json'}, ts: Date.now()});
         _updateOutboxBadge();
+        // Ask the service worker to drain this the moment connectivity returns,
+        // even if the tab has been closed by then.
+        _requestOutboxSync();
         return {ok: true, queued: true, status: 0, json: async () => ({success: true, queued: true})};
       } catch (_) { /* fall through to rethrow if we can't even queue */ }
     }
@@ -7028,8 +7031,34 @@ async function flushOutbox() {
   return synced;
 }
 
+// Background Sync: hands the queue to the service worker, which can drain it
+// after every tab is gone. Not supported everywhere (Safari has no Background
+// Sync) — where it's missing we still have the 'online' listener below.
+function _requestOutboxSync() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready
+      .then(reg => reg.sync && reg.sync.register('arogo-outbox'))
+      .catch(() => {});
+  } catch (e) {}
+}
+
 if (typeof window !== 'undefined' && window.addEventListener) {
   window.addEventListener('online', () => { try { flushOutbox(); } catch (e) {} });
+  // The worker drains the same queue (notification taps land there when no tab
+  // is open). When it succeeds, refresh rather than leave a stale "waiting to
+  // sync" badge counting writes that already landed.
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', ev => {
+      if (!ev.data || ev.data.type !== 'outbox-synced') return;
+      const n = Number(ev.data.synced) || 0;
+      try { _updateOutboxBadge(); } catch (e) {}
+      if (n > 0) {
+        try { showToast(tformat('✓ Synced %1 offline entries', n), 'success'); } catch (e) {}
+        try { loadMedicines(); loadDashboard(); } catch (e) {}
+      }
+    });
+  }
 }
 
 async function markDoseTaken(medId, time, el) {

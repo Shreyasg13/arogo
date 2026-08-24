@@ -10,7 +10,7 @@ import auth as auth_module
 from app import create_app
 from db.core import init_db, user_context, execute, user_today, clean_idem_key
 from db.health import log_vital, log_symptom
-from db.wellness import log_hydration, log_body_metric
+from db.wellness import log_hydration, log_body_metric, save_thought
 from db.food import log_food
 
 PW = "idem-pw-12345"
@@ -127,6 +127,69 @@ def test_keys_are_scoped_per_user(app):
         assert _count("vitals", b) == 1
     with user_context(a):
         assert _count("vitals", a) == 1
+
+
+def test_thought_replay_does_not_duplicate_the_users_words(app):
+    """A mood check-in tapped from a notification while offline is queued in the
+    service worker and replayed. Without a key the user would find their own
+    sentence written twice in the journal."""
+    _, uid = _uid(app, "idem9@medeasy.test")
+    with user_context(uid):
+        a = save_thought("Check-in: feeling good.", "happy", user_today(), idem_key="k-mood-1")
+        b = save_thought("Check-in: feeling good.", "happy", user_today(), idem_key="k-mood-1")
+        assert _count("thoughts", uid) == 1
+        assert a["id"] == b["id"]          # the replay returns the entry already written
+
+
+def test_thought_distinct_keys_and_no_key(app):
+    """Two genuine check-ins must both land; a client with no key keeps the old
+    append-only behaviour."""
+    _, uid = _uid(app, "idem10@medeasy.test")
+    with user_context(uid):
+        save_thought("Rough morning.", "sad", user_today(), idem_key="m1")
+        save_thought("Better now.", "happy", user_today(), idem_key="m2")
+        save_thought("No key here.", "neutral", user_today())
+        save_thought("No key here.", "neutral", user_today())
+        assert _count("thoughts", uid) == 4
+
+
+def test_thought_route_passes_key_through(app):
+    c, uid = _uid(app, "idem11@medeasy.test")
+    body = {"content": "Check-in: feeling okay.", "mood": "neutral", "idem_key": "route-mood"}
+    assert c.post("/api/thoughts", json=body).status_code == 200
+    assert c.post("/api/thoughts", json=body).status_code == 200      # the replay
+    with user_context(uid):
+        assert _count("thoughts", uid) == 1
+
+
+def test_thought_keys_are_scoped_per_user(app):
+    _, a = _uid(app, "idem12a@medeasy.test")
+    _, b = _uid(app, "idem12b@medeasy.test")
+    with user_context(a):
+        save_thought("Mine.", "neutral", user_today(), idem_key="shared-mood")
+    with user_context(b):
+        save_thought("Also mine.", "neutral", user_today(), idem_key="shared-mood")
+        assert _count("thoughts", b) == 1
+        assert dict(execute("SELECT content FROM thoughts WHERE user_id=?", (b,),
+                            fetchone=True))["content"] == "Also mine."
+
+
+def test_dose_log_is_replay_safe_without_a_key(app):
+    """The service worker queues dose taps too. log_dose upserts on
+    (medicine, date, time) and guards stock on the state transition, so a replay
+    is already safe — this pins that, since the SW relies on it."""
+    from db.medicines import insert_medicine, log_dose, update_medicine_stock
+    _, uid = _uid(app, "idem13@medeasy.test")
+    with user_context(uid):
+        m = insert_medicine({"name": "Metformin", "dosage": "500mg",
+                             "frequency": "once_daily", "times": ["08:00"]})
+        update_medicine_stock(m["id"], 10, pills_per_dose=1)
+        for _ in range(3):
+            log_dose(m["id"], user_today(), "08:00", taken=True)
+        assert _count("dose_logs", uid) == 1
+        left = dict(execute("SELECT pill_count p FROM medicines WHERE id=?",
+                            (m["id"],), fetchone=True))["p"]
+    assert left == 9, "a replayed dose must not consume a second pill"
 
 
 def test_route_passes_key_through(app):

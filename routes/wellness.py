@@ -690,7 +690,7 @@ def api_save_thought():
     try:
         t = save_thought(d.get('content',''), d.get('mood','neutral'),
                          d.get('date_key', today_iso(get_user_timezone())),
-                         triggers=d.get('triggers'))
+                         triggers=d.get('triggers'), idem_key=d.get('idem_key'))
     except ValueError as e:
         return jsonify({'success': False, 'error': str(e)}), 400
     return jsonify({'success': True, 'thought': t})

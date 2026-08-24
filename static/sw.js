@@ -52,6 +52,112 @@ self.addEventListener('push', e => {
   e.waitUntil(self.registration.showNotification(data.title || 'Arogo', opts));
 });
 
+/* ── Offline outbox (service-worker side) ──────────────────────────────────
+ * A notification action fires with no page open, so it can't reach the app's
+ * in-page outbox. Tapping "log water" on the train used to hit a dead network,
+ * fall into .catch(), and vanish — no row, and no acknowledgement either.
+ *
+ * This is the SAME IndexedDB database and store the page uses ('arogo-outbox'
+ * → 'writes'), so whichever context comes online first drains the one queue.
+ * Every queued write carries the idempotency key stamped here, so replaying it
+ * — from the SW, from the page, or from both — can only ever create one row.
+ */
+const OUTBOX_DB = 'arogo-outbox';
+const OUTBOX_STORE = 'writes';
+
+function _obOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(OUTBOX_DB, 1);
+    r.onupgradeneeded = () => {
+      if (!r.result.objectStoreNames.contains(OUTBOX_STORE)) {
+        r.result.createObjectStore(OUTBOX_STORE, { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function _obTx(mode, fn) {
+  return _obOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(OUTBOX_STORE, mode);
+    const out = fn(tx.objectStore(OUTBOX_STORE));
+    tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    tx.onerror = () => rej(tx.error);
+  }));
+}
+const _obAdd = item => _obTx('readwrite', s => s.add(item));
+const _obAll = () => _obTx('readonly', s => s.getAll());
+const _obDel = id => _obTx('readwrite', s => s.delete(id));
+
+// A key per user action, so a replay is recognised as already-applied.
+function _swIdemKey() {
+  try { if (self.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g, ''); }
+  catch (e) {}
+  return 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+/* POST a notification action. Online → sends it. Offline (or a network error)
+ * → queues it and asks for a background sync. Resolves to
+ * {ok, queued} so the caller can tell the user the truth either way. */
+function swPost(url, payload) {
+  const body = JSON.stringify(Object.assign({ idem_key: _swIdemKey() }, payload));
+  const opts = { method: 'POST', credentials: 'include',
+                 headers: { 'Content-Type': 'application/json' }, body };
+  return fetch(url, opts)
+    .then(r => {
+      if (r.ok) return { ok: true, queued: false };
+      // 401/403 = the session isn't usable from here; keep the write rather
+      // than dropping something the user asked us to record.
+      if (r.status === 401 || r.status === 403) return _queue(url, body);
+      return { ok: false, queued: false };
+    })
+    .catch(() => _queue(url, body));
+}
+function _queue(url, body) {
+  return _obAdd({ url, method: 'POST', body,
+                  headers: { 'Content-Type': 'application/json' }, ts: Date.now() })
+    .then(() => { try { return self.registration.sync.register('arogo-outbox'); } catch (e) {} })
+    .then(() => ({ ok: false, queued: true }))
+    .catch(() => ({ ok: false, queued: false }));
+}
+
+/* Drain the shared queue. Mirrors the page's flushOutbox rules exactly:
+ * credentials always sent, 401/403 means "retry later" (never discard), a real
+ * 4xx is an unfixable row, 5xx/offline stops so the order is preserved.
+ *
+ * The page may be draining the same queue at the same moment (it flushes on
+ * 'online' and on load). That's safe only because every queued write carries an
+ * idempotency key: the worst case is the server seeing one POST twice and
+ * recognising the second as already-applied. */
+async function swFlushOutbox() {
+  let items;
+  try { items = await _obAll(); } catch (e) { return 0; }
+  let synced = 0;
+  for (const it of (items || [])) {
+    try {
+      const r = await fetch(it.url, { method: it.method, headers: it.headers,
+                                      body: it.body, credentials: 'include' });
+      if (r.ok) { await _obDel(it.id); synced++; }
+      else if (r.status === 401 || r.status === 403) break;   // not signed in — keep it
+      else if (r.status >= 400 && r.status < 500) { await _obDel(it.id); }  // unfixable row
+      else break;                                             // server hiccup — next time
+    } catch (e) { break; }                                    // still offline
+  }
+  if (synced > 0) {
+    // Let any open tab refresh its badge and views instead of showing stale
+    // "waiting to sync" counts for writes that have already landed.
+    try {
+      const list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const c of list) c.postMessage({ type: 'outbox-synced', synced });
+    } catch (e) {}
+  }
+  return synced;
+}
+
+self.addEventListener('sync', e => {
+  if (e.tag === 'arogo-outbox') e.waitUntil(swFlushOutbox());
+});
+
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const act = e.action || '';
@@ -59,9 +165,13 @@ self.addEventListener('notificationclick', e => {
   // The device's own local day — never UTC (matches the app's localToday rule).
   const localToday = () => new Date().toLocaleDateString('en-CA');
 
-  const ack = (ok, okBody, tag) => self.registration.showNotification(
-    ok ? '✓ Logged' : "Couldn't log that",
-    { body: ok ? okBody : 'Open Arogo to log it.',
+  // Tell the user what actually happened — logged, saved-for-later, or failed.
+  // Claiming "✓ Logged" for a write still sitting in a queue would be a lie.
+  const ackR = (r, okBody, tag) => self.registration.showNotification(
+    r.ok ? '✓ Logged' : (r.queued ? '⏳ Saved offline' : "Couldn't log that"),
+    { body: r.ok ? okBody
+          : (r.queued ? "It'll sync when you're back online."
+                      : 'Open Arogo to log it.'),
       icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png', tag });
 
   // "water-250" → log it from here; the app never has to open.
@@ -69,18 +179,13 @@ self.addEventListener('notificationclick', e => {
   if (water) {
     const ml = Number(water[1]);
     e.waitUntil(
-      fetch('/api/hydration', {
-        method: 'POST',
-        credentials: 'include',          // same-origin session cookie
-        headers: { 'Content-Type': 'application/json' },
-        // `source` marks this as a tap on OUR suggested amount, not a
-        // container the user chose — the button's number comes from
-        // usual_sip_ml, so counting it as a preference would feed the app's
-        // own default back in as if it were theirs.
-        body: JSON.stringify({ amount_ml: ml, drink_type: 'water',
-                               date_key: localToday(), source: 'notification' }),
-      })
-      .then(r => ack(r.ok, `${ml}ml added to today.`, 'water-ack'))
+      // `source` marks this as a tap on OUR suggested amount, not a
+      // container the user chose — the button's number comes from
+      // usual_sip_ml, so counting it as a preference would feed the app's
+      // own default back in as if it were theirs.
+      swPost('/api/hydration', { amount_ml: ml, drink_type: 'water',
+                                 date_key: localToday(), source: 'notification' })
+      .then(r => ackR(r, `${ml}ml added to today.`, 'water-ack'))
       .catch(() => {})
     );
     return;
@@ -91,13 +196,8 @@ self.addEventListener('notificationclick', e => {
   if (dose) {
     const [, medId, time] = dose;
     e.waitUntil(
-      fetch(`/api/medicines/${medId}/log`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: localToday(), time, taken: true }),
-      })
-      .then(r => ack(r.ok, `Dose marked taken (${time}).`, 'dose-ack'))
+      swPost(`/api/medicines/${medId}/log`, { date: localToday(), time, taken: true })
+      .then(r => ackR(r, `Dose marked taken (${time}).`, 'dose-ack'))
       .catch(() => {})
     );
     return;
@@ -112,14 +212,9 @@ self.addEventListener('notificationclick', e => {
                     happy: 'good', excited: 'great' };
     const word = words[key] || key;
     e.waitUntil(
-      fetch('/api/thoughts', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: `Check-in: feeling ${word}.`, mood: key,
-                               date_key: localToday() }),
-      })
-      .then(r => ack(r.ok, `Noted — feeling ${word}.`, 'mood-ack'))
+      swPost('/api/thoughts', { content: `Check-in: feeling ${word}.`, mood: key,
+                                date_key: localToday() })
+      .then(r => ackR(r, `Noted — feeling ${word}.`, 'mood-ack'))
       .catch(() => {})
     );
     return;
@@ -127,6 +222,12 @@ self.addEventListener('notificationclick', e => {
 
   // "snooze-<medId>-<HH:MM>" → a REAL snooze: ask the server to remind again
   // shortly. Tapping it repeatedly just pushes the reminder further out.
+  //
+  // Deliberately NOT queued. The three actions above record something that
+  // happened, so replaying them later is still true. A snooze is a request
+  // about the *future* — replaying it when connectivity returns two hours
+  // later would fire a reminder for a dose whose moment has passed. Better to
+  // say plainly that it didn't take than to schedule a lie.
   const snz = act.match(/^snooze-([0-9a-f]{32})-(\d{1,2}:\d{2})$/);
   if (snz) {
     const [, medId, time] = snz;
@@ -140,7 +241,10 @@ self.addEventListener('notificationclick', e => {
         r.ok ? '⏰ Snoozed' : "Couldn't snooze",
         { body: r.ok ? "We'll remind you again in 15 minutes." : 'Open Arogo to take it.',
           icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png', tag: 'snooze-ack' }))
-      .catch(() => {})
+      .catch(() => self.registration.showNotification(
+        "Couldn't snooze",
+        { body: "You're offline — the reminder stays as it is.",
+          icon: '/static/icons/icon-192.png', badge: '/static/icons/icon-192.png', tag: 'snooze-ack' }))
     );
     return;
   }
