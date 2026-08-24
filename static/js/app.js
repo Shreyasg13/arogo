@@ -2229,6 +2229,11 @@ async function showApp() {
   try { scheduleTodoReminderChecks(); } catch(e) {}
   try { scheduleInstallPrompt(); }   catch(e) {}
   try { applyLang(); }               catch(e) {}
+  // Record who is signed in before touching the queue. The service worker can't
+  // ask — a notification tap fires with no page open — so it reads this to stamp
+  // anything it queues, which is what stops one person's offline dose being
+  // replayed into another's account on a shared phone.
+  try { if (_currentUser && _currentUser.id) _outboxSetUid(_currentUser.id); } catch (e) {}
   // Replay anything that was logged while offline, and show a pending badge.
   try { _updateOutboxBadge(); flushOutbox(); } catch(e) {}
 
@@ -6960,19 +6965,32 @@ async function submitBackfillDose(id, taken) {
 // server-confirmed — honest, and better than dropping the write.
 const _OUTBOX_DB = 'arogo-outbox', _OUTBOX_STORE = 'writes';
 
+// The queue lives in ORIGIN storage, not per account. A write queued offline by
+// one family member and replayed after somebody else signs in on the same phone
+// would file their dose under the wrong name — so every item carries the id of
+// whoever queued it, kept in a meta store the service worker can read too.
+const _OUTBOX_META = 'meta';
+
 function _openOutbox() {
   return new Promise((res, rej) => {
     if (!('indexedDB' in window)) return rej(new Error('no indexeddb'));
-    const req = indexedDB.open(_OUTBOX_DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore(_OUTBOX_STORE, {keyPath: 'id', autoIncrement: true});
+    const req = indexedDB.open(_OUTBOX_DB, 2);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(_OUTBOX_STORE)) {
+        db.createObjectStore(_OUTBOX_STORE, {keyPath: 'id', autoIncrement: true});
+      }
+      if (!db.objectStoreNames.contains(_OUTBOX_META)) db.createObjectStore(_OUTBOX_META);
+    };
     req.onsuccess = () => res(req.result);
     req.onerror = () => rej(req.error);
   });
 }
-function _outboxTx(mode, fn) {
+function _outboxTx(mode, fn, storeName) {
   return _openOutbox().then(db => new Promise((res, rej) => {
-    const tx = db.transaction(_OUTBOX_STORE, mode);
-    const out = fn(tx.objectStore(_OUTBOX_STORE));
+    const name = storeName || _OUTBOX_STORE;
+    const tx = db.transaction(name, mode);
+    const out = fn(tx.objectStore(name));
     tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
     tx.onerror = () => rej(tx.error);
   }));
@@ -6980,6 +6998,10 @@ function _outboxTx(mode, fn) {
 const _outboxAdd    = item => _outboxTx('readwrite', s => s.add(item));
 const _outboxAll    = ()   => _outboxTx('readonly',  s => s.getAll());
 const _outboxDelete = id   => _outboxTx('readwrite', s => s.delete(id));
+const _outboxUid    = ()   => _outboxTx('readonly',  s => s.get('uid'), _OUTBOX_META)
+                               .then(v => (typeof v === 'string' && v ? v : null))
+                               .catch(() => null);
+const _outboxSetUid = uid  => _outboxTx('readwrite', s => s.put(uid, 'uid'), _OUTBOX_META);
 
 async function _updateOutboxBadge() {
   let n = 0;
@@ -7053,7 +7075,11 @@ async function syncableFetch(url, opts = {}) {
     const method = (opts.method || 'GET').toUpperCase();
     if (['POST', 'PUT', 'DELETE'].includes(method)) {
       try {
-        await _outboxAdd({url, method, body: opts.body || null,
+        // Stamp who queued it — see _OUTBOX_META. Without this a dose logged
+        // offline is replayed into whichever account is signed in when the
+        // device reconnects.
+        const _qUid = (_currentUser && _currentUser.id) || null;
+        await _outboxAdd({url, method, body: opts.body || null, uid: _qUid,
                           headers: {'Content-Type': 'application/json'}, ts: Date.now()});
         _updateOutboxBadge();
         // Ask the service worker to drain this the moment connectivity returns,
@@ -7073,7 +7099,12 @@ async function flushOutbox() {
   let synced = 0;
   try {
     const items = await _outboxAll().catch(() => []);
+    const meUid = (_currentUser && _currentUser.id) || null;
     for (const it of items) {
+      // Queued by a different account on this device: keep it, skip it. It
+      // syncs when they sign back in; sending it now would record their dose
+      // against this user.
+      if (it.uid && meUid && it.uid !== meUid) continue;
       try {
         // credentials: the session cookie MUST ride along, or every replay 401s
         // and the 4xx branch below silently deletes the user's logged data.

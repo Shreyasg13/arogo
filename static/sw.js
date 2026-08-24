@@ -64,23 +64,29 @@ self.addEventListener('push', e => {
  */
 const OUTBOX_DB = 'arogo-outbox';
 const OUTBOX_STORE = 'writes';
+// The last signed-in user, written by the page. A queued write carries the id
+// of whoever queued it so it can never be replayed into a different account.
+const OUTBOX_META = 'meta';
 
 function _obOpen() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open(OUTBOX_DB, 1);
+    const r = indexedDB.open(OUTBOX_DB, 2);
     r.onupgradeneeded = () => {
       if (!r.result.objectStoreNames.contains(OUTBOX_STORE)) {
         r.result.createObjectStore(OUTBOX_STORE, { keyPath: 'id', autoIncrement: true });
+      }
+      if (!r.result.objectStoreNames.contains(OUTBOX_META)) {
+        r.result.createObjectStore(OUTBOX_META);
       }
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
 }
-function _obTx(mode, fn) {
+function _obTx(mode, fn, storeName) {
   return _obOpen().then(db => new Promise((res, rej) => {
-    const tx = db.transaction(OUTBOX_STORE, mode);
-    const out = fn(tx.objectStore(OUTBOX_STORE));
+    const tx = db.transaction(storeName || OUTBOX_STORE, mode);
+    const out = fn(tx.objectStore(storeName || OUTBOX_STORE));
     tx.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
     tx.onerror = () => rej(tx.error);
   }));
@@ -88,6 +94,13 @@ function _obTx(mode, fn) {
 const _obAdd = item => _obTx('readwrite', s => s.add(item));
 const _obAll = () => _obTx('readonly', s => s.getAll());
 const _obDel = id => _obTx('readwrite', s => s.delete(id));
+// Written by the page on every boot; the worker only reads it.
+// Normalised to a string or null: _obTx yields the request object when a get
+// legitimately returns undefined, and stamping THAT onto a queued item would
+// make it unserialisable — the write would fail to queue at all.
+const _obUid = () => _obTx('readonly', s => s.get('uid'), OUTBOX_META)
+                       .then(v => (typeof v === 'string' && v ? v : null))
+                       .catch(() => null);
 
 // A key per user action, so a replay is recognised as already-applied.
 function _swIdemKey() {
@@ -114,8 +127,13 @@ function swPost(url, payload) {
     .catch(() => _queue(url, body));
 }
 function _queue(url, body) {
-  return _obAdd({ url, method: 'POST', body,
-                  headers: { 'Content-Type': 'application/json' }, ts: Date.now() })
+  // Stamp whoever is signed in. The queue lives in origin storage, not per
+  // account, so without this a dose logged offline by one family member would
+  // be replayed into whichever account happened to be signed in when the phone
+  // came back online — a dose they never took, recorded against their name.
+  return _obUid()
+    .then(uid => _obAdd({ url, method: 'POST', body, uid: uid || null,
+                          headers: { 'Content-Type': 'application/json' }, ts: Date.now() }))
     .then(() => { try { return self.registration.sync.register('arogo-outbox'); } catch (e) {} })
     .then(() => ({ ok: false, queued: true }))
     .catch(() => ({ ok: false, queued: false }));
@@ -132,8 +150,18 @@ function _queue(url, body) {
 async function swFlushOutbox() {
   let items;
   try { items = await _obAll(); } catch (e) { return 0; }
+  // Who is signed in right now. We're online (that's why we're flushing), so
+  // this is answerable; if it isn't, we send nothing rather than guess.
+  let currentUid = null;
+  try {
+    const me = await fetch('/auth/me', { credentials: 'include' });
+    if (me.ok) currentUid = (await me.json()).id || null;
+  } catch (e) { return 0; }
   let synced = 0;
   for (const it of (items || [])) {
+    // Queued by someone else: keep it, skip it. It syncs when they sign back
+    // in. Sending it now would file their dose under this account.
+    if (it.uid && currentUid && it.uid !== currentUid) continue;
     try {
       const r = await fetch(it.url, { method: it.method, headers: it.headers,
                                       body: it.body, credentials: 'include' });

@@ -110,10 +110,11 @@ def delete_files(names) -> int:
     return gone
 
 
-def delete_files_for_user(uid) -> int:
-    """Every file this user owns. Called when their account is erased, and when a
-    restore replaces the rows that referenced them."""
-    return delete_files(files_owned_by(uid))
+# Deliberately no delete_files_for_user(uid) convenience wrapper. Both callers
+# must read the filenames BEFORE they delete the rows — the rows are the only
+# record of which files are the user's — and delete them AFTER. A one-call
+# helper invites exactly the wrong order, where it finds nothing and silently
+# leaves every file behind, which is the bug this module exists to fix.
 
 
 def _dir_size(path):
@@ -132,23 +133,41 @@ def _dir_size(path):
     return total, count
 
 
-def find_orphans() -> list:
+# An upload is written to disk before its database row is committed, so for a
+# moment a perfectly good file looks exactly like an orphan. Ignoring anything
+# recent closes that window completely. Nothing needs cleaning up urgently — the
+# files being hunted are months-old residue — so an hour costs nothing.
+ORPHAN_GRACE_SECONDS = 3600
+
+
+def find_orphans(min_age_seconds=ORPHAN_GRACE_SECONDS) -> list:
     """Files on disk that no row points at, with their size.
 
     These are the residue of account deletions and restores that happened before
     file cleanup existed. Listing them is deliberately separate from removing
     them: an orphan is, by definition, a file the app can no longer identify, so
     the decision to delete belongs to the person who owns the machine.
+
+    Files younger than the grace period are never reported, because a file being
+    uploaded right now is indistinguishable from an orphan — and this list is
+    what a delete acts on, so a race here would destroy somebody's document
+    seconds after they chose it.
     """
+    import time
     d = upload_dir()
     referenced = all_referenced_files()
+    cutoff = time.time() - max(0, min_age_seconds)
     out = []
     try:
         with os.scandir(d) as it:
             for entry in it:
                 try:
-                    if entry.is_file() and entry.name not in referenced:
-                        out.append({'name': entry.name, 'bytes': entry.stat().st_size})
+                    if not entry.is_file() or entry.name in referenced:
+                        continue
+                    stat = entry.stat()
+                    if stat.st_mtime > cutoff:
+                        continue           # too new to be sure it's abandoned
+                    out.append({'name': entry.name, 'bytes': stat.st_size})
                 except OSError:
                     pass
     except OSError:
@@ -209,8 +228,10 @@ def storage_report(uid=None) -> dict:
         # Referenced by a row but not on disk. Not a storage problem — a
         # correctness one: the record's page will offer a file that won't open.
         'missing': [{'name': n} for n in sorted(missing)],
-        'orphans': {'count': len(orphans), 'bytes': sum(o['bytes'] for o in orphans),
-                    'files': orphans[:50]},
+        # Count and size only — never the names. An uploaded file is stored as
+        # "<uuid>_<the name the user chose>", so listing orphans would hand one
+        # user the original filenames of another's medical documents.
+        'orphans': {'count': len(orphans), 'bytes': sum(o['bytes'] for o in orphans)},
         'database_bytes': db_bytes,
         'disk': disk,
         'low_space': low,

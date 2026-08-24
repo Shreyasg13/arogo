@@ -19,27 +19,35 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const src = fs.readFileSync(path.join(ROOT, 'static', 'sw.js'), 'utf8');
 
 // ── A tiny in-memory IndexedDB, faithful to the bits sw.js actually uses:
-// open/onupgradeneeded, one autoIncrement store, add/getAll/delete, and a
-// transaction whose oncomplete fires after the requests settle.
-function makeIndexedDB() {
+// open/onupgradeneeded, the autoIncrement 'writes' store, the keyed 'meta'
+// store, add/get/getAll/delete, and a transaction whose oncomplete fires after
+// the requests settle.
+function makeIndexedDB(meta = {}) {
   const rows = new Map();
+  const metaMap = new Map(Object.entries(meta));
   let nextId = 1;
-  const store = {
+  const writes = {
     add(item) { const id = nextId++; rows.set(id, Object.assign({ id }, item)); return { result: id }; },
     getAll() { return { result: [...rows.values()] }; },
     delete(id) { rows.delete(id); return { result: undefined }; },
   };
+  const metaStore = {
+    get(k) { return { result: metaMap.get(k) }; },
+    put(v, k) { metaMap.set(k, v); return { result: undefined }; },
+  };
+  const pick = name => (name === 'meta' ? metaStore : writes);
   const db = {
     objectStoreNames: { contains: () => true },
-    createObjectStore: () => store,
-    transaction() {
-      const tx = { objectStore: () => store, oncomplete: null, onerror: null };
+    createObjectStore: name => pick(name),
+    transaction(name) {
+      const tx = { objectStore: () => pick(name), oncomplete: null, onerror: null };
       queueMicrotask(() => { if (tx.oncomplete) tx.oncomplete(); });
       return tx;
     },
   };
   return {
     _rows: rows,
+    _meta: metaMap,
     open() {
       const req = { result: db, onsuccess: null, onerror: null, onupgradeneeded: null };
       queueMicrotask(() => { if (req.onsuccess) req.onsuccess(); });
@@ -50,11 +58,11 @@ function makeIndexedDB() {
 
 // ── Service-worker global stub. Captures listeners and notifications so a test
 // can fire a notificationclick and read back what the user was told.
-function makeSandbox(fetchImpl) {
+function makeSandbox(fetchImpl, meta) {
   const notifications = [];
   const listeners = {};
   const syncTags = [];
-  const idb = makeIndexedDB();
+  const idb = makeIndexedDB(meta);
   const self = {
     addEventListener: (k, fn) => { (listeners[k] = listeners[k] || []).push(fn); },
     registration: {
@@ -102,7 +110,13 @@ function eq(actual, expected, msg = '') {
 function ok(cond, msg) { if (!cond) throw new Error(msg || 'expected truthy'); }
 
 const OFFLINE = () => Promise.reject(new TypeError('Failed to fetch'));
-const ONLINE = calls => (url, opts) => { calls.push({ url, opts }); return Promise.resolve({ ok: true, status: 200 }); };
+// A flush first asks /auth/me who is signed in, so the stub has to answer it.
+// That call is not recorded — the tests count writes, not bookkeeping.
+const ONLINE = calls => (url, opts) => {
+  if (url === '/auth/me') return Promise.resolve({ ok: true, json: async () => ({ id: 'user-a' }) });
+  calls.push({ url, opts });
+  return Promise.resolve({ ok: true, status: 200 });
+};
 const STATUS = (code, calls) => (url, opts) => {
   if (calls) calls.push({ url, opts });
   return Promise.resolve({ ok: code >= 200 && code < 300, status: code });
@@ -237,6 +251,61 @@ test('a 401 during drain keeps the queue (the old bug deleted it)', async () => 
   for (const fn of env.listeners.sync) fn({ tag: 'arogo-outbox', waitUntil: p => { waited = p; } });
   await waited;
   eq(env.idb._rows.size, 1);
+});
+
+// ── A queued write must never land in somebody else's account ──────────────
+// The queue lives in origin storage, not per account. On a shared family phone,
+// a dose logged offline by one person and replayed after another signs in would
+// record a dose they never took, against their name, in an adherence app.
+
+// Flush with a given signed-in user; /auth/me answers with that id.
+function flushAs(env, uid, calls) {
+  env.self.fetch = (url, opts) => {
+    if (url === '/auth/me') return Promise.resolve({ ok: true, json: async () => ({ id: uid }) });
+    if (calls) calls.push({ url, opts });
+    return Promise.resolve({ ok: true, status: 200 });
+  };
+  let waited = Promise.resolve();
+  for (const fn of env.listeners.sync) fn({ tag: 'arogo-outbox', waitUntil: p => { waited = p; } });
+  return waited;
+}
+
+test('a queued write is stamped with whoever was signed in', async () => {
+  const env = makeSandbox(OFFLINE, { uid: 'user-a' });
+  await click(env, 'water-250');
+  eq([...env.idb._rows.values()][0].uid, 'user-a');
+});
+
+test('a different user signing in does NOT get the other one\'s dose', async () => {
+  const env = makeSandbox(OFFLINE, { uid: 'user-a' });
+  await click(env, `dose-${'a'.repeat(32)}-08:30`);
+  eq(env.idb._rows.size, 1);
+
+  const calls = [];
+  await flushAs(env, 'user-b', calls);
+  eq(calls.length, 0, "user B's session must not receive user A's dose");
+  eq(env.idb._rows.size, 1, 'and it must be kept, not thrown away');
+});
+
+test('the original user signing back in still gets their write', async () => {
+  const env = makeSandbox(OFFLINE, { uid: 'user-a' });
+  await click(env, 'water-250');
+  const calls = [];
+  await flushAs(env, 'user-a', calls);
+  eq(calls.length, 1);
+  eq(env.idb._rows.size, 0, 'it synced and was removed');
+});
+
+test('nothing is sent when the current user cannot be established', async () => {
+  const env = makeSandbox(OFFLINE, { uid: 'user-a' });
+  await click(env, 'water-250');
+  env.self.fetch = url => (url === '/auth/me'
+    ? Promise.reject(new TypeError('offline'))
+    : Promise.resolve({ ok: true, status: 200 }));
+  let waited = Promise.resolve();
+  for (const fn of env.listeners.sync) fn({ tag: 'arogo-outbox', waitUntil: p => { waited = p; } });
+  await waited;
+  eq(env.idb._rows.size, 1, 'guessing is worse than waiting');
 });
 
 test('two taps get distinct keys, so both real drinks are recorded', async () => {

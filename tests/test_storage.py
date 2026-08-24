@@ -52,10 +52,14 @@ def _uid(app, email):
     return c, dict(execute("SELECT id FROM users WHERE email=?", (email,), fetchone=True))["id"]
 
 
-def _write(app, name, content=b"x" * 100):
+def _write(app, name, content=b"x" * 100, age_seconds=0):
     path = os.path.join(app.config["UPLOAD_FOLDER"], name)
     with open(path, "wb") as fh:
         fh.write(content)
+    if age_seconds:
+        import time
+        old = time.time() - age_seconds
+        os.utime(path, (old, old))
     return path
 
 
@@ -228,13 +232,37 @@ def test_a_failed_restore_does_not_delete_files(app, monkeypatch):
 def test_orphans_are_found_but_not_removed_automatically(app):
     _, uid = _uid(app, "stor8@medeasy.test")
     _write(app, "referenced.pdf"); _add_report(uid, "referenced.pdf")
-    _write(app, "nobody-owns-me.pdf", b"y" * 500)
+    _write(app, "nobody-owns-me.pdf", b"y" * 500, age_seconds=7200)
 
     names = {o["name"] for o in st.find_orphans()}
     assert "nobody-owns-me.pdf" in names
     assert "referenced.pdf" not in names
     assert os.path.exists(os.path.join(app.config["UPLOAD_FOLDER"], "nobody-owns-me.pdf")), \
         "finding an orphan must not delete it — that decision is the owner's"
+
+
+def test_a_just_uploaded_file_is_never_treated_as_an_orphan(app):
+    """An upload is written to disk before its row is committed, so for a moment
+    a perfectly good file looks exactly like an orphan — and this list is what a
+    delete acts on. Without the grace period, cleanup could destroy a document
+    seconds after someone chose it."""
+    _uid(app, "stor8b@medeasy.test")
+    _write(app, "being-uploaded-right-now.pdf")          # brand new, no row yet
+    names = {o["name"] for o in st.find_orphans()}
+    assert "being-uploaded-right-now.pdf" not in names
+    # It is a genuine orphan once it is old enough to be sure.
+    assert "being-uploaded-right-now.pdf" in {o["name"] for o in st.find_orphans(0)}
+
+
+def test_orphan_names_are_never_exposed(app):
+    """A stored file is "<uuid>_<the name the user chose>", so listing orphans
+    would hand one user the original filenames of another's medical documents."""
+    _, uid = _uid(app, "stor8c@medeasy.test")
+    _write(app, "abc123_blood-report-for-anita.pdf", age_seconds=7200)
+    rep = st.storage_report(uid)
+    assert rep["orphans"]["count"] >= 1
+    assert "files" not in rep["orphans"], "counts and bytes only — never names"
+    assert "anita" not in str(rep).lower()
 
 
 def test_a_referenced_but_missing_file_is_reported_as_missing_not_orphan(app):
@@ -244,7 +272,8 @@ def test_a_referenced_but_missing_file_is_reported_as_missing_not_orphan(app):
     _add_report(uid, "never-written.pdf")
     rep = st.storage_report(uid)
     assert any(m["name"] == "never-written.pdf" for m in rep["missing"])
-    assert "never-written.pdf" not in {o["name"] for o in rep["orphans"]["files"]}
+    # A file that isn't on disk cannot be an orphan on disk.
+    assert "never-written.pdf" not in {o["name"] for o in st.find_orphans(0)}
 
 
 def test_report_measures_rather_than_estimates(app):
@@ -279,7 +308,7 @@ def test_routes_require_auth(app):
 def test_orphan_cleanup_removes_only_orphans(app):
     c, uid = _uid(app, "stor12@medeasy.test")
     _write(app, "keep-me.pdf"); _add_report(uid, "keep-me.pdf")
-    _write(app, "drop-me.pdf")
+    _write(app, "drop-me.pdf", age_seconds=7200)
     r = c.delete("/api/storage/orphans").get_json()
     assert r["success"] is True and r["removed"] >= 1
     d = app.config["UPLOAD_FOLDER"]
