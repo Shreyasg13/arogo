@@ -172,17 +172,14 @@ class TestConventions:
                      if re.search(r"[^.\w]confirm\(", code)]
         assert not offenders, f"confirm() found — use undoable(): {offenders}"
 
-    def test_portable_sql_only(self):
-        """SQLite-isms break the PostgreSQL backend."""
-        bad = re.compile(r"INSERT\s+OR\s+(REPLACE|IGNORE)", re.I)
-        offenders = []
-        for f in _py_files(*PY_SQL_DIRS):
-            src = _read(f)
-            if bad.search(src):
-                offenders.append(f + " (INSERT OR ...)")
-            if "PRAGMA" in src and f != "db/core.py":
-                offenders.append(f + " (PRAGMA outside db/core)")
-        assert not offenders, f"non-portable SQL: {offenders}"
+    # SQL portability moved to tests/test_postgres_compat.py, which parses the
+    # source and inspects only the strings that actually reach execute(). This
+    # version scanned raw file text, so it flagged a *comment* explaining why
+    # PRAGMA is confined to db/core — the sort of false positive that gets a
+    # guard weakened or deleted. The replacement checks the same two rules and
+    # several more (IFNULL, GROUP_CONCAT, julianday, datetime('now'), literal %
+    # and stray ? under the psycopg2 rewrite, and try/except around execute()
+    # inside a transaction).
 
     def test_no_linux_only_strftime(self):
         """strftime('%-d') raises on Windows — build day numbers manually."""

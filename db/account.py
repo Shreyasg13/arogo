@@ -7,7 +7,7 @@ data for good. Both operate strictly on the calling user's own rows.
 """
 from __future__ import annotations
 
-from .core import execute, DATA_TABLES, table_columns, transaction
+from .core import execute, DATA_TABLES, table_columns, transaction, savepoint
 
 # User-owned tables that aren't in DATA_TABLES, with the column that owns them.
 _EXTRA_OWNED = [
@@ -273,18 +273,27 @@ def import_all_data(uid: str, data: dict) -> dict:
     """
     if not looks_like_backup(data):
         raise ValueError("This doesn't look like an Arogo backup file.")
+
+    # Read the schema BEFORE opening the transaction. table_columns() tries a
+    # PRAGMA first and lets it fail on PostgreSQL — harmless normally, but a
+    # failed statement inside a PG transaction aborts the whole thing, so doing
+    # this here would have killed the restore on its very first table.
+    plan = []
+    for t in _restorable_tables():
+        rows = data.get(t)
+        if not isinstance(rows, list):
+            continue
+        cols = table_columns(t)
+        if cols and 'user_id' not in cols:
+            continue                          # not a user-owned table on this schema
+        plan.append((t, rows, cols))
+
     restored, skipped, deleted = {}, {}, {}
     with transaction():
-        for t in _restorable_tables():
-            rows = data.get(t)
-            if not isinstance(rows, list):
-                continue
-            cols = table_columns(t)
-            if cols and 'user_id' not in cols:
-                continue                      # not a user-owned table on this schema
-            try:
+        for t, rows, cols in plan:
+            with savepoint() as sp:
                 gone = execute(f"DELETE FROM {t} WHERE user_id=?", (uid,)).rowcount
-            except Exception:
+            if not sp.ok:
                 continue                      # table not in this schema
             deleted[t] = gone if gone and gone > 0 else 0
             n = bad = 0
@@ -296,11 +305,15 @@ def import_all_data(uid: str, data: dict) -> dict:
                 keys = keys + ['user_id']
                 vals = [row[k] for k in keys[:-1]] + [uid]   # never trust the file's owner
                 ph = ','.join('?' * len(keys))
-                try:
+                # Each row gets its own savepoint so one malformed row is skipped
+                # instead of poisoning the batch. A bare try/except would work on
+                # SQLite and silently lose every remaining row on PostgreSQL.
+                with savepoint() as rsp:
                     execute(f"INSERT INTO {t} ({','.join(keys)}) VALUES ({ph})", tuple(vals))
+                if rsp.ok:
                     n += 1
-                except Exception:
-                    bad += 1                  # one malformed row, not the whole restore
+                else:
+                    bad += 1
             restored[t] = n
             if bad:
                 skipped[t] = bad

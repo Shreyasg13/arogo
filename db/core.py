@@ -195,6 +195,73 @@ def commit():
     pass
 
 
+_sp_seq = 0
+
+
+@contextlib.contextmanager
+def savepoint():
+    """A nested, individually-recoverable step inside a transaction().
+
+    PostgreSQL aborts the ENTIRE transaction on any statement error: after one
+    failed INSERT every subsequent statement returns "current transaction is
+    aborted", so the familiar
+
+        try: execute(insert)
+        except Exception: skipped += 1      # skip one bad row, keep going
+
+    works on SQLite and quietly destroys the rest of the batch on PostgreSQL.
+    A savepoint is the portable way to make one statement recoverable: rolling
+    back to it clears the error without discarding the outer transaction.
+
+    Both backends implement SAVEPOINT identically, so this behaves the same on
+    each and the tests exercise the real code path rather than a SQLite-only
+    approximation. Outside a transaction it is a plain no-op, because there is
+    nothing to roll back to.
+
+    Yields nothing; a failure inside is swallowed and reported by `ok`:
+
+        with savepoint() as sp:
+            execute(...)
+        if not sp.ok: skipped += 1
+    """
+    global _sp_seq
+    class _Result:
+        ok = True
+    res = _Result()
+    if not _in_tx:
+        try:
+            yield res
+        except Exception:
+            res.ok = False
+        return
+    _sp_seq += 1
+    name = f"sp_{_sp_seq}"
+    conn = get_db()
+    _raw(conn, f"SAVEPOINT {name}")
+    try:
+        yield res
+    except Exception:
+        res.ok = False
+        try:
+            _raw(conn, f"ROLLBACK TO SAVEPOINT {name}")
+            _raw(conn, f"RELEASE SAVEPOINT {name}")
+        except Exception:
+            pass
+    else:
+        try:
+            _raw(conn, f"RELEASE SAVEPOINT {name}")
+        except Exception:
+            pass
+
+
+def _raw(conn, sql):
+    """Run a statement that must not go through execute()'s ?→%s rewrite."""
+    if IS_POSTGRES:
+        conn.cursor().execute(sql)
+    else:
+        conn.execute(sql)
+
+
 @contextlib.contextmanager
 def transaction():
     """Run a block all-or-nothing.

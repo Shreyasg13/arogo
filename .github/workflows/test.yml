@@ -46,3 +46,48 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit -r requirements.txt --progress-spinner off
+
+  # PostgreSQL is the documented production backend (see README/DEPLOY), but the
+  # suite above runs entirely on SQLite — so the ?→%s rewrite, the partial unique
+  # indexes, transaction()/savepoint(), information_schema column lookups and
+  # LOWER(COALESCE(...)) in search were never executed by CI at all.
+  #
+  # The two engines disagree in ways that pass silently on SQLite: PostgreSQL
+  # aborts an entire transaction on any statement error, so a try/except-and-
+  # continue loop over rows quietly loses everything after the first failure.
+  # That is exactly the shape of the restore path, which deletes before it
+  # inserts. This job runs the same tests against a real PostgreSQL.
+  test-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: arogo
+          POSTGRES_PASSWORD: arogo
+          POSTGRES_DB: arogo_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U arogo"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://arogo:arogo@localhost:5432/arogo_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Serial, not -n auto: the app shares one module-level connection, so
+      # parallel workers would fight over the same PostgreSQL database. The
+      # SQLite job gets its isolation from each worker having its own file.
+      - name: Run test suite against PostgreSQL
+        run: pytest tests/ -q --tb=short
