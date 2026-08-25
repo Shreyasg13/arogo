@@ -856,6 +856,14 @@ CREATE TABLE IF NOT EXISTS health_notes (
     entity_label TEXT DEFAULT '', body TEXT NOT NULL, pinned INTEGER DEFAULT 0,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+-- A deleted row, kept whole so it can be put back. `payload` is the original
+-- row as JSON; `kind`/`label` are captured at delete time because the thing that
+-- could describe the row is exactly what was removed.
+CREATE TABLE IF NOT EXISTS deleted_items (
+    id TEXT PRIMARY KEY, table_name TEXT NOT NULL, row_id TEXT NOT NULL,
+    payload TEXT NOT NULL, kind TEXT DEFAULT '', label TEXT DEFAULT '',
+    deleted_at TEXT NOT NULL, expires_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS insurance_policies (
     id TEXT PRIMARY KEY, insurer TEXT NOT NULL, policy_no TEXT DEFAULT '',
     kind TEXT DEFAULT 'health', cover_amount REAL DEFAULT NULL,
@@ -1853,6 +1861,7 @@ DATA_TABLES = [
     'environment_days',
     'insurance_policies',
     'health_notes',
+    'deleted_items',
 ]
 
 
@@ -1877,12 +1886,25 @@ def migrate_claim_default_data():
             pass
 
 
-def init_db():
-    """Create all tables. Safe to call every startup — uses IF NOT EXISTS."""
-    for stmt in SCHEMA.strip().split(";"):
+def _schema_statements(schema: str):
+    """Split the schema into statements, ignoring semicolons inside comments.
+
+    The split used to be a plain `.split(";")`, so a `--` comment containing a
+    semicolon tore the following CREATE TABLE in half and the app failed to start
+    with a syntax error pointing at the middle of a sentence. Comments are
+    stripped first, which makes the schema safe to document in prose.
+    """
+    lines = [ln for ln in schema.splitlines() if not ln.lstrip().startswith("--")]
+    for stmt in "\n".join(lines).split(";"):
         stmt = stmt.strip()
         if stmt:
-            execute(stmt)
+            yield stmt
+
+
+def init_db():
+    """Create all tables. Safe to call every startup — uses IF NOT EXISTS."""
+    for stmt in _schema_statements(SCHEMA):
+        execute(stmt)
     migrate_add_user_id()
     migrate_fix_profile_defaults()
     migrate_add_timezone()

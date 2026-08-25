@@ -3103,6 +3103,27 @@
   </div>
 </div>
 
+<!-- ═══════════ TRASH ═══════════ -->
+<div id="view-trash" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title" data-i18n="Trash">Trash</h1>
+      <p class="page-subtitle" data-i18n="Records you deleted, and how long you can still get them back">
+        Records you deleted, and how long you can still get them back</p>
+    </div>
+  </div>
+  <div class="panel" style="padding:18px 20px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+      <input class="form-input" id="trash-search" style="flex:1;min-width:180px"
+             placeholder="Search what you deleted" aria-label="Search the trash"
+             data-ev-input="loadTrash()">
+      <button class="btn-outline" data-ev-click="emptyTrash()"
+              data-i18n="Empty trash">Empty trash</button>
+    </div>
+    <div id="trash-list"><div class="restore-row">Loading…</div></div>
+  </div>
+</div>
+
 </main>
 </div>
 

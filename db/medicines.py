@@ -317,7 +317,8 @@ def toggle_medicine(mid):
 def delete_medicine(mid):
     uid = current_user_id()
     prev = execute("SELECT name FROM medicines WHERE id=? AND user_id=?", (mid, uid), fetchone=True)
-    execute("DELETE FROM medicines WHERE id=? AND user_id=?", (mid, uid), commit=True)
+    from .trash import soft_delete
+    soft_delete('medicines', mid)
     if prev:
         log_medicine_event(mid, 'deleted', prev['name'])
 

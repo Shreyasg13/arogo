@@ -353,7 +353,11 @@ _ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
                       # Policy numbers are financial identifiers usable for fraud
                       # against the member's insurer; there is no consent gate for
                       # them, so a caregiver acting-as cannot read or edit policies.
-                      '/api/insurance')
+                      '/api/insurance',
+                      # The trash holds whole deleted rows, journal entries and
+                      # notes among them, so browsing it would walk straight
+                      # around the private-category wall above.
+                      '/api/trash')
 
 
 def _canonical_path(path):

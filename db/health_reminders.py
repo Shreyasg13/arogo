@@ -88,6 +88,5 @@ def complete_reminder(rid: str) -> dict:
 
 
 def delete_reminder(rid: str) -> bool:
-    execute("DELETE FROM health_reminders WHERE id=? AND user_id=?",
-            (rid, current_user_id()), commit=True)
-    return True
+    from .trash import soft_delete
+    return soft_delete('health_reminders', rid)

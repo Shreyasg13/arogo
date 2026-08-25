@@ -3208,6 +3208,7 @@ function switchView(view) {
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
   if (view === 'export')        initExportView();
+  if (view === 'trash')         loadTrash();
   if (view === 'progress')      loadProgress();
   if (view === 'datatrust')     loadDataTrust();
   if (view === 'glossary')      loadGlossary();
@@ -12708,6 +12709,83 @@ loadThoughts = async function() {
 // ════════════════════════════════════════════════════════════
 
 // Render pending todos on dashboard
+// ── Trash ──────────────────────────────────────────────────────────────────
+// Deleting a health record used to be permanent. Some of it can't be recreated,
+// so a delete now moves the row aside for thirty days.
+let _trashTimer = null;
+
+async function loadTrash() {
+  const el = document.getElementById('trash-list');
+  if (!el) return;
+  const q = (document.getElementById('trash-search')?.value || '').trim();
+  clearTimeout(_trashTimer);
+  _trashTimer = setTimeout(async () => {
+    const r = await fetch('/api/trash?q=' + encodeURIComponent(q), {credentials: 'same-origin'})
+      .then(r => r.json()).catch(() => null);
+    if (!r) { el.innerHTML = `<div class="restore-row">${t('Could not read your trash')}</div>`; return; }
+    if (!r.items.length) {
+      el.innerHTML = `<div class="restore-note">${q
+        ? tformat('Nothing in your trash matches "%1".', escHtml(q))
+        : tformat('Your trash is empty. Anything you delete stays here for %1 days.', r.retention_days)}</div>`;
+      return;
+    }
+    el.innerHTML = `<div class="restore-list">${r.items.map(i => {
+      // Say how long is left, not just that it's here — the number is the whole
+      // point, and "2 days left" is what makes someone act now.
+      const left = i.days_left === null ? ''
+        : (i.days_left <= 0 ? t('goes today')
+                            : tformat('%1 days left', i.days_left));
+      return `<div class="restore-row">
+        <span><b>${escHtml(i.label)}</b><br>
+          <span class="restore-removes">${escHtml(i.kind)} · ${escHtml(left)}</span></span>
+        <span style="display:flex;gap:6px;align-items:flex-start">
+          ${i.restorable ? `<button class="btn-outline" style="font-size:12px"
+             data-ev-click="restoreTrashItem('${escHtml(i.id)}')">${t('Restore')}</button>` : ''}
+          <button class="btn-outline" style="font-size:12px"
+                  data-ev-click="purgeTrashItem('${escHtml(i.id)}')">${t('Delete now')}</button>
+        </span></div>`;
+    }).join('')}</div>
+    <div class="restore-note">${tformat('Anything here is deleted for good after %1 days.', r.retention_days)}</div>`;
+  }, 180);
+}
+
+async function restoreTrashItem(id) {
+  const r = await fetch(`/api/trash/${encodeURIComponent(id)}/restore`,
+                        {method: 'POST', credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (r && r.ok) {
+    // Name what came back and where it went — a silent "done" leaves the user
+    // hunting for it.
+    showToast(tformat('✓ %1 restored', r.label || r.kind || t('Item')), 'success');
+    loadTrash();
+  } else {
+    showToast((r && r.error) || t('Could not restore that'), 'error');
+  }
+}
+
+function purgeTrashItem(id) {
+  undoable(t('Deleting this for good'), async () => {
+    const r = await fetch('/api/trash/' + encodeURIComponent(id),
+                          {method: 'DELETE', credentials: 'same-origin'})
+      .then(r => r.json()).catch(() => null);
+    if (r && r.success) loadTrash();
+    else showToast(t('Could not delete that'), 'error');
+  });
+}
+
+function emptyTrash() {
+  undoable(t('Emptying the trash — this cannot be undone'), async () => {
+    const r = await fetch('/api/trash', {method: 'DELETE', credentials: 'same-origin'})
+      .then(r => r.json()).catch(() => null);
+    if (r && r.success) {
+      showToast(tformat('Removed %1 items for good', r.removed), 'success');
+      loadTrash();
+    } else {
+      showToast(t('Could not empty the trash'), 'error');
+    }
+  });
+}
+
 // ── Storage ────────────────────────────────────────────────────────────────
 // Uploads live on an SD card with a hard limit and nobody watching it. When it
 // fills, SQLite writes start failing — which in this app means a logged dose
@@ -13095,6 +13173,7 @@ const NAV_TARGETS = [
   {v:'progress',      l:'Progress',         k:'trends charts weight'},
   {v:'notifications', l:'Notifications',    k:'reminders alerts'},
   {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability storage disk space full uploads orphaned files'},
+  {v:'trash',         l:'Trash',            k:'trash deleted removed recover restore undo bin recycle got rid of by mistake accidentally'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},
@@ -13880,10 +13959,18 @@ async function runGlobalSearch(q) {
         _gsSelectedIdx = -1;
         return;
       }
+      // If it's sitting in the trash, "no results" would read as "you never
+      // recorded that" — which is the one thing it must not say.
+      const trashHint = r.in_trash
+        ? `<div class="gs-empty-sub" style="margin-top:8px">
+             <a href="#" data-ev-click="closeGlobalSearch();switchView('trash')">${
+               tformat('%1 matching items are in your trash', r.in_trash)}</a></div>`
+        : '';
       res.innerHTML = dateTag + `<div class="gs-empty">
         <div class="gs-empty-icon">🔍</div>
         <div class="gs-empty-text">${tformat('No results for "%1"', escHtml(q))}</div>
         <div class="gs-empty-sub">${t('Try different keywords or a date range like "last week"')}</div>
+        ${trashHint}
       </div>`;
       return;
     }

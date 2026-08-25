@@ -79,8 +79,8 @@ def list_supplies(category: str = None) -> list:
 
 
 def delete_supply(sid: str) -> bool:
-    execute("DELETE FROM home_supplies WHERE id=? AND user_id=?",
-            (sid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('home_supplies', sid)
     return True
 
 

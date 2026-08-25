@@ -77,7 +77,8 @@ def update_claim(cid, data) -> dict:
 
 
 def delete_claim(cid) -> bool:
-    execute("DELETE FROM claims WHERE id=? AND user_id=?", (cid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('claims', cid)
     return True
 
 

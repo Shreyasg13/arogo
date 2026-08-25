@@ -69,9 +69,11 @@ def get_reports():
 def del_report(rid):
     r = get_report(rid)   # user-scoped: returns None for other users' reports
     if r:
-        fp = os.path.join(current_app.config['UPLOAD_FOLDER'], r['filename'])
-        if os.path.exists(fp):
-            os.remove(fp)
+        # The file deliberately stays on disk. The record goes to the trash and
+        # is restorable for thirty days, and a restored record pointing at a
+        # file that was deleted immediately would be worse than not restoring it
+        # at all. The trash owns the file now and removes it when the entry is
+        # purged or the trash is emptied.
         delete_report(rid)
         return jsonify({'success': True})
     return jsonify({'error': 'Not found'}), 404

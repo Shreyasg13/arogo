@@ -497,12 +497,25 @@ class TestReportUploads:
         assert os.path.exists(os.path.join(app.config["UPLOAD_FOLDER"], rep["filename"]))
         assert any(x["id"] == rep["id"] for x in alice.get("/api/reports").get_json())
 
-    def test_delete_own_report_removes_file_from_disk(self, alice, app):
+    def test_deleting_a_report_keeps_its_file_until_the_record_is_purged(self, alice, app):
+        """Deleting a report used to erase its file at once. Records are now
+        recoverable for thirty days, and restoring one that points at a file
+        already deleted would be worse than not restoring it — so the trash owns
+        the file and removes it when the entry is purged.
+
+        The disk still has to come back to zero: a "deleted" scan that lives on
+        the server forever is the failure this replaced, not an improvement."""
         rep = upload(alice, "gone.pdf").get_json()["report"]
         path = os.path.join(app.config["UPLOAD_FOLDER"], rep["filename"])
         assert os.path.exists(path)
+
         assert alice.delete("/api/reports/%s" % rep["id"]).status_code == 200
-        assert not os.path.exists(path)
+        assert os.path.exists(path), "the file must survive while the record can be restored"
+
+        item = next(i for i in alice.get("/api/trash").get_json()["items"]
+                    if i["kind"] == "Medical record")
+        assert alice.delete("/api/trash/%s" % item["id"]).status_code == 200
+        assert not os.path.exists(path), "purging the record must take its file"
 
     def test_report_search_special_chars_safe(self, alice):
         upload(alice, "notes.txt", report_type="General",

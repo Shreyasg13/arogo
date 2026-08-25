@@ -81,7 +81,8 @@ def delete_dependent(dep_id) -> bool:
     uid = current_user_id()
     # Remove the profile AND its records (owner-scoped both).
     execute("DELETE FROM dependent_records WHERE dependent_id=? AND user_id=?", (dep_id, uid), commit=True)
-    execute("DELETE FROM dependents WHERE id=? AND user_id=?", (dep_id, uid), commit=True)
+    from .trash import soft_delete
+    return soft_delete('dependents', dep_id)
     return True
 
 

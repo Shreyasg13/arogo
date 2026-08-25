@@ -89,7 +89,8 @@ def update_prescription(pid, data) -> dict:
 
 
 def delete_prescription(pid) -> bool:
-    execute("DELETE FROM prescriptions WHERE id=? AND user_id=?", (pid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('prescriptions', pid)
     return True
 
 

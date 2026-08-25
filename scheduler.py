@@ -43,6 +43,21 @@ def _heartbeat():
         print(f"[scheduler] heartbeat error: {e}")
 
 
+def _purge_trash():
+    """Delete trashed records past their thirty days, for good.
+
+    Runs install-wide rather than per user: someone who never opens the app
+    again should still have the records they deleted actually deleted.
+    """
+    try:
+        from db.trash import purge_expired
+        n = purge_expired()
+        if n:
+            print(f'[scheduler] purged {n} expired trash items')
+    except Exception as e:
+        print(f'[scheduler] trash purge error: {e}')
+
+
 def _daily_sync():
     try:
         from fitness_sync import sync_all_connected
@@ -628,6 +643,7 @@ def _run_loop():
     schedule.every().day.at("19:00").do(_appointment_reminders)   # evening before
     schedule.every().day.at("08:00").do(_appointment_reminders)   # morning of
     schedule.every().minute.do(_heartbeat)
+    schedule.every().day.at("03:30").do(_purge_trash)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     schedule.every().sunday.at("18:30").do(_send_caregiver_digests)
     # Also do an initial sync 30 s after startup

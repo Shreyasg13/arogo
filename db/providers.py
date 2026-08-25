@@ -50,7 +50,8 @@ def delete_provider(pid) -> bool:
         execute("UPDATE appointments SET provider_id=NULL WHERE provider_id=? AND user_id=?", (pid, uid), commit=True)
     except Exception:
         pass
-    execute("DELETE FROM providers WHERE id=? AND user_id=?", (pid, uid), commit=True)
+    from .trash import soft_delete
+    return soft_delete('providers', pid)
     return True
 
 

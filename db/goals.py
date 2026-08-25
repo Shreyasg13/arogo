@@ -117,7 +117,8 @@ def update_goal(gid, data) -> dict:
 
 
 def delete_goal(gid) -> bool:
-    execute("DELETE FROM health_goals WHERE id=? AND user_id=?", (gid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('health_goals', gid)
     return True
 
 

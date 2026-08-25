@@ -52,6 +52,5 @@ def list_entries() -> list:
 
 
 def delete_entry(eid: str) -> bool:
-    execute("DELETE FROM family_history WHERE id=? AND user_id=?",
-            (eid, current_user_id()), commit=True)
-    return True
+    from .trash import soft_delete
+    return soft_delete('family_history', eid)

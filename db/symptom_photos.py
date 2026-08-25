@@ -46,6 +46,9 @@ def delete_photo(pid: str):
     row = get_photo(pid)
     if not row:
         return None
-    execute("DELETE FROM symptom_photos WHERE id=? AND user_id=?",
-            (pid, current_user_id()), commit=True)
-    return row['filename']
+    from .trash import soft_delete
+    soft_delete('symptom_photos', pid)
+    # The file stays on disk while the photo is recoverable; the trash owns it
+    # now and removes it when the entry is purged. Returning None keeps the
+    # route from deleting a file its record can still be restored to.
+    return None

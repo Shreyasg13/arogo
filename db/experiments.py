@@ -153,4 +153,5 @@ def end_experiment(eid):
 
 
 def delete_experiment(eid):
-    execute("DELETE FROM experiments WHERE id=? AND user_id=?", (eid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('experiments', eid)

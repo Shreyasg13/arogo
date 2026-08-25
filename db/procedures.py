@@ -45,6 +45,5 @@ def list_procedures() -> list:
 
 
 def delete_procedure(pid: str) -> bool:
-    execute("DELETE FROM procedures WHERE id=? AND user_id=?",
-            (pid, current_user_id()), commit=True)
-    return True
+    from .trash import soft_delete
+    return soft_delete('procedures', pid)

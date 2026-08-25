@@ -110,8 +110,8 @@ def get_trigger_patterns(days: int = 30, min_count: int = 3) -> dict:
     return {'has_data': bool(items), 'window_days': days, 'triggers': items}
 
 def delete_thought(tid: str):
-    execute("DELETE FROM thoughts WHERE id=? AND user_id=?",
-            (tid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('thoughts', tid)
 
 def get_thoughts_range(days: int = 7) -> list:
     import datetime as dt

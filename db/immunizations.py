@@ -32,7 +32,8 @@ def log_dose(vaccine_key, date_given, dose_label='', notes='') -> dict:
 
 
 def delete_dose(vid) -> bool:
-    execute("DELETE FROM immunizations WHERE id=? AND user_id=?", (vid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('immunizations', vid)
     return True
 
 

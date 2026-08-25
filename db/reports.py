@@ -51,8 +51,8 @@ def list_reports(search='', tag='', severity='', doc_type=''):
 
 
 def delete_report(rid):
-    execute("DELETE FROM reports WHERE id=? AND user_id=?",
-            (rid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('reports', rid)
 
 
 # Vault buckets — map free-text report_type into a small, filterable set. Keyword

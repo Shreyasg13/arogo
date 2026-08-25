@@ -68,8 +68,8 @@ def list_visits(kind: str = None) -> list:
 
 
 def delete_visit(vid: str) -> bool:
-    execute("DELETE FROM dental_vision_visits WHERE id=? AND user_id=?",
-            (vid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('dental_vision_visits', vid)
     return True
 
 
@@ -134,6 +134,5 @@ def latest_rx():
 
 
 def delete_rx(rid: str) -> bool:
-    execute("DELETE FROM vision_prescriptions WHERE id=? AND user_id=?",
-            (rid, current_user_id()), commit=True)
-    return True
+    from .trash import soft_delete
+    return soft_delete('vision_prescriptions', rid)

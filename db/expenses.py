@@ -48,7 +48,8 @@ def log_expense(category, amount, date_key, description='', covered=0, notes='')
 
 
 def delete_expense(eid) -> bool:
-    execute("DELETE FROM health_expenses WHERE id=? AND user_id=?", (eid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('health_expenses', eid)
     return True
 
 

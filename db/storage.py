@@ -60,7 +60,8 @@ def _safe_name(name):
 
 
 def files_owned_by(uid) -> set:
-    """Every filename this user's rows point at."""
+    """Every filename this user's rows point at — including rows in their trash,
+    which are still restorable and would be useless without their file."""
     owned = set()
     for table, col in FILE_COLUMNS:
         try:
@@ -72,12 +73,22 @@ def files_owned_by(uid) -> set:
             name = _safe_name(r.get('f'))
             if name:
                 owned.add(name)
+    try:
+        from .trash import trashed_files
+        owned |= trashed_files(uid)
+    except Exception:
+        pass
     return owned
 
 
-def all_referenced_files() -> set:
-    """Every filename ANY row points at, across all users. An orphan is a file on
-    disk that appears in none of them."""
+def live_referenced_files() -> set:
+    """Filenames pointed at by rows that are still in their own tables.
+
+    Separate from all_referenced_files() because purging a trashed record needs
+    to ask "is anything OTHER than the thing I'm deleting still using this file?"
+    — and the trash can't be part of that answer, or an item could never release
+    its own file.
+    """
     referenced = set()
     for table, col in FILE_COLUMNS:
         try:
@@ -89,6 +100,23 @@ def all_referenced_files() -> set:
             name = _safe_name(r.get('f'))
             if name:
                 referenced.add(name)
+    return referenced
+
+
+def all_referenced_files() -> set:
+    """Every filename ANY row points at, across all users, live or trashed. An
+    orphan is a file on disk that appears in none of them.
+
+    Deleted-but-restorable rows count. Without this the orphan sweep would erase
+    the scan behind every record someone deleted this month, and a restore would
+    hand them back an entry pointing at nothing.
+    """
+    referenced = live_referenced_files()
+    try:
+        from .trash import trashed_files
+        referenced |= trashed_files()
+    except Exception:
+        pass
     return referenced
 
 

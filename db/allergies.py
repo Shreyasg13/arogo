@@ -57,7 +57,8 @@ def update_allergy(aid, data) -> dict:
 
 
 def delete_allergy(aid) -> bool:
-    execute("DELETE FROM allergies WHERE id=? AND user_id=?", (aid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('allergies', aid)
     return True
 
 

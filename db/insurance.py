@@ -119,8 +119,8 @@ def update_policy(pid, data):
 
 
 def delete_policy(pid):
-    execute("DELETE FROM insurance_policies WHERE id=? AND user_id=?",
-            (pid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('insurance_policies', pid)
 
 
 def list_policies():

@@ -183,8 +183,8 @@ def get_symptoms(days: int = 14) -> list:
     return [dict(r) for r in rows]
 
 def delete_symptom(sid: str):
-    execute("DELETE FROM symptoms WHERE id=? AND user_id=?",
-            (sid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('symptoms', sid)
 
 
 def get_symptom_med_timeline(days: int = 90) -> dict:
@@ -395,8 +395,8 @@ def get_vitals(vtype: str = None, days: int = 30) -> list:
     return [dict(r) for r in rows]
 
 def delete_vital(vid: str):
-    execute("DELETE FROM vitals WHERE id=? AND user_id=?",
-            (vid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('vitals', vid)
 
 
 # ── Emergency QR (for the health-ID card) ────────────────────────────────────
@@ -743,8 +743,8 @@ def update_appointment(aid: str, data: dict) -> dict:
 
 
 def delete_appointment(aid: str):
-    execute("DELETE FROM appointments WHERE id=? AND user_id=?",
-            (aid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('appointments', aid)
 
 
 def get_next_appointment():

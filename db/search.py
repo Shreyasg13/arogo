@@ -429,6 +429,10 @@ NOT_SEARCHABLE = {
     'user_profile':          'the user\'s own settings, not something to find',
     'sync_log':              'integration diagnostics',
     'notification_log':      'copy the app generated, not what the user recorded',
+    # Searched from the Trash page instead, so a deleted record doesn't
+    # reappear among live ones. global_search reports how many matches are
+    # sitting in there, which is the part that stops "no results" lying.
+    'deleted_items':         'searched from the Trash page, not mixed in with live records',
 
     # Deliberately excluded: these hold identifiers or credentials. Making them
     # searchable would both surface and confirm the values.
@@ -522,4 +526,14 @@ def global_search(query: str, limit: int = 40, per_section: int = 5,
                                 'icon': spec.icon, 'view': spec.view,
                                 'private': spec.private, 'items': items})
         out['total'] += len(items)
+
+    # "No results" would be a lie if the thing is sitting in the trash. Count
+    # only — the entries themselves are read on the Trash page, so a deleted
+    # record never mingles with live ones in a result list.
+    if out['total'] == 0 and clean_q:
+        try:
+            from .trash import list_trash
+            out['in_trash'] = len(list_trash(clean_q, include_private=include_private))
+        except Exception:
+            pass
     return out

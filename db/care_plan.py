@@ -61,7 +61,8 @@ def update_item(iid, data) -> dict:
 
 
 def delete_item(iid) -> bool:
-    execute("DELETE FROM care_plan_items WHERE id=? AND user_id=?", (iid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('care_plan_items', iid)
     return True
 
 

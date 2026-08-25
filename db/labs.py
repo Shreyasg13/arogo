@@ -61,7 +61,8 @@ def log_lab_result(lab_key, value, date_key, notes='') -> dict:
 
 
 def delete_lab_result(lid) -> bool:
-    execute("DELETE FROM lab_results WHERE id=? AND user_id=?", (lid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('lab_results', lid)
     return True
 
 

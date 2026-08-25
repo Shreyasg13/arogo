@@ -66,7 +66,8 @@ def update_note(nid, data):
 
 
 def delete_note(nid):
-    execute("DELETE FROM health_notes WHERE id=? AND user_id=?", (nid, current_user_id()), commit=True)
+    from .trash import soft_delete
+    return soft_delete('health_notes', nid)
 
 
 def list_notes(entity_type=None, entity_id=None, q=None):
