@@ -247,11 +247,12 @@ def test_a_just_uploaded_file_is_never_treated_as_an_orphan(app):
     delete acts on. Without the grace period, cleanup could destroy a document
     seconds after someone chose it."""
     _uid(app, "stor8b@medeasy.test")
-    _write(app, "being-uploaded-right-now.pdf")          # brand new, no row yet
+    _write(app, "being-uploaded-right-now.pdf")             # brand new, no row yet
+    _write(app, "abandoned-long-ago.pdf", age_seconds=7200)
     names = {o["name"] for o in st.find_orphans()}
     assert "being-uploaded-right-now.pdf" not in names
-    # It is a genuine orphan once it is old enough to be sure.
-    assert "being-uploaded-right-now.pdf" in {o["name"] for o in st.find_orphans(0)}
+    # …and the grace period is a delay, not a way of never finding anything.
+    assert "abandoned-long-ago.pdf" in names
 
 
 def test_orphan_names_are_never_exposed(app):

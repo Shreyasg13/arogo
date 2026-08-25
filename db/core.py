@@ -85,68 +85,203 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "")
 IS_POSTGRES  = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 
 # ── Connection ────────────────────────────────────────────────────────────────
-_conn  = None
-# True while a transaction() block is open, so nesting joins instead of
-# committing the outer block early.
-_in_tx = False
+# One connection per thread, never one per process.
+#
+# This used to be a single module-level connection shared by everything. Flask's
+# development server is threaded by default and the scheduler runs in a thread of
+# the same process, so two threads genuinely shared one connection — and with it,
+# one transaction. A request that opened a transaction and then failed would roll
+# back a write the scheduler had already committed on the other thread, silently.
+# That is reproducible, not theoretical.
+#
+# The per-engine answers differ, and each is the ordinary one for its engine:
+#
+#   PostgreSQL — a ThreadedConnectionPool. Opening a PostgreSQL connection costs
+#   a TCP handshake and authentication, so they are pooled and borrowed. A thread
+#   holds one for the length of its work (a request, or a background job) because
+#   a transaction has to run on a single connection.
+#
+#   SQLite — a connection per thread. They are cheap to open and sqlite3 objects
+#   are not meant to be shared between threads at all.
+#
+# `:memory:` needs care: an in-memory database belongs to its connection, so
+# per-thread connections would hand every thread its own empty database and the
+# entire test suite would evaporate. It is therefore mapped to a shared-cache URI
+# with one keeper connection held open for the life of the process, so every
+# thread sees the same database and it survives connections coming and going.
+_local = threading.local()
 _mutex = threading.Lock()
+_pool = None                # PostgreSQL only
+_sqlite_prepared = False
+
+# ":memory:" is resolved to a private temporary file, one per process.
+#
+# An in-memory SQLite database belongs to the connection that opened it, so with
+# a connection per thread each thread would get its own empty database. The
+# shared-cache URI that fixes that brings table-level locking which busy_timeout
+# cannot wait on — concurrent access raises "database table is locked" instead of
+# queueing, which is a worse behaviour than the one being fixed.
+#
+# A temp file has neither problem and, more usefully, means the test suite
+# exercises exactly the connection model production runs: several connections
+# against one file, with real SQLite locking. The database is still private to
+# the process and disappears with it, which is all ":memory:" was being asked
+# for here.
+_IS_MEMORY = DB_PATH == ":memory:"
+if _IS_MEMORY:
+    import atexit as _atexit
+    import tempfile as _tempfile
+    _mem_fd, _MEMORY_FILE = _tempfile.mkstemp(prefix=f"arogo-test-{os.getpid()}-",
+                                              suffix=".db")
+    os.close(_mem_fd)
+
+    @_atexit.register
+    def _drop_memory_file():
+        for suffix in ("", "-wal", "-shm"):
+            try:
+                os.remove(_MEMORY_FILE + suffix)
+            except OSError:
+                pass
+
+
+def _prepare_sqlite_once():
+    """One-time file housekeeping, done before the first connection.
+
+    Removing stale WAL/SHM files used to happen on every connect. With one
+    process-wide connection that ran exactly once; with a connection per thread
+    it would run constantly — and deleting the WAL of a database another thread
+    is actively using is a good way to corrupt it.
+    """
+    global _sqlite_prepared
+    if _sqlite_prepared:
+        return
+    if not _IS_MEMORY:
+        # Stale WAL/SHM from a crashed session. On Windows NTFS these cause
+        # "locking protocol" errors.
+        for ext in ("-wal", "-shm"):
+            stale = DB_PATH + ext
+            if os.path.exists(stale):
+                try:
+                    os.remove(stale)
+                except OSError:
+                    pass
+    _sqlite_prepared = True
 
 
 def _connect_sqlite():
     import sqlite3
-    # Remove stale WAL/SHM files left by a crashed session.
-    # On Windows NTFS (/mnt/d/...) these cause "locking protocol" errors.
-    for ext in ("-wal", "-shm"):
-        stale = DB_PATH + ext
-        if os.path.exists(stale):
-            try:
-                os.remove(stale)
-            except OSError:
-                pass
-
-    # isolation_level=None → autocommit mode.
-    # SQLite never opens an implicit write transaction that stays open
-    # between calls, which is what causes locking errors on NTFS mounts.
-    conn = sqlite3.connect(
-        DB_PATH,
-        check_same_thread=False,
-        isolation_level=None,
-    )
+    with _mutex:
+        _prepare_sqlite_once()
+    # isolation_level=None → autocommit mode. SQLite never opens an implicit
+    # write transaction that stays open between calls, which is what causes
+    # locking errors on NTFS mounts; transaction() issues BEGIN explicitly.
+    conn = sqlite3.connect(_MEMORY_FILE if _IS_MEMORY else DB_PATH,
+                           isolation_level=None, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # Now that more than one connection can address the same file, a writer can
+    # meet a lock. Wait for it instead of failing the user's write outright.
+    try:
+        conn.execute("PRAGMA busy_timeout = 5000")
+    except Exception:
+        pass
+    if _IS_MEMORY:
+        # Test-only tuning. The database is a scratch file that is deleted when
+        # the process ends, so there is nothing for a durable commit to protect
+        # and fsyncing every one of them costs about a quarter of the suite's
+        # runtime. Deliberately NOT applied to a real database: on a Pi's SD
+        # card, durability is the whole point.
+        try:
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA synchronous = OFF")
+        except Exception:
+            pass
     return conn
 
 
+def _get_pool():
+    global _pool
+    with _mutex:
+        if _pool is None:
+            import psycopg2.extras
+            from psycopg2 import pool as _pgpool
+            # maxconn bounds what one worker process can hold. Threads per
+            # worker is the real limit; 20 leaves room without risking the
+            # server's connection cap across several workers.
+            _pool = _pgpool.ThreadedConnectionPool(
+                1, int(os.environ.get("DB_POOL_MAX", "20")), DATABASE_URL,
+                cursor_factory=psycopg2.extras.RealDictCursor)
+        return _pool
+
+
 def _connect_postgres():
-    import psycopg2
-    import psycopg2.extras
-    conn = psycopg2.connect(DATABASE_URL,
-                            cursor_factory=psycopg2.extras.RealDictCursor)
-    # Autocommit matches the SQLite setup above, and keeps a failed ALTER in
-    # the idempotent migrations from aborting the whole connection.
+    conn = _get_pool().getconn()
+    # Autocommit matches the SQLite setup above, and keeps a failed ALTER in the
+    # idempotent migrations from aborting the whole connection. Reset explicitly
+    # because a pooled connection carries whatever the last borrower left.
     conn.autocommit = True
     return conn
 
 
 def get_db():
-    global _conn
-    with _mutex:
-        if _conn is None:
-            _conn = _connect_postgres() if IS_POSTGRES else _connect_sqlite()
-        return _conn
+    """This thread's connection, opened on first use."""
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        conn = _connect_postgres() if IS_POSTGRES else _connect_sqlite()
+        _local.conn = conn
+    return conn
+
+
+def release_db(exc=None):
+    """Hand this thread's connection back at the end of a unit of work.
+
+    Registered as a Flask teardown_appcontext, so a request returns its
+    PostgreSQL connection to the pool rather than holding it for the life of the
+    thread — which, with a dev server that spawns a thread per request, would
+    exhaust the pool immediately.
+
+    A connection still inside a transaction is rolled back before it goes back:
+    handing the next borrower a half-open transaction would corrupt unrelated
+    work, and a unit of work that ended without committing did not intend to.
+    """
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        return
+    # An abandoned transaction is rolled back on both engines. Ending a unit of
+    # work without committing was not an intention to commit, and on PostgreSQL
+    # the next borrower would inherit the open transaction.
+    if getattr(_local, "in_tx", False):
+        _local.in_tx = False
+        try:
+            conn.rollback() if IS_POSTGRES else conn.execute("ROLLBACK")
+        except Exception:
+            pass
+    if not IS_POSTGRES:
+        # SQLite connections are not pooled and are private to this thread, so
+        # there is nothing to hand back. Keeping it also keeps its prepared
+        # statement cache, which closing and reopening per request threw away —
+        # measurably, about a quarter of the test suite's runtime. It is
+        # released when the thread ends.
+        return
+    _local.conn = None
+    try:
+        _get_pool().putconn(conn)
+    except Exception:
+        pass
 
 
 def _reconnect():
-    """Drop the shared connection and open a fresh one. Used to recover from a
-    poisoned sqlite3 statement cache after an in-process schema change."""
-    global _conn
-    with _mutex:
-        try:
-            if _conn is not None:
-                _conn.close()
-        except Exception:
-            pass
-        _conn = _connect_postgres() if IS_POSTGRES else _connect_sqlite()
-        return _conn
+    """Replace THIS thread's connection. Used to recover from a poisoned sqlite3
+    statement cache after an in-process schema change — and deliberately scoped
+    to the calling thread, since another thread's connection is none of its
+    business and may be mid-transaction."""
+    conn = getattr(_local, "conn", None)
+    _local.conn = None
+    try:
+        if conn is not None:
+            conn.close() if not IS_POSTGRES else _get_pool().putconn(conn, close=True)
+    except Exception:
+        pass
+    return get_db()
 
 
 # ── Query helper ──────────────────────────────────────────────────────────────
@@ -195,7 +330,9 @@ def commit():
     pass
 
 
-_sp_seq = 0
+# The savepoint counter lives on _local alongside the connection and the
+# in-transaction flag: "this thread's transaction" only means something if all
+# three travel together.
 
 
 @contextlib.contextmanager
@@ -224,18 +361,18 @@ def savepoint():
             execute(...)
         if not sp.ok: skipped += 1
     """
-    global _sp_seq
     class _Result:
         ok = True
     res = _Result()
-    if not _in_tx:
+    if not getattr(_local, "in_tx", False):
         try:
             yield res
         except Exception:
             res.ok = False
         return
-    _sp_seq += 1
-    name = f"sp_{_sp_seq}"
+    seq = getattr(_local, "sp_seq", 0) + 1
+    _local.sp_seq = seq
+    name = f"sp_{seq}"
     conn = get_db()
     _raw(conn, f"SAVEPOINT {name}")
     try:
@@ -277,8 +414,7 @@ def transaction():
     than committing early, so a helper that wants atomicity doesn't silently
     break the atomicity of its caller.
     """
-    global _in_tx
-    if _in_tx:
+    if getattr(_local, "in_tx", False):
         yield                          # already inside one; let the outer commit
         return
     conn = get_db()
@@ -291,7 +427,7 @@ def transaction():
         # open one explicitly. IMMEDIATE takes the write lock up front instead of
         # discovering the conflict halfway through.
         conn.execute("BEGIN IMMEDIATE")
-    _in_tx = True
+    _local.in_tx = True
     try:
         yield
     except Exception:
@@ -306,7 +442,7 @@ def transaction():
         else:
             conn.execute("COMMIT")
     finally:
-        _in_tx = False
+        _local.in_tx = False
         if IS_POSTGRES and prev_autocommit is not None:
             conn.autocommit = prev_autocommit
 

@@ -35,6 +35,14 @@ def create_app(config=Config):
     app.config['MAX_CONTENT_LENGTH'] = config.MAX_CONTENT_LENGTH
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 
+    # Return this request's database connection when the request ends. Each
+    # thread holds its own (see db/core), so on PostgreSQL this is what puts it
+    # back in the pool — without it, a dev server that spawns a thread per
+    # request would drain the pool within a minute. A connection still inside a
+    # transaction is rolled back rather than handed on half-open.
+    from db.core import release_db
+    app.teardown_appcontext(release_db)
+
 
     # ── Register blueprints ───────────────────────────────────────────────────
     # No fallback: a broken import must kill the app, not degrade it.
