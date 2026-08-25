@@ -71,7 +71,14 @@ def _sql_literals(path):
             for tgt in node.targets:
                 nm = getattr(tgt, 'id', '') or ''
                 if nm.isupper() and ('SCHEMA' in nm or 'SQL' in nm):
-                    out.extend(_literal_parts(node.value))
+                    # What reaches the database is the comment-stripped text —
+                    # db.core._schema_statements drops `--` lines before
+                    # splitting, so a ? or % inside prose never becomes SQL.
+                    for lineno, text in _literal_parts(node.value):
+                        stripped = '\n'.join(
+                            ln for ln in text.splitlines()
+                            if not ln.lstrip().startswith('--'))
+                        out.append((lineno, stripped))
     return [(ln, s) for ln, s in out if SQL_KEYWORD.search(s)]
 
 
@@ -139,10 +146,9 @@ def test_no_sql_literal_contains_a_percent_sign():
     bound parameter instead."""
     offenders = []
     for path in _py_files():
-        for node in ast.walk(_tree(path)):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                if SQL_KEYWORD.search(node.value) and '%' in node.value:
-                    offenders.append(f"{_rel(path)}:{node.lineno}")
+        for lineno, sql in _sql_literals(path):
+            if '%' in sql:
+                offenders.append(f"{_rel(path)}:{lineno}")
     assert not offenders, (
         "a literal % in SQL breaks under psycopg2's formatting — bind it as a "
         "parameter (LIKE ?) instead: " + ", ".join(offenders))

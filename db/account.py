@@ -54,6 +54,7 @@ EXPORT_CATEGORIES = [
     # Deleted-but-recoverable rows. Someone exporting everything before
     # switching devices would otherwise lose what is still restorable.
     ('trash', 'Trash (deleted, still recoverable)', ['deleted_items']),
+    ('situational', 'Trips & illness episodes', ['travel_trips', 'illness_episodes']),
     ('private', 'Private — journal, mood, cycle, menopause, pregnancy',
      ['thoughts', 'menstrual_cycles', 'cycle_symptoms', 'menopause_logs', 'pregnancy', 'pregnancy_logs']),
 ]
@@ -143,6 +144,8 @@ TABLE_LABELS = {
     'reminder_settings': 'Reminder settings',
     'measurement_reminders': 'Measurement reminders',
     'deleted_items': 'Trash',
+    'travel_trips': 'Trips',
+    'illness_episodes': 'Illness episodes',
     # Not restorable, but still named — the preview tells the user what it is
     # skipping and why, and "oauth tokens" is not a thing anyone recognises.
     'oauth_tokens': 'Connected apps', 'share_snapshots': 'Share links',

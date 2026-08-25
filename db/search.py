@@ -215,6 +215,20 @@ SEARCHABLE = [
          title=lambda r: r['condition'],
          meta=lambda r: _j(_cap(r['relation']), _clip(r['notes'], 60))),
 
+    Spec('travel_trips', 'Trips', '✈️',
+         text=('label', 'timezone'), date='start_date', view='trips',
+         show=('label', 'timezone', 'end_date'),
+         title=lambda r: r['label'] or r['timezone'],
+         meta=lambda r: _j(r['start_date'], r['end_date'], r['timezone'])),
+
+    Spec('illness_episodes', 'Illness episodes', '🤒',
+         text=('name', 'notes'), date='started_on', view='episodes',
+         show=('name', 'ended_on', 'notes'),
+         title=lambda r: r['name'],
+         meta=lambda r: _j(r['started_on'],
+                           f"to {r['ended_on']}" if r['ended_on'] else 'ongoing',
+                           _clip(r['notes'], 50))),
+
     Spec('health_notes', 'Notes', '📝',
          text=('body', 'entity_label'), date='created_at', view='notes',
          show=('body', 'entity_label', 'entity_type'),

@@ -864,6 +864,20 @@ CREATE TABLE IF NOT EXISTS deleted_items (
     payload TEXT NOT NULL, kind TEXT DEFAULT '', label TEXT DEFAULT '',
     deleted_at TEXT NOT NULL, expires_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+-- A trip to another time zone. While one is active the app's idea of "now" and
+-- "today" follows it, so a dose logged in Tokyo belongs to Tokyo's Tuesday.
+CREATE TABLE IF NOT EXISTS travel_trips (
+    id TEXT PRIMARY KEY, label TEXT DEFAULT '', timezone TEXT NOT NULL,
+    start_date TEXT NOT NULL, end_date TEXT NOT NULL,
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+-- A bout of illness with a start and an end, so "when did this begin?" has an
+-- answer. Symptoms and readings are associated by date, never copied.
+CREATE TABLE IF NOT EXISTS illness_episodes (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, started_on TEXT NOT NULL,
+    ended_on TEXT DEFAULT NULL, notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS insurance_policies (
     id TEXT PRIMARY KEY, insurer TEXT NOT NULL, policy_no TEXT DEFAULT '',
     kind TEXT DEFAULT 'health', cover_amount REAL DEFAULT NULL,
@@ -1862,6 +1876,8 @@ DATA_TABLES = [
     'insurance_policies',
     'health_notes',
     'deleted_items',
+    'travel_trips',
+    'illness_episodes',
 ]
 
 

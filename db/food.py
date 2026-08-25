@@ -520,6 +520,23 @@ def list_custom_foods() -> list:
 MAX_THOUGHTS_PER_DAY = 10
 
 def get_user_timezone() -> str:
-    """Return the user's stored timezone, or None."""
+    """The time zone the app should use right now, or None.
+
+    An active trip wins over the profile. This is the single place the app asks
+    what time it is, so routing travel through it means reminders, "today" and
+    every date_key follow the user to where they actually are — rather than a
+    dose taken at breakfast in Tokyo being filed against yesterday back home.
+    """
+    p = get_profile()
+    home = p.get('timezone') if p else None
+    try:
+        from .trips import effective_timezone
+        return effective_timezone(home_tz=home)
+    except Exception:
+        return home                 # travel table missing / mid-migration
+
+
+def get_home_timezone() -> str:
+    """The profile's own zone, ignoring any trip — for showing both clocks."""
     p = get_profile()
     return p.get('timezone') if p else None

@@ -134,6 +134,9 @@ NOT_TRASHABLE = {
                        'restorable link would still be live in the meantime',
     'deleted_items': 'the trash itself — an undo for the undo is a loop, not a '
                      'safety net',
+    'travel_trips': 'a trip is two dates and a time zone, re-entered in seconds',
+    'illness_episodes': 'deleting one removes only the grouping — every '
+                        'symptom and reading it covered stays exactly where it is',
     'todos': 'a task, re-typed in seconds',
     'meal_plans': 'a planned meal, re-added in seconds',
     'custom_foods': 'a food definition, re-added in seconds',
