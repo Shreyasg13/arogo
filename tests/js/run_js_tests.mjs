@@ -510,6 +510,56 @@ test('_labBandBar: far-out value is clamped to the track edge', () => {
   if (!html.includes('lab-band-mark--edge')) throw new Error('edge marker class missing');
 });
 
+test('bulk selection tracks ids per scope and clears cleanly', () => {
+  S.bulkClear('t1'); S.bulkClear('t2');
+  S.bulkToggle('t1', 'a', true);
+  S.bulkToggle('t1', 'b', true);
+  S.bulkToggle('t2', 'z', true);
+  eq(S.bulkSelected('t1').sort(), ['a', 'b']);
+  eq(S.bulkSelected('t2'), ['z'], 'scopes must not bleed into each other');
+  S.bulkToggle('t1', 'a', false);
+  eq(S.bulkSelected('t1'), ['b']);
+  S.bulkClear('t1');
+  eq(S.bulkSelected('t1'), []);
+  eq(S.bulkSelected('t2'), ['z'], 'clearing one scope must not clear another');
+});
+
+test('ticking the same id twice selects it once', () => {
+  S.bulkClear('t3');
+  S.bulkToggle('t3', 'x', true);
+  S.bulkToggle('t3', 'x', true);
+  eq(S.bulkSelected('t3'), ['x']);
+});
+
+test('bulkRun reports what happened, not what was ticked', async () => {
+  // Claiming "20 restored" when three failed is exactly the kind of lie this
+  // app avoids everywhere else.
+  S.bulkClear('t4');
+  ['ok1', 'bad', 'ok2'].forEach(id => S.bulkToggle('t4', id, true));
+  const said = [];
+  const realToast = S.showToast;
+  S.showToast = (msg, kind) => said.push([msg, kind]);
+  await S.bulkRun('t4', async id => id !== 'bad', 'restored');
+  S.showToast = realToast;
+  eq(said.length, 1);
+  eq(said[0][1], 'warn', 'a partial failure must not be reported as success');
+  if (!/2/.test(said[0][0]) || !/1/.test(said[0][0])) {
+    throw new Error(`expected both counts in ${said[0][0]}`);
+  }
+  eq(S.bulkSelected('t4'), [], 'the selection is cleared once it has run');
+});
+
+test('bulkRun counts a thrown request as a failure, not a success', async () => {
+  S.bulkClear('t5');
+  S.bulkToggle('t5', 'boom', true);
+  const said = [];
+  const realToast = S.showToast;
+  S.showToast = (msg, kind) => said.push([msg, kind]);
+  await S.bulkRun('t5', async () => { throw new Error('network'); }, 'deleted');
+  S.showToast = realToast;
+  eq(said[0][1], 'warn');
+});
+
 test('_pageMatches: finds a page by its label and by a keyword', () => {
   // Label match.
   const byLabel = S._pageMatches('lab').map(t => t.v);

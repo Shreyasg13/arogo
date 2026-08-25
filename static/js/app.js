@@ -6383,9 +6383,37 @@ async function loadExpiringMeds() {
   const parts = [];
   if (d.expired.length) parts.push(`⛔ <b>${t('Expired')}:</b> ` + d.expired.map(m => line(m, true)).join(' '));
   if (d.soon.length)    parts.push(`📅 <b>${t('Expiring soon')}:</b> ` + d.soon.map(m => line(m, false)).join(' '));
+  // Which medicines are out of date was already answered here. What was missing
+  // was what to DO with the box — offered only when something has actually
+  // expired, so it isn't standing advice nobody asked for.
+  const disposal = d.expired.length
+    ? `<button class="btn-outline" style="font-size:12px;margin-top:8px"
+               data-ev-click="showDisposal()">${t('How do I get rid of these?')}</button>
+       <div id="disposal-help"></div>`
+    : '';
   el.innerHTML = `<div class="med-expiring-alert">
       <div class="mexp-icon">🗓️</div>
-      <div class="mexp-body">${parts.join('<br>')}</div>
+      <div class="mexp-body">${parts.join('<br>')}${disposal}</div>
+    </div>`;
+}
+
+async function showDisposal() {
+  const box = document.getElementById('disposal-help');
+  if (!box) return;
+  if (box.innerHTML) { box.innerHTML = ''; return; }      // toggle
+  const g = await fetch('/api/medicines/disposal', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!g) { box.innerHTML = `<div class="restore-note">${t('Could not load that')}</div>`; return; }
+  // Deliberately thin, and it says so. Disposal rules are local and legally
+  // specific; Arogo knows a country well enough to pick a currency symbol,
+  // which is not well enough to invent a regulation.
+  box.innerHTML = `
+    <div class="restore-note" style="margin-top:10px">
+      <b>${escHtml(g.ask_first)}</b>
+      <ul style="margin:8px 0 0 18px;padding:0">
+        ${g.steps.map(s => `<li style="margin-bottom:4px">${escHtml(s)}</li>`).join('')}
+      </ul>
+      <div style="margin-top:8px;opacity:.85">${escHtml(g.not_advice)}</div>
     </div>`;
 }
 
@@ -11675,6 +11703,11 @@ function renderAppointments(appts) {
         <div class="appt-meta">${L.nice}${a.time ? ' · ' + a.time : ''}${a.location ? ' · ' + escHtml(a.location) : ''}
           <span class="appt-rel${L.soon ? ' appt-rel--soon' : ''}">${L.rel}</span></div>
         ${a.notes ? `<div class="appt-notes">${escHtml(a.notes)}</div>` : ''}
+        ${a.leave_by && !L.past
+          ? `<div class="appt-notes"><b>${tformat('🚶 Leave by %1', escHtml(a.leave_by))}</b>
+               <span style="color:var(--gray-400)">${tformat('· %1 min journey, as you entered it',
+                 a.travel_minutes)}</span></div>`
+          : ''}
         ${a.remind ? '' : '<div class="appt-notes" style="color:var(--gray-400)">🔕 Reminders off</div>'}
         ${L.past ? _visitNotesBlock(a) : ''}
       </div>
@@ -11795,6 +11828,7 @@ async function addAppointment() {
     location: document.getElementById('appt-location')?.value || '',
     provider_id: document.getElementById('appt-provider')?.value || '',
     notes: document.getElementById('appt-notes')?.value || '',
+    travel_minutes: document.getElementById('appt-travel')?.value || '',
     remind: !!document.getElementById('appt-remind')?.checked,
     reminder_days: parseInt(document.getElementById('appt-remind-days')?.value ?? '1', 10) || 0,
   };
@@ -12076,14 +12110,43 @@ async function logSymptom() {
       name, severity: +document.getElementById('symptom-severity').value,
       time_of_day: document.getElementById('symptom-time').value,
       notes: document.getElementById('symptom-notes')?.value || '',
+      // Left out entirely when unanswered rather than sent as a default — the
+      // server stores NULL for "not asked", which is not the same as "no".
+      started_on: document.getElementById('symptom-started')?.value || undefined,
+      ongoing: (() => {
+        const v = document.getElementById('symptom-ongoing')?.value;
+        return v === '' || v === undefined ? undefined : v === '1';
+      })(),
       date_key: localToday()
     })
   }).then(r => r.json());
   if (r.success) {
     showToast(`${name} logged`, 'success');
     document.getElementById('symptom-name').value = '';
+    const st = document.getElementById('symptom-started'); if (st) st.value = '';
+    const og = document.getElementById('symptom-ongoing'); if (og) og.value = '';
     loadSymptoms(); loadWellnessStrip();
   }
+}
+
+// "Going on 3 weeks" is the answer to the question every consultation opens
+// with. Computed from the start date the user gave to the day it was logged —
+// never to today, which would keep growing for a symptom that has since stopped.
+function durationTag(s) {
+  if (!s || !s.started_on) return '';
+  const start = new Date(s.started_on + 'T00:00:00');
+  const end = new Date((s.date_key || localToday()) + 'T00:00:00');
+  const days = Math.round((end - start) / 86400000);
+  if (!isFinite(days) || days < 0) return '';
+  const span = days === 0 ? t('started that day')
+             : days < 14 ? tformat('%1 days by then', days)
+             : days < 60 ? tformat('%1 weeks by then', Math.round(days / 7))
+             : tformat('%1 months by then', Math.round(days / 30));
+  // `ongoing` is deliberately three-state. Saying nothing when it wasn't asked
+  // is the honest option — a blank is not a "no".
+  const still = s.ongoing === 1 ? ' · ' + t('still going')
+              : s.ongoing === 0 ? ' · ' + t('stopped') : '';
+  return ' · ' + span + still;
 }
 
 async function loadSymptoms() {
@@ -12135,7 +12198,7 @@ async function loadSymptoms() {
         <div class="symptom-dot" style="background:${sevColor(s.severity)}"></div>
         <div class="symptom-info">
           <div class="symptom-name-text">${escHtml(s.name)}</div>
-          <div class="symptom-meta">${TMAP[s.time_of_day]||s.time_of_day}${regionTag}${s.notes?' · '+escHtml(s.notes):''}</div>
+          <div class="symptom-meta">${TMAP[s.time_of_day]||s.time_of_day}${regionTag}${durationTag(s)}${s.notes?' · '+escHtml(s.notes):''}</div>
         </div>
         <span class="symptom-severity-badge" style="background:${sevColor(s.severity)}1A;color:${sevColor(s.severity)}">
           ${s.severity}/10 · ${sevLabel(s.severity)}
@@ -13166,6 +13229,85 @@ async function loadCourses() {
     </div>`;
 }
 
+// ── Bulk selection ─────────────────────────────────────────────────────────
+// Acting on one row at a time is fine until it isn't. Restoring twenty things
+// after a mistaken delete — the exact case the trash exists for — is where
+// one-at-a-time becomes the reason the safety net doesn't get used.
+//
+// Deliberately generic and opt-in: a list adds a checkbox per row and calls
+// bulkBar() to render its actions. Nothing here knows what a trash item or a
+// record is, so the next list to want it doesn't need new machinery.
+const _bulk = {};                       // scope → Set of selected ids
+
+function bulkToggle(scope, id, on) {
+  const set = _bulk[scope] || (_bulk[scope] = new Set());
+  if (on) set.add(id); else set.delete(id);
+  _bulkRefresh(scope);
+}
+
+function bulkSelected(scope) {
+  return [...(_bulk[scope] || [])];
+}
+
+function bulkClear(scope) {
+  _bulk[scope] = new Set();
+  document.querySelectorAll(`[data-bulk-scope="${scope}"]`).forEach(cb => { cb.checked = false; });
+  _bulkRefresh(scope);
+}
+
+function bulkToggleAll(scope, on) {
+  const set = _bulk[scope] || (_bulk[scope] = new Set());
+  document.querySelectorAll(`[data-bulk-scope="${scope}"]`).forEach(cb => {
+    cb.checked = !!on;
+    if (on) set.add(cb.dataset.bulkId); else set.delete(cb.dataset.bulkId);
+  });
+  _bulkRefresh(scope);
+}
+
+function _bulkRefresh(scope) {
+  const bar = document.getElementById('bulk-bar-' + scope);
+  if (!bar) return;
+  const n = (_bulk[scope] || new Set()).size;
+  bar.style.display = n ? 'flex' : 'none';
+  const count = document.getElementById('bulk-count-' + scope);
+  if (count) count.textContent = tformat('%1 selected', n);
+}
+
+// The checkbox a row renders. `id` is the thing the action will act on.
+function bulkCheckbox(scope, id) {
+  return `<input type="checkbox" class="bulk-cb" data-bulk-scope="${escHtml(scope)}"
+                 data-bulk-id="${escHtml(id)}" aria-label="${t('Select')}"
+                 data-ev-change="bulkToggle('${escHtml(scope)}','${escHtml(id)}',this.checked)">`;
+}
+
+// The action bar. Hidden until something is picked, so it never adds clutter to
+// a list nobody is selecting from.
+function bulkBar(scope, actions) {
+  return `<div class="bulk-bar" id="bulk-bar-${escHtml(scope)}" style="display:none">
+      <span id="bulk-count-${escHtml(scope)}" class="bulk-count"></span>
+      <span style="flex:1"></span>
+      ${actions.map(a => `<button class="btn-outline" style="font-size:12px"
+          data-ev-click="${a.handler}">${escHtml(a.label)}</button>`).join('')}
+      <button class="btn-outline" style="font-size:12px"
+              data-ev-click="bulkClear('${escHtml(scope)}')">${t('Clear')}</button>
+    </div>`;
+}
+
+// Run one request per selected id, then report what actually happened. The
+// count comes from the responses, not from how many were ticked — claiming
+// "20 restored" when three failed is the kind of lie this app avoids.
+async function bulkRun(scope, fn, verb) {
+  const ids = bulkSelected(scope);
+  if (!ids.length) return;
+  let ok = 0, failed = 0;
+  for (const id of ids) {
+    try { (await fn(id)) ? ok++ : failed++; } catch (e) { failed++; }
+  }
+  bulkClear(scope);
+  if (failed) showToast(tformat('%1 %2, %3 could not be', ok, verb, failed), 'warn');
+  else showToast(tformat('✓ %1 %2', ok, verb), 'success');
+}
+
 // ── Trash ──────────────────────────────────────────────────────────────────
 // Deleting a health record used to be permanent. Some of it can't be recreated,
 // so a delete now moves the row aside for thirty days.
@@ -13186,15 +13328,26 @@ async function loadTrash() {
         : tformat('Your trash is empty. Anything you delete stays here for %1 days.', r.retention_days)}</div>`;
       return;
     }
-    el.innerHTML = `<div class="restore-list">${r.items.map(i => {
+    // Restoring twenty things one at a time after a mistaken bulk delete is
+    // exactly the friction that stops people trusting the safety net.
+    el.innerHTML = `
+      <label class="bulk-all"><input type="checkbox"
+        data-ev-change="bulkToggleAll('trash',this.checked)"> ${t('Select all')}</label>
+      ${bulkBar('trash', [
+        {label: t('Restore selected'), handler: 'bulkRestoreTrash()'},
+        {label: t('Delete selected'), handler: 'bulkPurgeTrash()'},
+      ])}
+      <div class="restore-list">${r.items.map(i => {
       // Say how long is left, not just that it's here — the number is the whole
       // point, and "2 days left" is what makes someone act now.
       const left = i.days_left === null ? ''
         : (i.days_left <= 0 ? t('goes today')
                             : tformat('%1 days left', i.days_left));
       return `<div class="restore-row">
-        <span><b>${escHtml(i.label)}</b><br>
-          <span class="restore-removes">${escHtml(i.kind)} · ${escHtml(left)}</span></span>
+        <span style="display:flex;gap:10px;align-items:flex-start">
+          ${bulkCheckbox('trash', i.id)}
+          <span><b>${escHtml(i.label)}</b><br>
+            <span class="restore-removes">${escHtml(i.kind)} · ${escHtml(left)}</span></span></span>
         <span style="display:flex;gap:6px;align-items:flex-start">
           ${i.restorable ? `<button class="btn-outline" style="font-size:12px"
              data-ev-click="restoreTrashItem('${escHtml(i.id)}')">${t('Restore')}</button>` : ''}
@@ -13203,6 +13356,7 @@ async function loadTrash() {
         </span></div>`;
     }).join('')}</div>
     <div class="restore-note">${tformat('Anything here is deleted for good after %1 days.', r.retention_days)}</div>`;
+    _bulkRefresh('trash');
   }, 180);
 }
 
@@ -13227,6 +13381,30 @@ function purgeTrashItem(id) {
       .then(r => r.json()).catch(() => null);
     if (r && r.success) loadTrash();
     else showToast(t('Could not delete that'), 'error');
+  });
+}
+
+async function bulkRestoreTrash() {
+  // Restoring is not destructive, so it runs straight away — the undoable bar
+  // is for the things you can't take back.
+  await bulkRun('trash', async id => {
+    const r = await fetch(`/api/trash/${encodeURIComponent(id)}/restore`,
+      {method: 'POST', credentials: 'same-origin'}).then(r => r.json()).catch(() => null);
+    return !!(r && r.ok);
+  }, t('restored'));
+  loadTrash();
+}
+
+function bulkPurgeTrash() {
+  const n = bulkSelected('trash').length;
+  if (!n) return;
+  undoable(tformat('Deleting %1 items for good', n), async () => {
+    await bulkRun('trash', async id => {
+      const r = await fetch('/api/trash/' + encodeURIComponent(id),
+        {method: 'DELETE', credentials: 'same-origin'}).then(r => r.json()).catch(() => null);
+      return !!(r && r.success);
+    }, t('deleted'));
+    loadTrash();
   });
 }
 

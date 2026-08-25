@@ -836,6 +836,14 @@
           </div>
         </div>
         <div class="form-group" style="margin:0">
+          <!-- Entered, never estimated. Arogo has no map, and an invented
+               journey time makes someone late to an appointment they waited
+               weeks for — so with this blank, no leave-by is shown at all. -->
+          <label class="form-label"><span data-i18n="How long to get there?">How long to get there?</span>
+            <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional, in minutes">— optional, in minutes</span></label>
+          <input type="number" class="form-input" id="appt-travel" min="0" max="720" placeholder="e.g. 30">
+        </div>
+        <div class="form-group" style="margin:0">
           <label class="form-label"><span data-i18n="Doctor / provider">Doctor / provider</span> <span style="font-weight:400;color:var(--gray-400)" data-i18n="— optional">— optional</span></label>
           <select class="form-input" id="appt-provider"><option value="" data-i18n="Not linked">Not linked</option></select>
         </div>
@@ -948,6 +956,24 @@
             <div class="sym-detail-group">
               <label class="form-label"><span data-i18n="Notes">Notes</span> <span style="color:var(--gray-400);font-weight:400" data-i18n="(optional)">(optional)</span></label>
               <input type="text" class="form-input" id="symptom-notes" placeholder="Any extra context…" data-i18n-ph="Any extra context…">
+            </div>
+            <!-- When it actually began, which is rarely the day it gets logged.
+                 "How long has this been going on?" is the first question at
+                 every appointment. -->
+            <div class="sym-detail-group sym-detail-group--narrow">
+              <label class="form-label"><span data-i18n="Started">Started</span>
+                <span style="color:var(--gray-400);font-weight:400" data-i18n="(optional)">(optional)</span></label>
+              <input type="date" class="form-input" id="symptom-started">
+            </div>
+            <div class="sym-detail-group sym-detail-group--narrow">
+              <label class="form-label" data-i18n="Still happening?">Still happening?</label>
+              <select class="form-input" id="symptom-ongoing">
+                <!-- Blank is the default and means "not asked". A gap in the log
+                     means nothing was written down, not that it stopped. -->
+                <option value="" data-i18n="Not sure / didn't say">Not sure / didn't say</option>
+                <option value="1" data-i18n="Yes, still going">Yes, still going</option>
+                <option value="0" data-i18n="No, it stopped">No, it stopped</option>
+              </select>
             </div>
           </div>
 

@@ -733,7 +733,14 @@ def list_appointments(upcoming_only: bool = False) -> list:
     else:
         rows = execute("""SELECT * FROM appointments WHERE user_id=?
                           ORDER BY date DESC, time""", (uid,), fetchall=True)
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r)
+        # None whenever a journey time or a start time is missing, so the UI has
+        # nothing to render rather than something guessed.
+        d['leave_by'] = leave_by(d)
+        out.append(d)
+    return out
 
 
 def update_appointment(aid: str, data: dict) -> dict:
