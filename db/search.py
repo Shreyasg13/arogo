@@ -215,6 +215,12 @@ SEARCHABLE = [
          title=lambda r: r['condition'],
          meta=lambda r: _j(_cap(r['relation']), _clip(r['notes'], 60))),
 
+    Spec('blood_donations', 'Blood donations', '🩸',
+         text=('place', 'notes', 'kind'), date='donated_on', view='donations',
+         show=('kind', 'place', 'notes'),
+         title=lambda r: _cap(r['kind']) or 'Donation',
+         meta=lambda r: _j(r['donated_on'], r['place'], _clip(r['notes'], 50))),
+
     Spec('travel_trips', 'Trips', '✈️',
          text=('label', 'timezone'), date='start_date', view='trips',
          show=('label', 'timezone', 'end_date'),
@@ -443,6 +449,8 @@ NOT_SEARCHABLE = {
     'user_profile':          'the user\'s own settings, not something to find',
     'sync_log':              'integration diagnostics',
     'notification_log':      'copy the app generated, not what the user recorded',
+    'questionnaire_runs':    'a mood questionnaire is read in one place, with '
+                             'its caveats attached — never as a loose search hit',
     'user_sessions':         'devices, read on the account page — not health records',
     'security_events':       'an append-only security log, read in one place on purpose',
     # Searched from the Trash page instead, so a deleted record doesn't

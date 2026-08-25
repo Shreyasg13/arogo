@@ -400,7 +400,10 @@ _ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
                       # the caregiver's own data, so blanket-walling broke it.
                       '/api/account/sessions',
                       '/api/account/activity',
-                      '/api/account/shares')
+                      '/api/account/shares',
+                      # A PHQ-9 run is a record of someone's mood, item by
+                      # item. It belongs in the same class as the journal.
+                      '/api/questionnaires')
 
 
 def _canonical_path(path):

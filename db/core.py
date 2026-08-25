@@ -896,6 +896,21 @@ CREATE TABLE IF NOT EXISTS security_events (
     id TEXT PRIMARY KEY, user_id TEXT NOT NULL, kind TEXT NOT NULL,
     detail TEXT DEFAULT '', actor TEXT DEFAULT '', at TEXT NOT NULL
 );
+-- A completed questionnaire. `answers` is the raw per-item scores so the total
+-- can always be re-derived, and a band recomputed if the published cut-offs are
+-- ever corrected. Never a diagnosis — see db/questionnaires.py.
+CREATE TABLE IF NOT EXISTS questionnaire_runs (
+    id TEXT PRIMARY KEY, instrument TEXT NOT NULL, answers TEXT NOT NULL,
+    score INTEGER NOT NULL, taken_on TEXT NOT NULL,
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+-- Blood and plasma donations, so the next eligible date is a fact rather than
+-- something to remember.
+CREATE TABLE IF NOT EXISTS blood_donations (
+    id TEXT PRIMARY KEY, kind TEXT DEFAULT 'whole', donated_on TEXT NOT NULL,
+    place TEXT DEFAULT '', notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS insurance_policies (
     id TEXT PRIMARY KEY, insurer TEXT NOT NULL, policy_no TEXT DEFAULT '',
     kind TEXT DEFAULT 'health', cover_amount REAL DEFAULT NULL,
@@ -1189,6 +1204,27 @@ def migrate_add_idem_keys():
 
 _INDEX_DATE_COLS = ('date_key', 'date', 'created_at', 'logged_at', 'at',
                     'start_date', 'visit_date', 'report_date')
+
+
+def migrate_add_symptom_duration():
+    """When a symptom actually STARTED, which is rarely the day it was logged.
+
+    "How long has this been going on?" is asked at every appointment and the
+    app could only answer "when did you first tell me". `ongoing` separates a
+    symptom that has stopped from one that has not — a gap in the log means
+    nothing was written down, not that it went away."""
+    for col, ddl in (('started_on', "TEXT DEFAULT NULL"),
+                     ('ongoing', "INTEGER DEFAULT NULL")):
+        try:
+            execute(f"ALTER TABLE symptoms ADD COLUMN {col} {ddl}")
+        except Exception:
+            pass  # already exists
+    try:
+        # Minutes the user says the journey takes. Entered, never estimated:
+        # the app has no map and inventing a travel time would make someone late.
+        execute("ALTER TABLE appointments ADD COLUMN travel_minutes INTEGER DEFAULT NULL")
+    except Exception:
+        pass
 
 
 def migrate_add_user_id_indexes():
@@ -1898,6 +1934,8 @@ DATA_TABLES = [
     'illness_episodes',
     'user_sessions',
     'security_events',
+    'questionnaire_runs',
+    'blood_donations',
 ]
 
 
@@ -1950,6 +1988,7 @@ def init_db():
     migrate_add_country()
     migrate_add_unit_prefs()
     migrate_add_idem_keys()
+    migrate_add_symptom_duration()
     migrate_add_user_id_indexes()
     migrate_add_schedule_days()
     migrate_add_interval_days()

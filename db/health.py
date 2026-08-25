@@ -144,13 +144,23 @@ def log_symptom(data: dict) -> dict:
         if prior:
             return prior            # replayed offline write — already recorded
     sid = new_id()
-    execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,notes,region,logged_at,user_id,idem_key)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+    date_key = data.get('date_key', today_iso())
+    # When it actually STARTED, which is rarely the day it was logged. "How long
+    # has this been going on?" is asked at every appointment and the app could
+    # only answer "when did you first tell me". A start date after the log date
+    # is nonsense, so it is dropped rather than stored.
+    started = str(data.get('started_on') or '').strip()
+    if not started or not valid_date(started) or started > date_key:
+        started = None
+    ongoing = data.get('ongoing')
+    ongoing = None if ongoing is None else (1 if ongoing else 0)
+    execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,notes,region,logged_at,user_id,idem_key,started_on,ongoing)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (sid, name[:120], to_int(data.get('severity', 5), 5, lo=1, hi=10),
-             data.get('date_key', today_iso()),
+             date_key,
              data.get('time_of_day','morning'), data.get('notes',''),
              _clean_region(data.get('region')), now_iso(),
-             current_user_id(), idem), commit=True)
+             current_user_id(), idem, started, ongoing), commit=True)
     return dict(execute("SELECT * FROM symptoms WHERE id=?", (sid,), fetchone=True))
 
 
@@ -677,15 +687,42 @@ def create_appointment(data: dict) -> dict:
     time = str(data.get('time', '') or '')[:5]
     provider_id = _valid_provider_id(data.get('provider_id'))
     aid = new_id()
+    # How long the journey takes, as the USER says it does. Never estimated:
+    # the app has no map, and an invented travel time makes someone late to an
+    # appointment they waited weeks for.
+    travel = to_int(data.get('travel_minutes'), None, lo=0, hi=720)         if data.get('travel_minutes') not in (None, '') else None
     execute("""INSERT INTO appointments
-                 (id,user_id,title,kind,date,time,location,notes,remind,reminder_days,provider_id,created_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (id,user_id,title,kind,date,time,location,notes,remind,reminder_days,provider_id,created_at,travel_minutes)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (aid, current_user_id(), title[:160], kind, date, time,
              str(data.get('location', ''))[:200], str(data.get('notes', ''))[:500],
              0 if data.get('remind') is False else 1, _clean_reminder_days(data.get('reminder_days')),
-             provider_id, now_iso()), commit=True)
+             provider_id, now_iso(), travel), commit=True)
     return dict(execute("SELECT * FROM appointments WHERE id=? AND user_id=?",
                         (aid, current_user_id()), fetchone=True))
+
+
+def leave_by(appt) -> str:
+    """The time to set off, or None.
+
+    Only ever computed from a travel time the user entered and a time they set.
+    Missing either, it returns None and the UI shows nothing — a "leave by"
+    derived from a guessed journey is worse than no leave-by at all.
+    """
+    import datetime as _dt
+    mins = appt.get('travel_minutes')
+    time = (appt.get('time') or '').strip()
+    if not mins or not time:
+        return None
+    try:
+        h, m = [int(x) for x in time.split(':')[:2]]
+        start = _dt.datetime(2000, 1, 1, h, m) - _dt.timedelta(minutes=int(mins))
+    except (ValueError, TypeError):
+        return None
+    # Crossing back past midnight means leaving the day before; say so rather
+    # than printing a time that looks like the same morning.
+    prefix = 'the night before, ' if start.date() < _dt.date(2000, 1, 1) else ''
+    return prefix + start.strftime('%H:%M')
 
 
 def list_appointments(upcoming_only: bool = False) -> list:

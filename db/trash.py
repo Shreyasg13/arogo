@@ -104,6 +104,9 @@ TRASHABLE = [
               'dependents'),
     Trashable('experiments', 'Experiment', lambda r: _d(r, 'title'), 'experiments'),
     Trashable('health_goals', 'Goal', lambda r: _d(r, 'title'), 'goals'),
+    Trashable('blood_donations', 'Blood donation',
+              lambda r: _dated(_d(r, 'place') or 'Donation', r, 'donated_on'),
+              'donations'),
     Trashable('health_reminders', 'Reminder', lambda r: _d(r, 'title'), 'reminders'),
     Trashable('care_plan_items', 'Care plan item', lambda r: _d(r, 'title'),
               'care-plan'),
@@ -134,6 +137,9 @@ NOT_TRASHABLE = {
                        'restorable link would still be live in the meantime',
     'deleted_items': 'the trash itself — an undo for the undo is a loop, not a '
                      'safety net',
+    'questionnaire_runs': 'a completed questionnaire is deleted deliberately; '
+                          'keeping a record of mood answers after someone asked '
+                          'for it to go is the wrong default',
     'user_sessions': 'signing a device out must take effect immediately; a '
                      'restorable revocation is a security hole',
     'security_events': 'a security log the account holder can delete from is '
