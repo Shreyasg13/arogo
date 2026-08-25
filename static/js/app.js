@@ -3211,6 +3211,8 @@ function switchView(view) {
   if (view === 'trash')         loadTrash();
   if (view === 'episodes')      loadEpisodes();
   if (view === 'account-activity') loadAccountActivity();
+  if (view === 'wellbeing')     loadQuestionnaires();
+  if (view === 'donations')     loadDonations();
   if (view === 'progress')      loadProgress();
   if (view === 'datatrust')     loadDataTrust();
   if (view === 'glossary')      loadGlossary();
@@ -12711,6 +12713,182 @@ loadThoughts = async function() {
 // ════════════════════════════════════════════════════════════
 
 // Render pending todos on dashboard
+// ── Questionnaires ─────────────────────────────────────────────────────────
+// PHQ-9 and GAD-7. Published instruments, published cut-offs — nothing here is
+// the app's opinion, and every result says so.
+let _qInstruments = [];
+
+async function loadQuestionnaires() {
+  const listEl = document.getElementById('questionnaire-list');
+  if (!listEl) return;
+  const r = await fetch('/api/questionnaires', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r) return;
+  _qInstruments = r.instruments;
+  listEl.innerHTML = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+      <div class="restore-note" style="margin-top:0;margin-bottom:12px">${escHtml(r.not_a_diagnosis)}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        ${r.instruments.map(i => `<button class="btn-outline"
+          data-ev-click="startQuestionnaire('${escHtml(i.key)}')">${escHtml(i.name)} — ${escHtml(i.about)}</button>`).join('')}
+      </div>
+    </div>`;
+  loadQuestionnaireHistory();
+}
+
+function startQuestionnaire(key) {
+  const inst = _qInstruments.find(i => i.key === key);
+  const el = document.getElementById('questionnaire-form');
+  if (!inst || !el) return;
+  el.innerHTML = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+      <h2 class="panel-title" style="margin-bottom:4px">${escHtml(inst.name)}</h2>
+      <p style="font-size:13px;color:var(--gray-400);margin-bottom:14px">
+        ${t('Over the last 2 weeks, how often have you been bothered by any of the following?')}</p>
+      ${inst.items.map((item, idx) => `
+        <div class="form-group">
+          <label class="form-label" style="font-weight:500">${idx + 1}. ${escHtml(item)}</label>
+          <select class="form-input" id="q-${escHtml(inst.key)}-${idx}">
+            <option value="">${t('Choose…')}</option>
+            ${inst.choices.map(c => `<option value="${c.value}">${escHtml(c.label)}</option>`).join('')}
+          </select>
+        </div>`).join('')}
+      <button class="btn-primary" data-ev-click="submitQuestionnaire('${escHtml(inst.key)}')">
+        ${t('See my score')}</button>
+    </div>`;
+  el.scrollIntoView({behavior: 'smooth', block: 'start'});
+}
+
+async function submitQuestionnaire(key) {
+  const inst = _qInstruments.find(i => i.key === key);
+  if (!inst) return;
+  const answers = inst.items.map((_, idx) => {
+    const v = document.getElementById(`q-${key}-${idx}`)?.value;
+    return v === '' || v === undefined ? null : Number(v);
+  });
+  if (answers.some(a => a === null)) {
+    // Not scored with blanks treated as zero: that reads as "not at all" and
+    // would quietly lower the result.
+    showToast(t('Please answer every question.'), 'error');
+    return;
+  }
+  const r = await fetch('/api/questionnaires/' + encodeURIComponent(key), {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify({answers}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast((r && r.error) || t('Could not score that'), 'error'); return; }
+
+  const el = document.getElementById('questionnaire-form');
+  // The crisis block comes FIRST and is not collapsible. A positive answer to
+  // "thoughts of being better off dead" is not a footnote under a score.
+  const risk = r.risk ? `
+    <div class="rh-banner" role="alert" style="display:block">
+      <b>${escHtml(r.risk.headline)}</b>
+      <p style="margin:8px 0">${escHtml(r.risk.ask)}</p>
+      <p style="margin:8px 0"><b>${escHtml(r.risk.urgent)}</b></p>
+      ${r.risk.numbers.length ? `<div class="restore-list">${r.risk.numbers.map(n =>
+        `<div class="restore-row"><span>${escHtml(n.label)}</span><b>${escHtml(n.number)}</b></div>`).join('')}</div>`
+        : `<p style="margin:8px 0">${escHtml(r.risk.no_numbers_note || '')}</p>`}
+    </div>` : '';
+  el.innerHTML = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+      ${risk}
+      <h2 class="panel-title" style="margin-bottom:4px">${escHtml(r.name)} · ${r.score}/${r.max}</h2>
+      <p style="font-size:15px;margin-bottom:10px">${t('Band')}: <b>${escHtml(r.band)}</b></p>
+      <div class="restore-note" style="margin-top:0">${escHtml(r.not_a_diagnosis)}</div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn-outline" data-ev-click="window.print()">${t('Print for my doctor')}</button>
+        <button class="btn-outline" data-ev-click="startQuestionnaire('${escHtml(key)}')">${t('Start again')}</button>
+      </div>
+    </div>`;
+  el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  loadQuestionnaireHistory();
+}
+
+async function loadQuestionnaireHistory() {
+  const el = document.getElementById('questionnaire-history');
+  if (!el) return;
+  const r = await fetch('/api/questionnaires/runs', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r || !r.runs.length) { el.innerHTML = ''; return; }
+  // Listed as dates and scores. No line drawn between them, and nothing said
+  // about a direction — two scores a week apart are two days.
+  el.innerHTML = `
+    <div class="panel" style="padding:18px 20px">
+      <h2 class="panel-title" style="margin-bottom:10px">${t('Past scores')}</h2>
+      <div class="restore-list">${r.runs.map(run => `
+        <div class="restore-row">
+          <span><b>${escHtml(run.name)}</b> · ${escHtml(run.taken_on)}</span>
+          <span>${run.score}/${run.max} · <span class="restore-removes">${escHtml(run.band || '')}</span></span>
+        </div>`).join('')}</div>
+      <div class="restore-note">${t('Each of these is one day. Arogo does not join them into a trend — a doctor reads them alongside everything else going on.')}</div>
+    </div>`;
+}
+
+// ── Blood donations ────────────────────────────────────────────────────────
+async function loadDonations() {
+  const listEl = document.getElementById('donation-list');
+  const eligEl = document.getElementById('donation-eligibility');
+  if (!listEl) return;
+  const [d, e] = await Promise.all([
+    fetch('/api/donations', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+    fetch('/api/donations/eligibility', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+  ]);
+  const sel = document.getElementById('donation-kind');
+  if (sel && d && !sel.childElementCount) {
+    sel.innerHTML = d.kinds.map(k => `<option value="${escHtml(k.key)}">${escHtml(k.label)}</option>`).join('');
+  }
+  if (eligEl && e) {
+    eligEl.innerHTML = `
+      <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+        <h2 class="panel-title" style="margin-bottom:10px">${t('Next eligible')}</h2>
+        <div class="restore-list">${e.kinds.map(k => `
+          <div class="restore-row"><span>${escHtml(k.label)}</span>
+            <span>${k.eligible_from
+              ? escHtml(k.eligible_from) + (k.days_to_go ? ' · ' + tformat('%1 days', k.days_to_go) : ' · ' + t('date passed'))
+              : '<span class="restore-removes">' + t('no donation recorded') + '</span>'}</span></div>`).join('')}</div>
+        <div class="restore-note">${escHtml(e.note)}</div>
+      </div>`;
+  }
+  if (d) {
+    listEl.innerHTML = d.donations.length
+      ? `<div class="panel" style="padding:18px 20px"><div class="restore-list">${d.donations.map(x => `
+          <div class="restore-row">
+            <span><b>${escHtml(x.kind_label)}</b> · ${escHtml(x.donated_on)}
+              ${x.place ? '<br><span class="restore-removes">' + escHtml(x.place) + '</span>' : ''}</span>
+            <button class="btn-outline" style="font-size:12px"
+                    data-ev-click="deleteDonation('${escHtml(x.id)}')">${t('Remove')}</button>
+          </div>`).join('')}</div></div>`
+      : `<div class="panel" style="padding:18px 20px"><div class="restore-note">${t('Nothing recorded yet.')}</div></div>`;
+  }
+}
+
+async function saveDonation() {
+  const body = {
+    kind: document.getElementById('donation-kind')?.value || 'whole',
+    donated_on: document.getElementById('donation-date')?.value || '',
+    place: document.getElementById('donation-place')?.value || '',
+  };
+  const r = await fetch('/api/donations', {method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+    .then(r => r.json()).catch(() => null);
+  if (r && r.success) {
+    const p = document.getElementById('donation-place'); if (p) p.value = '';
+    showToast(t('✓ Donation recorded'), 'success');
+    loadDonations();
+  } else {
+    showToast((r && r.error) || t('Could not save that'), 'error');
+  }
+}
+
+function deleteDonation(id) {
+  undoable(t('Removing this donation'), async () => {
+    await fetch('/api/donations/' + encodeURIComponent(id),
+                {method: 'DELETE', credentials: 'same-origin'}).catch(() => {});
+    loadDonations();
+  });
+}
+
 // ── Account activity ───────────────────────────────────────────────────────
 // Where you're signed in, what changed, and whether your share links were
 // opened. The device names are coarse on purpose — enough to recognise your own
@@ -13455,6 +13633,8 @@ const NAV_TARGETS = [
   {v:'trash',         l:'Trash',            k:'trash deleted removed recover restore undo bin recycle got rid of by mistake accidentally'},
   {v:'episodes',      l:'Illness episodes', k:'illness episode sick bout flu fever infection when did this start unwell got ill'},
   {v:'account-activity', l:'Sign-in & activity', k:'security sessions devices signed in sign out password log audit share links who opened account activity'},
+  {v:'wellbeing',     l:'Questionnaires',    k:'phq9 phq-9 gad7 gad-7 depression anxiety mood questionnaire screening score low feeling down worried'},
+  {v:'donations',     l:'Blood donations',  k:'blood donation donate plasma platelets give blood eligible when can i donate'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},

@@ -7108,6 +7108,11 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .rh-body b { color:#7a3a34; }
 .rh-actions { display:flex; gap:6px; flex:0 0 auto; margin-left:auto; }
 .rh-actions .btn-outline { font-size:12px; white-space:nowrap; }
+/* Rows nested inside the banner (the crisis block's emergency numbers) inherit
+   a body text colour meant for the page background, which on the banner's light
+   panel came out barely legible. Nowhere is legibility worth less compromise. */
+.rh-banner .restore-row { color:#7a3a34; border-bottom-color:#EBC9C4; }
+.rh-banner .restore-row b { color:#5f2b26; font-size:15px; }
 @media (max-width:520px) {
   .rh-actions { width:100%; margin-left:0; }      /* drop below the message */
   .rh-actions .btn-outline { flex:1; }

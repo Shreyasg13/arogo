@@ -3173,6 +3173,54 @@
   </div>
 </div>
 
+<!-- ═══════════ WELLBEING (questionnaires) ═══════════ -->
+<div id="view-wellbeing" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Health">Health</div>
+      <h1 class="page-title" data-i18n="Questionnaires">Questionnaires</h1>
+      <p class="page-subtitle" data-i18n="Two standard questionnaires you can fill in and take to your doctor">
+        Two standard questionnaires you can fill in and take to your doctor</p>
+    </div>
+  </div>
+  <div id="questionnaire-list"></div>
+  <div id="questionnaire-form"></div>
+  <div id="questionnaire-history"></div>
+</div>
+
+<!-- ═══════════ BLOOD DONATIONS ═══════════ -->
+<div id="view-donations" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Health">Health</div>
+      <h1 class="page-title" data-i18n="Blood donations">Blood donations</h1>
+      <p class="page-subtitle" data-i18n="What you've given, and the earliest date each kind is due again">
+        What you've given, and the earliest date each kind is due again</p>
+    </div>
+  </div>
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="Kind">Kind</label>
+        <select class="form-input" id="donation-kind" style="min-width:150px"></select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="Date">Date</label>
+        <input type="date" class="form-input" id="donation-date" style="min-width:145px">
+      </div>
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:150px">
+        <label class="form-label" data-i18n="Where">Where</label>
+        <input class="form-input" id="donation-place" placeholder="Blood bank, camp…">
+      </div>
+      <button class="btn-primary" style="padding:11px 18px" data-ev-click="saveDonation()">
+        <span data-i18n="Add">Add</span>
+      </button>
+    </div>
+  </div>
+  <div id="donation-eligibility"></div>
+  <div id="donation-list"></div>
+</div>
+
 <!-- ═══════════ ACCOUNT ACTIVITY ═══════════ -->
 <div id="view-account-activity" class="view">
   <div class="page-header">
