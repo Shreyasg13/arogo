@@ -1182,6 +1182,8 @@
 
 <!-- ═══════════ MEDICINES ═══════════ -->
 <div id="view-medicines" class="view">
+  <!-- Short courses: rendered by loadCourses(); empty when none. -->
+  <div id="course-list"></div>
   <!-- Injection-site rotation tracker (J1) -->
   <div class="modal-overlay" id="injection-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeInjectionSites')">
     <div class="modal" id="injection-sheet">
@@ -2925,7 +2927,75 @@
     <div id="trip-plan-result" style="margin-top:16px"></div>
   </div>
 
+  <!-- Trips & time zones. Sits beside the supply planner because "I'm going
+       away" is one thought, not two. -->
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="🕑 Trips &amp; time zones">🕑 Trips &amp; time zones</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:14px"
+       data-i18n="While a trip is on, Arogo uses that time zone — so reminders and your day follow you. It shows both clocks and leaves the dose decision to you and your doctor.">
+      While a trip is on, Arogo uses that time zone — so reminders and your day
+      follow you. It shows both clocks and leaves the dose decision to you and
+      your doctor.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:140px">
+        <label class="form-label" data-i18n="Where">Where</label>
+        <input class="form-input" id="trip-label" placeholder="Tokyo">
+      </div>
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:170px">
+        <label class="form-label" data-i18n="Time zone">Time zone</label>
+        <input class="form-input" id="trip-tz" list="trip-tz-list" placeholder="Asia/Tokyo">
+        <datalist id="trip-tz-list"></datalist>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="From">From</label>
+        <input type="date" class="form-input" id="trip-tz-start" style="min-width:145px">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="To">To</label>
+        <input type="date" class="form-input" id="trip-tz-end" style="min-width:145px">
+      </div>
+      <button class="btn-primary" style="padding:11px 18px" data-ev-click="saveTrip()">
+        <span data-i18n="Add trip">Add trip</span>
+      </button>
+    </div>
+    <div id="trip-list" style="margin-top:16px"></div>
+    <div id="trip-clock" style="margin-top:12px"></div>
+  </div>
+
   <div id="med-budget-content"></div>
+</div>
+
+<!-- ═══════════ ILLNESS EPISODES ═══════════ -->
+<div id="view-episodes" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Health">Health</div>
+      <h1 class="page-title" data-i18n="Illness episodes">Illness episodes</h1>
+      <p class="page-subtitle" data-i18n="Group a bout of illness so &quot;when did this start?&quot; has an answer">
+        Group a bout of illness so "when did this start?" has an answer</p>
+    </div>
+  </div>
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:14px"
+       data-i18n="Nothing is copied in. An episode is just a window with a name — your symptoms, temperatures and doses are read back by date, and deleting one loses the grouping and none of your records.">
+      Nothing is copied in. An episode is just a window with a name — your
+      symptoms, temperatures and doses are read back by date, and deleting one
+      loses the grouping and none of your records.</p>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin-bottom:0;flex:1;min-width:160px">
+        <label class="form-label" data-i18n="What was it?">What was it?</label>
+        <input class="form-input" id="episode-name" placeholder="Flu, chest infection…">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label" data-i18n="Started">Started</label>
+        <input type="date" class="form-input" id="episode-start" style="min-width:145px">
+      </div>
+      <button class="btn-primary" style="padding:11px 18px" data-ev-click="saveEpisode()">
+        <span data-i18n="Start tracking">Start tracking</span>
+      </button>
+    </div>
+  </div>
+  <div id="episode-list"></div>
 </div>
 
 <!-- ═══════════ DEPENDENTS / FAMILY PROFILES ═══════════ -->

@@ -222,6 +222,31 @@ test('voice weight honours a spoken unit over the preference', () => {
   eq(Math.abs(spoken.kg - 69.85) < 0.2, true);    // stores kg
 });
 
+test('a temperature target follows the unit its label claims', () => {
+  // vitalUnitLabel already returned °F for an °F user while the value stayed in
+  // °C, so a target read "37–38 °F" — hypothermia — and a typed 100 °F was
+  // stored as 100 °C. Same class as the glucose bug, in a different vital.
+  S.setUserUnits({ temp: 'f' });
+  eq(S.vitalUnitLabel('temperature'), '°F');
+  eq(S.vitalToDisplay('temperature', 37), 98.6);
+  eq(S.vitalToCanonical('temperature', 98.6), 37);
+  eq(S.vitalToCanonical('temperature', 100), 37.8);
+
+  S.setUserUnits({ temp: 'c' });
+  eq(S.vitalUnitLabel('temperature'), '°C');
+  eq(S.vitalToDisplay('temperature', 37), 37);
+  eq(S.vitalToCanonical('temperature', 37), 37);
+});
+
+test('a fever never reads as normal because of the unit', () => {
+  // 39°C is a real fever. Printed unconverted under a °F label it is 39 — well
+  // below body temperature — so the number would look reassuring.
+  S.setUserUnits({ temp: 'f' });
+  const shown = S.vitalToDisplay('temperature', 39);
+  if (!(shown > 100)) throw new Error(`39C shown to an F user must exceed 100, got ${shown}`);
+  S.setUserUnits({ temp: 'c' });
+});
+
 test('chart meta converts bounds and reference lines with the unit', () => {
   // Converting only the axis LABEL is how a chart ends up contradicting its own
   // data — bounds and reference lines must move together.

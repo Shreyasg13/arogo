@@ -3171,7 +3171,7 @@ function switchView(view) {
   if (view === 'dashboard')     { loadDashboard(); loadWellnessStrip(); }
   if (view === 'food')          { loadFoodTracker(); loadHydration(localToday()); }
   if (view === 'fitness')       { loadFitness(); loadConnectedServices(); }
-  if (view === 'medicines')     loadMedicines();
+  if (view === 'medicines')     { loadMedicines(); loadCourses(); }
   if (view === 'reports')       loadReports();
   if (view === 'habits')        loadHabits();
   if (view === 'thoughts')      { loadWellness(); setTimeout(() => switchWellnessTab('thoughts'), 50); }
@@ -3203,12 +3203,13 @@ function switchView(view) {
   if (view === 'meal-plan')     loadMealPlan();
   if (view === 'taper')         loadTaper();
   if (view === 'strength')      loadStrength();
-  if (view === 'med-budget')    loadMedBudget();
+  if (view === 'med-budget')    { loadMedBudget(); loadTrips(); }
   if (view === 'dependents')    loadDependents();
   if (view === 'spending')      loadSpendingView();
   if (view === 'todos')         loadTodos();
   if (view === 'export')        initExportView();
   if (view === 'trash')         loadTrash();
+  if (view === 'episodes')      loadEpisodes();
   if (view === 'progress')      loadProgress();
   if (view === 'datatrust')     loadDataTrust();
   if (view === 'glossary')      loadGlossary();
@@ -12709,6 +12710,206 @@ loadThoughts = async function() {
 // ════════════════════════════════════════════════════════════
 
 // Render pending todos on dashboard
+// ── Trips & time zones ─────────────────────────────────────────────────────
+// A dose is a wall-clock time, and "now" comes from one place. A trip changes
+// that place, so reminders and the day follow the user — and the app says so
+// rather than silently retiming anything.
+async function loadTrips() {
+  const list = document.getElementById('trip-list');
+  if (!list) return;
+  const r = await fetch('/api/trips', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r) return;
+
+  const dl = document.getElementById('trip-tz-list');
+  if (dl && !dl.childElementCount) {
+    dl.innerHTML = (r.timezones || []).map(z => `<option value="${escHtml(z)}">`).join('');
+  }
+  list.innerHTML = r.trips.length
+    ? `<div class="restore-list">${r.trips.map(tr => {
+        const when = tr.active ? t('on now') : tr.upcoming ? t('upcoming') : t('past');
+        return `<div class="restore-row">
+          <span><b>${escHtml(tr.label || tr.timezone)}</b><br>
+            <span class="restore-removes">${escHtml(tr.timezone)} · ${escHtml(tr.start_date)} → ${escHtml(tr.end_date)} · ${escHtml(when)}</span></span>
+          <button class="btn-outline" style="font-size:12px"
+                  data-ev-click="deleteTrip('${escHtml(tr.id)}')">${t('Remove')}</button>
+        </div>`;
+      }).join('')}</div>`
+    : `<div class="restore-note">${t('No trips yet.')}</div>`;
+  loadTripClock();
+}
+
+async function loadTripClock() {
+  const el = document.getElementById('trip-clock');
+  if (!el) return;
+  const c = await fetch('/api/trips/clock', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!c || !c.has_trip) { el.innerHTML = ''; return; }
+  const hrs = (c.shift_minutes / 60);
+  const dir = c.shift_minutes === 0 ? t('the same time as home')
+            : tformat('%1 hours %2 home', Math.abs(hrs).toFixed(hrs % 1 ? 1 : 0),
+                      c.shift_minutes > 0 ? t('ahead of') : t('behind'));
+  // Both columns, no recommendation. Which one to follow is a question for
+  // whoever prescribed the medicine — for insulin or an anticoagulant it is a
+  // consequential one, and the app has no business answering it.
+  const rows = (c.doses || []).map(d => `
+    <div class="restore-row"><span>${escHtml(d.medicine)}</span>
+      <span>${escHtml(d.home_time)} ${t('at home')} <b>→ ${escHtml(d.same_moment_local)}${
+        d.day_shift ? ' (' + (d.day_shift > 0 ? '+1d' : '−1d') + ')' : ''}</b></span></div>`).join('');
+  el.innerHTML = `
+    <div class="restore-warn" style="background:var(--teal-50,#EAF6F2);border-color:#CBE5DC;color:#2f5d4e">
+      ✈️ ${tformat('While you are in %1, Arogo is on %2 — %3. Until %4.',
+                    escHtml(c.label || c.trip_timezone), escHtml(c.trip_timezone),
+                    dir, escHtml(c.ends_on))}
+    </div>
+    ${rows ? `<div class="restore-list">${rows}</div>
+      <div class="restore-note">${t('These are the same moments shown in both clocks. Whether to move a dose to local time is a question for whoever prescribed it — Arogo does not decide that for you.')}</div>` : ''}`;
+}
+
+async function saveTrip() {
+  const body = {
+    label: document.getElementById('trip-label')?.value || '',
+    timezone: document.getElementById('trip-tz')?.value || '',
+    start_date: document.getElementById('trip-tz-start')?.value || '',
+    end_date: document.getElementById('trip-tz-end')?.value || '',
+  };
+  const r = await fetch('/api/trips', {method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+    .then(r => r.json()).catch(() => null);
+  if (r && r.success) {
+    ['trip-label', 'trip-tz'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+    showToast(t('✓ Trip added'), 'success');
+    loadTrips();
+  } else {
+    showToast((r && r.error) || t('Could not add that trip'), 'error');
+  }
+}
+
+function deleteTrip(id) {
+  undoable(t('Removing this trip'), async () => {
+    await fetch('/api/trips/' + encodeURIComponent(id),
+                {method: 'DELETE', credentials: 'same-origin'}).catch(() => {});
+    loadTrips();
+  });
+}
+
+// ── Illness episodes ───────────────────────────────────────────────────────
+async function loadEpisodes() {
+  const el = document.getElementById('episode-list');
+  if (!el) return;
+  const r = await fetch('/api/episodes', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r) return;
+  if (!r.episodes.length) {
+    el.innerHTML = `<div class="panel" style="padding:18px 20px"><div class="restore-note">${
+      t('No episodes yet. Start one when you come down with something — you can end it when you feel better.')}</div></div>`;
+    return;
+  }
+  el.innerHTML = r.episodes.map(e => `
+    <div class="panel" style="padding:16px 20px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
+        <div><b>${escHtml(e.name)}</b><br>
+          <span class="restore-removes">${escHtml(e.started_on)}${
+            e.ended_on ? ' → ' + escHtml(e.ended_on) : ' · ' + t('ongoing')
+          }${e.days ? ' · ' + tformat('%1 days', e.days) : ''}</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${e.ongoing ? `<button class="btn-outline" style="font-size:12px"
+             data-ev-click="endEpisode('${escHtml(e.id)}')">${t('Mark better')}</button>` : ''}
+          <button class="btn-outline" style="font-size:12px"
+                  data-ev-click="showEpisodeSummary('${escHtml(e.id)}')">${t('Summary')}</button>
+          <button class="btn-outline" style="font-size:12px"
+                  data-ev-click="deleteEpisode('${escHtml(e.id)}')">${t('Remove')}</button>
+        </div>
+      </div>
+      <div id="ep-sum-${escHtml(e.id)}"></div>
+    </div>`).join('');
+}
+
+async function showEpisodeSummary(id) {
+  const box = document.getElementById('ep-sum-' + id);
+  if (!box) return;
+  if (box.innerHTML) { box.innerHTML = ''; return; }      // toggle
+  const s = await fetch(`/api/episodes/${encodeURIComponent(id)}/summary`,
+                        {credentials: 'same-origin'}).then(r => r.json()).catch(() => null);
+  if (!s) { box.innerHTML = `<div class="restore-note">${t('Could not read that')}</div>`; return; }
+  const sym = (s.symptoms || []).map(x =>
+    `<div class="restore-row"><span>${escHtml(x.name)}</span>
+       <span class="restore-removes">${x.worst ? x.worst + '/10 ' + t('worst') + ' · ' : ''}${
+         escHtml(x.first)}${x.first !== x.last ? ' → ' + escHtml(x.last) : ''}</span></div>`).join('');
+  const temp = s.peak_temperature_c === null || s.peak_temperature_c === undefined
+    ? '' : `<div class="restore-row"><span>${t('Highest temperature')}</span><b>${
+        escHtml(fmtTemp ? fmtTemp(s.peak_temperature_c) : s.peak_temperature_c + '°C')}</b></div>`;
+  box.innerHTML = `
+    <div class="restore-list" style="margin-top:10px">
+      ${temp}
+      ${(s.medicines_taken || []).length ? `<div class="restore-row"><span>${t('Medicines taken')}</span>
+        <span class="restore-removes">${escHtml((s.medicines_taken || []).join(', '))}</span></div>` : ''}
+      ${sym}
+    </div>
+    <div class="restore-note">${tformat('%1 days long · logged on %2 of them.', s.days, s.days_logged)}
+      ${t('A day with nothing written down is just that — it does not mean nothing happened.')}</div>`;
+}
+
+async function saveEpisode() {
+  const body = {
+    name: document.getElementById('episode-name')?.value || '',
+    started_on: document.getElementById('episode-start')?.value || '',
+  };
+  const r = await fetch('/api/episodes', {method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+    .then(r => r.json()).catch(() => null);
+  if (r && r.success) {
+    const e = document.getElementById('episode-name'); if (e) e.value = '';
+    showToast(t('✓ Episode started'), 'success');
+    loadEpisodes();
+  } else {
+    showToast((r && r.error) || t('Could not start that'), 'error');
+  }
+}
+
+async function endEpisode(id) {
+  await fetch(`/api/episodes/${encodeURIComponent(id)}/end`,
+    {method: 'POST', credentials: 'same-origin',
+     headers: {'Content-Type': 'application/json'}, body: '{}'}).catch(() => {});
+  loadEpisodes();
+}
+
+function deleteEpisode(id) {
+  // Worth spelling out: people hesitate to delete anything in a health app, and
+  // the honest reassurance is that only the grouping goes.
+  undoable(t('Removing this episode — your symptoms and readings stay'), async () => {
+    await fetch('/api/episodes/' + encodeURIComponent(id),
+                {method: 'DELETE', credentials: 'same-origin'}).catch(() => {});
+    loadEpisodes();
+  });
+}
+
+// ── Short courses ──────────────────────────────────────────────────────────
+async function loadCourses() {
+  const el = document.getElementById('course-list');
+  if (!el) return;
+  const r = await fetch('/api/courses', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r || !r.courses.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+      <h2 class="panel-title" style="margin-bottom:10px">📅 ${t('Courses')}</h2>
+      <div class="restore-list">${r.courses.map(c => {
+        const prog = c.doses_scheduled
+          ? tformat('%1 of %2 doses logged', c.doses_taken, c.doses_scheduled) : '';
+        // Stated, never advised. Whether an unfinished course matters is a
+        // question for whoever prescribed it.
+        const state = c.finished
+          ? (c.stopped_early ? t('ended — fewer doses logged than scheduled') : t('finished'))
+          : tformat('%1 days to go', c.days_left);
+        return `<div class="restore-row">
+          <span><b>${escHtml(c.name)}</b><br>
+            <span class="restore-removes">${escHtml(c.start_date)} → ${escHtml(c.end_date)} · ${escHtml(state)}</span></span>
+          <span>${escHtml(prog)}</span></div>`;
+      }).join('')}</div>
+    </div>`;
+}
+
 // ── Trash ──────────────────────────────────────────────────────────────────
 // Deleting a health record used to be permanent. Some of it can't be recreated,
 // so a delete now moves the row aside for thirty days.
@@ -13174,6 +13375,7 @@ const NAV_TARGETS = [
   {v:'notifications', l:'Notifications',    k:'reminders alerts'},
   {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability storage disk space full uploads orphaned files'},
   {v:'trash',         l:'Trash',            k:'trash deleted removed recover restore undo bin recycle got rid of by mistake accidentally'},
+  {v:'episodes',      l:'Illness episodes', k:'illness episode sick bout flu fever infection when did this start unwell got ill'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},
@@ -19508,6 +19710,10 @@ function vitalToDisplay(vtype, v) {
   if (v == null || v === '') return v;
   if (vtype === 'blood_sugar') return _gl(v);
   if (vtype === 'weight') return _userUnits.weight === 'lb' ? kgToLb(v) : Math.round(Number(v) * 10) / 10;
+  // Temperature is stored in °C. vitalUnitLabel() already returns °F for an °F
+  // user, so leaving the number alone printed a Celsius figure under a
+  // Fahrenheit label — a target of "37–38 °F", which reads as hypothermia.
+  if (vtype === 'temperature') return _userUnits.temp === 'f' ? cToF(v) : Math.round(Number(v) * 10) / 10;
   return Number(v);
 }
 // what the user typed (in their unit) → canonical
@@ -19515,6 +19721,9 @@ function vitalToCanonical(vtype, v) {
   if (v == null || v === '') return v;
   if (vtype === 'blood_sugar') return glucoseInputToMgdl(v);
   if (vtype === 'weight') return weightInputToKg(v);
+  // The matching input side. Without it, an °F user setting a 100 °F target
+  // stored 100 as Celsius, and every later reading was compared against it.
+  if (vtype === 'temperature') return _userUnits.temp === 'f' ? fToC(v) : Number(v);
   return Number(v);
 }
 function _spendCatLabel(k) {
