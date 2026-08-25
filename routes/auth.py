@@ -81,7 +81,7 @@ def register():
         'user': {'id': uid, 'email': email, 'name': name, 'verified': False},
         'message': 'Account created. Check your email to verify.',
     }), 201)
-    set_auth_cookie(resp, uid)
+    set_auth_cookie(resp, uid, new_session=True)
     return resp
 
 
@@ -120,7 +120,7 @@ def login():
             'verified': bool(row['verified']),
         },
     }))
-    set_auth_cookie(resp, row['id'])
+    set_auth_cookie(resp, row['id'], new_session=True)
     return resp
 
 
@@ -290,8 +290,13 @@ def change_password():
     # Revoke all sessions (including this one), then keep the current
     # browser signed in with a freshly-minted cookie
     bump_token_version(g.user_id)
+    # Every other device is now signed out; record both facts, and give this
+    # browser a fresh session so it can still be listed and revoked later.
+    from db.account_activity import revoke_all_sessions, log_event
+    revoke_all_sessions(g.user_id)
+    log_event('password_changed', uid=g.user_id)
     resp = make_response(jsonify({'success': True, 'message': 'Password updated'}))
-    set_auth_cookie(resp, g.user_id)
+    set_auth_cookie(resp, g.user_id, new_session=True)
     return resp
 
 

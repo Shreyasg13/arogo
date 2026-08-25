@@ -39,6 +39,8 @@ def api_list():
 @require_auth
 def api_revoke(sid):
     revoke_snapshot(sid)
+    from db.account_activity import log_event
+    log_event('share_revoked')
     return jsonify({'success': True})
 
 

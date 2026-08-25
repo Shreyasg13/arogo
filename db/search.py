@@ -443,6 +443,8 @@ NOT_SEARCHABLE = {
     'user_profile':          'the user\'s own settings, not something to find',
     'sync_log':              'integration diagnostics',
     'notification_log':      'copy the app generated, not what the user recorded',
+    'user_sessions':         'devices, read on the account page — not health records',
+    'security_events':       'an append-only security log, read in one place on purpose',
     # Searched from the Trash page instead, so a deleted record doesn't
     # reappear among live ones. global_search reports how many matches are
     # sitting in there, which is the part that stops "no results" lying.

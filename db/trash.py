@@ -134,6 +134,10 @@ NOT_TRASHABLE = {
                        'restorable link would still be live in the meantime',
     'deleted_items': 'the trash itself — an undo for the undo is a loop, not a '
                      'safety net',
+    'user_sessions': 'signing a device out must take effect immediately; a '
+                     'restorable revocation is a security hole',
+    'security_events': 'a security log the account holder can delete from is '
+                       'not a security log',
     'travel_trips': 'a trip is two dates and a time zone, re-entered in seconds',
     'illness_episodes': 'deleting one removes only the grouping — every '
                         'symptom and reading it covered stays exactly where it is',

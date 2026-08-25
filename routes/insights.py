@@ -619,6 +619,8 @@ def api_backup():
     from db.account import export_all_data
     from db.core import current_user_id
     data = export_all_data(current_user_id())
+    from db.account_activity import log_event
+    log_event('backup_downloaded')
     data['_backup'] = {'app': 'arogo', 'version': 1}
     body = _json.dumps(data, indent=2, default=str)
     stamp = today_iso(get_user_timezone())
@@ -662,6 +664,8 @@ def api_import():
         return jsonify({'success': False,
                         'error': 'The restore failed and was rolled back — your '
                                  'data is unchanged. Nothing was deleted.'}), 500
+    from db.account_activity import log_event
+    log_event('data_restored', f"{sum(res['restored'].values())} records")
     restored, skipped = res['restored'], res['skipped']
     return jsonify({'success': True,
                     'restored': restored, 'skipped': skipped,

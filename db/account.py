@@ -55,6 +55,9 @@ EXPORT_CATEGORIES = [
     # switching devices would otherwise lose what is still restorable.
     ('trash', 'Trash (deleted, still recoverable)', ['deleted_items']),
     ('situational', 'Trips & illness episodes', ['travel_trips', 'illness_episodes']),
+    # Not health data, but still the user's — a full export should include
+    # where they were signed in and what changed about access.
+    ('account', 'Sign-in & activity log', ['user_sessions', 'security_events']),
     ('private', 'Private — journal, mood, cycle, menopause, pregnancy',
      ['thoughts', 'menstrual_cycles', 'cycle_symptoms', 'menopause_logs', 'pregnancy', 'pregnancy_logs']),
 ]
@@ -146,6 +149,8 @@ TABLE_LABELS = {
     'deleted_items': 'Trash',
     'travel_trips': 'Trips',
     'illness_episodes': 'Illness episodes',
+    'user_sessions': 'Signed-in devices',
+    'security_events': 'Account activity log',
     # Not restorable, but still named — the preview tells the user what it is
     # skipping and why, and "oauth tokens" is not a thing anyone recognises.
     'oauth_tokens': 'Connected apps', 'share_snapshots': 'Share links',

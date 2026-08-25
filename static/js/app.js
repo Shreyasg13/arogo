@@ -3210,6 +3210,7 @@ function switchView(view) {
   if (view === 'export')        initExportView();
   if (view === 'trash')         loadTrash();
   if (view === 'episodes')      loadEpisodes();
+  if (view === 'account-activity') loadAccountActivity();
   if (view === 'progress')      loadProgress();
   if (view === 'datatrust')     loadDataTrust();
   if (view === 'glossary')      loadGlossary();
@@ -12710,6 +12711,83 @@ loadThoughts = async function() {
 // ════════════════════════════════════════════════════════════
 
 // Render pending todos on dashboard
+// ── Account activity ───────────────────────────────────────────────────────
+// Where you're signed in, what changed, and whether your share links were
+// opened. The device names are coarse on purpose — enough to recognise your own
+// phone, not enough to be a location history.
+function _agoText(iso) {
+  if (!iso) return '';
+  const secs = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (!isFinite(secs) || secs < 0) return String(iso).slice(0, 10);
+  if (secs < 3600) return t('just now');
+  if (secs < 86400) return tformat('%1 hours ago', Math.floor(secs / 3600));
+  if (secs < 86400 * 30) return tformat('%1 days ago', Math.floor(secs / 86400));
+  return String(iso).slice(0, 10);
+}
+
+async function loadAccountActivity() {
+  const [sess, shares, log] = await Promise.all([
+    fetch('/api/account/sessions', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+    fetch('/api/account/shares', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+    fetch('/api/account/activity', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+  ]);
+
+  const sEl = document.getElementById('session-list');
+  if (sEl && sess) {
+    sEl.innerHTML = `<div class="restore-list">${sess.sessions.map(s => `
+      <div class="restore-row">
+        <span><b>${escHtml(s.device)}</b>${s.current ? ' · ' + t('this device') : ''}<br>
+          <span class="restore-removes">${t('last used')} ${escHtml(_agoText(s.last_seen))}</span></span>
+        ${s.current ? '' : `<button class="btn-outline" style="font-size:12px"
+           data-ev-click="revokeSession('${escHtml(s.id)}')">${t('Sign out')}</button>`}
+      </div>`).join('')}</div>`;
+  }
+
+  const rEl = document.getElementById('share-receipts');
+  if (rEl && shares) {
+    rEl.innerHTML = shares.shares.length
+      ? `<div class="restore-list">${shares.shares.map(s => `
+          <div class="restore-row">
+            <span><b>${escHtml(s.label)}</b><br>
+              <span class="restore-removes">${escHtml(String(s.scope || ''))} · ${
+                t('created')} ${escHtml(_agoText(s.created_at))}${
+                s.revoked ? ' · ' + t('revoked') : ''}</span></span>
+            <span>${s.views ? tformat('%1 opens', s.views) : t('not opened yet')}</span>
+          </div>`).join('')}</div>`
+      : `<div class="restore-note">${t('No share links yet.')}</div>`;
+  }
+
+  const lEl = document.getElementById('activity-log');
+  if (lEl && log) {
+    lEl.innerHTML = log.events.length
+      ? `<div class="restore-list">${log.events.map(e => `
+          <div class="restore-row">
+            <span>${escHtml(e.label)}${e.detail ? ' · <span class="restore-removes">' +
+              escHtml(e.detail) + '</span>' : ''}</span>
+            <span class="restore-removes">${escHtml(_agoText(e.at))}</span>
+          </div>`).join('')}</div>`
+      : `<div class="restore-note">${t('Nothing recorded yet.')}</div>`;
+  }
+}
+
+function revokeSession(id) {
+  undoable(t('Signing that device out'), async () => {
+    await fetch('/api/account/sessions/' + encodeURIComponent(id),
+                {method: 'DELETE', credentials: 'same-origin'}).catch(() => {});
+    loadAccountActivity();
+  });
+}
+
+function revokeAllSessions() {
+  // Names what survives, because "sign out everywhere" reads as including you.
+  undoable(t('Signing out every other device — this one stays signed in'), async () => {
+    const r = await fetch('/api/account/sessions/revoke-all',
+      {method: 'POST', credentials: 'same-origin'}).then(r => r.json()).catch(() => null);
+    if (r && r.success) showToast(tformat('Signed out %1 devices', r.signed_out), 'success');
+    loadAccountActivity();
+  });
+}
+
 // ── Trips & time zones ─────────────────────────────────────────────────────
 // A dose is a wall-clock time, and "now" comes from one place. A trip changes
 // that place, so reminders and the day follow the user — and the app says so
@@ -13376,6 +13454,7 @@ const NAV_TARGETS = [
   {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability storage disk space full uploads orphaned files'},
   {v:'trash',         l:'Trash',            k:'trash deleted removed recover restore undo bin recycle got rid of by mistake accidentally'},
   {v:'episodes',      l:'Illness episodes', k:'illness episode sick bout flu fever infection when did this start unwell got ill'},
+  {v:'account-activity', l:'Sign-in & activity', k:'security sessions devices signed in sign out password log audit share links who opened account activity'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
   {v:'glossary',      l:'What this means',  k:'glossary dictionary define definition plain language lab terms hba1c alt tsh what does mean explain'},
   {v:'weekreview',    l:'Weekly review',    k:'week recap reflection review ritual focus wins summary how did my week go'},

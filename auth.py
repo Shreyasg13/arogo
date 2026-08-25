@@ -133,9 +133,18 @@ def bump_token_version(user_id: str):
             (user_id,), commit=True)
 
 
-def make_token(user_id: str) -> str:
-    """Create a signed, time-stamped token carrying user_id + token version."""
-    return _serializer().dumps({'uid': user_id, 'ver': _token_version(user_id)})
+def make_token(user_id: str, session_id: str = None) -> str:
+    """Create a signed, time-stamped token carrying user_id + token version.
+
+    `sid` names one sign-in so a single device can be signed out without kicking
+    every other one off. It is optional: tokens minted before sessions existed
+    carry none, and are treated as live rather than expiring everyone's login to
+    ship a feature.
+    """
+    payload = {'uid': user_id, 'ver': _token_version(user_id)}
+    if session_id:
+        payload['sid'] = session_id
+    return _serializer().dumps(payload)
 
 
 def read_token(token: str) -> str | None:
@@ -146,6 +155,17 @@ def read_token(token: str) -> str | None:
         # Tokens minted before a password change carry a stale version
         if uid is None or data.get('ver', 0) != _token_version(uid):
             return None
+        # This individual sign-in may have been revoked from another device.
+        sid = data.get('sid')
+        from db.account_activity import session_is_live, touch_session
+        if not session_is_live(sid, uid):
+            return None
+        touch_session(sid, uid)
+        try:
+            from flask import g as _g
+            _g.session_id = sid
+        except Exception:
+            pass
         return uid
     except (SignatureExpired, BadSignature, Exception):
         return None
@@ -243,9 +263,23 @@ def read_reset_token(token: str) -> str | None:
 
 # ── Cookie helpers ─────────────────────────────────────────────────────────────
 
-def set_auth_cookie(response, user_id: str):
-    """Write session token as HttpOnly cookie."""
-    token = make_token(user_id)
+def set_auth_cookie(response, user_id: str, new_session: bool = False):
+    """Write session token as HttpOnly cookie.
+
+    `new_session` records a sign-in so the device can be listed and signed out
+    on its own later. It is off by default because this is also called to
+    refresh a cookie after a password change, and that must not look like a
+    second device in the list.
+    """
+    session_id = None
+    if new_session:
+        try:
+            from flask import request
+            from db.account_activity import start_session
+            session_id = start_session(user_id, request.headers.get('User-Agent', ''))
+        except Exception:
+            session_id = None       # never block a sign-in on bookkeeping
+    token = make_token(user_id, session_id)
     response.set_cookie(
         COOKIE_NAME,
         token,
@@ -357,7 +391,16 @@ _ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
                       # The trash holds whole deleted rows, journal entries and
                       # notes among them, so browsing it would walk straight
                       # around the private-category wall above.
-                      '/api/trash')
+                      '/api/trash',
+                      # Devices, the security log and share links belong to the
+                      # account holder. A caregiver managing health data has no
+                      # business seeing them, and less business ending a session.
+                      # Named individually, NOT as an /api/account/ prefix:
+                      # /api/account/export already exists and correctly returns
+                      # the caregiver's own data, so blanket-walling broke it.
+                      '/api/account/sessions',
+                      '/api/account/activity',
+                      '/api/account/shares')
 
 
 def _canonical_path(path):

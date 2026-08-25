@@ -3173,6 +3173,47 @@
   </div>
 </div>
 
+<!-- ═══════════ ACCOUNT ACTIVITY ═══════════ -->
+<div id="view-account-activity" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Account">Account</div>
+      <h1 class="page-title" data-i18n="Sign-in &amp; activity">Sign-in &amp; activity</h1>
+      <p class="page-subtitle" data-i18n="Where you're signed in, what changed, and who has opened your share links">
+        Where you're signed in, what changed, and who has opened your share links</p>
+    </div>
+  </div>
+
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Signed in on">Signed in on</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="Arogo records the kind of browser, not your location or address. Signing out one device leaves the rest alone.">
+      Arogo records the kind of browser, not your location or address. Signing
+      out one device leaves the rest alone.</p>
+    <div id="session-list"></div>
+    <button class="btn-outline" style="margin-top:12px" data-ev-click="revokeAllSessions()"
+            data-i18n="Sign out every other device">Sign out every other device</button>
+  </div>
+
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Share links">Share links</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="Opens counts how many times a link was loaded — not how many people saw it. One person refreshing twice looks the same as two people.">
+      Opens counts how many times a link was loaded — not how many people saw
+      it. One person refreshing twice looks the same as two people.</p>
+    <div id="share-receipts"></div>
+  </div>
+
+  <div class="panel" style="padding:18px 20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="What changed">What changed</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="Sign-ins, password changes, exports and share links. This log cannot be edited or deleted — that is what makes it worth reading.">
+      Sign-ins, password changes, exports and share links. This log cannot be
+      edited or deleted — that is what makes it worth reading.</p>
+    <div id="activity-log"></div>
+  </div>
+</div>
+
 <!-- ═══════════ TRASH ═══════════ -->
 <div id="view-trash" class="view">
   <div class="page-header">

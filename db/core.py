@@ -878,6 +878,24 @@ CREATE TABLE IF NOT EXISTS illness_episodes (
     ended_on TEXT DEFAULT NULL, notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+-- One row per sign-in, so "where am I signed in?" has an answer and a single
+-- device can be signed out without kicking every other one off.
+--
+-- Deliberately no IP address and no raw user agent. `device` is a coarse
+-- description ("Chrome on Windows") — enough to recognise your own phone,
+-- not enough to be a location history. A health app should not quietly grow
+-- a tracking log as a side effect of a security feature.
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, device TEXT DEFAULT '',
+    created_at TEXT NOT NULL, last_seen TEXT NOT NULL,
+    revoked_at TEXT DEFAULT NULL
+);
+-- Things that changed who can see this account's data. Append-only by design:
+-- a security log the account holder can edit is not a security log.
+CREATE TABLE IF NOT EXISTS security_events (
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL, kind TEXT NOT NULL,
+    detail TEXT DEFAULT '', actor TEXT DEFAULT '', at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS insurance_policies (
     id TEXT PRIMARY KEY, insurer TEXT NOT NULL, policy_no TEXT DEFAULT '',
     kind TEXT DEFAULT 'health', cover_amount REAL DEFAULT NULL,
@@ -1878,6 +1896,8 @@ DATA_TABLES = [
     'deleted_items',
     'travel_trips',
     'illness_episodes',
+    'user_sessions',
+    'security_events',
 ]
 
 
