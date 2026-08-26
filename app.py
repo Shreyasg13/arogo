@@ -63,6 +63,7 @@ def create_app(config=Config):
     from routes.situational import bp as situational_bp
     from routes.account_activity import bp as account_activity_bp
     from routes.wellbeing import bp as wellbeing_bp
+    from routes.security import bp as security_bp
     from routes.labs      import bp as labs_bp
     from routes.expenses  import bp as expenses_bp
     from routes.dependents import bp as dependents_bp
@@ -141,6 +142,7 @@ def create_app(config=Config):
     app.register_blueprint(situational_bp)
     app.register_blueprint(account_activity_bp)
     app.register_blueprint(wellbeing_bp)
+    app.register_blueprint(security_bp)
 
     @app.before_request
     def _reject_non_object_json():

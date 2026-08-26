@@ -199,22 +199,34 @@ def test_no_sqlite_only_sql():
     assert not offenders, "SQLite-only SQL: " + "; ".join(offenders)
 
 
+# PRAGMA is allowed in these files, with the reason. The rule exists because a
+# PRAGMA against the APP's connection is meaningless on PostgreSQL and aborts the
+# surrounding transaction when it fails — neither of which applies to a private
+# sqlite3 connection opened against a file that is known to be SQLite.
+PRAGMA_ALLOWED = {
+    'db/core.py': 'owns the one guarded fallback to information_schema',
+    'db/backups.py': 'runs integrity_check on its own read-only connection to a '
+                     'backup FILE, which is always SQLite and never the app '
+                     'connection; there is no information_schema equivalent',
+}
+
+
 def test_pragma_is_confined_to_db_core():
     """PRAGMA is meaningless on PostgreSQL, and a failed statement there aborts
-    the surrounding transaction. db/core.py owns the one guarded fallback to
-    information_schema; nothing else should reach for it."""
+    the surrounding transaction. Only the files above may use it, each for a
+    stated reason."""
     offenders = []
     for path in _py_files():
         rel = _rel(path)
-        if rel == 'db/core.py':
+        if rel in PRAGMA_ALLOWED:
             continue
         for node in ast.walk(_tree(path)):
             if isinstance(node, ast.Constant) and isinstance(node.value, str) \
                     and 'PRAGMA ' in node.value.upper():
                 offenders.append(f"{rel}:{node.lineno}")
     assert not offenders, (
-        "call db.core.table_columns() rather than PRAGMA directly: "
-        + ", ".join(offenders))
+        "call db.core.table_columns() rather than PRAGMA directly, or add the "
+        "file to PRAGMA_ALLOWED with a reason: " + ", ".join(offenders))
 
 
 # ── The backend switch itself ───────────────────────────────────────────────

@@ -18,7 +18,10 @@ _EXTRA_OWNED = [
 
 # Never write live secrets into an export file — the user owns their data, not
 # their raw OAuth tokens or push keys, and an export could be mishandled.
-_SECRET_KEYS = {"sub_json", "access_token", "refresh_token", "password_hash", "token"}
+_SECRET_KEYS = {"sub_json", "access_token", "refresh_token", "password_hash", "token",
+                # The TOTP shared secret and the recovery-code hashes. A full
+                # export is a file people email to themselves.
+                "secret", "recovery"}
 
 
 def _redact(row: dict) -> dict:
@@ -155,6 +158,7 @@ TABLE_LABELS = {
     'security_events': 'Account activity log',
     'questionnaire_runs': 'Questionnaires',
     'blood_donations': 'Blood donations',
+    'user_totp': 'Two-factor sign-in',
     # Not restorable, but still named — the preview tells the user what it is
     # skipping and why, and "oauth tokens" is not a thing anyone recognises.
     'oauth_tokens': 'Connected apps', 'share_snapshots': 'Share links',
@@ -172,6 +176,9 @@ NOT_RESTORED = {
     'share_snapshots': 'share links carry a token that is redacted in a backup; '
                        'a restored link would never open',
     'sync_log': 'diagnostics from a previous run, not your records',
+    'user_totp': 'the shared secret is redacted in a backup, so restoring it '
+                 'would switch two-factor sign-in back on with a key no '
+                 'authenticator app holds — locking you out of your own account',
     'notification_log': 'reminders the app already sent; restoring them would '
                         'refill your notification history with old alerts',
 }

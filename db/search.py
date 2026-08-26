@@ -451,6 +451,7 @@ NOT_SEARCHABLE = {
     'notification_log':      'copy the app generated, not what the user recorded',
     'questionnaire_runs':    'a mood questionnaire is read in one place, with '
                              'its caveats attached — never as a loose search hit',
+    'user_totp':             'a shared secret and hashed recovery codes — never searchable',
     'user_sessions':         'devices, read on the account page — not health records',
     'security_events':       'an append-only security log, read in one place on purpose',
     # Searched from the Trash page instead, so a deleted record doesn't

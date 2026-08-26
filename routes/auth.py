@@ -107,6 +107,21 @@ def login():
     if not row or not valid:
         return jsonify({'error': 'Incorrect email or password'}), 401
 
+    # Second factor, when it is switched on AND confirmed. An unconfirmed
+    # enrolment never gates a sign-in — a half-finished setup must not lock
+    # someone out of their own medicines.
+    from db.totp import is_enabled
+    if is_enabled(row['id']):
+        from auth import make_totp_challenge, TOTP_CHALLENGE_MAX_AGE
+        # No cookie is set here. The challenge is signed with its own salt, so
+        # it cannot be presented as a session.
+        return jsonify({
+            'success': False,
+            'needs_2fa': True,
+            'challenge': make_totp_challenge(row['id']),
+            'expires_in': TOTP_CHALLENGE_MAX_AGE,
+        }), 200
+
     # Update last_login
     execute('UPDATE users SET last_login = ? WHERE id = ?',
             (now_iso(), row['id']), commit=True)
@@ -119,6 +134,36 @@ def login():
             'name':     row['name'],
             'verified': bool(row['verified']),
         },
+    }))
+    set_auth_cookie(resp, row['id'], new_session=True)
+    return resp
+
+
+@bp.route('/auth/login/2fa', methods=['POST'])
+@rate_limit_auth
+def login_2fa():
+    """Finish a sign-in that stopped at the second factor.
+
+    Rate-limited like every other auth route: a six-digit code is guessable in
+    a million tries, and the limiter is what makes that irrelevant.
+    """
+    from auth import read_totp_challenge
+    from db.totp import verify
+    d = request.json or {}
+    uid = read_totp_challenge(d.get('challenge') or '')
+    if not uid:
+        return jsonify({'error': 'That sign-in attempt expired. Start again.'}), 401
+    if not verify(uid, d.get('code') or ''):
+        return jsonify({'error': 'That code did not match.'}), 401
+
+    row = execute('SELECT * FROM users WHERE id = ?', (uid,), fetchone=True)
+    if not row:
+        return jsonify({'error': 'Incorrect email or password'}), 401
+    execute('UPDATE users SET last_login = ? WHERE id = ?', (now_iso(), uid), commit=True)
+    resp = make_response(jsonify({
+        'success': True,
+        'user': {'id': row['id'], 'email': row['email'], 'name': row['name'],
+                 'verified': bool(row['verified'])},
     }))
     set_auth_cookie(resp, row['id'], new_session=True)
     return resp

@@ -42,6 +42,8 @@ EVENT_KINDS = {
     'signed_out_device': 'Signed out a device',
     'signed_out_all': 'Signed out everywhere',
     'password_changed': 'Password changed',
+    'two_factor_enabled': 'Turned on two-factor sign-in',
+    'two_factor_disabled': 'Turned off two-factor sign-in',
     'caregiver_granted': 'Gave someone access',
     'caregiver_revoked': 'Removed someone\'s access',
     'manage_granted': 'Allowed someone to manage this account',

@@ -171,6 +171,28 @@ def read_token(token: str) -> str | None:
         return None
 
 
+TOTP_CHALLENGE_MAX_AGE = 300      # 5 minutes to reach for a phone
+
+
+def make_totp_challenge(user_id: str) -> str:
+    """Proof the password step passed — and nothing more.
+
+    Signed with its OWN salt, so a challenge can never be replayed as a session
+    cookie: read_token() would reject it outright. Short-lived because it is a
+    half-finished sign-in sitting in a browser.
+    """
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-2fa')
+    return s.dumps({'uid': user_id})
+
+
+def read_totp_challenge(token: str) -> str | None:
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-2fa')
+    try:
+        return s.loads(token, max_age=TOTP_CHALLENGE_MAX_AGE).get('uid')
+    except Exception:
+        return None
+
+
 def make_verify_token(user_id: str) -> str:
     """One-time email verification token (24h)."""
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='ms-verify')
@@ -403,7 +425,10 @@ _ACTING_AS_PRIVATE = ('/api/thoughts', '/api/cycle', '/api/mood',
                       '/api/account/shares',
                       # A PHQ-9 run is a record of someone's mood, item by
                       # item. It belongs in the same class as the journal.
-                      '/api/questionnaires')
+                      '/api/questionnaires',
+                      # How someone signs in is not a caregiver's business,
+                      # and stripping their second factor least of all.
+                      '/api/2fa')
 
 
 def _canonical_path(path):

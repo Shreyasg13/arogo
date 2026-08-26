@@ -911,6 +911,15 @@ CREATE TABLE IF NOT EXISTS blood_donations (
     place TEXT DEFAULT '', notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+-- Second-factor sign-in. `secret` is the shared TOTP key; `recovery` holds the
+-- one-time codes, hashed, because a recovery code is a password by another name.
+-- `confirmed_at` is NULL until the user has proved the authenticator works —
+-- enabling on trust is how people lock themselves out.
+CREATE TABLE IF NOT EXISTS user_totp (
+    user_id TEXT PRIMARY KEY, secret TEXT NOT NULL, recovery TEXT DEFAULT '',
+    created_at TEXT NOT NULL, confirmed_at TEXT DEFAULT NULL,
+    last_used_step INTEGER DEFAULT NULL
+);
 CREATE TABLE IF NOT EXISTS insurance_policies (
     id TEXT PRIMARY KEY, insurer TEXT NOT NULL, policy_no TEXT DEFAULT '',
     kind TEXT DEFAULT 'health', cover_amount REAL DEFAULT NULL,
@@ -1936,6 +1945,7 @@ DATA_TABLES = [
     'security_events',
     'questionnaire_runs',
     'blood_donations',
+    'user_totp',
 ]
 
 

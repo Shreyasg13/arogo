@@ -66,6 +66,10 @@ def test_every_health_table_belongs_to_a_category(app):
     not_health = {
         'notification_log', 'reminder_settings', 'user_profile', 'oauth_tokens',
         'sync_log', 'measurement_reminders', 'share_snapshots',
+        # The TOTP shared secret and recovery-code hashes. Putting these in a
+        # scoped export would hand someone's second factor to anyone who got
+        # hold of the file, which is the opposite of what the feature is for.
+        'user_totp',
     }
     missing = [t for t in DATA_TABLES if t not in covered and t not in not_health]
     assert not missing, (

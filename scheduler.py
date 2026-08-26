@@ -43,6 +43,27 @@ def _heartbeat():
         print(f"[scheduler] heartbeat error: {e}")
 
 
+def _nightly_backup():
+    """Take a verified backup, nightly.
+
+    The verification is the point. A file in a backups directory is not a
+    backup until something has opened it and checked it reads — and the
+    moment that matters is the moment there is nothing left to compare it
+    against.
+    """
+    try:
+        from db.backups import run_backup
+        res = run_backup()
+        if res.get('ok'):
+            print(f"[scheduler] backup ok: {res['name']} ({res['bytes']:,} bytes)")
+        else:
+            # Loud on failure. A silent backup failure is how an install
+            # ends up believing it is covered when it isn't.
+            print(f"[scheduler] BACKUP FAILED: {res.get('reason')}")
+    except Exception as e:
+        print(f'[scheduler] BACKUP FAILED: {e}')
+
+
 def _purge_trash():
     """Delete trashed records past their thirty days, for good.
 
@@ -644,6 +665,7 @@ def _run_loop():
     schedule.every().day.at("08:00").do(_appointment_reminders)   # morning of
     schedule.every().minute.do(_heartbeat)
     schedule.every().day.at("03:30").do(_purge_trash)
+    schedule.every().day.at("03:00").do(_nightly_backup)
     schedule.every().sunday.at("18:00").do(_send_weekly_digests)
     schedule.every().sunday.at("18:30").do(_send_caregiver_digests)
     # Also do an initial sync 30 s after startup

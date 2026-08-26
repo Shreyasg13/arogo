@@ -140,6 +140,8 @@ NOT_TRASHABLE = {
     'questionnaire_runs': 'a completed questionnaire is deleted deliberately; '
                           'keeping a record of mood answers after someone asked '
                           'for it to go is the wrong default',
+    'user_totp': 'turning off a second factor must take effect at once; a '
+                 'restorable one is a security hole',
     'user_sessions': 'signing a device out must take effect immediately; a '
                      'restorable revocation is a security hole',
     'security_events': 'a security log the account holder can delete from is '
