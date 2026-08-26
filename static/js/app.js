@@ -2496,6 +2496,13 @@ async function resendVerification() {
 
 async function signOut() {
   await fetch('/auth/logout', {method: 'POST', credentials: 'same-origin'});
+  // Take the offline copies too. They live in a per-origin cache the session
+  // cookie does not protect, so leaving them would let the next person on this
+  // device read the last one's records simply by going offline.
+  try {
+    const reg = await navigator.serviceWorker?.ready;
+    reg?.active?.postMessage({type: 'arogo-signed-out'});
+  } catch (e) {}
   _currentUser = null;
   showAuthScreen();
 }
@@ -7095,6 +7102,10 @@ function coalescedGet(url, opts) {
   const pending = _inFlightGets.get(url);
   if (pending) return pending;
   const p = fetch(url, Object.assign({credentials: 'same-origin'}, opts || {}))
+    // Inspect the response before it becomes JSON: the offline marker is a
+    // header, and it is the only thing standing between a cached dose list and
+    // someone reading it as today's.
+    .then(r => noteResponseFreshness(r))
     .then(r => r.json())
     .finally(() => { _inFlightGets.delete(url); });
   _inFlightGets.set(url, p);
@@ -13227,6 +13238,44 @@ async function loadCourses() {
           <span>${escHtml(prog)}</span></div>`;
       }).join('')}</div>
     </div>`;
+}
+
+// ── "You're offline — this is an old copy" ─────────────────────────────────
+// The service worker can answer a handful of reads from cache when there's no
+// connection. That is only safe if the screen says so: a dose list is worth
+// looking at precisely because it is today's, and yesterday's shown silently is
+// worse than an empty page.
+//
+// The banner is driven by a header the worker stamps on anything it serves from
+// cache, so it can never appear when the data really did come from the server.
+let _offlineSince = null;
+
+function noteResponseFreshness(res) {
+  if (!res || !res.headers) return res;
+  if (res.headers.get('X-Arogo-Offline') === '1') {
+    _offlineSince = res.headers.get('X-Arogo-Cached-At') || _offlineSince;
+    _renderOfflineBanner();
+  } else if (_offlineSince) {
+    _offlineSince = null;                       // a live answer clears it
+    _renderOfflineBanner();
+  }
+  return res;
+}
+
+function _renderOfflineBanner() {
+  let el = document.getElementById('offline-data-banner');
+  if (!_offlineSince) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'offline-data-banner';
+    el.className = 'offline-data-banner';
+    el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+  }
+  // Names the moment, not a vague "offline". "As of 09:14 this morning" is what
+  // lets someone decide whether to trust what they're looking at.
+  const when = _agoText(_offlineSince);
+  el.textContent = tformat("📴 You're offline — showing a copy saved %1", when);
 }
 
 // ── Bulk selection ─────────────────────────────────────────────────────────

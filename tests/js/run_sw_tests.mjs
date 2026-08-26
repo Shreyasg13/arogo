@@ -317,6 +317,28 @@ test('two taps get distinct keys, so both real drinks are recorded', async () =>
   ok(keys[0] !== keys[1], 'dedupe must not swallow a genuine second drink');
 });
 
+// ── Offline reading ────────────────────────────────────────────────────────
+// The rule: a cached answer must never be mistaken for a live one, and must
+// never be handed to a different account on the same device.
+
+test('the allow-list covers the reads worth having offline', () => {
+  const f = makeSandbox(OFFLINE).self._isOfflineReadable;
+  ok(f('/api/medicines/today'), "today's doses are the reason to open the app");
+  ok(f('/api/medicines'), 'the medicine list');
+  ok(f('/api/allergies'), 'what a stranger would need to know');
+  ok(f('/api/v1/medicines/today'), 'the versioned alias must match too');
+});
+
+test('nothing sensitive is offline-readable', () => {
+  // A stale answer to "am I signed in" or "is my second factor on" is worse
+  // than no answer, and a cached share link would outlive its revocation.
+  const f = makeSandbox(OFFLINE).self._isOfflineReadable;
+  for (const path of ['/auth/me', '/auth/login', '/api/2fa', '/api/account/sessions',
+                      '/api/account/activity', '/api/share/snapshot', '/api/trash']) {
+    ok(!f(path), `${path} must never be served from cache`);
+  }
+});
+
 // ── Run them ──
 (async () => {
   console.log('sw.js offline outbox');

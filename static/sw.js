@@ -290,12 +290,105 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
+/* ── Offline reading ────────────────────────────────────────────────────────
+ * The rule this is built around: a cached answer must never be mistaken for a
+ * live one. Every response served from the cache carries the moment it was
+ * fetched, and the page prints "as of ..." from it. Silently handing back
+ * yesterday's dose list is worse than showing nothing at all, because the whole
+ * point of the list is that it is today's.
+ */
+const DATA_CACHE = 'arogo-data-v1';
+
+// Reads worth having without a connection. Prefixes, matched in order.
+const OFFLINE_READABLE = [
+  '/api/medicines/today',      // which doses are due — the reason to open the app
+  '/api/medicines',            // the list itself, dosages and times
+  '/api/allergies',            // what a stranger would need to know
+  '/api/health-id',            // the emergency card
+  '/api/emergency',
+  '/api/conditions',
+  '/api/labs',                 // recent results, to show someone
+  '/api/appointments',         // where you are meant to be
+];
+
+function _isOfflineReadable(pathname) {
+  const p = pathname.startsWith('/api/v1/') ? '/api/' + pathname.slice(8) : pathname;
+  return OFFLINE_READABLE.some(prefix => p === prefix || p.startsWith(prefix + '/')
+                                          || p.startsWith(prefix + '?'));
+}
+
+/* Network first. On success, store a copy stamped with the moment and the user
+ * it belongs to; on failure, hand back that copy clearly marked as old.
+ *
+ * The user stamp is not decoration. This cache is per-ORIGIN, so on a shared
+ * phone a second account going offline would otherwise be served the first
+ * account's medicines — the same cross-user mistake the write queue had. */
+async function _dataFirstNetwork(request) {
+  let uid = null;
+  try { uid = await _obUid(); } catch (e) {}
+  try {
+    const res = await fetch(request);
+    if (res && res.ok) {
+      try {
+        const cache = await caches.open(DATA_CACHE);
+        const body = await res.clone().blob();
+        const headers = new Headers(res.headers);
+        headers.set('X-Arogo-Cached-At', new Date().toISOString());
+        if (uid) headers.set('X-Arogo-Cached-For', uid);
+        await cache.put(request, new Response(body, {
+          status: res.status, statusText: res.statusText, headers,
+        }));
+      } catch (e) { /* a full cache must not break a working request */ }
+    }
+    return res;
+  } catch (err) {
+    const cached = await caches.match(request, { cacheName: DATA_CACHE });
+    if (!cached) throw err;
+    // Belongs to someone else on this device: refuse rather than answer wrongly.
+    const owner = cached.headers.get('X-Arogo-Cached-For');
+    if (owner && uid && owner !== uid) throw err;
+    const headers = new Headers(cached.headers);
+    headers.set('X-Arogo-Offline', '1');
+    return new Response(await cached.blob(), {
+      status: 200, statusText: 'OK (offline copy)', headers,
+    });
+  }
+}
+
+async function _clearDataCache() {
+  try { await caches.delete(DATA_CACHE); } catch (e) {}
+}
+
+// Signing out must take the cached copies with it. Leaving them behind would
+// let the next person on the device read the last one's records by pulling the
+// plug — the cache is not protected by the session cookie.
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'arogo-signed-out') {
+    e.waitUntil(_clearDataCache());
+  }
+});
+
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
 
-  // Never cache health data or auth flows
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) return;
+  // A short, explicit list of reads worth having on a train. Offline, the app
+  // used to open to an empty shell: you could log a dose from a notification
+  // and had no way to see which ones were due.
+  //
+  // An ALLOW-list, not a deny-list. Caching health data by default and hoping
+  // nothing sensitive slips through is exactly the shape of bug this codebase
+  // keeps finding; anything not named here still goes network-only.
+  //
+  // Nothing under /auth/, /api/2fa, /api/account/ or /api/share is here, and
+  // never should be: a stale answer to "am I signed in" or "is my second factor
+  // on" is worse than no answer.
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) {
+    if (e.request.mode !== 'navigate' && _isOfflineReadable(url.pathname)) {
+      e.respondWith(_dataFirstNetwork(e.request));
+    }
+    return;
+  }
 
   // Navigations: network first, offline falls back to the cached shell
   if (e.request.mode === 'navigate') {
