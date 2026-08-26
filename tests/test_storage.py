@@ -18,7 +18,7 @@ import pytest
 
 import auth as auth_module
 from app import create_app
-from db.core import init_db, user_context, execute, new_id, now_iso
+from db.core import init_db, user_context, execute, new_id, now_iso, table_columns
 from db import storage as st
 
 PW = "stor-pw-12345"
@@ -88,7 +88,7 @@ def test_every_column_that_stores_a_filename_is_registered():
     for table in ("reports", "symptom_photos", "medicines", "dependent_records",
                   "prescriptions", "vision_prescriptions"):
         try:
-            cols = [r["name"] for r in execute(f"PRAGMA table_info({table})", fetchall=True)]
+            cols = table_columns(table)        # portable: PRAGMA is SQLite-only
         except Exception:
             continue
         for col in cols:
@@ -101,7 +101,7 @@ def test_every_column_that_stores_a_filename_is_registered():
 def test_registered_columns_exist():
     init_db()
     for table, col in st.FILE_COLUMNS:
-        cols = {r["name"] for r in execute(f"PRAGMA table_info({table})", fetchall=True)}
+        cols = table_columns(table)            # portable: PRAGMA is SQLite-only
         assert col in cols, f"{table}.{col} is registered but doesn't exist"
 
 

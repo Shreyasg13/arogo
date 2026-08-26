@@ -10,7 +10,8 @@ import pytest
 
 import auth as auth_module
 from app import create_app
-from db.core import init_db, user_context, execute, user_today, DATA_TABLES
+from db.core import (init_db, user_context, execute, user_today, DATA_TABLES,
+                     table_columns, table_indexes)
 from db.search import SEARCHABLE, NOT_SEARCHABLE, global_search
 
 PW = "search-pw-12345"
@@ -79,7 +80,7 @@ def test_every_declared_column_actually_exists():
     init_db()
     bad = []
     for s in SEARCHABLE:
-        cols = {r["name"] for r in execute(f"PRAGMA table_info({s.table})", fetchall=True)}
+        cols = table_columns(s.table)          # portable: PRAGMA is SQLite-only
         if not cols:
             bad.append(f"{s.table}: table missing")
             continue
@@ -283,16 +284,14 @@ def test_date_parsing_uses_the_users_day(app):
 
 def test_every_data_table_has_a_user_id_index(app):
     init_db()
-    have = {}
-    for r in execute("SELECT tbl_name, sql FROM sqlite_master WHERE type='index'",
-                     fetchall=True):
-        have.setdefault(r["tbl_name"], []).append(r["sql"] or "")
     missing = []
     for t in DATA_TABLES:
-        cols = {c["name"] for c in execute(f"PRAGMA table_info({t})", fetchall=True)}
-        if "user_id" not in cols:
+        if "user_id" not in table_columns(t):
             continue
-        if not any("user_id" in sql for sql in have.get(t, [])):
+        # table_indexes works on both backends — sqlite_master does not exist on
+        # PostgreSQL, and a test that can only run on SQLite defeats the point of
+        # having a PostgreSQL job at all.
+        if not any("user_id" in ix["definition"] for ix in table_indexes(t)):
             missing.append(t)
     assert not missing, f"per-user reads on these tables are full scans: {missing}"
 
@@ -304,13 +303,11 @@ def test_the_index_is_compound_where_a_date_column_exists(app):
     init_db()
     flat = []
     for t in DATA_TABLES:
-        cols = {c["name"] for c in execute(f"PRAGMA table_info({t})", fetchall=True)}
+        cols = table_columns(t)
         if "user_id" not in cols or not any(c in cols for c in _INDEX_DATE_COLS):
             continue
-        sqls = [r["sql"] or "" for r in
-                execute("SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name=?",
-                        (t,), fetchall=True)]
-        if not any("user_id" in s and "," in s for s in sqls):
+        defs = [ix["definition"] for ix in table_indexes(t)]
+        if not any("user_id" in d and "," in d for d in defs):
             flat.append(t)
     assert not flat, f"these tables have a date column but only a flat index: {flat}"
 

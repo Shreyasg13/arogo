@@ -71,8 +71,14 @@ def delete_set(sid: str):
 def list_exercises() -> list:
     """Distinct exercise names this user has logged, most-recent first — for the
     log form's quick-pick, so they don't retype 'Bench Press' every time."""
-    rows = execute("""SELECT exercise, MAX(created_at) AS last FROM workout_sets
-                      WHERE user_id=? GROUP BY exercise_key ORDER BY last DESC""",
+    # Every selected column must be grouped or aggregated. SQLite tolerates a
+    # bare `exercise` here and silently picks a row from the group; PostgreSQL
+    # rejects it, and /api/workouts/exercises returned a 500 there. Aggregating
+    # the display name is also more correct than what SQLite was doing — the old
+    # spelling was whichever row the engine happened to hand back.
+    rows = execute("""SELECT MAX(exercise) AS exercise, MAX(created_at) AS last
+                      FROM workout_sets WHERE user_id=?
+                      GROUP BY exercise_key ORDER BY last DESC""",
                    (current_user_id(),), fetchall=True) or []
     return [r['exercise'] for r in rows]
 

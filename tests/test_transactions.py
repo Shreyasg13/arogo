@@ -273,8 +273,14 @@ def test_releasing_a_connection_mid_transaction_rolls_it_back():
     execute("INSERT INTO _tx_probe (id, note) VALUES (?, ?)", ("before", "1"), commit=True)
     import db.core as core
     conn = core.get_db()
+    # Open the transaction the way transaction() does — on PostgreSQL that means
+    # turning autocommit OFF, not issuing BEGIN. Setting only the flag left the
+    # DELETE auto-committing, so the test was asserting nothing there.
+    if core.IS_POSTGRES:
+        conn.autocommit = False
+    else:
+        conn.execute("BEGIN IMMEDIATE")
     core._local.in_tx = True
-    conn.execute("BEGIN IMMEDIATE") if not core.IS_POSTGRES else None
     execute("DELETE FROM _tx_probe")
     release_db()
     assert _rows() == {"before"}, "an abandoned transaction must not be committed"

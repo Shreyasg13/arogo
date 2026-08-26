@@ -211,6 +211,37 @@ PRAGMA_ALLOWED = {
 }
 
 
+def test_no_test_uses_sqlite_only_introspection():
+    """A test that can only run on SQLite defeats the point of the PostgreSQL job.
+
+    Five of them did: PRAGMA table_info and sqlite_master, which are a syntax
+    error and a missing relation on PostgreSQL. They passed here for weeks and
+    failed the moment the second job got far enough to reach them — and the
+    existing PRAGMA guard never saw them, because it skipped tests/ entirely.
+    Use table_columns() and table_indexes(), which work on both.
+
+    A plain line scan rather than an AST walk, deliberately: a check this simple
+    is one anybody can verify at a glance. Comments are stripped first — an
+    explanatory note saying "PRAGMA is SQLite-only" is not a use of it, and a
+    guard that flags the comment explaining itself is one people learn to write
+    around.
+    """
+    import glob
+    here = os.path.basename(__file__)
+    offenders = []
+    for path in sorted(glob.glob(os.path.join(ROOT, 'tests', '*.py'))):
+        if os.path.basename(path) == here:
+            continue
+        with open(path, encoding='utf-8', errors='replace') as fh:
+            for lineno, line in enumerate(fh, 1):
+                code = line.split('#', 1)[0]
+                if re.search(r'PRAGMA\s+\w', code, re.I) or 'sqlite_master' in code.lower():
+                    offenders.append(f"tests/{os.path.basename(path)}:{lineno}")
+    assert not offenders, (
+        "these tests can only run on SQLite — use db.core.table_columns() / "
+        "table_indexes() instead: " + ", ".join(offenders))
+
+
 def test_pragma_is_confined_to_db_core():
     """PRAGMA is meaningless on PostgreSQL, and a failed statement there aborts
     the surrounding transaction. Only the files above may use it, each for a

@@ -264,6 +264,13 @@ def release_db(exc=None):
         return
     _local.conn = None
     try:
+        # Back to autocommit before it goes back in the pool. _connect_postgres
+        # sets this on checkout too, but a connection should leave this thread in
+        # the state the next borrower expects rather than relying on that.
+        conn.autocommit = True
+    except Exception:
+        pass
+    try:
         _get_pool().putconn(conn)
     except Exception:
         pass
@@ -515,6 +522,44 @@ def table_columns(t: str) -> set:
         return {r["column_name"] for r in rows}
     except Exception:
         return set()
+
+
+def table_indexes(t: str) -> list:
+    """[{name, definition}] for a table's indexes, on either backend.
+
+    The companion to table_columns(), and it exists for the same reason: the
+    SQLite way of asking (sqlite_master) is a syntax error on PostgreSQL, so
+    anything that needs to know about indexes — including the tests that check
+    every table has one on user_id — needs one call that works on both.
+    `definition` is the engine's own text, which is enough to see which columns
+    an index covers without parsing it into a schema of our own.
+    """
+    if IS_POSTGRES:
+        try:
+            rows = execute("SELECT indexname, indexdef FROM pg_indexes WHERE tablename=?",
+                           (t,), fetchall=True) or []
+            return [{'name': r['indexname'], 'definition': r['indexdef'] or ''}
+                    for r in rows]
+        except Exception:
+            return []
+    try:
+        rows = execute("SELECT name, sql FROM sqlite_master "
+                       "WHERE type='index' AND tbl_name=?", (t,), fetchall=True) or []
+    except Exception:
+        return []
+    out = []
+    for r in rows:
+        # An implicit index (UNIQUE/PRIMARY KEY) has a NULL sql; ask for its
+        # columns directly so it still reports what it covers.
+        definition = r['sql'] or ''
+        if not definition:
+            try:
+                cols = execute(f"PRAGMA index_info({r['name']})", fetchall=True) or []
+                definition = f"({', '.join(c['name'] for c in cols)})"
+            except Exception:
+                definition = ''
+        out.append({'name': r['name'], 'definition': definition})
+    return out
 
 
 def now_iso():   return datetime.datetime.now().isoformat()

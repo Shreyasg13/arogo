@@ -48,7 +48,8 @@ def _second_device(app, email, ua):
 def test_no_ip_address_or_raw_user_agent_is_stored(app):
     """A security feature that quietly grows a location history has taken more
     than it gave."""
-    cols = {r["name"] for r in execute("PRAGMA table_info(user_sessions)", fetchall=True)}
+    from db.core import table_columns
+    cols = table_columns("user_sessions")      # portable: PRAGMA is SQLite-only
     for forbidden in ("ip", "ip_address", "remote_addr", "user_agent"):
         assert forbidden not in cols, f"user_sessions stores {forbidden}"
 
