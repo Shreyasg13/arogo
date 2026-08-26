@@ -449,9 +449,15 @@ def build_emergency_qr() -> dict:
     try:
         import io
         qr = segno.make(text, error='m')
-        buf = io.StringIO()
+        # segno writes SVG as BYTES, so a StringIO here raises
+        # "string argument expected, got 'bytes'" and the QR silently never
+        # renders. That went unnoticed because segno is an optional dependency:
+        # it wasn't installed on the dev machine, so the test skipped, and only
+        # CI — which installs everything in requirements.txt — ever ran this.
+        buf = io.BytesIO()
         qr.save(buf, kind='svg', scale=4, border=2, dark='#243027')
-        return {'available': True, 'svg': buf.getvalue(), 'text': text}
+        return {'available': True, 'svg': buf.getvalue().decode('utf-8'),
+                'text': text}
     except Exception:
         return {'available': False, 'reason': 'qr_error', 'svg': None}
 

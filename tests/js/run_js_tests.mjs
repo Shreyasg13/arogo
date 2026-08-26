@@ -52,6 +52,13 @@ function test(name, fn) {
   try { fn(); passed++; console.log(`  PASS  ${name}`); }
   catch (e) { failed++; console.error(`  FAIL  ${name}\n        ${e.message}`); }
 }
+// An async test MUST be registered with atest(), not test(): test() calls the
+// function without awaiting, so an async body's assertions land in a promise
+// nobody inspects and the test prints PASS whatever it does. Two of these were
+// silently vacuous until a deliberately-wrong assertion still passed.
+const asyncTests = [];
+const atest = (name, fn) => asyncTests.push([name, fn]);
+
 function eq(actual, expected, msg = '') {
   const a = JSON.stringify(actual), b = JSON.stringify(expected);
   if (a !== b) throw new Error(`${msg} expected ${b}, got ${a}`);
@@ -531,7 +538,7 @@ test('ticking the same id twice selects it once', () => {
   eq(S.bulkSelected('t3'), ['x']);
 });
 
-test('bulkRun reports what happened, not what was ticked', async () => {
+atest('bulkRun reports what happened, not what was ticked', async () => {
   // Claiming "20 restored" when three failed is exactly the kind of lie this
   // app avoids everywhere else.
   S.bulkClear('t4');
@@ -549,7 +556,7 @@ test('bulkRun reports what happened, not what was ticked', async () => {
   eq(S.bulkSelected('t4'), [], 'the selection is cleared once it has run');
 });
 
-test('bulkRun counts a thrown request as a failure, not a success', async () => {
+atest('bulkRun counts a thrown request as a failure, not a success', async () => {
   S.bulkClear('t5');
   S.bulkToggle('t5', 'boom', true);
   const said = [];
@@ -587,8 +594,6 @@ test('_pageMatches: short/empty queries return nothing, and caps at 6', () => {
 // Several panels load independently and ask for the same endpoint within
 // milliseconds. Sharing the request is only safe because the entry is dropped
 // the moment it settles — a cache here would mask a dose the user just logged.
-const asyncTests = [];
-const atest = (name, fn) => asyncTests.push([name, fn]);
 
 function fakeFetch(bodyFor) {
   const calls = [];
