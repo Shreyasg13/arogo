@@ -31,13 +31,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP_JS = os.path.join(ROOT, 'static', 'js', 'app.js')
 INDEX = os.path.join(ROOT, 'templates', 'index.html')
 
-# Ratchet. Raise these when coverage improves; they may never be lowered without
-# a deliberate decision, which is the point of writing them down.
-MAX_UNTRANSLATED_CALLS = 66
-# The 26 remaining attributes belong to older pages — meal planning, dose
-# tapering, snooze settings — that were outside the round which brought the
-# newer pages up to date. Named here rather than quietly tolerated.
-MAX_UNTRANSLATED_ATTRS = 25
+# Retired. These were a ratchet while Hindi caught up: a ceiling that could
+# never rise, tightened each round. Coverage reached zero on both counts, so the
+# ceiling is zero and the ratchet has become a plain requirement — an
+# untranslated string is now a build failure rather than a budget line.
+#
+# If a future round genuinely needs to ship English text, raise these
+# deliberately and say why. Do not delete them: a silently absent check is how
+# this drifted the first time.
+MAX_UNTRANSLATED_CALLS = 0
+MAX_UNTRANSLATED_ATTRS = 0
 
 # Entries that are legitimately identical in both languages. Each needs a
 # reason, so the list cannot become a place to hide unfinished work.
@@ -90,8 +93,28 @@ def _drop_comment_lines(text):
                      if not _COMMENT_LINE.match(ln))
 
 
-# Keys appear several per line, so this is deliberately NOT anchored.
-KEY = re.compile(r"'((?:[^'\\]|\\.)*)'\s*:")
+# Keys appear several per line, so this is deliberately NOT anchored. Both quote
+# styles count: a key containing an apostrophe is naturally written with double
+# quotes ("Today's Medicines"), and a checker that only saw single-quoted keys
+# reported those as untranslated while the app resolved them perfectly well.
+KEY = re.compile(r"""(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*:""")
+
+
+def _unescape(js_literal):
+    """What the JS engine sees, not what the source file spells.
+
+    A key written 'who\\'s responsible' is captured from the source with the
+    backslash still in it, and comparing that to the real key — who's
+    responsible — reports a translated string as missing. Only the escapes that
+    actually appear in this pack are handled; anything more would be inventing a
+    JavaScript parser to check a dictionary.
+    """
+    return (js_literal.replace("\\'", "'").replace('\\"', '"')
+                      .replace('\\\\', '\\'))
+
+
+def _keys(text):
+    return {_unescape(a or b) for a, b in KEY.findall(text)}
 CALL = re.compile(r"\bt(?:format)?\(\s*'((?:[^'\\]|\\.)*)'")
 
 
@@ -100,12 +123,15 @@ def hindi_keys():
     m = re.search(r"^\s{2}hi:\s*\{", i18n, re.M)
     assert m, 'the Hindi pack is gone'
     end = _brace_match(i18n, m.end() - 1)
-    return set(KEY.findall(i18n[m.end():end]))
+    return _keys(i18n[m.end():end])
 
 
 def used_strings():
     _, body = _split_i18n(_source())
-    return set(CALL.findall(_drop_comment_lines(body)))
+    # Unescaped for the same reason the keys are: t('who\\'s here') looks up the
+    # key who's here. Comparing raw source on one side and unescaped on the
+    # other would report every apostrophe-bearing string as untranslated.
+    return {_unescape(s) for s in CALL.findall(_drop_comment_lines(body))}
 
 
 def template_strings():
@@ -167,8 +193,9 @@ def test_untranslated_attributes_do_not_grow():
 
 
 def test_the_ceilings_are_not_slack():
-    """A ceiling far above the real number stops being a ratchet. If coverage
-    improved, this says so and asks for the ceiling to come down with it."""
+    """A ceiling far above the real number stops being a ratchet. It reached
+    zero, so this now only guards against someone raising it again and leaving
+    it raised after the strings were translated."""
     calls = len(used_strings() - hindi_keys())
     attrs = len(template_strings() - hindi_keys())
     assert MAX_UNTRANSLATED_CALLS - calls <= 15, (

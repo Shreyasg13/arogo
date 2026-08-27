@@ -1841,6 +1841,136 @@ const I18N = {
     'last dose %1': 'आख़िरी खुराक: %1',
     'min %1': 'न्यूनतम %1',
     'max %1': 'अधिकतम %1',
+    // ── The tail ──────────────────────────────────────────────────────────
+    // The last strings that were still English: leftovers on older pages —
+    // meal planning, dose tapering, snooze settings, trips, questionnaires.
+    // Carrying a ratchet forward round after round is how a partial
+    // translation becomes permanent, so this closes it out.
+    '%1 selected': '%1 चुने गए',
+    'Select': 'चुनें',
+    'Choose…': 'चुनें…',
+    'Saved.': 'सहेजा गया।',
+    'Start again': 'फिर से शुरू करें',
+    'Could not load that': 'यह लोड नहीं हो सका',
+    'Could not read that': 'यह पढ़ा नहीं जा सका',
+    'Could not start that': 'यह शुरू नहीं हो सका',
+    'Could not score that': 'इसका स्कोर नहीं निकल सका',
+    'Read aloud': 'ज़ोर से पढ़ें',
+    'Print for my doctor': 'अपने डॉक्टर के लिए प्रिंट करें',
+    'Last 30 days': 'पिछले 30 दिन',
+    'last 30 days': 'पिछले 30 दिन',
+    'worst': 'सबसे ख़राब',
+    'Band': 'श्रेणी',
+    'Call': 'कॉल करें',
+
+    // Medicines / doses
+    'Medicines taken': 'ली गई दवाइयाँ',
+    'No medicines yet': 'अभी कोई दवा नहीं',
+    'No doses scheduled today': 'आज कोई खुराक निर्धारित नहीं',
+    'You have no doses scheduled today.': 'आज आपकी कोई खुराक निर्धारित नहीं है।',
+    'All doses already taken ✓': 'सारी खुराकें ली जा चुकी हैं ✓',
+    'You have already taken all your doses today.': 'आप आज अपनी सारी खुराकें ले चुके हैं।',
+    'Marked %1 as taken.': '%1 को ली गई के रूप में चिह्नित किया।',
+    '🚨 Alert my family if I miss a dose': '🚨 खुराक छूटने पर मेरे परिवार को बताएँ',
+
+    // Voice entry
+    'I didn’t catch a health entry. Try, for example, blood pressure 120 over 80.':
+      'मुझे कोई स्वास्थ्य प्रविष्टि समझ नहीं आई। उदाहरण के लिए कहें: ब्लड प्रेशर 120 बटा 80।',
+    'e.g. blood pressure 120 over 80': 'जैसे ब्लड प्रेशर 120 बटा 80',
+    '“blood pressure 120 over 80”': '“ब्लड प्रेशर 120 बटा 80”',
+
+    // Questionnaires
+    'Over the last 2 weeks, how often have you been bothered by any of the following?':
+      'पिछले 2 हफ़्तों में, इनमें से किसी बात ने आपको कितनी बार परेशान किया?',
+    'Please answer every question.': 'कृपया हर सवाल का जवाब दें।',
+    'See my score': 'मेरा स्कोर देखें',
+    'Past scores': 'पिछले स्कोर',
+    'Each of these is one day. Arogo does not join them into a trend — a doctor reads them alongside everything else going on.':
+      'इनमें से हर एक एक दिन है। Arogo इन्हें जोड़कर कोई ट्रेंड नहीं बनाता — डॉक्टर इन्हें बाक़ी सब बातों के साथ मिलाकर पढ़ते हैं।',
+
+    // Episodes, donations, trash, storage
+    '%1 days long · logged on %2 of them.': '%1 दिन लंबा · इनमें से %2 दिन दर्ज हुए।',
+    'A day with nothing written down is just that — it does not mean nothing happened.':
+      'जिस दिन कुछ नहीं लिखा गया वह बस इतना ही है — इसका मतलब यह नहीं कि कुछ हुआ ही नहीं।',
+    'started that day': 'उस दिन शुरू हुआ',
+    'still going': 'अब भी चल रहा',
+    'stopped': 'बंद हो गया',
+    'Highest temperature': 'सबसे अधिक तापमान',
+    '✓ Episode started': '✓ प्रकरण शुरू हुआ',
+    'Removing this episode — your symptoms and readings stay':
+      'यह प्रकरण हटाया जा रहा है — आपके लक्षण और रीडिंग बनी रहेंगी',
+    '✓ Donation recorded': '✓ रक्तदान दर्ज हुआ',
+    'Removing this donation': 'यह रक्तदान हटाया जा रहा है',
+    '%1 matching items are in your trash': 'आपके ट्रैश में %1 मेल खाती चीज़ें हैं',
+    'How do I get rid of these?': 'इन्हें कैसे हटाऊँ?',
+    'Deleting files that no longer belong to any record':
+      'ऐसी फ़ाइलें हटाई जा रही हैं जो अब किसी रिकॉर्ड की नहीं हैं',
+    'Could not remove those files': 'वे फ़ाइलें हटाई नहीं जा सकीं',
+    '✓ Removed %1 files': '✓ %1 फ़ाइलें हटा दी गईं',
+
+    // Sessions
+    'Signed out %1 devices': '%1 डिवाइस साइन आउट किए गए',
+    'Signing out every other device — this one stays signed in':
+      'बाक़ी सभी डिवाइस साइन आउट किए जा रहे हैं — यह वाला साइन-इन रहेगा',
+    'Signing that device out': 'वह डिवाइस साइन आउट किया जा रहा है',
+
+    // Trips and time zones
+    '✓ Trip added': '✓ यात्रा जोड़ी गई',
+    'Could not add that trip': 'वह यात्रा जोड़ी नहीं जा सकी',
+    'Removing this trip': 'यह यात्रा हटाई जा रही है',
+    '%1 hours %2 home': 'घर से %1 घंटे %2',
+    'ahead of': 'आगे',
+    'behind': 'पीछे',
+    'at home': 'घर पर',
+    'the same time as home': 'घर के समय जैसा ही',
+    'While you are in %1, Arogo is on %2 — %3. Until %4.':
+      'जब तक आप %1 में हैं, Arogo %2 पर चल रहा है — %3। %4 तक।',
+    'These are the same moments shown in both clocks. Whether to move a dose to local time is a question for whoever prescribed it — Arogo does not decide that for you.':
+      'ये वही क्षण हैं जो दोनों घड़ियों में दिखाए गए हैं। खुराक को स्थानीय समय पर करना है या नहीं, यह उसी से पूछें जिसने वह लिखी है — Arogo यह फ़ैसला आपके लिए नहीं करता।',
+
+    // Journeys and appointments
+    '🚶 Leave by %1': '🚶 %1 तक निकलें',
+    '· %1 min journey, as you entered it': '· %1 मिनट का रास्ता, जैसा आपने डाला',
+
+    // Forecasts
+    '%1 days by then': 'तब तक %1 दिन',
+    '%1 weeks by then': 'तब तक %1 हफ़्ते',
+    '%1 months by then': 'तब तक %1 महीने',
+    'Target weight set: %1': 'लक्ष्य वज़न तय: %1',
+    'Weight %1 (optional)': 'वज़न %1 (वैकल्पिक)',
+
+    // ── data-i18n attributes still in English ─────────────────────────────
+    'From': 'से',
+    'To': 'तक',
+    'Kind': 'प्रकार',
+    'What was it?': 'यह क्या था?',
+    "What's it for?": 'यह किसलिए है?',
+    "What's driving it? (optional)": 'इसकी वजह क्या लगती है? (वैकल्पिक)',
+    "Not sure / didn't say": 'पक्का नहीं / बताया नहीं',
+    'How long to get there?': 'वहाँ पहुँचने में कितना समय?',
+    '— optional, in minutes': '— वैकल्पिक, मिनटों में',
+    "Today's Medicines": 'आज की दवाइयाँ',
+    "Today's Calorie Balance": 'आज का कैलोरी संतुलन',
+    "☀️ Today's schedule": '☀️ आज का कार्यक्रम',
+    "📅 This week's plan": '📅 इस हफ़्ते की योजना',
+    '🖨 Print log': '🖨 लॉग प्रिंट करें',
+    "How long 'snooze' waits, and how early each medicine reminds you":
+      '“स्नूज़” कितनी देर रुकता है, और हर दवा कितनी जल्दी याद दिलाती है',
+    "Plan the week's meals, then turn them into a grocery list":
+      'हफ़्ते के खाने की योजना बनाएँ, फिर उसे किराने की सूची में बदलें',
+    "Step a medicine's dose down (or up) over time — the current dose is highlighted":
+      'किसी दवा की खुराक धीरे-धीरे घटाएँ (या बढ़ाएँ) — मौजूदा खुराक उजागर की गई है',
+    "Track a quit date and see the days, units and money you've saved — all from your own numbers":
+      'छोड़ने की तारीख़ दर्ज करें और देखें कि आपने कितने दिन, कितनी मात्रा और कितना पैसा बचाया — सब आपके अपने आँकड़ों से',
+    "Track vaccines, medicines and notes for a child or parent who doesn't use the app":
+      'ऐसे बच्चे या माता-पिता के टीके, दवाइयाँ और नोट रखें जो ऐप इस्तेमाल नहीं करते',
+    "Track what you've claimed and what's actually been reimbursed":
+      'आपने क्या दावा किया और असल में कितना वापस मिला, दोनों दर्ज रखें',
+    'What to do, who\'s responsible, and when to review it — shared with anyone caring for you':
+      'क्या करना है, किसकी ज़िम्मेदारी है, और कब दोबारा देखना है — आपकी देखभाल करने वालों के साथ साझा',
+    'Your own health to-dos — an annual check-up, an eye test, a self-exam. You set them; Arogo just keeps track of what\'s due':
+      'आपके अपने स्वास्थ्य कार्य — सालाना जाँच, आँखों की जाँच, ख़ुद की जाँच। आप तय करते हैं; Arogo बस याद रखता है कि क्या बाक़ी है',
+
     // ── Screen lock ───────────────────────────────────────────────────────
     'Screen lock': 'स्क्रीन लॉक',
     'Arogo is locked': 'Arogo लॉक है',
