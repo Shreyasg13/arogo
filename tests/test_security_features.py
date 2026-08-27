@@ -402,3 +402,92 @@ def test_routes_require_auth(app):
     for path in ("/api/2fa", "/api/backups", "/api/medicines/changes"):
         assert anon.get(path).status_code == 401, path
     assert anon.post("/api/2fa/setup").status_code == 401
+
+
+# ── Recovery codes can be replaced ──────────────────────────────────────────
+# Codes are shown exactly once. Someone who closes that screen too early, or
+# burns their last code, otherwise has 2FA on and no way back in when the phone
+# dies — so there has to be a way to mint a fresh set.
+
+def test_new_recovery_codes_replace_the_old_ones(app):
+    from db import totp as t
+    c, uid = _register(app, "sec20@medeasy.test")
+    _, first = _enable_2fa(c)
+    res = c.post("/api/2fa/recovery-codes", json={"password": PW}).get_json()
+    assert res["success"] is True
+    second = res["recovery_codes"]
+    assert len(second) == t.RECOVERY_CODE_COUNT
+    assert set(first).isdisjoint(second), "the same codes were handed out again"
+    # An old code must stop working the moment a new set exists, or revoking a
+    # leaked set would do nothing.
+    with user_context(uid):
+        assert t.verify(uid, first[0]) is False, "an old recovery code still works"
+        assert t.verify(uid, second[0]) is True
+
+
+def test_new_recovery_codes_need_the_password(app):
+    """These bypass the second factor, so minting them is a security action —
+    a borrowed unlocked phone must not be enough."""
+    c, uid = _register(app, "sec21@medeasy.test")
+    _, first = _enable_2fa(c)
+    r = c.post("/api/2fa/recovery-codes", json={"password": "wrong-password"})
+    assert r.status_code == 401
+    from db import totp as t
+    with user_context(uid):
+        assert t.verify(uid, first[0]) is True, "the old codes were destroyed anyway"
+
+
+def test_recovery_codes_are_refused_when_2fa_is_off(app):
+    """Issuing credentials for an enrolment nobody confirmed would hand out a
+    way in to an account that does not use one."""
+    c, uid = _register(app, "sec22@medeasy.test")
+    r = c.post("/api/2fa/recovery-codes", json={"password": PW})
+    assert r.status_code == 400
+    assert r.get_json()["success"] is False
+    from db.totp import regenerate_recovery_codes
+    with user_context(uid):
+        assert regenerate_recovery_codes(uid) == []
+
+
+def test_regenerating_is_written_to_the_activity_log(app):
+    c, uid = _register(app, "sec23@medeasy.test")
+    _enable_2fa(c)
+    c.post("/api/2fa/recovery-codes", json={"password": PW})
+    kinds = [e["kind"] for e in
+             c.get("/api/account/activity").get_json()["events"]]
+    assert "two_factor_recovery_codes_regenerated" in kinds
+
+
+def test_new_codes_are_stored_hashed_like_the_first_set(app):
+    c, uid = _register(app, "sec24@medeasy.test")
+    _enable_2fa(c)
+    codes = c.post("/api/2fa/recovery-codes",
+                   json={"password": PW}).get_json()["recovery_codes"]
+    stored = execute("SELECT recovery FROM user_totp WHERE user_id=?", (uid,),
+                     fetchone=True)["recovery"]
+    for code in codes:
+        assert code not in stored, "a regenerated code is stored in the clear"
+
+
+# ── Setup hands the UI something scannable ──────────────────────────────────
+
+def test_setup_offers_a_qr_and_degrades_to_the_key(app):
+    """Without segno there is no QR, and the panel falls back to typing the key
+    in by hand — so `available` has to be reported rather than the QR simply
+    being absent."""
+    c, uid = _register(app, "sec25@medeasy.test")
+    out = c.post("/api/2fa/setup").get_json()
+    assert out["secret"] and out["uri"].startswith("otpauth://")
+    assert "qr" in out and "available" in out["qr"]
+    if out["qr"]["available"]:
+        assert out["qr"]["svg"].lstrip().startswith("<?xml") or "<svg" in out["qr"]["svg"]
+    else:
+        assert out["qr"]["svg"] is None and out["qr"]["reason"]
+
+
+def test_the_setup_qr_does_not_echo_the_secret_back(app):
+    """The QR already carries it. A second plaintext copy in the payload just
+    widens where a credential can be read from."""
+    c, uid = _register(app, "sec26@medeasy.test")
+    out = c.post("/api/2fa/setup").get_json()
+    assert "text" not in out["qr"], "the QR payload echoes the otpauth URI back"

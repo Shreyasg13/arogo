@@ -1236,6 +1236,12 @@
   <!-- K1: expiring/expired medicines banner -->
   <div id="med-expiring-banner"></div>
 
+  <!-- "Has anything changed since we last saw you?" — the question every
+       appointment opens with, answered from the event log rather than from
+       memory. Rendered by loadMedChanges(); hidden entirely when nothing
+       changed, because a card saying "no changes" every day is noise. -->
+  <div id="med-changes-card"></div>
+
   <div class="modal-overlay" id="refill-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeRefillList')">
     <div class="modal" id="refill-sheet">
       <div class="modal-head no-print">
@@ -2235,6 +2241,22 @@
         <span class="panel-badge" id="notif-permission-badge">Loading…</span>
       </div>
 
+      <!-- Push on/off for THIS device. The server endpoint to stop push has
+           always existed with nothing calling it, so revoking the browser
+           permission stopped the browser showing reminders while the server
+           kept sending them. Rendered by renderPushControl(). -->
+      <div class="rs-section">
+        <div class="rs-section-head">
+          <div class="rs-section-icon">🔔</div>
+          <div class="rs-section-info">
+            <div class="rs-section-title" data-i18n="Push reminders">Push reminders</div>
+            <div class="rs-section-sub" data-i18n="Reminders that reach you with Arogo closed">
+              Reminders that reach you with Arogo closed</div>
+          </div>
+        </div>
+        <div id="push-control"></div>
+      </div>
+
       <!-- Water -->
       <div class="rs-section">
         <div class="rs-section-head">
@@ -3174,6 +3196,19 @@
     <div id="storage-report"><div class="restore-row">Checking…</div></div>
   </div>
 
+  <!-- Backups. The nightly job and its verification shipped working and then
+       had nowhere to report to, which is the one failure mode a backup system
+       cannot afford: everybody assumes it is running. Rendered by loadBackups(). -->
+  <div class="panel" style="padding:18px 20px;margin-top:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="🛟 Backups">🛟 Backups</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="A copy of your whole database, taken nightly on this server. Each one is opened and read back before it counts — a file that will not open is not a backup.">
+      A copy of your whole database, taken nightly on this server. Each one is
+      opened and read back before it counts — a file that will not open is not a
+      backup.</p>
+    <div id="backup-status"><div class="restore-row">Checking…</div></div>
+  </div>
+
   <!-- Danger zone: account deletion -->
   <div class="panel" id="delete-account-panel" style="padding:18px 20px;margin-top:20px;border:1px solid #f3c2c2">
     <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C" data-i18n="Delete my account">Delete my account</h2>
@@ -3259,6 +3294,15 @@
   </div>
 
   <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Two-factor sign-in">Two-factor sign-in</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="A code from your phone as well as your password. It protects the account itself — your medicines, records and everything shared with family.">
+      A code from your phone as well as your password. It protects the account
+      itself — your medicines, records and everything shared with family.</p>
+    <div id="twofa-panel"><div class="restore-row" data-i18n="Loading…">Loading…</div></div>
+  </div>
+
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
     <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Signed in on">Signed in on</h2>
     <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
        data-i18n="Arogo records the kind of browser, not your location or address. Signing out one device leaves the rest alone.">
@@ -3286,6 +3330,31 @@
       edited or deleted — that is what makes it worth reading.</p>
     <div id="activity-log"></div>
   </div>
+</div>
+
+<!-- ═══════════ APPOINTMENT PACK ═══════════ -->
+<div id="view-visitpack" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Appointments">Appointments</div>
+      <h1 class="page-title" data-i18n="Appointment pack">Appointment pack</h1>
+      <p class="page-subtitle" data-i18n="Everything worth bringing to one visit, on one page">
+        Everything worth bringing to one visit, on one page</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn-outline" data-ev-click="printVisitPackPage()"
+              data-i18n="Print">Print</button>
+    </div>
+  </div>
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <label for="vp-appointment" style="font-size:13px;color:var(--gray-400)"
+             data-i18n="Which visit">Which visit</label>
+      <select class="form-input" id="vp-appointment" style="flex:1;min-width:200px"
+              data-ev-change="loadVisitPack()"></select>
+    </div>
+  </div>
+  <div id="visitpack-body"><div class="restore-row">Loading…</div></div>
 </div>
 
 <!-- ═══════════ TRASH ═══════════ -->

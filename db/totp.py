@@ -160,6 +160,23 @@ def disable(uid) -> bool:
     return True
 
 
+def regenerate_recovery_codes(uid) -> list:
+    """A fresh set, replacing every old one.
+
+    Needed because the codes are shown exactly once: someone who closes that
+    screen too early, or uses their last code, otherwise has 2FA on and no way
+    back in if the phone dies. Returns [] when 2FA isn't actually on — issuing
+    recovery codes for an enrolment that was never confirmed would hand out
+    credentials to an account that doesn't use them.
+    """
+    if not is_enabled(uid):
+        return []
+    codes = generate_recovery_codes()
+    execute('UPDATE user_totp SET recovery=? WHERE user_id=?',
+            (','.join(_hash_code(c) for c in codes), uid), commit=True)
+    return codes
+
+
 # ── Verification ────────────────────────────────────────────────────────────
 
 def _verify_code(secret, code, last_used_step) -> bool:

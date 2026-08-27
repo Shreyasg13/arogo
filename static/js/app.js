@@ -2226,6 +2226,10 @@ async function showApp() {
   try { updateSidebarUser(); }       catch(e) {}
   try { checkNotifPermission(); }    catch(e) {}
   try { setupPushSubscription(); }   catch(e) {}
+  // If permission was revoked in browser settings, the server still holds a
+  // subscription and would keep pushing. setupPushSubscription returns early in
+  // that case, so clearing it needs its own call.
+  try { reconcilePushPermission(); } catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
   try { scheduleInstallPrompt(); }   catch(e) {}
   try { applyLang(); }               catch(e) {}
@@ -2877,6 +2881,102 @@ async function setupPushSubscription() {
   }
 }
 
+// The other half of the switch, which was missing.
+//
+// The server endpoint for this existed and nothing ever called it, so there was
+// no way to stop push reminders: revoking permission in browser settings stops
+// the browser SHOWING them, while the server keeps the subscription and keeps
+// sending. A health app pushing "time for your 9pm dose" to someone who turned
+// notifications off is a real failure, not a cosmetic one.
+//
+// Both halves matter and they can fail independently — the browser
+// subscription and the server's copy of it — so each is attempted separately.
+async function teardownPushSubscription() {
+  let endpoint = null;
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return false;
+    endpoint = sub.endpoint;
+    try { await sub.unsubscribe(); } catch (e) { /* tell the server regardless */ }
+  } catch (e) {
+    console.warn('[push] could not read the current subscription:', e);
+    return false;
+  }
+  try {
+    await fetch('/api/push/unsubscribe', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin', body: JSON.stringify({endpoint}),
+    });
+  } catch (e) {
+    console.warn('[push] the server was not told to stop:', e);
+    return false;
+  }
+  return true;
+}
+
+// Called at startup: if the browser permission is gone but the server still
+// holds a subscription, clear it. Someone who revokes permission in browser
+// settings never comes back through the app's own off switch.
+async function reconcilePushPermission() {
+  try {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') return;
+    await teardownPushSubscription();
+  } catch (e) { /* best effort */ }
+}
+
+async function disablePushNotifications() {
+  const ok = await teardownPushSubscription();
+  showToast(ok ? t('Push reminders are off on this device')
+                : t('There were no push reminders to turn off on this device'),
+            ok ? 'success' : 'info');
+  try { renderPushControl(); } catch (e) {}
+}
+
+async function enablePushNotifications() {
+  if (!('Notification' in window)) { showToast(t('This browser cannot show notifications'), 'info'); return; }
+  if (Notification.permission === 'denied') {
+    showToast(t('Notifications are blocked in your browser settings — turn them back on there first'), 'warn');
+    return;
+  }
+  if (Notification.permission === 'default') {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showToast(t('Notifications were not allowed'), 'info'); return; }
+  }
+  await setupPushSubscription();
+  showToast(t('✓ Push reminders are on for this device'), 'success');
+  try { renderPushControl(); } catch (e) {}
+}
+
+// Per DEVICE, and the wording says so — someone who turns these off on their
+// phone has not turned them off on their laptop, and assuming otherwise is how
+// a dose reminder gets missed.
+async function renderPushControl() {
+  const el = document.getElementById('push-control');
+  if (!el) return;
+  let subscribed = false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    subscribed = !!(await reg.pushManager.getSubscription());
+  } catch (e) { subscribed = false; }
+  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  const on = subscribed && perm === 'granted';
+  el.innerHTML = `<div class="restore-row">
+      <span>${on ? t('Push reminders are on for this device')
+                 : t('Push reminders are off for this device')}</span>
+      <button class="btn-outline" style="font-size:12px"
+              data-ev-click="${on ? 'disablePushNotifications()' : 'enablePushNotifications()'}">
+        ${on ? t('Turn off') : t('Turn on')}</button>
+    </div>
+    ${perm === 'denied' ? `<div class="restore-note">${t(
+      'Your browser is blocking notifications for this site. Turning them on here needs that changed in browser settings first.')}</div>` : ''}
+    <div class="restore-note">${t(
+      'This setting is for this device only. Reminders on your other devices are unaffected.')}</div>`;
+  _a11yEnhance(el);
+}
+
 // ── PWA: register the service worker ─────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -3178,7 +3278,7 @@ function switchView(view) {
   if (view === 'dashboard')     { loadDashboard(); loadWellnessStrip(); }
   if (view === 'food')          { loadFoodTracker(); loadHydration(localToday()); }
   if (view === 'fitness')       { loadFitness(); loadConnectedServices(); }
-  if (view === 'medicines')     { loadMedicines(); loadCourses(); }
+  if (view === 'medicines')     { loadMedicines(); loadCourses(); loadMedChanges(); }
   if (view === 'reports')       loadReports();
   if (view === 'habits')        loadHabits();
   if (view === 'thoughts')      { loadWellness(); setTimeout(() => switchWellnessTab('thoughts'), 50); }
@@ -3216,6 +3316,7 @@ function switchView(view) {
   if (view === 'todos')         loadTodos();
   if (view === 'export')        initExportView();
   if (view === 'trash')         loadTrash();
+  if (view === 'visitpack')     loadVisitPack();
   if (view === 'episodes')      loadEpisodes();
   if (view === 'account-activity') loadAccountActivity();
   if (view === 'wellbeing')     loadQuestionnaires();
@@ -12977,7 +13078,445 @@ function _agoText(iso) {
   return String(iso).slice(0, 10);
 }
 
+// ── "What changed" on the medicines page ───────────────────────────────────
+// The compact answer to the question an appointment opens with, where the
+// medicines already are. The full version lives in the appointment pack; this
+// is the glance.
+async function loadMedChanges() {
+  const el = document.getElementById('med-changes-card');
+  if (!el) return;
+  const r = await fetch('/api/medicines/changes', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  // Nothing changed is the common case and does not deserve a card.
+  if (!r || !r.changes || !r.changes.length) { el.innerHTML = ''; return; }
+
+  const anchor = r.anchor || {};
+  const since = anchor.kind === 'appointment'
+    ? tformat('since your visit on %1', anchor.date)
+    : tformat('in the last %1 days', 90);
+  const shown = r.changes.slice(0, 4);
+  el.innerHTML = `<div class="panel" style="padding:14px 18px;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
+        <b style="font-size:14px">${tformat('%1 changes %2', r.changes.length, since)}</b>
+        <button class="btn-outline" style="font-size:12px"
+                data-ev-click="switchView('visitpack')">${t('Take this to my appointment')}</button>
+      </div>
+      <ul class="vp-list" style="margin-top:8px">${shown.map(c =>
+        `<li>${escHtml(c.date)} — <b>${escHtml(c.name)}</b>: ${escHtml(c.label)}${
+          c.detail ? ' <span class="vp-dim">' + escHtml(c.detail) + '</span>' : ''}</li>`).join('')}
+      </ul>
+      ${r.changes.length > shown.length
+        ? `<div class="restore-note">${tformat('and %1 more',
+            r.changes.length - shown.length)}</div>` : ''}
+    </div>`;
+  _a11yEnhance(el);
+}
+
+// ── Appointment pack ────────────────────────────────────────────────────────
+// Every section here already existed on its own screen. What did not exist was
+// the one page you can print and carry, which is why "has anything changed since
+// we last saw you?" gets answered from memory in most appointments.
+//
+// The rendering rule throughout: an empty section says it is empty. Dropping it
+// would let the page read as a complete picture of someone's health, and it is
+// an index of what happens to be recorded in one app.
+
+let _visitPack = null;
+
+async function loadVisitPack() {
+  const body = document.getElementById('visitpack-body');
+  if (!body) return;
+  const sel = document.getElementById('vp-appointment');
+
+  if (sel && !sel.dataset.filled) {
+    const list = await fetch('/api/visit-pack/appointments', {credentials: 'same-origin'})
+      .then(r => r.json()).catch(() => null);
+    const appts = (list && list.appointments) || [];
+    sel.innerHTML = appts.map(a =>
+      `<option value="${escHtml(a.id)}">${escHtml(a.date)}${a.time ? ' ' + escHtml(a.time) : ''} — ${
+        escHtml(a.title)}${a.upcoming ? '' : ' (' + t('past') + ')'}</option>`).join('')
+      // Still useful with nothing booked: the same page over the last 90 days.
+      + `<option value="">${t('No particular visit — the last 90 days')}</option>`;
+    sel.dataset.filled = '1';
+  }
+
+  const chosen = sel ? sel.value : '';
+  const url = chosen ? '/api/visit-pack?appointment=' + encodeURIComponent(chosen)
+                     : '/api/visit-pack?since=';
+  const r = await fetch(url, {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r || !r.success) {
+    body.innerHTML = `<div class="panel" style="padding:18px 20px">${
+      t('Could not build the pack')}</div>`;
+    return;
+  }
+  _visitPack = r.pack;
+  body.innerHTML = renderVisitPack(r.pack);
+  _a11yEnhance(body);
+}
+
+// The window line. People read a printed page as "everything", so the range it
+// actually covers is stated at the top rather than implied.
+function _vpWindowLine(w) {
+  const a = w.anchor || {};
+  if (a.kind === 'appointment')
+    return tformat('Changes since your visit on %1%2', a.date,
+                   a.title ? ' — ' + a.title : '');
+  if (a.kind === 'chosen_dates')
+    return tformat('From %1 to %2', w.since, w.until);
+  return tformat('No earlier appointment recorded, so this covers the last %1 days (from %2)',
+                 w.window_days, w.since);
+}
+
+function _vpSection(title, inner, emptyText) {
+  return `<div class="panel vp-section" style="padding:18px 20px;margin-bottom:16px">
+      <h2 class="panel-title" style="margin-bottom:10px">${escHtml(title)}</h2>
+      ${inner || `<div class="restore-note">${escHtml(emptyText)}</div>`}
+    </div>`;
+}
+
+function renderVisitPack(p) {
+  const a = p.appointment;
+  const head = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div style="font-size:16px;font-weight:600">${
+        a ? escHtml(a.title) : t('The last 90 days')}</div>
+      ${a ? `<div style="font-size:13px;color:var(--gray-400);margin-top:2px">${
+        escHtml(a.date)}${a.time ? ' · ' + escHtml(a.time) : ''}${
+        a.location ? ' · ' + escHtml(a.location) : ''}${
+        p.provider ? ' · ' + escHtml(p.provider.name) : ''}</div>` : ''}
+      <div style="font-size:13px;color:var(--gray-400);margin-top:6px">${
+        escHtml(_vpWindowLine(p.window))}</div>
+    </div>`;
+
+  // Allergies lead. On a page a clinician may only skim, the section where an
+  // omission is dangerous rather than untidy goes first.
+  const allergies = _vpSection(t('Allergies'),
+    p.allergies.length ? `<ul class="vp-list">${p.allergies.map(x =>
+      `<li><b>${escHtml(x.allergen)}</b>${x.reaction ? ' — ' + escHtml(x.reaction) : ''}${
+        x.severity ? ` <span class="vp-dim">(${escHtml(x.severity)})</span>` : ''}</li>`).join('')}</ul>` : '',
+    t('No allergies recorded in Arogo. That is not the same as none — check before assuming.'));
+
+  const meds = _vpSection(tformat('Medicines (%1)', p.medicines.length),
+    p.medicines.length ? `<ul class="vp-list">${p.medicines.map(m =>
+      `<li><b>${escHtml(m.name)}</b>${m.dose ? ' ' + escHtml(m.dose) : ''}${
+        m.frequency ? ` <span class="vp-dim">${escHtml(m.frequency)}</span>` : ''}${
+        m.times.length ? ` <span class="vp-dim">${escHtml(m.times.join(', '))}</span>` : ''}${
+        m.with_food ? ` <span class="vp-dim">${t('with food')}</span>` : ''}${
+        m.purpose ? `<br><span class="vp-dim">${t('for')} ${escHtml(m.purpose)}</span>` : ''}</li>`).join('')}</ul>` : '',
+    t('No medicines are marked active in Arogo.'));
+
+  const ch = p.changes.changes;
+  const changes = _vpSection(t('What changed'),
+    ch.length ? `<ul class="vp-list">${ch.map(c =>
+      `<li>${escHtml(c.date)} — <b>${escHtml(c.name)}</b>: ${escHtml(c.label)}${
+        c.detail ? ' <span class="vp-dim">' + escHtml(c.detail) + '</span>' : ''}</li>`).join('')}</ul>
+      <div class="restore-note">${escHtml(p.changes.not_captured)}</div>` : '',
+    t('No medicine changes are recorded in this period.'));
+
+  const conditions = p.conditions
+    ? _vpSection(t('Conditions'), `<div style="font-size:13.5px;line-height:1.7">${
+        escHtml(p.conditions)}</div>`, '')
+    : '';
+
+  const labs = _vpSection(t('Lab results'),
+    p.labs.items.length ? `<table class="vp-table"><thead><tr>
+        <th>${t('Date')}</th><th>${t('Test')}</th><th>${t('Result')}</th></tr></thead>
+      <tbody>${p.labs.items.map(l => `<tr><td>${escHtml(l.date)}</td>
+        <td>${escHtml(l.name)}</td>
+        <td>${escHtml(String(l.value))}${l.unit ? ' ' + escHtml(l.unit) : ''}</td></tr>`).join('')}
+      </tbody></table>${p.labs.truncated
+        ? `<div class="restore-note">${tformat('Showing the newest %1 of %2.',
+            p.labs.items.length, p.labs.total)}</div>` : ''}` : '',
+    t('No lab results recorded in this period.'));
+
+  const sym = _vpSection(t('Symptoms'),
+    p.symptoms.items.length ? `<ul class="vp-list">${p.symptoms.items.map(s =>
+      `<li><b>${escHtml(s.name)}</b> — ${tformat('%1 times', s.count)}, ${
+        s.first === s.last ? escHtml(s.first) : tformat('%1 to %2', s.first, s.last)}${
+        s.worst !== null && s.worst !== undefined
+          ? ', ' + tformat('worst %1/10', s.worst) : ''}${
+        s.notes.length ? `<br><span class="vp-dim">${escHtml(s.notes.join(' · '))}</span>` : ''}</li>`).join('')}</ul>
+      <div class="restore-note">${t(
+        'Severity is what the person logging it chose at the time, on a 1–10 scale of their own. It is not a measurement.')}</div>` : '',
+    t('No symptoms logged in this period.'));
+
+  const vitals = _vpSection(t('Recent readings'),
+    p.vitals.length ? `<ul class="vp-list">${p.vitals.map(v =>
+      `<li><b>${escHtml(_vpVitalLabel(v.type))}</b> — ${
+        v.readings.map(rd => `${escHtml(_vpVitalText(v.type, rd))} <span class="vp-dim">${
+          escHtml(rd.date)}</span>`).join(' · ')}</li>`).join('')}</ul>` : '',
+    t('No readings logged in this period.'));
+
+  const qs = p.questions.for_this_visit.concat(p.questions.unassigned);
+  const questions = _vpSection(t('Questions to ask'),
+    qs.length ? `<ul class="vp-list vp-checklist">${qs.map(q =>
+      `<li>☐ ${escHtml(q.question)}</li>`).join('')}</ul>` : '',
+    t('No questions written down yet. Anything you add on the Upcoming page appears here.'));
+
+  return head + allergies + meds + changes + conditions + labs + sym + vitals + questions
+    + `<div class="panel" style="padding:16px 20px">
+        <div class="restore-note" style="margin:0">${escHtml(p.not_captured)}</div>
+        <div class="restore-note">${t(
+          'Your uploaded documents are not listed here — print the index from Medical records if the doctor needs those too.')}</div>
+      </div>`;
+}
+
+// Plain names, deliberately not the app's own label maps: those carry emoji for
+// the dashboard, and an emoji on a page a clinician reads is noise. An unknown
+// type falls back to its own key rather than being dropped.
+const _VP_VITAL_LABEL = {
+  blood_pressure: 'Blood pressure', blood_sugar: 'Blood sugar',
+  heart_rate: 'Heart rate', weight: 'Weight', spo2: 'Oxygen saturation',
+  temperature: 'Temperature',
+};
+
+function _vpVitalLabel(type) {
+  const known = _VP_VITAL_LABEL[type];
+  if (known) return t(known);
+  return String(type || '').replace(/_/g, ' ');
+}
+
+// Readings are stored canonically and converted at the display layer, so this
+// goes through the same converter every other screen uses rather than printing
+// the raw stored number with a label that might not match it.
+function _vpVitalText(type, rd) {
+  try {
+    const v1 = vitalToDisplay(type, rd.value1);
+    const unit = vitalUnitLabel(type) || rd.unit || '';
+    if (rd.value2 !== null && rd.value2 !== undefined)
+      return `${v1}/${vitalToDisplay(type, rd.value2)} ${unit}`.trim();
+    return `${v1} ${unit}`.trim();
+  } catch (e) {
+    return `${rd.value1}${rd.value2 !== null && rd.value2 !== undefined ? '/' + rd.value2 : ''} ${rd.unit || ''}`.trim();
+  }
+}
+
+function printVisitPackPage() {
+  if (!_visitPack) { showToast(t('Nothing to print yet'), 'info'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { showToast(t('Allow pop-ups to print'), 'error'); return; }
+  const who = (_currentUser?.name || _currentUser?.email || '');
+  const a = _visitPack.appointment;
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8">
+    <title>${escHtml(t('Appointment pack'))}</title><style>
+      body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#222;margin:28px;font-size:12.5px;line-height:1.55}
+      h1{font-size:18px;margin:0 0 2px} h2{font-size:13px;margin:16px 0 6px;
+        text-transform:uppercase;letter-spacing:.04em;color:#444;border-bottom:1px solid #ddd;padding-bottom:3px}
+      .sub{color:#666;font-size:11.5px;margin-bottom:4px}
+      ul{margin:0;padding-left:18px} li{margin-bottom:3px}
+      table{border-collapse:collapse;width:100%;margin-top:4px}
+      th,td{border:1px solid #ddd;padding:4px 7px;text-align:left}
+      th{background:#f2f2f2;font-size:10.5px;text-transform:uppercase}
+      .vp-dim{color:#666} .restore-note{color:#777;font-size:11px;margin-top:5px}
+      .panel{page-break-inside:avoid} .panel-title{font-size:13px;margin:16px 0 6px;
+        text-transform:uppercase;letter-spacing:.04em;color:#444;border-bottom:1px solid #ddd;padding-bottom:3px}
+      @page{margin:14mm}
+    </style></head><body>
+    <h1>${escHtml(t('Appointment pack'))}</h1>
+    <div class="sub">${escHtml(who)}${a ? ' · ' + escHtml(a.title) + ' · ' + escHtml(a.date) : ''}</div>
+    <div class="sub">${escHtml(t('Printed'))} ${new Date().toLocaleDateString()}</div>
+    ${renderVisitPack(_visitPack)}
+    </body></html>`);
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
+}
+
+// ── Two-factor sign-in ──────────────────────────────────────────────────────
+// The API for this shipped complete and tested, and then sat unreachable: there
+// was no screen, so nobody could turn it on. Everything here is that screen.
+//
+// The flow is deliberately slow in two places. Enrolment is not finished until a
+// code from the authenticator actually verifies, because the failure everyone
+// hits is a phone with a wrong clock — better to find that out now than at the
+// next sign-in. And the recovery codes must be acknowledged before the panel
+// moves on, because they are shown exactly once and a lost phone is an ordinary
+// event, not an edge case.
+
+let _2faSetup = null;      // the in-progress enrolment, never persisted
+
+async function load2fa() {
+  const el = document.getElementById('twofa-panel');
+  if (!el) return;
+  const r = await fetch('/api/2fa', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r) { el.innerHTML = `<div class="restore-row">${t('Could not check your two-factor settings')}</div>`; return; }
+  el.innerHTML = r.enabled ? _2faOnHtml(r) : _2faOffHtml();
+  _a11yEnhance(el);
+}
+
+function _2faOffHtml() {
+  return `<div class="restore-note" style="margin-bottom:12px">${t(
+    'Two-factor sign-in is off. Your password alone opens the account.')}</div>
+    <button class="btn-primary" data-ev-click="start2fa()">${t('Turn on two-factor sign-in')}</button>`;
+}
+
+function _2faOnHtml(r) {
+  // The count matters more than the fact. Someone down to their last code needs
+  // to act, and "on" alone would never tell them.
+  const left = r.recovery_codes_left;
+  const low = left <= 2;
+  return `<div class="restore-row"><span><b>${t('On')}</b> · ${
+      low ? `<span style="color:var(--danger,#b3261e)">${tformat('%1 recovery codes left', left)}</span>`
+          : tformat('%1 recovery codes left', left)}</span></div>
+    ${low ? `<div class="restore-note">${t(
+      'Recovery codes are how you get in if you lose your phone. Make a new set while you still can.')}</div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="btn-outline" data-ev-click="ask2faPassword('recovery')">${t('New recovery codes')}</button>
+      <button class="btn-outline" data-ev-click="ask2faPassword('disable')">${t('Turn off')}</button>
+    </div>
+    <div id="twofa-confirm"></div>`;
+}
+
+async function start2fa() {
+  const el = document.getElementById('twofa-panel');
+  const r = await fetch('/api/2fa/setup', {method: 'POST', credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast((r && r.error) || t('Could not start setup'), 'error'); return; }
+  _2faSetup = r;
+  const qr = r.qr && r.qr.available
+    ? `<div style="max-width:190px;margin:0 0 12px">${r.qr.svg}</div>`
+    // No QR library on this server. Typing the key in by hand is the documented
+    // fallback in every authenticator app, so say that plainly rather than
+    // leaving a blank space where a code should be.
+    : `<div class="restore-note" style="margin-bottom:12px">${t(
+        'Add it by hand in your authenticator app using the key below.')}</div>`;
+  el.innerHTML = `
+    <ol style="font-size:13.5px;line-height:1.9;padding-left:20px;margin:0 0 14px">
+      <li>${t('Open an authenticator app — Google Authenticator, Aegis, 1Password and others all work.')}</li>
+      <li>${t('Scan this code, or enter the key by hand.')}</li>
+      <li>${t('Type the 6-digit code it shows, to prove it works.')}</li>
+    </ol>
+    ${qr}
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:4px">${t('Setup key')}</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:.08em;
+                word-break:break-all;margin-bottom:14px">${escHtml(r.secret)}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input class="form-input" id="twofa-code" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" style="max-width:130px" placeholder="000000"
+             aria-label="${t('6-digit code from your authenticator app')}">
+      <button class="btn-primary" data-ev-click="confirm2fa()">${t('Turn it on')}</button>
+      <button class="btn-outline" data-ev-click="load2fa()">${t('Cancel')}</button>
+    </div>
+    <div class="restore-note" style="margin-top:12px">${t(
+      'Nothing changes about how you sign in until this code checks out.')}</div>`;
+  _a11yEnhance(el);
+  document.getElementById('twofa-code')?.focus();
+}
+
+async function confirm2fa() {
+  const code = (document.getElementById('twofa-code')?.value || '').trim();
+  if (!code) { showToast(t('Enter the 6-digit code'), 'info'); return; }
+  const r = await fetch('/api/2fa/confirm', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) {
+    showToast((r && r.error) || t('That code did not match'), 'error');
+    return;
+  }
+  _2faSetup = null;
+  _show2faRecoveryCodes(r.recovery_codes, t('Two-factor sign-in is on.'));
+}
+
+// Shown once, on enrolment and on regeneration. The acknowledge step is the
+// point: a user who clicks past this screen has no second way in.
+function _show2faRecoveryCodes(codes, headline) {
+  const el = document.getElementById('twofa-panel');
+  if (!el) return;
+  el.innerHTML = `
+    <div class="restore-row" style="margin-bottom:10px"><b>${escHtml(headline)}</b></div>
+    <p style="font-size:13.5px;line-height:1.7;margin:0 0 12px">${t(
+      'Save these recovery codes somewhere other than your phone. Each one signs you in once if you lose the phone, and this is the only time they are shown.')}</p>
+    <div id="twofa-codes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+                gap:8px;font-family:'JetBrains Mono',monospace;font-size:14px;margin-bottom:14px">
+      ${codes.map(c => `<div>${escHtml(c)}</div>`).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn-outline" data-ev-click="copy2faCodes()">${t('Copy')}</button>
+      <button class="btn-outline" data-ev-click="print2faCodes()">${t('Print')}</button>
+    </div>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin-bottom:12px">
+      <input type="checkbox" id="twofa-ack" data-ev-change="_2faAckToggle(this.checked)">
+      <span>${t('I have saved these codes')}</span></label>
+    <button class="btn-primary" id="twofa-done" disabled
+            data-ev-click="load2fa()">${t('Done')}</button>`;
+  _a11yEnhance(el);
+}
+
+function _2faAckToggle(on) {
+  const b = document.getElementById('twofa-done');
+  if (b) b.disabled = !on;
+}
+
+function _2faCodeText() {
+  return Array.from(document.querySelectorAll('#twofa-codes div'))
+    .map(d => d.textContent.trim()).join('\n');
+}
+
+async function copy2faCodes() {
+  try {
+    await navigator.clipboard.writeText(_2faCodeText());
+    showToast(t('✓ Copied'), 'success');
+  } catch (e) { showToast(t('Could not copy — select the codes and copy them by hand'), 'warn'); }
+}
+
+function print2faCodes() {
+  const w = window.open('', '_blank');
+  if (!w) { showToast(t('Allow pop-ups to print'), 'error'); return; }
+  // The account is named but never the password or the setup key — a printout
+  // that walks off a desk should not be enough on its own.
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8">
+    <title>Arogo recovery codes</title>
+    <style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;margin:40px}
+      h1{font-size:18px} li{font-family:monospace;font-size:15px;line-height:2}
+      p{font-size:12px;color:#666;max-width:38em}</style></head><body>
+    <h1>Arogo — recovery codes</h1>
+    <p>${escHtml(_currentUser?.email || '')}</p>
+    <ol>${_2faCodeText().split('\n').map(c => `<li>${escHtml(c)}</li>`).join('')}</ol>
+    <p>Each code signs you in once if you cannot reach your authenticator app.
+       Keep this somewhere safe and away from your phone.</p>
+    </body></html>`);
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
+}
+
+// Both destructive-ish actions need the password. An inline field rather than a
+// browser prompt() — prompts can't be styled, translated or read properly by a
+// screen reader, and this app renders its own confirmations everywhere else.
+function ask2faPassword(action) {
+  const box = document.getElementById('twofa-confirm');
+  if (!box) return;
+  const label = action === 'disable'
+    ? t('Turning off two-factor sign-in needs your password.')
+    : t('Making new recovery codes needs your password. The old ones stop working.');
+  box.innerHTML = `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
+      <p style="font-size:13.5px;margin:0 0 8px">${escHtml(label)}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input class="form-input" type="password" id="twofa-pw" style="max-width:220px"
+               autocomplete="current-password" aria-label="${t('Password')}">
+        <button class="btn-primary" data-ev-click="submit2faPassword('${escHtml(action)}')">${t('Confirm')}</button>
+        <button class="btn-outline" data-ev-click="load2fa()">${t('Cancel')}</button>
+      </div></div>`;
+  _a11yEnhance(box);
+  document.getElementById('twofa-pw')?.focus();
+}
+
+async function submit2faPassword(action) {
+  const pw = document.getElementById('twofa-pw')?.value || '';
+  if (!pw) { showToast(t('Enter your password'), 'info'); return; }
+  const url = action === 'disable' ? '/api/2fa/disable' : '/api/2fa/recovery-codes';
+  const r = await fetch(url, {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pw}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast((r && r.error) || t('That did not work'), 'error'); return; }
+  if (action === 'disable') {
+    showToast(t('Two-factor sign-in is off'), 'success');
+    load2fa();
+  } else {
+    _show2faRecoveryCodes(r.recovery_codes, t('New recovery codes.'));
+  }
+}
+
 async function loadAccountActivity() {
+  load2fa();
   const [sess, shares, log] = await Promise.all([
     fetch('/api/account/sessions', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
     fetch('/api/account/shares', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
@@ -13482,6 +14021,93 @@ function fmtBytes(n) {
   return `${v >= 10 || i === 0 ? Math.round(v) : v.toFixed(1)} ${u[i]}`;
 }
 
+// ── Backups ─────────────────────────────────────────────────────────────────
+// Nightly backups have been running and verifying themselves with nowhere to
+// say so. The whole value of a backup system is knowing where you stand before
+// you need it, so this leads with the verdict — covered or not — and only then
+// with the detail.
+async function loadBackups() {
+  const el = document.getElementById('backup-status');
+  if (!el) return;
+  const s = await fetch('/api/backups', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!s) {
+    el.innerHTML = `<div class="restore-row">${t('Could not check your backups')}</div>`;
+    return;
+  }
+  const run = `<button class="btn-outline" style="margin-top:12px"
+      data-ev-click="runBackupNow()" id="backup-run-btn">${t('Back up now')}</button>`;
+
+  if (!s.has_any) {
+    el.innerHTML = `<div class="restore-row"><span>⚠️ <b>${t('No backups yet')}</b></span></div>
+      <div class="restore-note">${escHtml(s.note || '')}</div>${run}`;
+    _a11yEnhance(el);
+    return;
+  }
+
+  const n = s.newest;
+  const ok = s.verified && s.verified.ok;
+  // "Verified" and "recent" are separate claims and the panel makes both, because
+  // a fresh file that will not open and a readable file from last month fail in
+  // completely different ways and need different actions.
+  const verdict = !ok
+    ? `<span style="color:var(--danger,#b3261e)">⚠️ <b>${t('The newest backup could not be read')}</b></span>`
+    : s.stale
+      ? `<span style="color:var(--warn,#8a6100)">⚠️ <b>${t('Your backup is out of date')}</b></span>`
+      : `<span>✓ <b>${t('Backed up and verified')}</b></span>`;
+
+  const age = n.age_hours < 1 ? t('less than an hour ago')
+            : n.age_hours < 48 ? tformat('%1 hours ago', Math.round(n.age_hours))
+            : tformat('%1 days ago', Math.round(n.age_hours / 24));
+
+  const row = (label, value) =>
+    `<div class="restore-row"><span>${escHtml(label)}</span><b>${escHtml(value)}</b></div>`;
+
+  el.innerHTML = `
+    <div class="restore-row">${verdict}</div>
+    ${row(t('Last taken'), age)}
+    ${row(t('Size'), fmtBytes(n.bytes))}
+    ${row(t('Copies kept'), tformat('%1 of %2', s.count, s.keep))}
+    ${row(t('Space they use'), fmtBytes(s.total_bytes))}
+    ${!ok && s.verified && s.verified.error
+      ? `<div class="restore-note">${escHtml(s.verified.error)}</div>` : ''}
+    ${s.stale && ok
+      ? `<div class="restore-note">${tformat(
+          'Anything logged since then is not in a backup yet. Backups are called stale after %1 hours.',
+          s.stale_after_hours)}</div>` : ''}
+    <div class="restore-note">${t(
+      'Backups live on this same server, so they survive a mistake but not a lost or stolen device. Download your data as well if that matters to you.')}</div>
+    ${run}`;
+  _a11yEnhance(el);
+}
+
+async function runBackupNow() {
+  const btn = document.getElementById('backup-run-btn');
+  if (btn) { btn.disabled = true; btn.textContent = t('Backing up…'); }
+  const r = await fetch('/api/backups/run', {method: 'POST', credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  // A backup that was taken but failed verification is not a success, and the
+  // toast must not say it was.
+  if (r && r.ok) showToast(t('✓ Backed up and verified'), 'success');
+  else showToast(_backupFailureText(r), 'error');
+  loadBackups();
+}
+
+// The API reports why in a slug. Each one means something specific and
+// actionable, so translate it rather than printing "verify_failed" at someone.
+function _backupFailureText(r) {
+  const reason = r && r.reason;
+  if (reason === 'postgres_needs_pg_dump')
+    return t('This server uses PostgreSQL, which needs pg_dump to back up. Run scripts/backup.py instead.');
+  if (reason === 'verify_failed')
+    return t('The copy was made but would not open, so it was thrown away rather than left looking healthy.');
+  if (reason === 'copy_failed')
+    return t('The copy could not be written — the disk may be full.');
+  if (reason === 'no_database_file')
+    return t('There is no database file on this server to copy.');
+  return (r && r.error) || t('The backup did not complete');
+}
+
 async function loadStorage() {
   const el = document.getElementById('storage-report');
   if (!el) return;
@@ -13837,6 +14463,7 @@ const NAV_TARGETS = [
   {v:'menopause',     l:'Menopause',        k:'perimenopause hot flashes'},
   {v:'pregnancy',     l:'Pregnancy',        k:'pregnant weeks kicks due date lmp'},
   {v:'upcoming',      l:'Upcoming',         k:'calendar appointment due renewal'},
+  {v:'visitpack',     l:'Appointment pack', k:'visit pack appointment prepare print bring doctor what changed since last time questions to ask handout one page summary for my doctor'},
   {v:'reminders',     l:'Reminders',        k:'checkup screening self-exam recurring to-do preventive'},
   {v:'care-plan',     l:'Care plan',        k:'shared plan'},
   {v:'care-team',     l:'Care team',        k:'doctor provider clinic'},
@@ -13856,10 +14483,10 @@ const NAV_TARGETS = [
   {v:'spending',      l:'Spending',         k:'expenses money cost'},
   {v:'progress',      l:'Progress',         k:'trends charts weight'},
   {v:'notifications', l:'Notifications',    k:'reminders alerts'},
-  {v:'export',        l:'Export data',      k:'download backup restore data control privacy portability storage disk space full uploads orphaned files'},
+  {v:'export',        l:'Export data',      k:'download backup backups restore data control privacy portability storage disk space full uploads orphaned files verified nightly copy snapshot am i backed up'},
   {v:'trash',         l:'Trash',            k:'trash deleted removed recover restore undo bin recycle got rid of by mistake accidentally'},
   {v:'episodes',      l:'Illness episodes', k:'illness episode sick bout flu fever infection when did this start unwell got ill'},
-  {v:'account-activity', l:'Sign-in & activity', k:'security sessions devices signed in sign out password log audit share links who opened account activity'},
+  {v:'account-activity', l:'Sign-in & activity', k:'security sessions devices signed in sign out password log audit share links who opened account activity two factor two-factor 2fa mfa authenticator totp recovery codes second factor otp'},
   {v:'wellbeing',     l:'Questionnaires',    k:'phq9 phq-9 gad7 gad-7 depression anxiety mood questionnaire screening score low feeling down worried'},
   {v:'donations',     l:'Blood donations',  k:'blood donation donate plasma platelets give blood eligible when can i donate'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},
@@ -14717,6 +15344,7 @@ function setNotifFilter(f) {
 async function loadNotifications() {
   // Preload reminder settings in background so panel is ready when opened
   loadReminderSettings().catch(() => {});
+  renderPushControl().catch(() => {});
   const r = await fetch('/api/notifications?limit=100').then(r => r.json()).catch(() => null);
   if (!r) return;
   _allNotifs = r.notifications || [];
@@ -21325,6 +21953,7 @@ async function initExportView() {
   await loadExportCounts();
   loadScopedExportCats();
   try { loadStorage(); } catch (e) {}
+  try { loadBackups(); } catch (e) {}
 }
 
 async function loadExportCounts() {

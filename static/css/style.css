@@ -7314,3 +7314,19 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 
 /* Count-up numbers: tabular figures so the width doesn't jitter mid-animation. */
 .count-up { font-variant-numeric: tabular-nums; }
+
+/* ── Appointment pack ──────────────────────────────────────────────────────
+   Set for reading rather than for the dashboard: the page is meant to be
+   printed and handed over, so the on-screen version keeps the same plain,
+   dense shape the paper one has. */
+.vp-list { margin:0; padding-left:18px; font-size:13.5px; line-height:1.7; }
+.vp-list li { margin-bottom:4px; }
+.vp-dim { color:var(--gray-400); }
+.vp-checklist { list-style:none; padding-left:0; }
+.vp-table { border-collapse:collapse; width:100%; font-size:13px; }
+.vp-table th, .vp-table td { border:1px solid var(--gray-100); padding:5px 8px; text-align:left; }
+.vp-table th { background:var(--gray-25); font-size:11px; text-transform:uppercase;
+               letter-spacing:.04em; color:var(--gray-400); font-weight:600; }
+/* Keep a section whole across a page break where the browser allows it — a
+   medicines list split mid-item is exactly what gets misread in a consult. */
+.vp-section { page-break-inside:avoid; break-inside:avoid; }

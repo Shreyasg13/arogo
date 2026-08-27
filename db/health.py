@@ -434,14 +434,22 @@ def _emergency_qr_text() -> str:
     return '\n'.join(lines)[:600]
 
 
-def build_emergency_qr() -> dict:
-    """A self-contained SVG QR of the emergency summary. `available` is False
-    (with no svg) when the optional `segno` library isn't installed or there's
-    nothing worth encoding — the UI then simply omits the QR."""
-    text = _emergency_qr_text()
-    # Only worth a QR once there's more than the bare "EMERGENCY" header.
-    if '\n' not in text:
-        return {'available': False, 'reason': 'no_emergency_info', 'svg': None}
+def qr_svg(text: str, *, echo_text: bool = True) -> dict:
+    """Any string as a self-contained SVG QR.
+
+    `available` is False (with no svg) when the optional `segno` library isn't
+    installed or there's nothing to encode; callers then omit the QR and offer
+    whatever fallback suits them — the emergency card drops it silently, 2FA
+    falls back to typing the secret in by hand.
+
+    `echo_text` exists because the caller is not always allowed to see the
+    payload back. An emergency summary is the user's own text and echoing it is
+    useful; a TOTP secret is a credential, and handing it back in a second field
+    just widens the surface it can be read from.
+    """
+    text = (text or '').strip()
+    if not text:
+        return {'available': False, 'reason': 'nothing_to_encode', 'svg': None}
     try:
         import segno
     except ImportError:
@@ -456,10 +464,21 @@ def build_emergency_qr() -> dict:
         # CI — which installs everything in requirements.txt — ever ran this.
         buf = io.BytesIO()
         qr.save(buf, kind='svg', scale=4, border=2, dark='#243027')
-        return {'available': True, 'svg': buf.getvalue().decode('utf-8'),
-                'text': text}
+        out = {'available': True, 'svg': buf.getvalue().decode('utf-8')}
+        if echo_text:
+            out['text'] = text
+        return out
     except Exception:
         return {'available': False, 'reason': 'qr_error', 'svg': None}
+
+
+def build_emergency_qr() -> dict:
+    """A self-contained SVG QR of the emergency summary."""
+    text = _emergency_qr_text()
+    # Only worth a QR once there's more than the bare "EMERGENCY" header.
+    if '\n' not in text:
+        return {'available': False, 'reason': 'no_emergency_info', 'svg': None}
+    return qr_svg(text)
 
 
 # ── Condition-tailored daily check-in ────────────────────────────────────────

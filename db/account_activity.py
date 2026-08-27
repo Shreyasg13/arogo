@@ -44,6 +44,7 @@ EVENT_KINDS = {
     'password_changed': 'Password changed',
     'two_factor_enabled': 'Turned on two-factor sign-in',
     'two_factor_disabled': 'Turned off two-factor sign-in',
+    'two_factor_recovery_codes_regenerated': 'Made new recovery codes',
     'caregiver_granted': 'Gave someone access',
     'caregiver_revoked': 'Removed someone\'s access',
     'manage_granted': 'Allowed someone to manage this account',
