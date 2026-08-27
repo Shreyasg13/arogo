@@ -1240,7 +1240,7 @@
        appointment opens with, answered from the event log rather than from
        memory. Rendered by loadMedChanges(); hidden entirely when nothing
        changed, because a card saying "no changes" every day is noise. -->
-  <div id="med-changes-card"></div>
+  <div id="med-changes-card" aria-live="polite"></div>
 
   <div class="modal-overlay" id="refill-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeRefillList')">
     <div class="modal" id="refill-sheet">
@@ -2254,7 +2254,7 @@
               Reminders that reach you with Arogo closed</div>
           </div>
         </div>
-        <div id="push-control"></div>
+        <div id="push-control" aria-live="polite"></div>
       </div>
 
       <!-- Water -->
@@ -3125,6 +3125,34 @@
     <!-- Rendered by JS -->
   </div>
 
+  <!-- Passphrase protection. The file that leaves this device is a complete
+       medical history, and it has been plaintext until now. Encryption happens
+       in the browser, so the server never sees the passphrase and cannot be
+       made to hand it over. See the notes above doExport(). -->
+  <div class="panel" style="padding:14px 18px;margin:16px 0">
+    <label style="display:flex;gap:9px;align-items:flex-start;font-size:13.5px">
+      <input type="checkbox" id="export-encrypt" data-ev-change="toggleExportPassphrase(this.checked)">
+      <span>
+        <b data-i18n="Protect this file with a passphrase">Protect this file with a passphrase</b><br>
+        <span style="color:var(--gray-400)"
+              data-i18n="Locks the downloaded file so it is unreadable without the passphrase — worth it if it goes to email, a cloud drive or a USB stick.">
+          Locks the downloaded file so it is unreadable without the passphrase —
+          worth it if it goes to email, a cloud drive or a USB stick.</span>
+      </span>
+    </label>
+    <div id="export-passphrase-row" style="display:none;margin-top:12px">
+      <input class="form-input" type="password" id="export-passphrase"
+             style="max-width:320px" autocomplete="new-password"
+             placeholder="At least 8 characters"
+             aria-label="Passphrase for the exported file">
+      <p style="font-size:12.5px;color:var(--gray-400);margin:8px 0 0;max-width:46em"
+         data-i18n="Arogo never sees this passphrase, so it cannot reset it or open the file for you. If you lose it the file is gone. The format is documented and scripts/decrypt_export.py opens it without Arogo.">
+        Arogo never sees this passphrase, so it cannot reset it or open the file
+        for you. If you lose it the file is gone. The format is documented and
+        scripts/decrypt_export.py opens it without Arogo.</p>
+    </div>
+  </div>
+
   <!-- Select all + download -->
   <div class="export-action-bar">
     <div class="export-action-left">
@@ -3193,7 +3221,7 @@
     <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
       How much room your files and database take on this server, and how much is
       left. If the disk fills, Arogo can stop saving what you log.</p>
-    <div id="storage-report"><div class="restore-row">Checking…</div></div>
+    <div id="storage-report" aria-live="polite"><div class="restore-row">Checking…</div></div>
   </div>
 
   <!-- Backups. The nightly job and its verification shipped working and then
@@ -3206,7 +3234,7 @@
       A copy of your whole database, taken nightly on this server. Each one is
       opened and read back before it counts — a file that will not open is not a
       backup.</p>
-    <div id="backup-status"><div class="restore-row">Checking…</div></div>
+    <div id="backup-status" aria-live="polite"><div class="restore-row">Checking…</div></div>
   </div>
 
   <!-- Danger zone: account deletion -->
@@ -3299,7 +3327,7 @@
        data-i18n="A code from your phone as well as your password. It protects the account itself — your medicines, records and everything shared with family.">
       A code from your phone as well as your password. It protects the account
       itself — your medicines, records and everything shared with family.</p>
-    <div id="twofa-panel"><div class="restore-row" data-i18n="Loading…">Loading…</div></div>
+    <div id="twofa-panel" aria-live="polite"><div class="restore-row" data-i18n="Loading…">Loading…</div></div>
   </div>
 
   <div class="panel" style="padding:18px 20px;margin-bottom:20px">
@@ -3354,7 +3382,7 @@
               data-ev-change="loadVisitPack()"></select>
     </div>
   </div>
-  <div id="visitpack-body"><div class="restore-row">Loading…</div></div>
+  <div id="visitpack-body" aria-live="polite"><div class="restore-row">Loading…</div></div>
 </div>
 
 <!-- ═══════════ TRASH ═══════════ -->
@@ -3374,7 +3402,7 @@
       <button class="btn-outline" data-ev-click="emptyTrash()"
               data-i18n="Empty trash">Empty trash</button>
     </div>
-    <div id="trash-list"><div class="restore-row">Loading…</div></div>
+    <div id="trash-list" aria-live="polite"><div class="restore-row">Loading…</div></div>
   </div>
 </div>
 
@@ -3384,6 +3412,36 @@
 <!-- ══════════ MODALS ══════════ -->
 
 <!-- Upload Report Modal -->
+<!-- Passphrase prompt for opening an encrypted export. The app's own rather
+     than the browser's prompt(): that one cannot be styled, translated, or read
+     properly by a screen reader. -->
+<div class="modal-overlay" id="passphrase-overlay" style="display:none"
+     role="dialog" aria-modal="true" aria-labelledby="passphrase-title"
+     data-ev-click="backdropClose(event,this,'cancelPassphrase')">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="passphrase-title"
+           data-i18n="This file is protected">This file is protected</div>
+      <button class="modal-close" data-ev-click="cancelPassphrase()">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13.5px;margin:0 0 12px"
+         data-i18n="Enter the passphrase you chose when you downloaded it. Arogo does not have a copy.">
+        Enter the passphrase you chose when you downloaded it. Arogo does not
+        have a copy.</p>
+      <input class="form-input" type="password" id="passphrase-input"
+             autocomplete="current-password" aria-label="Passphrase"
+             data-ev-keydown="if(event.key==='Enter')submitPassphrase()">
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn-primary" data-ev-click="submitPassphrase()"
+                data-i18n="Open">Open</button>
+        <button class="btn-outline" data-ev-click="cancelPassphrase()"
+                data-i18n="Cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="upload-modal-overlay" style="display:none">
 <div class="modal modal--wide">
   <div class="modal-head">

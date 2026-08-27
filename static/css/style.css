@@ -7330,3 +7330,11 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 /* Keep a section whole across a page break where the browser allows it — a
    medicines list split mid-item is exactly what gets misread in a consult. */
 .vp-section { page-break-inside:avoid; break-inside:avoid; }
+
+/* A disabled button must LOOK disabled. The recovery-codes step gates "Done"
+   behind an acknowledgement, and a full-strength button that silently ignores
+   clicks reads as a broken page rather than as a deliberate step. */
+.btn-primary:disabled, .btn-outline:disabled, .btn-danger:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}

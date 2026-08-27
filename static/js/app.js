@@ -1592,6 +1592,315 @@ const I18N = {
     '✓ Downloaded all your data': '✓ आपका सारा डेटा डाउनलोड हुआ',
     '✓ Test message sent': '✓ परीक्षण संदेश भेजा गया',
     '🎉 You’re all set up!': '🎉 सब तैयार है!',
+
+    // ── Pages added recently, which shipped English-only ──────────────────
+    // Trash, illness episodes, trips, questionnaires, donations, sign-in
+    // activity, storage — and then two-factor sign-in, backups, encrypted
+    // exports and the appointment pack. A page that quietly ignores the
+    // language setting is worse than an untranslated app, because the user
+    // already told it which language they read.
+
+    // Two-factor sign-in
+    'Two-factor sign-in': 'दो-चरणीय साइन-इन',
+    'Turn on two-factor sign-in': 'दो-चरणीय साइन-इन चालू करें',
+    'Two-factor sign-in is off': 'दो-चरणीय साइन-इन बंद है',
+    'Two-factor sign-in is off. Your password alone opens the account.':
+      'दो-चरणीय साइन-इन बंद है। सिर्फ़ आपका पासवर्ड ही खाता खोल देता है।',
+    'Two-factor sign-in is on.': 'दो-चरणीय साइन-इन चालू है।',
+    'Turning off two-factor sign-in needs your password.':
+      'दो-चरणीय साइन-इन बंद करने के लिए आपका पासवर्ड चाहिए।',
+    'Could not check your two-factor settings':
+      'आपकी दो-चरणीय सेटिंग जाँची नहीं जा सकी',
+    'Could not start setup': 'सेटअप शुरू नहीं हो सका',
+    'Open an authenticator app — Google Authenticator, Aegis, 1Password and others all work.':
+      'कोई ऑथेंटिकेटर ऐप खोलें — Google Authenticator, Aegis, 1Password और अन्य सभी काम करते हैं।',
+    'Scan this code, or enter the key by hand.':
+      'यह कोड स्कैन करें, या कुंजी हाथ से डालें।',
+    'Type the 6-digit code it shows, to prove it works.':
+      'यह जो 6-अंकों का कोड दिखाए वह टाइप करें, ताकि पक्का हो कि यह काम करता है।',
+    'Add it by hand in your authenticator app using the key below.':
+      'नीचे दी गई कुंजी से इसे अपने ऑथेंटिकेटर ऐप में हाथ से जोड़ें।',
+    'Setup key': 'सेटअप कुंजी',
+    '6-digit code from your authenticator app':
+      'आपके ऑथेंटिकेटर ऐप का 6-अंकों का कोड',
+    'Enter the 6-digit code': '6-अंकों का कोड डालें',
+    'Turn it on': 'इसे चालू करें',
+    'Nothing changes about how you sign in until this code checks out.':
+      'जब तक यह कोड सही नहीं निकलता, आपके साइन-इन करने के तरीक़े में कुछ नहीं बदलता।',
+    'That code did not match': 'वह कोड मेल नहीं खाया',
+    '%1 recovery codes left': '%1 रिकवरी कोड बचे हैं',
+    'Recovery codes are how you get in if you lose your phone. Make a new set while you still can.':
+      'फ़ोन खो जाने पर रिकवरी कोड ही आपके अंदर आने का रास्ता हैं। जब तक हो सके, नया सेट बना लें।',
+    'New recovery codes': 'नए रिकवरी कोड',
+    'New recovery codes.': 'नए रिकवरी कोड।',
+    'Making new recovery codes needs your password. The old ones stop working.':
+      'नए रिकवरी कोड बनाने के लिए आपका पासवर्ड चाहिए। पुराने काम करना बंद कर देंगे।',
+    'Save these recovery codes somewhere other than your phone. Each one signs you in once if you lose the phone, and this is the only time they are shown.':
+      'इन रिकवरी कोड को अपने फ़ोन के अलावा कहीं और सहेजें। फ़ोन खो जाने पर हर कोड आपको एक बार साइन-इन कराएगा, और ये सिर्फ़ अभी दिखाए जा रहे हैं।',
+    'I have saved these codes': 'मैंने ये कोड सहेज लिए हैं',
+    'Could not copy — select the codes and copy them by hand':
+      'कॉपी नहीं हो सका — कोड चुनकर हाथ से कॉपी करें',
+
+    // Backups
+    'Backups': 'बैकअप',
+    'No backups yet': 'अभी कोई बैकअप नहीं',
+    'Back up now': 'अभी बैकअप लें',
+    'Backing up…': 'बैकअप लिया जा रहा है…',
+    'Backed up and verified': 'बैकअप लिया और जाँचा गया',
+    '✓ Backed up and verified': '✓ बैकअप लिया और जाँचा गया',
+    'Your backup is out of date': 'आपका बैकअप पुराना है',
+    'The newest backup could not be read': 'सबसे नया बैकअप पढ़ा नहीं जा सका',
+    'Could not check your backups': 'आपके बैकअप जाँचे नहीं जा सके',
+    'The backup did not complete': 'बैकअप पूरा नहीं हुआ',
+    'Last taken': 'आख़िरी बार लिया',
+    'Copies kept': 'रखी गई प्रतियाँ',
+    'Space they use': 'इनका इस्तेमाल किया स्थान',
+    'Anything logged since then is not in a backup yet. Backups are called stale after %1 hours.':
+      'उसके बाद दर्ज की गई कोई भी चीज़ अभी किसी बैकअप में नहीं है। %1 घंटे बाद बैकअप को पुराना माना जाता है।',
+    'Backups live on this same server, so they survive a mistake but not a lost or stolen device. Download your data as well if that matters to you.':
+      'बैकअप इसी सर्वर पर रहते हैं, इसलिए वे किसी ग़लती से तो बचा लेंगे पर डिवाइस खोने या चोरी होने से नहीं। अगर यह आपके लिए मायने रखता है तो अपना डेटा डाउनलोड भी कर लें।',
+    'The copy was made but would not open, so it was thrown away rather than left looking healthy.':
+      'प्रति बन तो गई पर खुली नहीं, इसलिए उसे ठीक दिखने देने के बजाय हटा दिया गया।',
+    'The copy could not be written — the disk may be full.':
+      'प्रति लिखी नहीं जा सकी — डिस्क भरी हो सकती है।',
+    'There is no database file on this server to copy.':
+      'इस सर्वर पर कॉपी करने के लिए कोई डेटाबेस फ़ाइल नहीं है।',
+    'This server uses PostgreSQL, which needs pg_dump to back up. Run scripts/backup.py instead.':
+      'यह सर्वर PostgreSQL इस्तेमाल करता है, जिसके बैकअप के लिए pg_dump चाहिए। इसके बजाय scripts/backup.py चलाएँ।',
+
+    // Push reminders
+    'Push reminders': 'पुश रिमाइंडर',
+    'Push reminders are on for this device': 'इस डिवाइस पर पुश रिमाइंडर चालू हैं',
+    'Push reminders are off for this device': 'इस डिवाइस पर पुश रिमाइंडर बंद हैं',
+    'Push reminders are off on this device': 'इस डिवाइस पर पुश रिमाइंडर बंद कर दिए गए',
+    '✓ Push reminders are on for this device': '✓ इस डिवाइस पर पुश रिमाइंडर चालू हैं',
+    'There were no push reminders to turn off on this device':
+      'इस डिवाइस पर बंद करने के लिए कोई पुश रिमाइंडर था ही नहीं',
+    'This setting is for this device only. Reminders on your other devices are unaffected.':
+      'यह सेटिंग सिर्फ़ इसी डिवाइस के लिए है। आपके दूसरे डिवाइस के रिमाइंडर पर कोई असर नहीं पड़ता।',
+    'This browser cannot show notifications': 'यह ब्राउज़र सूचनाएँ नहीं दिखा सकता',
+    'Notifications were not allowed': 'सूचनाओं की अनुमति नहीं मिली',
+    'Notifications are blocked in your browser settings — turn them back on there first':
+      'आपकी ब्राउज़र सेटिंग में सूचनाएँ रोकी गई हैं — पहले उन्हें वहाँ चालू करें',
+    'Your browser is blocking notifications for this site. Turning them on here needs that changed in browser settings first.':
+      'आपका ब्राउज़र इस साइट की सूचनाएँ रोक रहा है। यहाँ चालू करने के लिए पहले ब्राउज़र सेटिंग में यह बदलना होगा।',
+
+    // Encrypted export
+    'Encrypting…': 'एन्क्रिप्ट किया जा रहा है…',
+    'Use a passphrase of at least 8 characters — this is the only thing protecting the file.':
+      'कम से कम 8 अक्षरों का पासफ़्रेज़ इस्तेमाल करें — फ़ाइल की सुरक्षा सिर्फ़ इसी पर टिकी है।',
+    '✓ Downloaded, encrypted. Nobody can open it without that passphrase — not even Arogo.':
+      '✓ डाउनलोड हो गया, एन्क्रिप्टेड। उस पासफ़्रेज़ के बिना इसे कोई नहीं खोल सकता — Arogo भी नहीं।',
+    'The export could not be encrypted. Nothing was downloaded.':
+      'एक्सपोर्ट एन्क्रिप्ट नहीं हो सका। कुछ भी डाउनलोड नहीं हुआ।',
+    'This browser cannot encrypt the file. Download it unprotected, or use a browser that supports WebCrypto.':
+      'यह ब्राउज़र फ़ाइल एन्क्रिप्ट नहीं कर सकता। इसे बिना सुरक्षा डाउनलोड करें, या WebCrypto वाला ब्राउज़र इस्तेमाल करें।',
+    'This browser cannot encrypt the file. Untick the passphrase box to download it unprotected.':
+      'यह ब्राउज़र फ़ाइल एन्क्रिप्ट नहीं कर सकता। बिना सुरक्षा डाउनलोड करने के लिए पासफ़्रेज़ का बॉक्स हटा दें।',
+    'That passphrase did not open the file. Either it is wrong, or the file was damaged.':
+      'उस पासफ़्रेज़ से फ़ाइल नहीं खुली। या तो वह ग़लत है, या फ़ाइल ख़राब हो गई है।',
+    'This file was written by a newer version of Arogo and cannot be opened here.':
+      'यह फ़ाइल Arogo के किसी नए संस्करण ने लिखी है और यहाँ नहीं खोली जा सकती।',
+    'This file is protected': 'यह फ़ाइल सुरक्षित है',
+    'Open': 'खोलें',
+
+    // Appointment pack
+    'Appointment pack': 'अपॉइंटमेंट पैक',
+    'Could not build the pack': 'पैक नहीं बन सका',
+    'Take this to my appointment': 'इसे अपने अपॉइंटमेंट पर ले जाएँ',
+    'The last 90 days': 'पिछले 90 दिन',
+    'No particular visit — the last 90 days': 'कोई ख़ास मुलाक़ात नहीं — पिछले 90 दिन',
+    'Changes since your visit on %1%2': '%1%2 की आपकी मुलाक़ात के बाद के बदलाव',
+    'since your visit on %1': '%1 की आपकी मुलाक़ात के बाद से',
+    'in the last %1 days': 'पिछले %1 दिनों में',
+    '%1 changes %2': '%2 %1 बदलाव',
+    'No earlier appointment recorded, so this covers the last %1 days (from %2)':
+      'इससे पहले का कोई अपॉइंटमेंट दर्ज नहीं है, इसलिए इसमें पिछले %1 दिन शामिल हैं (%2 से)',
+    'From %1 to %2': '%1 से %2 तक',
+    'Medicines (%1)': 'दवाइयाँ (%1)',
+    'Recent readings': 'हाल की रीडिंग',
+    'No allergies recorded in Arogo. That is not the same as none — check before assuming.':
+      'Arogo में कोई एलर्जी दर्ज नहीं है। इसका मतलब यह नहीं कि कोई है ही नहीं — मान लेने से पहले पूछ लें।',
+    'No medicines are marked active in Arogo.':
+      'Arogo में कोई दवा चालू के रूप में चिह्नित नहीं है।',
+    'No medicine changes are recorded in this period.':
+      'इस अवधि में दवाओं का कोई बदलाव दर्ज नहीं है।',
+    'No lab results recorded in this period.':
+      'इस अवधि में कोई लैब नतीजा दर्ज नहीं है।',
+    'No symptoms logged in this period.': 'इस अवधि में कोई लक्षण दर्ज नहीं हुआ।',
+    'No readings logged in this period.': 'इस अवधि में कोई रीडिंग दर्ज नहीं हुई।',
+    'No questions written down yet. Anything you add on the Upcoming page appears here.':
+      'अभी कोई सवाल लिखा नहीं गया। आप “आगामी” पेज पर जो भी जोड़ेंगे वह यहाँ दिखेगा।',
+    'Severity is what the person logging it chose at the time, on a 1–10 scale of their own. It is not a measurement.':
+      'गंभीरता वही है जो दर्ज करने वाले ने उस समय अपने 1–10 के पैमाने पर चुनी। यह कोई माप नहीं है।',
+    'Showing the newest %1 of %2.': '%2 में से सबसे नए %1 दिखाए जा रहे हैं।',
+    'Your uploaded documents are not listed here — print the index from Medical records if the doctor needs those too.':
+      'आपके अपलोड किए दस्तावेज़ यहाँ नहीं हैं — अगर डॉक्टर को वे भी चाहिए तो “मेडिकल रिकॉर्ड” से सूची प्रिंट करें।',
+    'Nothing to print yet': 'अभी प्रिंट करने को कुछ नहीं',
+    'Printed': 'प्रिंट किया',
+    'worst %1/10': 'सबसे ज़्यादा %1/10',
+    '%1 times': '%1 बार',
+    '%1 to %2': '%1 से %2',
+    'with food': 'खाने के साथ',
+    // Hindi puts the postposition after the noun, which is exactly why the
+    // placeholder is inside the translated string rather than concatenated on.
+    'for %1': '%1 के लिए',
+    'and %1 more': 'और %1 अन्य',
+    'Which visit': 'कौन-सी मुलाक़ात',
+    'past': 'बीत चुकी',
+
+    // Trash
+    'Could not read your trash': 'आपका ट्रैश पढ़ा नहीं जा सका',
+    'Your trash is empty. Anything you delete stays here for %1 days.':
+      'आपका ट्रैश ख़ाली है। आप जो कुछ भी हटाएँगे वह %1 दिन तक यहाँ रहेगा।',
+    'Nothing in your trash matches "%1".': 'आपके ट्रैश में "%1" से कुछ मेल नहीं खाता।',
+    'Anything here is deleted for good after %1 days.':
+      'यहाँ रखी हर चीज़ %1 दिन बाद हमेशा के लिए हट जाती है।',
+    'Restore': 'वापस लाएँ',
+    'Restore selected': 'चुने हुए वापस लाएँ',
+    'Delete now': 'अभी हटाएँ',
+    'Delete selected': 'चुने हुए हटाएँ',
+    'Delete them': 'इन्हें हटाएँ',
+    'Deleting this for good': 'इसे हमेशा के लिए हटाया जा रहा है',
+    'Deleting %1 items for good': '%1 चीज़ें हमेशा के लिए हटाई जा रही हैं',
+    'Removed %1 items for good': '%1 चीज़ें हमेशा के लिए हटा दी गईं',
+    'Emptying the trash — this cannot be undone':
+      'ट्रैश ख़ाली किया जा रहा है — यह वापस नहीं लिया जा सकता',
+    'Could not empty the trash': 'ट्रैश ख़ाली नहीं हो सका',
+    'Could not restore that': 'वह वापस नहीं लाया जा सका',
+    'Could not delete that': 'वह हटाया नहीं जा सका',
+    '✓ %1 restored': '✓ %1 वापस लाया गया',
+    'goes today': 'आज चला जाएगा',
+    'Item': 'चीज़',
+    'restored': 'वापस लाया गया',
+    'deleted': 'हटाया गया',
+
+    // Bulk actions
+    'Select all': 'सभी चुनें',
+    '✓ %1 %2': '✓ %1 %2',
+    '%1 %2, %3 could not be': '%1 %2, %3 नहीं हो सके',
+
+    // Storage
+    'Could not read storage': 'स्टोरेज पढ़ा नहीं जा सका',
+    'Your files': 'आपकी फ़ाइलें',
+    'All uploads on this server': 'इस सर्वर पर सारे अपलोड',
+    'Database': 'डेटाबेस',
+    'Free space': 'ख़ाली जगह',
+    '%1 files': '%1 फ़ाइलें',
+    'This server is nearly out of space': 'इस सर्वर पर जगह लगभग ख़त्म है',
+    '%1 free. Below this, Arogo may stop being able to save what you log.':
+      '%1 ख़ाली। इससे नीचे जाने पर Arogo आपकी दर्ज की गई चीज़ें सहेज नहीं पाएगा।',
+    '%1 files (%2) are no longer linked to any record — left over from deleted accounts or restores.':
+      '%1 फ़ाइलें (%2) अब किसी रिकॉर्ड से जुड़ी नहीं हैं — हटाए गए खातों या रीस्टोर से बची हुई।',
+    '%1 records point at a file that is no longer on the server.':
+      '%1 रिकॉर्ड ऐसी फ़ाइल की ओर इशारा करते हैं जो अब सर्वर पर नहीं है।',
+
+    // Sign-in activity, episodes, trips, courses, donations
+    'Sign out': 'साइन आउट',
+    'this device': 'यह डिवाइस',
+    'last used': 'आख़िरी बार इस्तेमाल',
+    'created': 'बनाया',
+    'revoked': 'रद्द किया',
+    'not opened yet': 'अभी खोला नहीं गया',
+    '%1 opens': '%1 बार खोला गया',
+    'No share links yet.': 'अभी कोई शेयर लिंक नहीं।',
+    'less than an hour ago': 'एक घंटे से भी कम पहले',
+    '%1 hours ago': '%1 घंटे पहले',
+    'No episodes yet. Start one when you come down with something — you can end it when you feel better.':
+      'अभी कोई प्रकरण नहीं। जब तबीयत ख़राब हो तब एक शुरू करें — ठीक होने पर उसे बंद कर सकते हैं।',
+    'on now': 'अभी चल रहा',
+    'Mark better': 'ठीक हो गया चिह्नित करें',
+    'No trips yet.': 'अभी कोई यात्रा नहीं।',
+    'upcoming': 'आगामी',
+    'Courses': 'कोर्स',
+    'finished': 'पूरा हुआ',
+    'ended — fewer doses logged than scheduled':
+      'ख़त्म — निर्धारित से कम खुराकें दर्ज हुईं',
+    '%1 of %2 doses logged': '%2 में से %1 खुराकें दर्ज',
+    'Next eligible': 'अगली बार पात्र',
+    'no donation recorded': 'कोई रक्तदान दर्ज नहीं',
+    'date passed': 'तारीख़ निकल गई',
+    'Nothing recorded yet.': 'अभी कुछ दर्ज नहीं हुआ।',
+
+    // Shared small words
+    'On': 'चालू',
+    'Turn on': 'चालू करें',
+    'Confirm': 'पुष्टि करें',
+    'Password': 'पासवर्ड',
+    'Enter your password': 'अपना पासवर्ड डालें',
+    'That did not work': 'यह काम नहीं आया',
+    'Result': 'नतीजा',
+    'Size': 'आकार',
+    'Summary': 'सारांश',
+    '%1 of %2': '%2 में से %1',
+    'What changed': 'क्या बदला',
+    '✓ Copied': '✓ कॉपी हो गया',
+
+    // ── data-i18n strings in the markup for those same pages ──────────────
+    // These are read with getAttribute(), so the browser has already decoded
+    // the HTML entities — the key here is "Sign-in & activity", never
+    // "Sign-in &amp; activity", and writing the escaped form silently misses.
+    'Account': 'खाता',
+    'Sign-in & activity': 'साइन-इन व गतिविधि',
+    "Where you're signed in, what changed, and who has opened your share links":
+      'आप कहाँ-कहाँ साइन-इन हैं, क्या बदला, और आपके शेयर लिंक किसने खोले',
+    'A code from your phone as well as your password. It protects the account itself — your medicines, records and everything shared with family.':
+      'पासवर्ड के साथ आपके फ़ोन का एक कोड भी। यह ख़ुद खाते की रक्षा करता है — आपकी दवाइयाँ, रिकॉर्ड और परिवार के साथ साझा सब कुछ।',
+    'Signed in on': 'इन पर साइन-इन',
+    'Arogo records the kind of browser, not your location or address. Signing out one device leaves the rest alone.':
+      'Arogo सिर्फ़ ब्राउज़र का प्रकार दर्ज करता है, आपका स्थान या पता नहीं। एक डिवाइस से साइन आउट करने पर बाक़ी वैसे ही रहते हैं।',
+    'Sign out every other device': 'बाक़ी सभी डिवाइस से साइन आउट करें',
+    'Share links': 'शेयर लिंक',
+    'Opens counts how many times a link was loaded — not how many people saw it. One person refreshing twice looks the same as two people.':
+      '“खोला गया” गिनता है कि लिंक कितनी बार लोड हुआ — यह नहीं कि कितने लोगों ने देखा। एक व्यक्ति दो बार रिफ़्रेश करे तो वह दो लोगों जैसा ही दिखता है।',
+    'Sign-ins, password changes, exports and share links. This log cannot be edited or deleted — that is what makes it worth reading.':
+      'साइन-इन, पासवर्ड बदलाव, एक्सपोर्ट और शेयर लिंक। यह लॉग बदला या हटाया नहीं जा सकता — इसीलिए यह पढ़ने लायक़ है।',
+
+    'Trash': 'ट्रैश',
+    'Records you deleted, and how long you can still get them back':
+      'आपके हटाए गए रिकॉर्ड, और उन्हें वापस पाने के लिए कितना समय बचा है',
+    'Empty trash': 'ट्रैश ख़ाली करें',
+
+    '🛟 Backups': '🛟 बैकअप',
+    'A copy of your whole database, taken nightly on this server. Each one is opened and read back before it counts — a file that will not open is not a backup.':
+      'इस सर्वर पर हर रात लिया गया आपके पूरे डेटाबेस का एक कॉपी। हर एक को गिनने से पहले खोलकर पढ़ा जाता है — जो फ़ाइल खुले ही नहीं वह बैकअप नहीं है।',
+    '🗄️ Storage': '🗄️ स्टोरेज',
+
+    'Protect this file with a passphrase': 'इस फ़ाइल को पासफ़्रेज़ से सुरक्षित करें',
+    'Locks the downloaded file so it is unreadable without the passphrase — worth it if it goes to email, a cloud drive or a USB stick.':
+      'डाउनलोड की गई फ़ाइल को ऐसा बंद कर देता है कि पासफ़्रेज़ के बिना पढ़ी न जा सके — अगर वह ईमेल, क्लाउड ड्राइव या USB में जा रही हो तो ज़रूरी है।',
+    'Arogo never sees this passphrase, so it cannot reset it or open the file for you. If you lose it the file is gone. The format is documented and scripts/decrypt_export.py opens it without Arogo.':
+      'Arogo यह पासफ़्रेज़ कभी नहीं देखता, इसलिए न वह इसे रीसेट कर सकता है और न आपके लिए फ़ाइल खोल सकता है। यह खो गया तो फ़ाइल भी गई। प्रारूप दस्तावेज़ में दर्ज है और scripts/decrypt_export.py इसे Arogo के बिना खोल देता है।',
+    'Enter the passphrase you chose when you downloaded it. Arogo does not have a copy.':
+      'डाउनलोड करते समय आपने जो पासफ़्रेज़ चुना था वह डालें। Arogo के पास उसकी कोई प्रति नहीं है।',
+
+    'Appointments': 'अपॉइंटमेंट',
+    'Everything worth bringing to one visit, on one page':
+      'एक मुलाक़ात पर ले जाने लायक़ सब कुछ, एक ही पेज पर',
+    'Reminders that reach you with Arogo closed':
+      'ऐसे रिमाइंडर जो Arogo बंद होने पर भी आप तक पहुँचते हैं',
+
+    'Illness episodes': 'बीमारी के प्रकरण',
+    'Group a bout of illness so "when did this start?" has an answer':
+      'बीमारी के एक दौर को एक साथ रखें ताकि “यह कब शुरू हुआ?” का जवाब हो',
+    'Nothing is copied in. An episode is just a window with a name — your symptoms, temperatures and doses are read back by date, and deleting one loses the grouping and none of your records.':
+      'इसमें कुछ कॉपी नहीं होता। प्रकरण बस एक नाम वाली अवधि है — आपके लक्षण, तापमान और खुराकें तारीख़ से पढ़ी जाती हैं, और इसे हटाने पर सिर्फ़ समूहीकरण जाता है, आपका कोई रिकॉर्ड नहीं।',
+    'Still happening?': 'अब भी हो रहा है?',
+    'Yes, still going': 'हाँ, अब भी चल रहा है',
+    'No, it stopped': 'नहीं, बंद हो गया',
+
+    'Questionnaires': 'प्रश्नावली',
+    'Two standard questionnaires you can fill in and take to your doctor':
+      'दो मानक प्रश्नावली जिन्हें भरकर आप अपने डॉक्टर के पास ले जा सकते हैं',
+    'Blood donations': 'रक्तदान',
+    "What you've given, and the earliest date each kind is due again":
+      'आपने क्या-क्या दिया, और हर प्रकार के लिए अगली सबसे जल्दी संभव तारीख़',
+
+    '🕑 Trips & time zones': '🕑 यात्राएँ व समय-क्षेत्र',
+    'Add trip': 'यात्रा जोड़ें',
+    'Time zone': 'समय-क्षेत्र',
+    'While a trip is on, Arogo uses that time zone — so reminders and your day follow you. It shows both clocks and leaves the dose decision to you and your doctor.':
+      'यात्रा चलने के दौरान Arogo उसी समय-क्षेत्र का उपयोग करता है — ताकि रिमाइंडर और आपका दिन आपके साथ चलें। यह दोनों घड़ियाँ दिखाता है और खुराक का फ़ैसला आप पर और आपके डॉक्टर पर छोड़ता है।',
   },
 };
 // Languages the app offers. English is the base (keys ARE English, so it needs
@@ -13202,7 +13511,11 @@ function renderVisitPack(p) {
         m.frequency ? ` <span class="vp-dim">${escHtml(m.frequency)}</span>` : ''}${
         m.times.length ? ` <span class="vp-dim">${escHtml(m.times.join(', '))}</span>` : ''}${
         m.with_food ? ` <span class="vp-dim">${t('with food')}</span>` : ''}${
-        m.purpose ? `<br><span class="vp-dim">${t('for')} ${escHtml(m.purpose)}</span>` : ''}</li>`).join('')}</ul>` : '',
+        // The whole phrase, not t('for') + the value: Hindi puts the
+        // postposition AFTER the noun, so a bare "for" prefix produced
+        // "किसलिए cholesterol" — the interrogative "what for?" followed by a
+        // word. Word order has to live inside the translatable string.
+        m.purpose ? `<br><span class="vp-dim">${tformat('for %1', escHtml(m.purpose))}</span>` : ''}</li>`).join('')}</ul>` : '',
     t('No medicines are marked active in Arogo.'));
 
   const ch = p.changes.changes;
@@ -22028,6 +22341,120 @@ function setExportPreset(days) {
   loadExportCounts();
 }
 
+// ── Passphrase-protected exports ────────────────────────────────────────────
+//
+// The scope here is deliberate and worth stating, because "encryption" invites
+// a bigger claim than this delivers.
+//
+// The database sitting on the Pi is NOT what this protects. Encrypting it in
+// the application would put the key on the same SD card as the data, which
+// stops nobody who is holding the card; that threat is a full-disk-encryption
+// problem for the operating system, and pretending otherwise would be worse
+// than leaving it plain, because it would feel solved.
+//
+// What this protects is the copy that LEAVES. An export is a complete medical
+// history in one file, and it goes to a Downloads folder, an email, a cloud
+// sync, a USB stick handed to someone. That file is genuinely ours to protect
+// and it has been plaintext until now.
+//
+// The passphrase never reaches the server. Derivation and encryption happen in
+// the browser with WebCrypto, so what the server hands over is the plain export
+// and what lands on disk is ciphertext — the server never holds the key and
+// cannot be made to give it up.
+//
+// The format is written to be openable WITHOUT Arogo. An encrypted export that
+// only the app that wrote it can read is a worse export than no export: the
+// point of taking your data out is that it is yours. The header names its own
+// parameters, and scripts/decrypt_export.py opens it with nothing but a
+// passphrase.
+
+const AROGO_ENC_MAGIC = 'AROGO-ENC1';
+// OWASP's floor for PBKDF2-HMAC-SHA256. It costs about a second on a phone,
+// which is the intended trade: the file may sit in a cloud backup for years.
+const AROGO_KDF_ITERATIONS = 600000;
+
+function _cryptoObj() {
+  const c = (typeof crypto !== 'undefined' && crypto) ||
+            (typeof window !== 'undefined' && window.crypto) || null;
+  return (c && c.subtle) ? c : null;
+}
+
+function arogoCryptoAvailable() { return !!_cryptoObj(); }
+
+function _b64FromBytes(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function _bytesFromB64(b64) {
+  const s = atob(b64);
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
+}
+
+async function _deriveKey(passphrase, salt, iterations) {
+  const c = _cryptoObj();
+  const base = await c.subtle.importKey(
+    'raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  return c.subtle.deriveKey(
+    {name: 'PBKDF2', salt, iterations, hash: 'SHA-256'},
+    base, {name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+}
+
+async function arogoEncrypt(plaintext, passphrase) {
+  const c = _cryptoObj();
+  if (!c) throw new Error('no-webcrypto');
+  if (!passphrase) throw new Error('no-passphrase');
+  const salt = c.getRandomValues(new Uint8Array(16));
+  const iv   = c.getRandomValues(new Uint8Array(12));
+  const key  = await _deriveKey(passphrase, salt, AROGO_KDF_ITERATIONS);
+  const ct   = new Uint8Array(await c.subtle.encrypt(
+    {name: 'AES-GCM', iv}, key, new TextEncoder().encode(plaintext)));
+  // Self-describing: everything needed to decrypt is in the header except the
+  // passphrase, and the note tells a future reader where to look.
+  const header = {
+    kdf: 'PBKDF2-SHA256', iterations: AROGO_KDF_ITERATIONS,
+    salt: _b64FromBytes(salt), cipher: 'AES-256-GCM', iv: _b64FromBytes(iv),
+    note: 'Arogo encrypted export. Decrypt with scripts/decrypt_export.py or '
+        + 'any PBKDF2-SHA256 + AES-256-GCM tool using the parameters above.',
+  };
+  return `${AROGO_ENC_MAGIC}\n${JSON.stringify(header)}\n${_b64FromBytes(ct)}\n`;
+}
+
+function isArogoEncrypted(text) {
+  return typeof text === 'string' && text.slice(0, AROGO_ENC_MAGIC.length) === AROGO_ENC_MAGIC;
+}
+
+async function arogoDecrypt(blob, passphrase) {
+  const c = _cryptoObj();
+  if (!c) throw new Error('no-webcrypto');
+  const lines = String(blob).split('\n');
+  if (lines[0].trim() !== AROGO_ENC_MAGIC) throw new Error('not-encrypted');
+  let header;
+  try { header = JSON.parse(lines[1]); }
+  catch (e) { throw new Error('bad-header'); }
+  // Refuse anything whose parameters this build does not implement, rather than
+  // guessing. A wrong guess here fails as "wrong passphrase", which would send
+  // someone hunting for a typo in a passphrase that was always correct.
+  if (header.kdf !== 'PBKDF2-SHA256' || header.cipher !== 'AES-256-GCM')
+    throw new Error('unsupported-format');
+  const key = await _deriveKey(passphrase, _bytesFromB64(header.salt),
+                               header.iterations || AROGO_KDF_ITERATIONS);
+  const ct  = _bytesFromB64(lines.slice(2).join('').trim());
+  let plain;
+  try {
+    plain = await c.subtle.decrypt(
+      {name: 'AES-GCM', iv: _bytesFromB64(header.iv)}, key, ct);
+  } catch (e) {
+    // AES-GCM is authenticated, so this covers a wrong passphrase AND a file
+    // that was altered in transit. Both mean "do not trust this".
+    throw new Error('wrong-passphrase-or-damaged');
+  }
+  return new TextDecoder().decode(plain);
+}
+
 async function doExport() {
   if (_exportSelected.size === 0) { showToast('Select at least one section', 'error'); return; }
   const from = document.getElementById('export-from-date')?.value || '2000-01-01';
@@ -22035,28 +22462,150 @@ async function doExport() {
   const sections = [..._exportSelected].join(',');
   const url = `/api/export?format=${_exportFmt}&sections=${sections}&from=${from}&to=${to}`;
 
-  // Trigger download
+  const pass = (document.getElementById('export-passphrase')?.value || '');
+  const wants = !!document.getElementById('export-encrypt')?.checked;
+
+  if (!wants) {
+    // Unprotected: let the browser stream it straight to disk as before.
+    const a = document.createElement('a');
+    a.href = url; a.download = '';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    showToast(tformat('Downloading %1 export…', _exportFmt.toUpperCase()), 'success');
+    return;
+  }
+
+  if (!arogoCryptoAvailable()) {
+    showToast(t('This browser cannot encrypt the file. Download it unprotected, or use a browser that supports WebCrypto.'), 'error');
+    return;
+  }
+  if (pass.length < 8) {
+    showToast(t('Use a passphrase of at least 8 characters — this is the only thing protecting the file.'), 'error');
+    return;
+  }
+  showToast(t('Encrypting…'), 'info');
+  try {
+    const text = await fetch(url, {credentials: 'same-origin'}).then(r => {
+      if (!r.ok) throw new Error('export-failed');
+      return r.text();
+    });
+    const armoured = await arogoEncrypt(text, pass);
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(armoured, `arogo-export-${stamp}.${_exportFmt}.arogo-enc`,
+                 'application/octet-stream');
+    // Said plainly, because there is no recovery path and no reset link. The
+    // server does not have this passphrase and cannot be asked for it.
+    showToast(t('✓ Downloaded, encrypted. Nobody can open it without that passphrase — not even Arogo.'), 'success');
+  } catch (e) {
+    showToast(t('The export could not be encrypted. Nothing was downloaded.'), 'error');
+  }
+}
+
+function downloadBlob(text, filename, type) {
+  const url = URL.createObjectURL(new Blob([text], {type: type || 'text/plain'}));
   const a = document.createElement('a');
-  a.href = url; a.download = '';
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  showToast(tformat('Downloading %1 export…', _exportFmt.toUpperCase()), 'success');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+function toggleExportPassphrase(on) {
+  const box = document.getElementById('export-passphrase-row');
+  if (box) box.style.display = on ? '' : 'none';
+}
+
+// A passphrase prompt of the app's own, rather than the browser's. prompt() is
+// unstyleable, untranslatable, and blocks the whole page — and this app renders
+// every other confirmation itself.
+let _passphraseResolve = null;
+let _passphraseReturnFocus = null;
+
+function askExportPassphrase() {
+  const overlay = document.getElementById('passphrase-overlay');
+  if (!overlay) return Promise.resolve(null);
+  // Remember where focus came from. A dialog that opens, takes focus and then
+  // drops it on the body leaves a keyboard user at the top of the page with no
+  // idea what happened.
+  _passphraseReturnFocus = document.activeElement;
+  overlay.style.display = 'flex';
+  document.addEventListener('keydown', _passphraseKeys, true);
+  const input = document.getElementById('passphrase-input');
+  if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
+  return new Promise(resolve => { _passphraseResolve = resolve; });
+}
+
+// Escape cancels, and Tab stays inside the dialog. Without the trap, tabbing
+// walks off into the page behind while the dialog is still up.
+function _passphraseKeys(e) {
+  if (e.key === 'Escape') { e.preventDefault(); cancelPassphrase(); return; }
+  if (e.key !== 'Tab') return;
+  const overlay = document.getElementById('passphrase-overlay');
+  const focusable = overlay ? overlay.querySelectorAll(
+    'button, input, [tabindex]:not([tabindex="-1"])') : [];
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault(); last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault(); first.focus();
+  }
+}
+
+function submitPassphrase() {
+  const v = document.getElementById('passphrase-input')?.value || '';
+  closePassphrasePrompt();
+  if (_passphraseResolve) { _passphraseResolve(v); _passphraseResolve = null; }
+}
+
+function cancelPassphrase() {
+  closePassphrasePrompt();
+  // null, not '' — an empty passphrase is a thing someone can type, and
+  // cancelling is not that.
+  if (_passphraseResolve) { _passphraseResolve(null); _passphraseResolve = null; }
+}
+
+function closePassphrasePrompt() {
+  const overlay = document.getElementById('passphrase-overlay');
+  if (overlay) overlay.style.display = 'none';
+  document.removeEventListener('keydown', _passphraseKeys, true);
+  const input = document.getElementById('passphrase-input');
+  if (input) input.value = '';        // don't leave it sitting in the DOM
+  try { _passphraseReturnFocus && _passphraseReturnFocus.focus(); } catch (e) {}
+  _passphraseReturnFocus = null;
 }
 
 // ── Complete data export + account deletion (DPDP/GDPR) ─────────────────────
 async function downloadAllData() {
-  showToast('Preparing your data…', 'info');
+  // This is the largest and most sensitive file the app produces — everything,
+  // in one document — so it honours the same passphrase checkbox as the scoped
+  // export above it. Protecting the small export and not this one would be
+  // exactly backwards.
+  const wants = !!document.getElementById('export-encrypt')?.checked;
+  const pass = (document.getElementById('export-passphrase')?.value || '');
+  if (wants) {
+    if (!arogoCryptoAvailable()) {
+      showToast(t('This browser cannot encrypt the file. Untick the passphrase box to download it unprotected.'), 'error');
+      return;
+    }
+    if (pass.length < 8) {
+      showToast(t('Use a passphrase of at least 8 characters — this is the only thing protecting the file.'), 'error');
+      return;
+    }
+  }
+  showToast(t('Preparing your data…'), 'info');
   try {
     const r = await fetch('/api/account/export', {credentials: 'same-origin'});
     if (!r.ok) throw new Error('export failed');
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'arogo-my-data.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('✓ Downloaded all your data', 'success');
-  } catch { showToast('Could not prepare your data — try again', 'error'); }
+    const text = await r.text();
+    if (wants) {
+      downloadBlob(await arogoEncrypt(text, pass), 'arogo-my-data.json.arogo-enc',
+                   'application/octet-stream');
+      showToast(t('✓ Downloaded, encrypted. Nobody can open it without that passphrase — not even Arogo.'), 'success');
+    } else {
+      downloadBlob(text, 'arogo-my-data.json', 'application/json');
+      showToast(t('✓ Downloaded all your data'), 'success');
+    }
+  } catch { showToast(t('Could not prepare your data — try again'), 'error'); }
 }
 
 // Category 2 — scoped export: pick categories, download only those.
@@ -22116,8 +22665,29 @@ function onRestoreFile(input) {
   if (!f) return;
   const reader = new FileReader();
   reader.onload = async () => {
+    let text = reader.result;
+
+    // An encrypted export is recognised by its own header, so the user never
+    // has to remember which kind of file they picked.
+    if (isArogoEncrypted(text)) {
+      const pass = await askExportPassphrase();
+      if (pass === null) return;                    // cancelled
+      try {
+        text = await arogoDecrypt(text, pass);
+      } catch (e) {
+        showToast(e.message === 'unsupported-format'
+          ? t('This file was written by a newer version of Arogo and cannot be opened here.')
+          // AES-GCM cannot tell a wrong passphrase from a damaged file, and
+          // claiming to know which would send someone hunting for a typo in a
+          // passphrase that was right all along.
+          : t('That passphrase did not open the file. Either it is wrong, or the file was damaged.'),
+          'error');
+        return;
+      }
+    }
+
     let data;
-    try { data = JSON.parse(reader.result); }
+    try { data = JSON.parse(text); }
     catch { showToast(t("That file isn't valid JSON"), 'error'); return; }
     _restoreData = data;
     const el = document.getElementById('restore-preview');

@@ -37,8 +37,14 @@ const sandbox = {
   fetch: () => Promise.resolve({ ok: false, json: async () => ({}), headers: { get: () => '' } }),
   setTimeout, clearTimeout, setInterval: noop, clearInterval: noop,
   console, atob: s => Buffer.from(s, 'base64').toString('binary'),
+  btoa: s => Buffer.from(s, 'binary').toString('base64'),
   URLSearchParams, Uint8Array, JSON, Math, Date, Promise, Object, Array,
   Intl, parseFloat, parseInt, isNaN, String, Number, Boolean, RegExp, Error,
+  // Real WebCrypto, not a stub. The export encryption is the one place where a
+  // stub would be actively dangerous: a fake that "encrypts" by returning its
+  // input would pass every round-trip test ever written against it.
+  crypto: globalThis.crypto,
+  TextEncoder, TextDecoder,
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -654,6 +660,89 @@ atest('credentials ride along, so a coalesced GET stays authenticated', async ()
   await S.coalescedGet('/api/wellness/today', { cache: 'no-store' });
   eq(seen[0].credentials, 'same-origin');
   eq(seen[0].cache, 'no-store', 'caller options are preserved');
+});
+
+// ── Encrypted exports ──
+// An export is a whole medical history in one file, and it leaves the device.
+// The passphrase never reaches the server, so these tests are the only place
+// the scheme is checked at all.
+
+atest('an encrypted export round-trips', async () => {
+  const secret = JSON.stringify({ medicines: [{ name: 'Metformin' }] });
+  const armoured = await S.arogoEncrypt(secret, 'correct horse battery');
+  eq(await S.arogoDecrypt(armoured, 'correct horse battery'), secret);
+});
+
+atest('the plaintext does not appear in the encrypted file', async () => {
+  // The test that would catch a stub, a mistaken pass-through, or an
+  // "encryption" that only base64-encodes.
+  const armoured = await S.arogoEncrypt('Metformin 500mg twice daily', 'pw-12345678');
+  if (armoured.includes('Metformin')) throw new Error('the plaintext is right there');
+  if (armoured.includes(btoa('Metformin 500mg twice daily')))
+    throw new Error('the file is merely base64, not encrypted');
+});
+
+atest('a wrong passphrase is refused, never half-decrypted', async () => {
+  const armoured = await S.arogoEncrypt('{"a":1}', 'the-right-one');
+  let msg = '';
+  try { await S.arogoDecrypt(armoured, 'the-wrong-one'); }
+  catch (e) { msg = e.message; }
+  eq(msg, 'wrong-passphrase-or-damaged');
+});
+
+atest('a tampered file is refused rather than trusted', async () => {
+  // AES-GCM authenticates, so this must fail loudly. Silent corruption of a
+  // medical record on the way back IN is the worst outcome available here.
+  const armoured = await S.arogoEncrypt('{"medicines":[]}', 'pw-12345678');
+  const lines = armoured.split('\n');
+  const ct = lines[2];
+  lines[2] = (ct[0] === 'A' ? 'B' : 'A') + ct.slice(1);
+  let threw = false;
+  try { await S.arogoDecrypt(lines.join('\n'), 'pw-12345678'); }
+  catch (e) { threw = true; }
+  if (!threw) throw new Error('an altered file decrypted anyway');
+});
+
+atest('every file gets its own salt and iv', async () => {
+  // Reusing either across files is the classic way a scheme like this fails
+  // while every round-trip test still passes.
+  const a = JSON.parse((await S.arogoEncrypt('x', 'pw-12345678')).split('\n')[1]);
+  const b = JSON.parse((await S.arogoEncrypt('x', 'pw-12345678')).split('\n')[1]);
+  if (a.salt === b.salt) throw new Error('the salt was reused');
+  if (a.iv === b.iv) throw new Error('the iv was reused');
+});
+
+atest('the header describes the format so it opens without Arogo', async () => {
+  const header = JSON.parse((await S.arogoEncrypt('x', 'pw-12345678')).split('\n')[1]);
+  eq(header.kdf, 'PBKDF2-SHA256');
+  eq(header.cipher, 'AES-256-GCM');
+  if (!(header.iterations >= 600000)) throw new Error('too few KDF iterations');
+  if (!header.salt || !header.iv) throw new Error('the header is missing parameters');
+});
+
+atest('an unknown format is refused, not attempted', async () => {
+  // Guessing surfaces as "wrong passphrase", which sends someone hunting for a
+  // typo in a passphrase that was right all along.
+  const armoured = await S.arogoEncrypt('x', 'pw-12345678');
+  const lines = armoured.split('\n');
+  const h = JSON.parse(lines[1]); h.cipher = 'AES-128-CBC'; lines[1] = JSON.stringify(h);
+  let msg = '';
+  try { await S.arogoDecrypt(lines.join('\n'), 'pw-12345678'); }
+  catch (e) { msg = e.message; }
+  eq(msg, 'unsupported-format');
+});
+
+test('an encrypted export is recognised by its own header', () => {
+  eq(S.isArogoEncrypted('AROGO-ENC1\n{}\nabc'), true);
+  eq(S.isArogoEncrypted('{"medicines":[]}'), false);
+  eq(S.isArogoEncrypted(''), false);
+  eq(S.isArogoEncrypted(null), false);
+});
+
+atest('an empty passphrase is refused rather than encrypting with nothing', async () => {
+  let threw = false;
+  try { await S.arogoEncrypt('x', ''); } catch (e) { threw = true; }
+  if (!threw) throw new Error('it encrypted with an empty passphrase');
 });
 
 (async () => {

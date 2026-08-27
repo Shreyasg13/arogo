@@ -110,10 +110,14 @@ def _medicines():
             times = json.loads(r['times'] or '[]')
         except (ValueError, TypeError):
             times = []
+        # A unit with no number in front of it is not a dose. "Paracetamol mg"
+        # on a page a clinician reads looks like a transcription error, and the
+        # honest rendering of "no dose recorded" is to print nothing at all.
+        dosage = (r['dosage'] or '').strip()
+        unit = (r['unit'] or '').strip()
         out.append({
             'name': r['name'],
-            'dose': ' '.join(x for x in [(r['dosage'] or '').strip(),
-                                         (r['unit'] or '').strip()] if x),
+            'dose': f'{dosage} {unit}'.strip() if dosage else '',
             'frequency': (r['frequency'] or '').replace('_', ' '),
             'times': [str(x) for x in times if x],
             'purpose': (r['purpose'] or '').strip(),

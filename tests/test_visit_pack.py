@@ -356,3 +356,27 @@ def test_changes_come_from_the_reconciliation_module_not_a_second_query(app):
     src = inspect.getsource(vp._changes)
     assert "changes_between" in src
     assert "medicine_events" not in src, "the pack re-derives changes itself"
+
+
+def test_a_unit_with_no_number_is_not_printed_as_a_dose(app):
+    """"Paracetamol mg" on a page a clinician reads looks like a transcription
+    error. With no dosage recorded, the honest rendering is nothing at all."""
+    c, uid = _uid(app, "pack22@medeasy.test")
+    with user_context(uid):
+        _med(uid, "Paracetamol", dosage="", unit="mg")
+        _med(uid, "Metformin", dosage="500", unit="mg")
+        aid = _appt(uid, "2026-08-01")
+        pack = vp.build_pack(aid)
+    by_name = {m["name"]: m for m in pack["medicines"]}
+    assert by_name["Paracetamol"]["dose"] == ""
+    assert by_name["Metformin"]["dose"] == "500 mg"
+
+
+def test_a_dose_with_no_unit_still_shows_the_number(app):
+    """The number is the part that matters; a missing unit must not swallow it."""
+    c, uid = _uid(app, "pack23@medeasy.test")
+    with user_context(uid):
+        _med(uid, "Something", dosage="2 tablets", unit="")
+        aid = _appt(uid, "2026-08-01")
+        pack = vp.build_pack(aid)
+    assert pack["medicines"][0]["dose"] == "2 tablets"

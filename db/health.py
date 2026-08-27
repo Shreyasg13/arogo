@@ -463,7 +463,13 @@ def qr_svg(text: str, *, echo_text: bool = True) -> dict:
         # it wasn't installed on the dev machine, so the test skipped, and only
         # CI — which installs everything in requirements.txt — ever ran this.
         buf = io.BytesIO()
-        qr.save(buf, kind='svg', scale=4, border=2, dark='#243027')
+        # An explicit white background, not a transparent one. segno defaults to
+        # transparent, which looks fine on the light theme and renders dark-green
+        # modules on a near-black page in dark mode — where a phone camera cannot
+        # read it at all. A QR that only scans under one theme is a broken
+        # feature, and it fails silently: the code is right there on screen.
+        qr.save(buf, kind='svg', scale=4, border=2,
+                dark='#243027', light='#ffffff')
         out = {'available': True, 'svg': buf.getvalue().decode('utf-8')}
         if echo_text:
             out['text'] = text
