@@ -1214,11 +1214,11 @@
   <!-- Short courses: rendered by loadCourses(); empty when none. -->
   <div id="course-list"></div>
   <!-- Injection-site rotation tracker (J1) -->
-  <div class="modal-overlay" id="injection-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeInjectionSites')">
+  <div class="modal-overlay" id="injection-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeInjectionSites')" role="dialog" aria-modal="true" aria-labelledby="injection-modal-title">
     <div class="modal" id="injection-sheet">
       <div class="modal-head">
-        <div class="modal-title" data-i18n="💉 Injection sites">💉 Injection sites</div>
-        <button class="modal-close" data-ev-click="closeInjectionSites()">×</button>
+        <div class="modal-title" id="injection-modal-title" data-i18n="💉 Injection sites">💉 Injection sites</div>
+        <button class="modal-close" aria-label="Close"  data-ev-click="closeInjectionSites()">×</button>
       </div>
       <div class="modal-body">
         <div id="injection-content"></div>
@@ -1245,11 +1245,11 @@
        changed, because a card saying "no changes" every day is noise. -->
   <div id="med-changes-card" aria-live="polite"></div>
 
-  <div class="modal-overlay" id="refill-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeRefillList')">
+  <div class="modal-overlay" id="refill-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeRefillList')" role="dialog" aria-modal="true" aria-labelledby="refill-modal-title">
     <div class="modal" id="refill-sheet">
       <div class="modal-head no-print">
-        <div class="modal-title" data-i18n="🛒 Refill shopping list">🛒 Refill shopping list</div>
-        <button class="modal-close" data-ev-click="closeRefillList()">×</button>
+        <div class="modal-title" id="refill-modal-title" data-i18n="🛒 Refill shopping list">🛒 Refill shopping list</div>
+        <button class="modal-close" aria-label="Close"  data-ev-click="closeRefillList()">×</button>
       </div>
       <div class="modal-body">
         <div id="refill-content"></div>
@@ -1581,11 +1581,11 @@
     </div>
     <div class="header-actions">
       <div class="cal-nav">
-        <button class="btn-icon cal-prev" data-ev-click="calPrevMonth()">
+        <button aria-label="Previous month" class="btn-icon cal-prev" data-ev-click="calPrevMonth()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <span class="cal-month-label" id="cal-month-label">Loading…</span>
-        <button class="btn-icon cal-next" data-ev-click="calNextMonth()">
+        <button aria-label="Next month" class="btn-icon cal-next" data-ev-click="calNextMonth()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -1680,7 +1680,7 @@
               <div class="cal-detail-date-dot"></div>
               <span id="cal-detail-date"></span>
             </div>
-            <button class="btn-icon" data-ev-click="hideEl('cal-day-detail')" style="width:22px;height:22px">
+            <button aria-label="Close day details" class="btn-icon" data-ev-click="hideEl('cal-day-detail')" style="width:22px;height:22px">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -1810,11 +1810,11 @@
     </div>
     <div class="header-actions">
       <div class="food-date-nav">
-        <button class="btn-icon" data-ev-click="foodDateShift(-1)">
+        <button aria-label="Previous day" class="btn-icon" data-ev-click="foodDateShift(-1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <input type="date" class="form-input" id="food-date-picker" data-ev-change="loadFoodDay(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
-        <button class="btn-icon" data-ev-click="foodDateShift(1)">
+        <button aria-label="Next day" class="btn-icon" data-ev-click="foodDateShift(1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -1959,11 +1959,11 @@
     </div>
     <div class="header-actions">
       <div class="thoughts-date-nav">
-        <button class="btn-icon" data-ev-click="thoughtsDateShift(-1)">
+        <button aria-label="Previous day" class="btn-icon" data-ev-click="thoughtsDateShift(-1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <input type="date" class="form-input" id="thoughts-date-picker" data-ev-change="loadThoughts(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
-        <button class="btn-icon" data-ev-click="thoughtsDateShift(1)">
+        <button aria-label="Next day" class="btn-icon" data-ev-click="thoughtsDateShift(1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -3491,7 +3491,7 @@
     <div class="modal-head">
       <div class="modal-title" id="passphrase-title"
            data-i18n="This file is protected">This file is protected</div>
-      <button class="modal-close" data-ev-click="cancelPassphrase()">×</button>
+      <button class="modal-close" aria-label="Close"  data-ev-click="cancelPassphrase()">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:13.5px;margin:0 0 12px"
@@ -3511,11 +3511,11 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="upload-modal-overlay" style="display:none">
+<div class="modal-overlay" id="upload-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="upload-modal-overlay-title">
 <div class="modal modal--wide">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Upload Medical Report">Upload Medical Report</h2>
-    <button class="modal-close" data-ev-click="closeModal('upload-modal-overlay')">
+    <h2 class="modal-title" id="upload-modal-overlay-title" data-i18n="Upload Medical Report">Upload Medical Report</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('upload-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3536,7 +3536,7 @@
           <div class="file-preview-name" id="file-preview-name"></div>
           <div class="file-preview-size" id="file-preview-size"></div>
         </div>
-        <button class="btn-icon" data-ev-click="clearFile()">
+        <button aria-label="Remove the chosen file" class="btn-icon" data-ev-click="clearFile()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -3580,15 +3580,15 @@
 </div>
 
 <!-- Import prescription modal -->
-<div class="modal-overlay" id="rx-import-overlay" style="display:none">
+<div class="modal-overlay" id="rx-import-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="rx-import-overlay-title">
 <div class="modal" style="max-width:520px">
   <div class="modal-head">
     <div>
-      <h2 class="modal-title" data-i18n="📄 Import from prescription">📄 Import from prescription</h2>
+      <h2 class="modal-title" id="rx-import-overlay-title" data-i18n="📄 Import from prescription">📄 Import from prescription</h2>
       <p class="modal-subtitle" style="font-size:13px;color:var(--gray-400);margin-top:2px">
         We'll suggest medicines — you confirm each before it's added.</p>
     </div>
-    <button class="modal-close" data-ev-click="closeModal('rx-import-overlay')">
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('rx-import-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3615,14 +3615,14 @@
 
 <!-- Add Medicine Modal -->
 <!-- Restock Modal -->
-<div class="modal-overlay" id="restock-modal-overlay" style="display:none">
+<div class="modal-overlay" id="restock-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="restock-modal-overlay-title">
 <div class="modal" style="max-width:420px">
   <div class="modal-head">
     <div>
-      <h2 class="modal-title" data-i18n="Update Pill Stock">Update Pill Stock</h2>
+      <h2 class="modal-title" id="restock-modal-overlay-title" data-i18n="Update Pill Stock">Update Pill Stock</h2>
       <p class="modal-subtitle" id="restock-med-name" style="font-size:13px;color:var(--gray-400);margin-top:2px"></p>
     </div>
-    <button class="modal-close" data-ev-click="closeModal('restock-modal-overlay')">
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('restock-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3664,11 +3664,11 @@
 </div>
 </div>
 
-<div class="modal-overlay" id="med-modal-overlay" style="display:none">
+<div class="modal-overlay" id="med-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="med-modal-overlay-title">
 <div class="modal">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Add Medicine">Add Medicine</h2>
-    <button class="modal-close" data-ev-click="closeModal('med-modal-overlay')">
+    <h2 class="modal-title" id="med-modal-overlay-title" data-i18n="Add Medicine">Add Medicine</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('med-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3722,7 +3722,7 @@
       </div>
       <div class="form-group" id="med-times-group"><label class="form-label" data-i18n="Reminder Times">Reminder Times</label>
         <div id="time-slots" class="time-slots">
-          <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+          <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button aria-label="Remove this time" type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
         </div>
         <button type="button" class="btn-outline-sm" data-ev-click="addTimeSlot()" style="margin-top:8px" data-i18n="+ Add time">+ Add time</button>
       </div>
@@ -3735,19 +3735,19 @@
         <label class="form-label" data-i18n="Icon &amp; Color">Icon & Color</label>
         <div class="icon-picker">
           <div class="icon-options">
-            <button type="button" class="icon-opt selected" data-icon="💊">💊</button>
-            <button type="button" class="icon-opt" data-icon="💉">💉</button>
-            <button type="button" class="icon-opt" data-icon="🩺">🩺</button>
-            <button type="button" class="icon-opt" data-icon="❤️">❤️</button>
-            <button type="button" class="icon-opt" data-icon="🫀">🫀</button>
-            <button type="button" class="icon-opt" data-icon="🧬">🧬</button>
+            <button aria-label="Icon: pill" type="button" class="icon-opt selected" data-icon="💊">💊</button>
+            <button aria-label="Icon: injection" type="button" class="icon-opt" data-icon="💉">💉</button>
+            <button aria-label="Icon: stethoscope" type="button" class="icon-opt" data-icon="🩺">🩺</button>
+            <button aria-label="Icon: heart" type="button" class="icon-opt" data-icon="❤️">❤️</button>
+            <button aria-label="Icon: anatomical heart" type="button" class="icon-opt" data-icon="🫀">🫀</button>
+            <button aria-label="Icon: DNA" type="button" class="icon-opt" data-icon="🧬">🧬</button>
           </div>
           <div class="color-options">
-            <button type="button" class="color-opt selected" data-color="teal" style="background:#4F8D74"></button>
-            <button type="button" class="color-opt" data-color="blue" style="background:#5E8299"></button>
-            <button type="button" class="color-opt" data-color="purple" style="background:#D07D4E"></button>
-            <button type="button" class="color-opt" data-color="red" style="background:#DC2626"></button>
-            <button type="button" class="color-opt" data-color="amber" style="background:#E0A34E"></button>
+            <button aria-label="Colour: teal" type="button" class="color-opt selected" data-color="teal" style="background:#4F8D74"></button>
+            <button aria-label="Colour: blue" type="button" class="color-opt" data-color="blue" style="background:#5E8299"></button>
+            <button aria-label="Colour: terracotta" type="button" class="color-opt" data-color="purple" style="background:#D07D4E"></button>
+            <button aria-label="Colour: red" type="button" class="color-opt" data-color="red" style="background:#DC2626"></button>
+            <button aria-label="Colour: amber" type="button" class="color-opt" data-color="amber" style="background:#E0A34E"></button>
           </div>
         </div>
       </div>
@@ -3814,11 +3814,11 @@
 </div>
 
 <!-- Log Activity Modal -->
-<div class="modal-overlay" id="activity-modal-overlay" style="display:none">
+<div class="modal-overlay" id="activity-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="activity-modal-overlay-title">
 <div class="modal">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Log Activity">Log Activity</h2>
-    <button class="modal-close" data-ev-click="closeModal('activity-modal-overlay')">
+    <h2 class="modal-title" id="activity-modal-overlay-title" data-i18n="Log Activity">Log Activity</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('activity-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3917,11 +3917,11 @@
 </div>
 
 <!-- Connect App Modal -->
-<div class="modal-overlay" id="connect-modal-overlay" style="display:none">
+<div class="modal-overlay" id="connect-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="connect-modal-overlay-title">
 <div class="modal">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Connect Fitness App">Connect Fitness App</h2>
-    <button class="modal-close" data-ev-click="closeModal('connect-modal-overlay')">
+    <h2 class="modal-title" id="connect-modal-overlay-title" data-i18n="Connect Fitness App">Connect Fitness App</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('connect-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3980,11 +3980,11 @@
 </div>
 
 <!-- Report Detail Modal -->
-<div class="modal-overlay" id="report-detail-overlay" style="display:none">
+<div class="modal-overlay" id="report-detail-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="rdetail-title">
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="rdetail-title">Report</h2>
-    <button class="modal-close" data-ev-click="closeModal('report-detail-overlay')">
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('report-detail-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3996,16 +3996,16 @@
 <div class="notif-banner" id="notif-banner" style="display:none">
   <span>🔔 Enable notifications to receive medicine reminders</span>
   <button class="btn-outline-sm" data-ev-click="requestNotifPermission()">Enable</button>
-  <button class="btn-icon" data-ev-click="hideEl('notif-banner')" style="color:#fff">✕</button>
+  <button aria-label="Dismiss" class="btn-icon" data-ev-click="hideEl('notif-banner')" style="color:#fff">✕</button>
 </div>
 
 
 <!-- Apple Health Import Modal -->
-<div class="modal-overlay" id="apple-modal-overlay" style="display:none">
+<div class="modal-overlay" id="apple-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="apple-modal-overlay-title">
 <div class="modal">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Import Apple Health">Import Apple Health</h2>
-    <button class="modal-close" data-ev-click="closeModal('apple-modal-overlay')">
+    <h2 class="modal-title" id="apple-modal-overlay-title" data-i18n="Import Apple Health">Import Apple Health</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('apple-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4032,11 +4032,11 @@
 
 
 <!-- Add Food Modal -->
-<div class="modal-overlay" id="add-food-overlay" style="display:none">
+<div class="modal-overlay" id="add-food-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="add-food-overlay-title">
 <div class="modal modal--wide">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Add Food">Add Food</h2>
-    <button class="modal-close" data-ev-click="closeModal('add-food-overlay')">
+    <h2 class="modal-title" id="add-food-overlay-title" data-i18n="Add Food">Add Food</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('add-food-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4047,7 +4047,7 @@
         <div class="search-box">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" class="search-input" id="food-search-input" placeholder="Search any food…" data-ev-input="searchFoodDB(this.value)">
-          <button class="food-search-clear" id="food-search-clear" data-ev-click="clearFoodSearch()" style="display:none">
+          <button aria-label="Clear the search" class="food-search-clear" id="food-search-clear" data-ev-click="clearFoodSearch()" style="display:none">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -4077,7 +4077,7 @@
         <!-- Active category badge -->
         <div class="food-cat-active-badge" id="food-cat-active-badge" style="display:none">
           <span id="food-cat-active-text"></span>
-          <button data-ev-click="filterFoodCat('')" class="food-cat-clear-btn">✕</button>
+          <button aria-label="Clear the category filter" data-ev-click="filterFoodCat('')" class="food-cat-clear-btn">✕</button>
         </div>
       </div>
 
@@ -4094,7 +4094,7 @@
       <div id="custom-food-form" class="custom-food-form" style="display:none">
         <div class="custom-food-form-header">
           <span style="font-weight:700;font-size:13px;color:var(--gray-800)">Create custom food</span>
-          <button type="button" data-ev-click="closeCustomFoodForm()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1">×</button>
+          <button aria-label="Close" type="button" data-ev-click="closeCustomFoodForm()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1">×</button>
         </div>
         <div class="form-group">
           <label class="form-label">Food name *</label>
@@ -4146,14 +4146,14 @@
 
 
 <!-- Calorie Breakdown Modal -->
-<div class="modal-overlay" id="calorie-breakdown-overlay" style="display:none">
+<div class="modal-overlay" id="calorie-breakdown-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="calorie-breakdown-overlay-title">
 <div class="modal modal--calbreakdown">
   <div class="modal-head">
     <div>
-      <h2 class="modal-title" data-i18n="Today's Calorie Balance">Today's Calorie Balance</h2>
+      <h2 class="modal-title" id="calorie-breakdown-overlay-title" data-i18n="Today's Calorie Balance">Today's Calorie Balance</h2>
       <p style="font-size:12px;color:var(--gray-400);margin-top:2px" id="cbd-date-label">Today</p>
     </div>
-    <button class="modal-close" data-ev-click="closeModal('calorie-breakdown-overlay')">
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('calorie-breakdown-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4250,11 +4250,11 @@
 </div>
 
 <!-- User Profile Modal -->
-<div class="modal-overlay" id="profile-modal-overlay" style="display:none">
+<div class="modal-overlay" id="profile-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="profile-modal-overlay-title">
 <div class="modal">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Health Profile">Health Profile</h2>
-    <button class="modal-close" data-ev-click="closeModal('profile-modal-overlay')">
+    <h2 class="modal-title" id="profile-modal-overlay-title" data-i18n="Health Profile">Health Profile</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('profile-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4397,11 +4397,11 @@
 
 
 <!-- Add / Edit Todo Modal -->
-<div class="modal-overlay" id="todo-modal-overlay" style="display:none">
+<div class="modal-overlay" id="todo-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="todo-modal-title">Add Task</h2>
-    <button class="modal-close" data-ev-click="closeModal('todo-modal-overlay')">
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('todo-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4456,11 +4456,11 @@
 
 
 <!-- ── Habit Modal ── -->
-<div class="modal-overlay" id="habit-modal-overlay" style="display:none">
+<div class="modal-overlay" id="habit-modal-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="habit-modal-overlay-title">
 <div class="modal">
   <div class="modal-head">
-    <h2 class="modal-title" data-i18n="Add New Habit">Add New Habit</h2>
-    <button class="modal-close" data-ev-click="closeModal('habit-modal-overlay')">
+    <h2 class="modal-title" id="habit-modal-overlay-title" data-i18n="Add New Habit">Add New Habit</h2>
+    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('habit-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4541,11 +4541,11 @@
 
     <div class="qlg-label">😊 Mood</div>
     <div class="qlg-row">
-      <button class="qlg-chip qlg-emoji" data-ev-click="quickMood('terrible')">😩</button>
-      <button class="qlg-chip qlg-emoji" data-ev-click="quickMood('sad')">😕</button>
-      <button class="qlg-chip qlg-emoji" data-ev-click="quickMood('neutral')">😐</button>
-      <button class="qlg-chip qlg-emoji" data-ev-click="quickMood('happy')">😊</button>
-      <button class="qlg-chip qlg-emoji" data-ev-click="quickMood('excited')">🤩</button>
+      <button aria-label="Mood: terrible" class="qlg-chip qlg-emoji" data-ev-click="quickMood('terrible')">😩</button>
+      <button aria-label="Mood: sad" class="qlg-chip qlg-emoji" data-ev-click="quickMood('sad')">😕</button>
+      <button aria-label="Mood: neutral" class="qlg-chip qlg-emoji" data-ev-click="quickMood('neutral')">😐</button>
+      <button aria-label="Mood: happy" class="qlg-chip qlg-emoji" data-ev-click="quickMood('happy')">😊</button>
+      <button aria-label="Mood: excited" class="qlg-chip qlg-emoji" data-ev-click="quickMood('excited')">🤩</button>
     </div>
 
     <div class="qlg-label">⚖️ Weight</div>
@@ -4569,7 +4569,7 @@
   <div class="qlg-panel" style="max-width:420px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <div class="qlg-title" style="flex:1">Scan food barcode</div>
-      <button class="btn-icon" data-ev-click="closeBarcodeScanner()">✕</button>
+      <button aria-label="Close the scanner" class="btn-icon" data-ev-click="closeBarcodeScanner()">✕</button>
     </div>
 
     <!-- Live camera scan (where BarcodeDetector is supported) -->
@@ -4643,11 +4643,11 @@
 </div>
 
 <!-- Doctor visit summary (printable) -->
-<div class="modal-overlay" id="doctor-summary-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeDoctorSummary')">
+<div class="modal-overlay" id="doctor-summary-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeDoctorSummary')" role="dialog" aria-modal="true" aria-labelledby="doctor-summary-modal-title">
   <div class="modal modal--wide" id="doctor-summary-sheet">
     <div class="modal-head no-print">
-      <div class="modal-title" data-i18n="Doctor visit summary">Doctor visit summary</div>
-      <button class="modal-close" data-ev-click="closeDoctorSummary()">×</button>
+      <div class="modal-title" id="doctor-summary-modal-title" data-i18n="Doctor visit summary">Doctor visit summary</div>
+      <button class="modal-close" aria-label="Close"  data-ev-click="closeDoctorSummary()">×</button>
     </div>
     <div class="modal-body">
       <div id="doctor-summary-content"></div>
@@ -4659,11 +4659,11 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="share-manager-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeShareManager')">
+<div class="modal-overlay" id="share-manager-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeShareManager')" role="dialog" aria-modal="true" aria-labelledby="share-manager-modal-title">
   <div class="modal" id="share-manager-sheet" style="max-width:520px">
     <div class="modal-head">
-      <div class="modal-title" data-i18n="Shareable health snapshot">Shareable health snapshot</div>
-      <button class="modal-close" data-ev-click="closeShareManager()">×</button>
+      <div class="modal-title" id="share-manager-modal-title" data-i18n="Shareable health snapshot">Shareable health snapshot</div>
+      <button class="modal-close" aria-label="Close"  data-ev-click="closeShareManager()">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--gray-500);margin-top:0" data-i18n="A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.">A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.</p>
@@ -4690,10 +4690,10 @@
 </div>
 
 <!-- Guided tour of the app's main areas (a curated intro to a big app). -->
-<div class="modal-overlay" id="welcome-tour-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeWelcomeTour')">
+<div class="modal-overlay" id="welcome-tour-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeWelcomeTour')" role="dialog" aria-modal="true" aria-labelledby="welcome-tour-modal-title">
   <div class="modal" id="welcome-tour-sheet" style="max-width:440px">
     <div class="modal-head">
-      <div class="modal-title" data-i18n="Welcome to Arogo">Welcome to Arogo</div>
+      <div class="modal-title" id="welcome-tour-modal-title" data-i18n="Welcome to Arogo">Welcome to Arogo</div>
       <button class="modal-close" data-ev-click="closeWelcomeTour()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="welcome-tour-body"></div>
@@ -4701,10 +4701,10 @@
 </div>
 
 <!-- Voice-first: speak to log, with a spoken confirm-before-save loop. -->
-<div class="modal-overlay" id="voice-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeVoiceLog')">
+<div class="modal-overlay" id="voice-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeVoiceLog')" role="dialog" aria-modal="true" aria-labelledby="voice-modal-title">
   <div class="modal" id="voice-sheet" style="max-width:440px">
     <div class="modal-head">
-      <div class="modal-title" data-i18n="Voice log">Voice log</div>
+      <div class="modal-title" id="voice-modal-title" data-i18n="Voice log">Voice log</div>
       <button class="modal-close" data-ev-click="closeVoiceLog()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="voice-body"></div>
@@ -4712,10 +4712,10 @@
 </div>
 
 <!-- Per-appointment visit flow: before (bring + questions) / during-after (notes + actions). -->
-<div class="modal-overlay" id="visit-detail-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeVisitDetail')">
+<div class="modal-overlay" id="visit-detail-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeVisitDetail')" role="dialog" aria-modal="true" aria-labelledby="visit-detail-modal-title">
   <div class="modal" id="visit-detail-sheet" style="max-width:520px">
     <div class="modal-head">
-      <div class="modal-title" data-i18n="Visit">Visit</div>
+      <div class="modal-title" id="visit-detail-modal-title" data-i18n="Visit">Visit</div>
       <div style="display:flex;align-items:center;gap:6px">
         <button class="btn-outline btn-sm" data-ev-click="printVisitSummary()" data-i18n="🖨 Print">🖨 Print</button>
         <button class="modal-close" data-ev-click="closeVisitDetail()" aria-label="Close">×</button>
@@ -4725,11 +4725,11 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="sos-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeSos')">
+<div class="modal-overlay" id="sos-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeSos')" role="dialog" aria-modal="true" aria-labelledby="sos-modal-title">
   <div class="modal" id="sos-sheet" style="max-width:420px">
     <div class="modal-head">
-      <div class="modal-title" data-i18n="🆘 Send an urgent alert?">🆘 Send an urgent alert?</div>
-      <button class="modal-close" data-ev-click="closeSos()">×</button>
+      <div class="modal-title" id="sos-modal-title" data-i18n="🆘 Send an urgent alert?">🆘 Send an urgent alert?</div>
+      <button class="modal-close" aria-label="Close"  data-ev-click="closeSos()">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:12px">
@@ -4745,11 +4745,11 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="medhistory-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeMedHistory')">
+<div class="modal-overlay" id="medhistory-modal" style="display:none" data-ev-click="backdropClose(event,this,'closeMedHistory')" role="dialog" aria-modal="true" aria-labelledby="medhistory-modal-title">
   <div class="modal" id="medhistory-sheet">
     <div class="modal-head">
-      <div class="modal-title" data-i18n="🕘 Medicine history">🕘 Medicine history</div>
-      <button class="modal-close" data-ev-click="closeMedHistory()">×</button>
+      <div class="modal-title" id="medhistory-modal-title" data-i18n="🕘 Medicine history">🕘 Medicine history</div>
+      <button class="modal-close" aria-label="Close"  data-ev-click="closeMedHistory()">×</button>
     </div>
     <div class="modal-body">
       <div id="medhistory-content"></div>
@@ -4757,11 +4757,11 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="planner-modal" style="display:none" data-ev-click="backdropClose(event,this,'closePlanner')">
+<div class="modal-overlay" id="planner-modal" style="display:none" data-ev-click="backdropClose(event,this,'closePlanner')" role="dialog" aria-modal="true" aria-labelledby="planner-modal-title">
   <div class="modal modal--wide" id="planner-sheet">
     <div class="modal-head">
-      <div class="modal-title" data-i18n="📅 This week's plan">📅 This week's plan</div>
-      <button class="modal-close" data-ev-click="closePlanner()">×</button>
+      <div class="modal-title" id="planner-modal-title" data-i18n="📅 This week's plan">📅 This week's plan</div>
+      <button class="modal-close" aria-label="Close"  data-ev-click="closePlanner()">×</button>
     </div>
     <div class="modal-body">
       <div id="planner-content"></div>
@@ -4774,7 +4774,11 @@
 <script src="/static/js/app.js"></script>
 
 <!-- ═══════════ DAILY CHECK-IN MODAL ═══════════ -->
-<div class="modal-overlay" id="checkin-overlay" style="display:none" role="dialog" aria-modal="true" aria-labelledby="checkin-title">
+<!-- aria-label, not aria-labelledby: this dialog's body is rendered by JS and
+     there is no static heading to point at. It pointed at "checkin-title",
+     which nothing has ever created — a dangling reference is worse than none,
+     because the browser falls back to no name while the markup looks right. -->
+<div class="modal-overlay" id="checkin-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Daily check-in">
   <div class="modal" style="max-width:460px;width:100%">
 
     <!-- Progress dots + close -->

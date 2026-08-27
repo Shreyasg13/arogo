@@ -2699,6 +2699,7 @@ async function showApp() {
   // subscription and would keep pushing. setupPushSubscription returns early in
   // that case, so clearing it needs its own call.
   try { reconcilePushPermission(); } catch(e) {}
+  try { _watchModalVisibility(); }   catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
   try { scheduleInstallPrompt(); }   catch(e) {}
   try { applyLang(); }               catch(e) {}
@@ -3580,6 +3581,20 @@ function _a11yEnhance(root) {
     if (svg.getAttribute('role') === 'img' || svg.getAttribute('aria-label')) return;
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
+  });
+
+  // 2b. Name the icon-only buttons. With every icon inside them marked
+  //     aria-hidden by the rule above, a button whose only content is an SVG
+  //     announces as "button" and nothing else — which is most of the toolbar
+  //     controls in this app. Where the button already carries a title (a
+  //     tooltip written for sighted users), that text is the name; a title is
+  //     not reliably announced on its own, and copying it costs nothing.
+  root.querySelectorAll('button:not([data-a11y-name])').forEach(btn => {
+    btn.setAttribute('data-a11y-name', '1');
+    if (btn.getAttribute('aria-label') || btn.getAttribute('aria-labelledby')) return;
+    if ((btn.textContent || '').trim()) return;          // it has visible text
+    const title = (btn.getAttribute('title') || '').trim();
+    if (title) btn.setAttribute('aria-label', title);
   });
 
   // 3. Programmatically associate visible labels with their control. The app's
@@ -8963,6 +8978,103 @@ function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.style.display = 'none'; });
 });
+
+// ── Modal accessibility, for every modal at once ────────────────────────────
+//
+// There are 25 dialogs, opened from around fifty different functions that each
+// set style.display themselves. Editing fifty call sites would fix it once and
+// then rot the first time someone added a modal the normal way.
+//
+// So this watches instead: an observer on each overlay's style attribute
+// notices any of them becoming visible, however it was opened, and applies the
+// three things a dialog needs and none of these had —
+//
+//   focus moves into the dialog, so a keyboard or screen-reader user is
+//   actually taken there rather than left at the top of the page behind it;
+//
+//   Tab stays inside it, instead of walking off into the page underneath while
+//   the dialog is still up;
+//
+//   Escape closes it, and focus returns to whatever opened it.
+//
+// Escape works by clicking the dialog's own × rather than hiding the overlay
+// directly. That matters: several modals do real work on close — resolving a
+// promise, clearing a draft, cancelling a passphrase prompt — and hiding the
+// element behind their backs would skip all of it.
+const _MODAL_FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), ' +
+  'select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+let _modalOpener = null;
+
+function _visibleModal() {
+  // Last one wins: modals can stack, and the topmost is the one being used.
+  const open = [...document.querySelectorAll('.modal-overlay')]
+    .filter(o => o.style.display !== 'none' && o.offsetParent !== null);
+  return open.length ? open[open.length - 1] : null;
+}
+
+function _visibleFocusable(overlay) {
+  // offsetParent weeds out anything display:none, which matters more than it
+  // sounds: several of these dialogs hide a file input behind a styled label,
+  // and .focus() on a hidden element does nothing at all — silently. The first
+  // version of this picked exactly such an input and left focus on the body.
+  return [...overlay.querySelectorAll(_MODAL_FOCUSABLE)]
+    .filter(el => el.offsetParent !== null);
+}
+
+function _focusIntoModal(overlay) {
+  const items = _visibleFocusable(overlay);
+  if (!items.length) return;
+  // Prefer the first real field over the close button — landing on × means the
+  // first thing announced is the way out.
+  const firstField = items.find(el => /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName));
+  try { (firstField || items[0]).focus(); } catch (e) {}
+}
+
+function _closeVisibleModal(overlay) {
+  const x = overlay.querySelector('.modal-close');
+  if (x) { x.click(); return; }
+  overlay.style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' && e.key !== 'Tab') return;
+  const overlay = _visibleModal();
+  if (!overlay) return;
+  if (e.key === 'Escape') { e.preventDefault(); _closeVisibleModal(overlay); return; }
+  const items = _visibleFocusable(overlay);
+  if (!items.length) return;
+  const first = items[0], last = items[items.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}, true);
+
+function _watchModalVisibility() {
+  const overlays = document.querySelectorAll('.modal-overlay');
+  if (!overlays.length || typeof MutationObserver === 'undefined') return;
+  const seen = new WeakMap();
+  const obs = new MutationObserver(muts => {
+    for (const m of muts) {
+      const el = m.target;
+      const visible = el.style.display !== 'none';
+      if (seen.get(el) === visible) continue;
+      seen.set(el, visible);
+      if (visible) {
+        _modalOpener = document.activeElement;
+        // Deferred: the opening function is usually still filling the body in.
+        setTimeout(() => { try { _focusIntoModal(el); _a11yEnhance(el); } catch (e) {} }, 60);
+      } else if (_modalOpener) {
+        try { _modalOpener.focus(); } catch (e) {}
+        _modalOpener = null;
+      }
+    }
+  });
+  overlays.forEach(o => {
+    seen.set(o, o.style.display !== 'none');
+    obs.observe(o, {attributes: true, attributeFilter: ['style']});
+  });
+}
 
 // ── Utils ──
 function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
@@ -23286,32 +23398,15 @@ let _passphraseReturnFocus = null;
 function askExportPassphrase() {
   const overlay = document.getElementById('passphrase-overlay');
   if (!overlay) return Promise.resolve(null);
-  // Remember where focus came from. A dialog that opens, takes focus and then
-  // drops it on the body leaves a keyboard user at the top of the page with no
-  // idea what happened.
+  // Focus, the Tab trap, Escape and focus restore all come from the shared
+  // modal machinery now (see _watchModalVisibility). Escape clicks this
+  // dialog's own ×, which is wired to cancelPassphrase, so the promise still
+  // resolves rather than being left hanging.
   _passphraseReturnFocus = document.activeElement;
   overlay.style.display = 'flex';
-  document.addEventListener('keydown', _passphraseKeys, true);
   const input = document.getElementById('passphrase-input');
   if (input) { input.value = ''; setTimeout(() => input.focus(), 50); }
   return new Promise(resolve => { _passphraseResolve = resolve; });
-}
-
-// Escape cancels, and Tab stays inside the dialog. Without the trap, tabbing
-// walks off into the page behind while the dialog is still up.
-function _passphraseKeys(e) {
-  if (e.key === 'Escape') { e.preventDefault(); cancelPassphrase(); return; }
-  if (e.key !== 'Tab') return;
-  const overlay = document.getElementById('passphrase-overlay');
-  const focusable = overlay ? overlay.querySelectorAll(
-    'button, input, [tabindex]:not([tabindex="-1"])') : [];
-  if (!focusable.length) return;
-  const first = focusable[0], last = focusable[focusable.length - 1];
-  if (e.shiftKey && document.activeElement === first) {
-    e.preventDefault(); last.focus();
-  } else if (!e.shiftKey && document.activeElement === last) {
-    e.preventDefault(); first.focus();
-  }
 }
 
 function submitPassphrase() {
@@ -23330,7 +23425,6 @@ function cancelPassphrase() {
 function closePassphrasePrompt() {
   const overlay = document.getElementById('passphrase-overlay');
   if (overlay) overlay.style.display = 'none';
-  document.removeEventListener('keydown', _passphraseKeys, true);
   const input = document.getElementById('passphrase-input');
   if (input) input.value = '';        // don't leave it sitting in the DOM
   try { _passphraseReturnFocus && _passphraseReturnFocus.focus(); } catch (e) {}
