@@ -223,33 +223,37 @@ def test_a_finished_page_is_fully_translated(fn):
 # shipped once as "किसलिए cholesterol" — the Hindi interrogative "what for?"
 # followed by a word — where the correct rendering is "cholesterol के लिए".
 # The fix is always tformat('for %1', value), so the translator controls order.
-GLUED = re.compile(r"\$\{t\('([a-z][a-z ]{0,14})'\)\}\s*\$\{")
+# The separator class matters. The first version of this only matched whitespace
+# between the fragment and the value, and missed `${t('typical')}: ${rng}` —
+# which is the identical bug wearing a colon. Punctuation a label is glued to
+# its value with is part of the phrase, so it belongs inside the translation too.
+GLUED = re.compile(r"\$\{t\('([a-z][a-z ]{0,14})'\)\}[\s:\-–—=]*\$\{")
 
-# The same mistake, already in the app on older pages. Listed rather than fixed
-# in the same breath as writing the guard: each one is a small label on a screen
-# outside this round, and quietly "fixing" nine of them without looking at each
-# in context is how a translation gets worse instead of better. Listing them
-# keeps the count visible and stops it growing.
-#
-# Each renders as "<word> <value>" and needs the same treatment as 'for %1':
-# move the placeholder inside the translated string so word order belongs to the
-# translator. Remove an entry here when its call site is converted.
-KNOWN_GLUED = {
-    'from', 'last dose', 'last used', 'max', 'min', 'now', 'target',
-    'typical', 'was',
-}
+# Empty, and meant to stay that way. It briefly held nine older sites that were
+# listed rather than fixed in the same breath as writing the guard; they have
+# since been converted one at a time, each read in context first. An entry here
+# is a temporary admission, not a permanent exemption — anything added needs a
+# reason and a plan, because a list like this is how a guard quietly stops
+# guarding.
+KNOWN_GLUED = set()
 
 
 def test_no_translated_fragment_is_glued_to_a_value():
+    # Scanned line by line rather than over comment-stripped text: searching the
+    # stripped copy and then counting newlines in the ORIGINAL reports whatever
+    # happens to sit at that offset, which sent the first run of this test to two
+    # innocent lines. Judging each line on its own keeps the number honest.
     _, body = _split_i18n(_source())
-    offenders = []
     offset = _body_line_offset()
-    for m in GLUED.finditer(_drop_comment_lines(body)):
-        frag = m.group(1)
-        if frag in KNOWN_GLUED:
+    offenders = []
+    for n, line_text in enumerate(body.split('\n')):
+        if _COMMENT_LINE.match(line_text):
             continue
-        line = offset + body[:m.start()].count('\n') + 1
-        offenders.append(f"{frag!r} (near app.js line {line})")
+        for m in GLUED.finditer(line_text):
+            frag = m.group(1)
+            if frag in KNOWN_GLUED:
+                continue
+            offenders.append(f"{frag!r} (app.js line {offset + n + 1})")
     assert not offenders, (
         "a translated fragment is concatenated with a value, which forces "
         "English word order on every language. Use tformat('… %1', value) so "

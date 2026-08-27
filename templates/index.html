@@ -790,6 +790,9 @@
     <button class="btn-outline" style="font-size:12px;white-space:nowrap" data-ev-click="printVisitPack()">🖨️ <span data-i18n="Visit pack">Visit pack</span></button>
   </div>
 
+  <!-- Bulk select/actions live OUTSIDE the grid: reports-grid is a CSS grid, so
+       a bar rendered inside it would be laid out as another card. -->
+  <div id="reports-bulk"></div>
   <div id="reports-grid" class="reports-grid"></div>
 
   <!-- Medical sub-tabs -->

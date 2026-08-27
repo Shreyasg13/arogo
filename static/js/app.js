@@ -148,7 +148,7 @@ const I18N = {
     'Weekly review': 'साप्ताहिक समीक्षा', 'Could not load your weekly review.': 'आपकी साप्ताहिक समीक्षा लोड नहीं हो सकी।',
     'A few honest minutes on how your week went — then one focus you set for the next.':
       'आपका सप्ताह कैसा रहा, इस पर कुछ ईमानदार मिनट — फिर अगले के लिए एक फोकस जो आप तय करें।',
-    'Your week': 'आपका सप्ताह', 'last week': 'पिछला सप्ताह', 'was': 'था',
+    'Your week': 'आपका सप्ताह', 
     'How you did on medicines': 'दवाइयों में आप कैसे रहे',
     '%1 of %2 scheduled doses taken': '%2 में से %1 निर्धारित खुराक ली',
     'Not enough dose data this week to show adherence.': 'इस सप्ताह पालन दिखाने के लिए पर्याप्त खुराक डेटा नहीं।',
@@ -333,7 +333,7 @@ const I18N = {
       'अभी कोई अपनी दवाइयाँ आपके साथ साझा नहीं कर रहा। जब कोई परिवारजन अपनी दवाइयाँ साझा करेगा, वे यहाँ दिखेंगे — और सिर्फ़ वही जो वे चुनें।',
     '%1 need a look': '%1 पर नज़र चाहिए', '%1 people in your circle': 'आपकी मंडली में %1 लोग', 'all keeping up': 'सब ठीक चल रहे',
     '%1 overdue': '%1 देर से', '%1 low': '%1 कम', 'on track': 'सही राह पर',
-    'last dose': 'आख़िरी खुराक', 'just now': 'अभी-अभी', '%1 min ago': '%1 मिनट पहले', '%1h ago': '%1 घंटे पहले',
+    'just now': 'अभी-अभी', '%1 min ago': '%1 मिनट पहले', '%1h ago': '%1 घंटे पहले',
     'This week: %1% of doses': 'इस सप्ताह: %1% खुराकें', '%1h sleep': '%1 घंटे नींद',
     'You’re checking on this': 'आप इस पर नज़र रख रहे हैं', '%1 is checking': '%1 नज़र रख रहे हैं',
     '%1 of %2 doses today': 'आज %2 में से %1 खुराकें',
@@ -713,7 +713,7 @@ const I18N = {
     'Lab results': 'लैब रिपोर्ट', 'Keep your blood-test numbers in one place and watch the trends': 'अपने ब्लड-टेस्ट के आँकड़े एक जगह रखें और रुझान देखें',
     'Add a result': 'परिणाम जोड़ें', 'Choose a test…': 'एक टेस्ट चुनें…', 'Value': 'मान',
     'No lab results yet': 'अभी कोई लैब परिणाम नहीं', 'Add a value from your latest blood test above to start tracking it.': 'ट्रैक करने के लिए ऊपर अपने नवीनतम ब्लड टेस्ट से एक मान जोड़ें।',
-    'Result saved': 'परिणाम सहेजा गया', 'Trend': 'रुझान', 'typical': 'सामान्य', 'no set range': 'कोई तय सीमा नहीं',
+    'Result saved': 'परिणाम सहेजा गया', 'Trend': 'रुझान', 'no set range': 'कोई तय सीमा नहीं',
     'Below range': 'सीमा से नीचे', 'Above range': 'सीमा से ऊपर', 'In range': 'सीमा में',
     'Reference ranges are typical adult values for orientation only — labs and your doctor\'s targets vary. An out-of-range number is worth discussing with your doctor, never a diagnosis.': 'संदर्भ सीमाएँ केवल दिशा-निर्देश हेतु सामान्य वयस्क मान हैं — लैब और आपके डॉक्टर के लक्ष्य भिन्न होते हैं। सीमा से बाहर का मान डॉक्टर से चर्चा योग्य है, निदान नहीं।',
     'Only one reading so far': 'अभी तक केवल एक रीडिंग', 'Add another to see a trend.': 'रुझान देखने के लिए एक और जोड़ें।',
@@ -760,7 +760,7 @@ const I18N = {
     'Due soon': 'जल्द देय', 'overdue': 'बकाया', 'due now': 'अभी देय', 'due in %1 days': '%1 दिनों में देय',
     'An estimate from your last dose — your doctor\'s advice always wins.': 'आपकी पिछली खुराक से अनुमान — डॉक्टर की सलाह हमेशा मान्य।',
     'No vaccines recorded yet': 'अभी कोई टीका दर्ज नहीं', 'Add a dose from your vaccination card above.': 'ऊपर अपने टीकाकरण कार्ड से एक खुराक जोड़ें।',
-    'Dose recorded': 'खुराक दर्ज', 'last': 'अंतिम', 'next': 'अगला',
+    'Dose recorded': 'खुराक दर्ज', 
     'Timeline': 'समयरेखा', 'Health timeline': 'स्वास्थ्य समयरेखा',
     'Goals': 'लक्ष्य', 'Health goals': 'स्वास्थ्य लक्ष्य',
     'Set a target with a finish line — progress comes from what you actually log': 'एक समय-सीमा के साथ लक्ष्य तय करें — प्रगति उसी से बनती है जो आप वाकई दर्ज करते हैं',
@@ -769,7 +769,7 @@ const I18N = {
     'No goals yet': 'अभी कोई लक्ष्य नहीं',
     'Set a target above — like HbA1c below 6.5, or 8,000 steps a day.': 'ऊपर एक लक्ष्य तय करें — जैसे HbA1c 6.5 से नीचे, या रोज़ 8,000 कदम।',
     'Show finished': 'पूर्ण दिखाएँ', 'Hide finished': 'पूर्ण छिपाएँ',
-    'now': 'अभी', '🎉 reached!': '🎉 पहुँच गए!', 'target': 'लक्ष्य',
+    'now': 'अभी', '🎉 reached!': '🎉 पहुँच गए!', 
     'Log a %1 reading to see progress.': 'प्रगति देखने के लिए %1 दर्ज करें।',
     '%1 days left': '%1 दिन शेष', '%1 days overdue': '%1 दिन देरी',
     'Mark done': 'पूर्ण चिह्नित करें', 'done': 'पूर्ण', 'archived': 'संग्रहित',
@@ -819,7 +819,7 @@ const I18N = {
     'Blood pressure (systolic)': 'रक्तचाप (सिस्टोलिक)', 'Resting heart rate': 'विश्राम हृदय गति', 'SpO₂': 'SpO₂', 'Temperature': 'तापमान',
     'no target set': 'कोई लक्ष्य नहीं', 'target %1': 'लक्ष्य %1', 'Set target': 'लक्ष्य तय करें',
     'latest %1 · below': 'नवीनतम %1 · नीचे', 'latest %1 · above': 'नवीनतम %1 · ऊपर', 'latest %1 · in range': 'नवीनतम %1 · सीमा में',
-    'Target set 🎯': 'लक्ष्य तय हुआ 🎯', 'Give a low, a high, or both': 'न्यूनतम, अधिकतम, या दोनों दें', 'min': 'न्यून', 'max': 'अधिक',
+    'Target set 🎯': 'लक्ष्य तय हुआ 🎯', 'Give a low, a high, or both': 'न्यूनतम, अधिकतम, या दोनों दें', 
     'When was this taken?': 'यह कब लिया गया?', 'Fasting': 'खाली पेट', 'Before meal': 'भोजन से पहले', 'After meal': 'भोजन के बाद',
     'Bedtime': 'सोने से पहले', 'Random': 'कभी भी', 'Glucose logbook': 'ग्लूकोज़ लॉगबुक', 'avg': 'औसत',
     'Your target': 'आपका लक्ष्य', 'Set a blood-sugar target to flag out-of-range readings': 'सीमा-बाहर रीडिंग चिह्नित करने के लिए ब्लड-शुगर लक्ष्य तय करें',
@@ -929,7 +929,7 @@ const I18N = {
     'Add a dose step': 'खुराक चरण जोड़ें', 'Dose (e.g. 20mg)': 'खुराक (जैसे 20mg)', 'Note (optional)': 'नोट (वैकल्पिक)', 'Add step': 'चरण जोड़ें',
     'The step with the most recent start date on or before today is your current dose.': 'आज या उससे पहले की सबसे हाल की आरंभ तिथि वाला चरण आपकी वर्तमान खुराक है।',
     'No steps yet — add the first dose above.': 'अभी कोई चरण नहीं — ऊपर पहली खुराक जोड़ें।',
-    'Other tapers': 'अन्य टेपर', 'not started': 'शुरू नहीं हुआ', 'from': 'से',
+    'Other tapers': 'अन्य टेपर', 'not started': 'शुरू नहीं हुआ', 
     'Add a medicine first, then build its taper here.': 'पहले एक दवा जोड़ें, फिर यहाँ उसका टेपर बनाएँ।',
     'Step added': 'चरण जोड़ा गया', 'Enter a dose': 'खुराक दर्ज करें', 'Pick a start date': 'आरंभ तिथि चुनें',
     'Meal plan': 'भोजन योजना', "Plan the week's meals, then turn them into a grocery list": 'सप्ताह के भोजन की योजना बनाएँ, फिर उन्हें किराना सूची में बदलें',
@@ -1798,7 +1798,7 @@ const I18N = {
     // Sign-in activity, episodes, trips, courses, donations
     'Sign out': 'साइन आउट',
     'this device': 'यह डिवाइस',
-    'last used': 'आख़िरी बार इस्तेमाल',
+    
     'created': 'बनाया',
     'revoked': 'रद्द किया',
     'not opened yet': 'अभी खोला नहीं गया',
@@ -1821,6 +1821,29 @@ const I18N = {
     'no donation recorded': 'कोई रक्तदान दर्ज नहीं',
     'date passed': 'तारीख़ निकल गई',
     'Nothing recorded yet.': 'अभी कुछ दर्ज नहीं हुआ।',
+
+    // ── Compact metadata labels ───────────────────────────────────────────
+    // These were nine `${t('word')} ${value}` sites, which forces English word
+    // order on every language. Hindi puts the postposition after the noun, so
+    // "from 12 Aug" is "12 अगस्त से" — the placeholder has to be inside the
+    // translated string for that to be expressible at all.
+    //
+    // Where there is no natural postposition ("now 72 kg"), a colon is used
+    // rather than an invented particle: "अभी: 72 kg" reads as a label and a
+    // value, which is what the line actually is, and does not pretend to be a
+    // sentence it isn't.
+    'from %1': '%1 से',
+    'now %1': 'अभी: %1',
+    'target %1': 'लक्ष्य: %1',
+    'was %1': 'पहले: %1',
+    'typical %1': 'सामान्य: %1',
+    'last used %1': 'आख़िरी इस्तेमाल: %1',
+    'last dose %1': 'आख़िरी खुराक: %1',
+    'min %1': 'न्यूनतम %1',
+    'max %1': 'अधिकतम %1',
+    'last %1': 'पिछला: %1',
+    'next ~%1': 'अगला: लगभग %1',
+    'last week: %1%': 'पिछले हफ़्ते: %1%',
 
     // Shared small words
     'On': 'चालू',
@@ -5740,13 +5763,29 @@ async function loadReports() {
   if (label) label.textContent = `${reports.length} report${reports.length !== 1 ? 's' : ''}`;
   const grid = document.getElementById('reports-grid');
   if (!grid) return;
+  const bulkBox = document.getElementById('reports-bulk');
   if (reports.length === 0) {
     grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">${t('No reports found')}</div><div class="empty-sub">${t('Upload your first medical report')}</div><button class="btn-primary" data-ev-click="openUploadModal()">${t('Upload Report')}</button></div>`;
+    if (bulkBox) bulkBox.innerHTML = '';
     return;
+  }
+  // Selection acts on what is CURRENTLY filtered into view, which is why the
+  // bar sits with the grid rather than with the page header — "select all"
+  // means "all of these", not "all your records".
+  if (bulkBox) {
+    bulkBox.innerHTML = `
+      <label class="bulk-all"><input type="checkbox"
+        data-ev-change="bulkToggleAll('reports',this.checked)"> ${t('Select all')}</label>
+      ${bulkBar('reports', [{label: t('Delete selected'), handler: 'bulkDeleteReports()'}])}`;
   }
   grid.innerHTML = reports.map(r => `
     <div class="report-card" data-ev-click="openReportDetail(${JSON.stringify(r).replace(/"/g,'&quot;')})">
       <div class="report-card-header">
+        <!-- The card itself opens the record, so the checkbox has to stop the
+             click before it gets there. role="presentation" keeps the wrapper
+             out of the a11y tree — the checkbox inside is the real control. -->
+        <span class="report-card-pick" role="presentation"
+              data-ev-click="event.stopPropagation()">${bulkCheckbox('reports', r.id)}</span>
         <div class="report-card-file-icon">${fileIcon(r.file_ext)}</div>
         <div class="report-card-info">
           <div class="report-card-title" title="${escHtml(r.original_name)}">${escHtml(r.original_name)}</div>
@@ -5769,6 +5808,17 @@ async function loadReports() {
       </div>
     </div>
   `).join('');
+  _bulkRefresh('reports');
+}
+
+function bulkDeleteReports() {
+  bulkRun('reports',
+    id => fetch(`/api/reports/${encodeURIComponent(id)}`,
+                {method: 'DELETE', credentials: 'same-origin'}).then(r => r.ok),
+    t('deleted')).then(() => {
+      try { loadReports(); }   catch (e) {}
+      try { loadDashboard(); } catch (e) {}
+    });
 }
 
 // Bundle the records currently in view (after any type/tag/search filter) into a
@@ -12605,7 +12655,14 @@ async function loadSymptoms() {
   r.forEach(s => { (byDate[s.date_key] = byDate[s.date_key]||[]).push(s); });
 
   const regionMetaMap = Object.fromEntries((BODY_REGIONS || []).map(x => [x.key, x]));
-  el.innerHTML = filterBanner + Object.entries(byDate).map(([date, syms]) => {
+  // Bulk selection — the same opt-in machinery the trash uses. Symptoms are
+  // logged in bursts during an illness and cleaned up in bursts too; deleting
+  // them is recoverable for thirty days.
+  const bulkHead = `
+    <label class="bulk-all"><input type="checkbox"
+      data-ev-change="bulkToggleAll('symptoms',this.checked)"> ${t('Select all')}</label>
+    ${bulkBar('symptoms', [{label: t('Delete selected'), handler: 'bulkDeleteSymptoms()'}])}`;
+  el.innerHTML = filterBanner + bulkHead + Object.entries(byDate).map(([date, syms]) => {
     const d = new Date(date+'T12:00:00');
     const today = localToday();
     const dateLabel = date === today ? 'Today' :
@@ -12616,6 +12673,7 @@ async function loadSymptoms() {
       const regionTag = rm ? ` · ${rm.emoji} ${t(rm.label)}` : '';
       return `
       <div class="symptom-row">
+        ${bulkCheckbox('symptoms', s.id)}
         <div class="symptom-dot" style="background:${sevColor(s.severity)}"></div>
         <div class="symptom-info">
           <div class="symptom-name-text">${escHtml(s.name)}</div>
@@ -12635,7 +12693,20 @@ async function loadSymptoms() {
       ${rows}
     </div>`;
   }).join('');
+  _bulkRefresh('symptoms');
   loadSymptomTimeline();
+}
+
+function bulkDeleteSymptoms() {
+  bulkRun('symptoms',
+    id => fetch(`/api/symptoms/${encodeURIComponent(id)}`,
+                {method: 'DELETE', credentials: 'same-origin'}).then(r => r.ok),
+    t('deleted')).then(() => {
+      try { loadSymptoms(); }         catch (e) {}
+      try { loadSymptomPatterns(); }  catch (e) {}
+      try { loadSymptomBodyMap(); }   catch (e) {}
+      try { loadWellnessStrip(); }    catch (e) {}
+    });
 }
 
 async function delSymptom(id) {
@@ -12876,11 +12947,20 @@ async function loadVitals() {
     el.innerHTML = `<div class="todo-empty"><div class="todo-empty-icon">❤️</div><div class="todo-empty-text">${t('No readings logged')}</div></div>`;
     return;
   }
-  el.innerHTML = r.map(v => {
+  // Bulk selection. A month of readings after a hospital stay, or a batch
+  // imported twice, is otherwise removed one row at a time — which is the
+  // friction that leaves wrong data in place because tidying it is too tedious.
+  // Deleting is safe here: vitals go to the trash for thirty days.
+  el.innerHTML = `
+    <label class="bulk-all"><input type="checkbox"
+      data-ev-change="bulkToggleAll('vitals',this.checked)"> ${t('Select all')}</label>
+    ${bulkBar('vitals', [{label: t('Delete selected'), handler: 'bulkDeleteVitals()'}])}
+    ` + r.map(v => {
     const cfg = VITAL_CONFIG[v.type] || {icon:'📊', label:v.type};
     const flagStr = vitalFlag(v.type, v.value1, v.value2, v.unit);
     const display = v.value2 ? `${v.value1}/${v.value2}` : v.value1;
     return `<div class="vital-row">
+      ${bulkCheckbox('vitals', v.id)}
       <div class="vital-type-icon">${cfg.icon}</div>
       <div class="vital-info">
         <div class="vital-reading">${display} <span style="font-size:12px;color:var(--gray-400)">${escHtml(v.unit)}</span></div>
@@ -12892,6 +12972,22 @@ async function loadVitals() {
       </button>
     </div>`;
   }).join('');
+  _bulkRefresh('vitals');
+}
+
+// One request per reading, reporting what actually happened rather than what
+// was ticked. The refreshes are the same set delVital does — a reading feeds
+// the list, the history and two charts.
+function bulkDeleteVitals() {
+  bulkRun('vitals',
+    id => fetch(`/api/vitals/${encodeURIComponent(id)}`,
+                {method: 'DELETE', credentials: 'same-origin'}).then(r => r.ok),
+    t('deleted')).then(() => {
+      try { loadVitals(); }      catch (e) {}
+      try { loadVitalsView(); }  catch (e) {}
+      try { loadVitalTrends(); } catch (e) {}
+      try { loadVitalSparks(); } catch (e) {}
+    });
 }
 
 async function delVital(id) {
@@ -13841,7 +13937,7 @@ async function loadAccountActivity() {
     sEl.innerHTML = `<div class="restore-list">${sess.sessions.map(s => `
       <div class="restore-row">
         <span><b>${escHtml(s.device)}</b>${s.current ? ' · ' + t('this device') : ''}<br>
-          <span class="restore-removes">${t('last used')} ${escHtml(_agoText(s.last_seen))}</span></span>
+          <span class="restore-removes">${tformat('last used %1', escHtml(_agoText(s.last_seen)))}</span></span>
         ${s.current ? '' : `<button class="btn-outline" style="font-size:12px"
            data-ev-click="revokeSession('${escHtml(s.id)}')">${t('Sign out')}</button>`}
       </div>`).join('')}</div>`;
@@ -16350,7 +16446,7 @@ function renderHealthReview(rev) {
     return `<div class="hr-goal">
         <div class="hr-goal-top"><span>${escHtml(g.title)}</span><span class="hr-goal-pct">${pct != null ? pct + '%' : ''}</span></div>
         ${bar}
-        <div class="hr-goal-meta">${t('now')} ${now} · ${t('target')} ${g.target}${g.unit ? ' ' + g.unit : ''}</div>
+        <div class="hr-goal-meta">${tformat('now %1', now)} · ${tformat('target %1', `${g.target}${g.unit ? ' ' + g.unit : ''}`)}</div>
       </div>`;
   }).join('');
   const goalsHTML = goals ? `<div class="hr-sub">${t('Goals')}</div><div class="hr-goals">${goals}</div>` : '';
@@ -17183,7 +17279,7 @@ function renderGoals(goals) {
     const title = g.title || `${t(g.metric_name)} · ${dirWord} ${g.target_value}${g.unit ? ' ' + g.unit : ''}`;
     const bar = pct != null
       ? `<div class="goal-bar"><div class="goal-fill${g.auto_achieved ? ' goal-fill--done' : ''}" style="width:${pct}%"></div></div>
-         <div class="goal-progress-label">${g.current != null ? `${t('now')} ${g.current}${g.unit ? ' ' + g.unit : ''}` : ''} · ${pct}%${g.auto_achieved ? ' · ' + t('🎉 reached!') : ''}</div>`
+         <div class="goal-progress-label">${g.current != null ? tformat('now %1', `${g.current}${g.unit ? ' ' + g.unit : ''}`) : ''} · ${pct}%${g.auto_achieved ? ' · ' + t('🎉 reached!') : ''}</div>`
       : `<div class="goal-nodata">${tformat('Log a %1 reading to see progress.', t(g.metric_name).toLowerCase())}</div>`;
     let deadline = '';
     if (g.days_left != null) {
@@ -17193,7 +17289,7 @@ function renderGoals(goals) {
     return `<div class="panel goal-card${done ? ' goal-card--done' : ''}" style="padding:16px 18px;margin-bottom:12px">
         <div class="goal-head">
           <div style="flex:1"><div class="goal-title">${escHtml(title)}</div>
-            <div class="goal-meta">${t('target')} ${g.target_value}${g.unit ? ' ' + g.unit : ''}${deadline ? ' · ' + deadline : ''}</div></div>
+            <div class="goal-meta">${tformat('target %1', `${g.target_value}${g.unit ? ' ' + g.unit : ''}`)}${deadline ? ' · ' + deadline : ''}</div></div>
           ${done ? `<span class="goal-badge">${g.status === 'achieved' ? t('done') : t('archived')}</span>` :
             (g.auto_achieved ? `<button class="btn-outline" style="font-size:11px" data-ev-click="markGoal('${g.id}','achieved')">${t('Mark done')}</button>` : '')}
           <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteGoal('${g.id}')" style="color:var(--gray-300)">✕</button>
@@ -18826,7 +18922,7 @@ function renderWeekReview(d) {
   const adhDelta = (d.deltas || []).find(m => m.key === 'adherence');
   let adhInner;
   if (adh) {
-    const cmp = adhDelta ? ` <span class="wr-cmp">(${t('last week')}: ${adhDelta.last}%)</span>` : '';
+    const cmp = adhDelta ? ` <span class="wr-cmp">(${tformat('last week: %1%', adhDelta.last)})</span>` : '';
     adhInner = `<div class="wr-big count-up" data-to="${adh.pct}" data-suffix="%">${adh.pct}%</div><div class="wr-sub">${tformat('%1 of %2 scheduled doses taken', adh.taken, adh.total)}${cmp}</div>`;
   } else {
     adhInner = `<div class="wr-sub">${t('Not enough dose data this week to show adherence.')}</div>`;
@@ -18841,7 +18937,7 @@ function renderWeekReview(d) {
     return `<div class="wr-metric">
         <span class="wr-metric-label">${escHtml(m.label)}</span>
         <span class="wr-metric-val ${tone}">${escHtml(String(m.this))}${escHtml(m.unit || '')} ${arrow}
-          <span class="wr-metric-was">${t('was')} ${escHtml(String(m.last))}${escHtml(m.unit || '')}</span></span>
+          <span class="wr-metric-was">${tformat('was %1', `${escHtml(String(m.last))}${escHtml(m.unit || '')}`)}</span></span>
       </div>`;
   }).join('');
   const movedInner = deltas.length ? rows
@@ -19158,7 +19254,7 @@ function renderCareCircle(d) {
     if (od) badges.push(`<span class="cc-badge cc-badge-attn">${tformat('%1 overdue', od)}</span>`);
     if (ls) badges.push(`<span class="cc-badge cc-badge-low">${tformat('%1 low', ls)}</span>`);
     if (!od && !ls && td.total) badges.push(`<span class="cc-badge cc-badge-ok">✓ ${t('on track')}</span>`);
-    const ago = td.last_ago_min != null ? `<span class="cc-ago">${t('last dose')} ${_ccAgo(td.last_ago_min)}</span>` : '';
+    const ago = td.last_ago_min != null ? `<span class="cc-ago">${tformat('last dose %1', _ccAgo(td.last_ago_min))}</span>` : '';
     const week = (wk.adherence_pct != null)
       ? `<div class="cc-week">${tformat('This week: %1% of doses', wk.adherence_pct)}${wk.sleep_avg ? ' · ' + tformat('%1h sleep', wk.sleep_avg) : ''}</div>` : '';
     const checking = m.checking_by
@@ -20589,7 +20685,7 @@ async function loadTaperSteps() {
         <div class="tp-step-dot"></div>
         <div class="tp-step-main">
           <div class="tp-step-dose">${escHtml(s.dosage)}${s.status === 'current' ? ` <span class="tp-now">${t('now')}</span>` : ''}</div>
-          <div class="tp-step-meta">${t('from')} ${dt}${when}${s.note ? ' · ' + escHtml(s.note) : ''}</div>
+          <div class="tp-step-meta">${tformat('from %1', dt)}${when}${s.note ? ' · ' + escHtml(s.note) : ''}</div>
         </div>
         <button class="btn-icon" title="${t('Delete')}" data-ev-click="deleteTaperStep('${s.id}')" style="color:var(--gray-300)">✕</button>
       </div>`;
@@ -20916,7 +21012,7 @@ function renderImmunizations(rec, cat) {
         <div class="vax-row">
           <div class="vax-row-main">
             <div class="vax-name">${escHtml(v.name)}${v.dose_count > 1 ? ` <span class="vax-count">×${v.dose_count}</span>` : ''}</div>
-            <div class="vax-meta">${t('last')}: ${_fmtShortDate(v.last_date)}${v.next_due ? ` · ${t('next')} ~${_fmtShortDate(v.next_due.date)}${v.next_due.overdue ? ' ⚠️' : ''}` : ''}</div>
+            <div class="vax-meta">${tformat('last %1', _fmtShortDate(v.last_date))}${v.next_due ? ` · ${tformat('next ~%1', _fmtShortDate(v.next_due.date))}${v.next_due.overdue ? ' ⚠️' : ''}` : ''}</div>
           </div>
           <div class="vax-doses">${v.doses.map(dz => `
             <span class="vax-dose-chip" title="${escHtml(dz.notes||'')}">${dz.dose_label ? escHtml(dz.dose_label) + ' · ' : ''}${_fmtShortDate(dz.date_given)}
@@ -20989,7 +21085,7 @@ async function renderConditionDashboard(key) {
     return `<div class="cond-metric">
         <div class="cond-metric-name">${escHtml(l.name)} ${st ? `<span class="lab-badge ${st.c}">${t(st.l)}</span>` : ''}</div>
         <div class="cond-metric-val ${st ? st.c : ''}">${l.value}<span class="cond-metric-unit">${escHtml(l.unit||'')}</span></div>
-        <div class="cond-metric-meta">${_fmtShortDate(l.date)}${l.ref_low != null ? ` · ${t('typical')} ${l.ref_low}–${l.ref_high}` : ''}</div>
+        <div class="cond-metric-meta">${_fmtShortDate(l.date)}${l.ref_low != null ? ' · ' + tformat('typical %1', `${l.ref_low}–${l.ref_high}`) : ''}</div>
       </div>`;
   }).join('');
 
@@ -21410,7 +21506,7 @@ function renderLabsView(results, catalog, rechecks) {
         return `<div class="lab-row">
           <div class="lab-row-main">
             <div class="lab-name">${escHtml(r.name)} ${_labStatusBadge(r.status)}</div>
-            <div class="lab-meta">${t('typical')}: ${rng} · ${_fmtShortDate(r.date_key)}</div>
+            <div class="lab-meta">${tformat('typical %1', rng)} · ${_fmtShortDate(r.date_key)}</div>
             ${_labBandBar(r)}
           </div>
           <div class="lab-value ${LAB_STATUS[r.status]?.cls || ''}">${r.value}<span class="lab-value-unit">${escHtml(r.unit||'')}</span></div>
@@ -22108,8 +22204,8 @@ function editVitalTarget(vt) {
   if (row.querySelector('.vt-editor')) { row.querySelector('.vt-editor').remove(); return; }
   const box = document.createElement('div');
   box.className = 'vt-editor';
-  box.innerHTML = `<input type="number" step="any" class="form-input" id="vt-min-${vt}" placeholder="${t('min')} ${vitalUnitLabel(vt)}" style="max-width:110px">
-    <input type="number" step="any" class="form-input" id="vt-max-${vt}" placeholder="${t('max')} ${vitalUnitLabel(vt)}" style="max-width:110px">
+  box.innerHTML = `<input type="number" step="any" class="form-input" id="vt-min-${vt}" placeholder="${tformat('min %1', vitalUnitLabel(vt))}" style="max-width:110px">
+    <input type="number" step="any" class="form-input" id="vt-max-${vt}" placeholder="${tformat('max %1', vitalUnitLabel(vt))}" style="max-width:110px">
     <button class="btn-primary" data-ev-click="saveVitalTarget('${vt}')" style="padding:6px 12px">${t('Save')}</button>
     <button class="btn-icon" data-ev-click="clearVitalTarget('${vt}')" title="${t('Remove')}">✕</button>`;
   row.appendChild(box);

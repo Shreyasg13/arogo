@@ -7338,3 +7338,12 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
   opacity: .4;
   cursor: not-allowed;
 }
+
+/* The per-record checkbox on a report card. The card itself is the click
+   surface that opens the record, so the checkbox needs its own breathing room
+   and its own stopPropagation (see loadReports). */
+.report-card-pick { display:flex; align-items:flex-start; padding-right:2px; }
+.report-card-pick .bulk-cb { margin-top:4px; }
+/* Vital and symptom rows are flex; the checkbox is a fixed-width first child
+   rather than something that stretches with the row. */
+.vital-row > .bulk-cb, .symptom-row > .bulk-cb { align-self:center; margin-right:2px; }
