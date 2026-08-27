@@ -7347,3 +7347,36 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 /* Vital and symptom rows are flex; the checkbox is a fixed-width first child
    rather than something that stretches with the row. */
 .vital-row > .bulk-cb, .symptom-row > .bulk-cb { align-self:center; margin-right:2px; }
+
+/* ── Lock screen ───────────────────────────────────────────────────────────
+   Covers everything, including the nav and the FAB. Deliberately not a
+   .modal-overlay: those close on Escape and on a backdrop click, and a lock you
+   can dismiss is not a lock. */
+#lock-screen {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg, #10130f);
+  padding: 24px;
+}
+.lock-card { width: 100%; max-width: 340px; text-align: center; }
+.lock-logo { font-size: 42px; line-height: 1; margin-bottom: 10px; }
+.lock-title { font-size: 22px; margin: 0 0 4px; }
+.lock-sub { font-size: 13.5px; color: var(--gray-400); margin: 0 0 18px; }
+.lock-pin {
+  text-align: center; font-size: 24px; letter-spacing: .5em;
+  padding-left: .5em;                 /* centre the text despite the tracking */
+  max-width: 220px; margin: 0 auto 12px; display: block;
+}
+.lock-go { width: 100%; max-width: 220px; }
+.lock-error { font-size: 13px; color: var(--danger, #b3261e); min-height: 20px; margin-bottom: 6px; }
+.lock-alts { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.lock-link {
+  background: none; border: none; color: var(--gray-400);
+  font-size: 13px; cursor: pointer; text-decoration: underline;
+  font-family: inherit; padding: 4px;
+}
+.lock-link:hover { color: var(--gray-700); }
+.lock-emergency { margin-top: 16px; font-size: 13.5px; text-align: left; }
+.lock-emergency:not(:empty) {
+  border-top: 1px solid var(--gray-100); padding-top: 14px;
+}

@@ -158,6 +158,103 @@ def api_medicine_changes():
     return jsonify(since_last_appointment())
 
 
+# ── Screen lock ─────────────────────────────────────────────────────────────
+# Every route here is on the allow-list a locked session may reach — otherwise
+# there would be no way back in from the lock screen.
+
+@bp.route('/api/lock')
+@require_auth
+def api_lock_status():
+    from db.applock import settings, session_is_locked
+    from flask import g as _g
+    sid = getattr(_g, 'session_id', None)
+    out = settings(g.user_id)
+    out['locked'] = bool(sid) and session_is_locked(
+        sid, g.user_id, getattr(_g, 'session_last_seen', None))
+    return jsonify(out)
+
+
+@bp.route('/api/lock/now', methods=['POST'])
+@require_auth
+def api_lock_now():
+    """Lock this device on purpose — the "I'm putting this down" button.
+
+    Only this sign-in: locking the tablet must not sign you out on your phone.
+    """
+    from db.applock import lock_session, is_enabled
+    from flask import g as _g
+    if not is_enabled(g.user_id):
+        return jsonify({'success': False,
+                        'error': 'Set a PIN first, or there is no way back in.'}), 400
+    return jsonify({'success': bool(lock_session(getattr(_g, 'session_id', None),
+                                                 g.user_id))})
+
+
+@bp.route('/api/lock/unlock', methods=['POST'])
+@require_auth
+def api_lock_unlock():
+    from db.applock import unlock_session
+    from flask import g as _g
+    b = request.json if isinstance(request.json, dict) else {}
+    res = unlock_session(getattr(_g, 'session_id', None), g.user_id,
+                         b.get('pin') or b.get('password') or '',
+                         is_password=bool(b.get('password')))
+    if not res.get('ok'):
+        return jsonify({'success': False, **res}), 401
+    from db.account_activity import log_event
+    log_event('device_unlocked')
+    return jsonify({'success': True})
+
+
+@bp.route('/api/lock/pin', methods=['POST'])
+@require_auth
+def api_lock_set_pin():
+    """Set or change the PIN. The account password is required — otherwise
+    someone holding an unlocked device could set a PIN of their own and lock the
+    owner out of their own records."""
+    from db.core import execute
+    from auth import check_password
+    from db.applock import set_pin
+    b = request.json if isinstance(request.json, dict) else {}
+    row = execute('SELECT password_hash FROM users WHERE id=?', (g.user_id,),
+                  fetchone=True)
+    if not row or not check_password(b.get('password') or '', row['password_hash']):
+        return jsonify({'success': False, 'error': 'That password is not right.'}), 401
+    res = set_pin(g.user_id, b.get('pin'))
+    if not res.get('ok'):
+        return jsonify({'success': False, 'error': res['error']}), 400
+    from db.account_activity import log_event
+    log_event('device_lock_enabled')
+    return jsonify({'success': True})
+
+
+@bp.route('/api/lock/pin', methods=['DELETE'])
+@require_auth
+def api_lock_clear_pin():
+    from db.core import execute
+    from auth import check_password
+    from db.applock import clear_pin
+    b = request.json if isinstance(request.json, dict) else {}
+    row = execute('SELECT password_hash FROM users WHERE id=?', (g.user_id,),
+                  fetchone=True)
+    if not row or not check_password(b.get('password') or '', row['password_hash']):
+        return jsonify({'success': False, 'error': 'That password is not right.'}), 401
+    clear_pin(g.user_id)
+    from db.account_activity import log_event
+    log_event('device_lock_disabled')
+    return jsonify({'success': True})
+
+
+@bp.route('/api/lock/settings', methods=['POST'])
+@require_auth
+def api_lock_settings():
+    from db.applock import update_settings
+    b = request.json if isinstance(request.json, dict) else {}
+    return jsonify({'success': True, 'settings': update_settings(
+        g.user_id, idle_minutes=b.get('idle_minutes'),
+        emergency_while_locked=b.get('emergency_while_locked'))})
+
+
 # ── The appointment pack ────────────────────────────────────────────────────
 
 @bp.route('/api/visit-pack')

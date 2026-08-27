@@ -1841,6 +1841,51 @@ const I18N = {
     'last dose %1': 'आख़िरी खुराक: %1',
     'min %1': 'न्यूनतम %1',
     'max %1': 'अधिकतम %1',
+    // ── Screen lock ───────────────────────────────────────────────────────
+    'Screen lock': 'स्क्रीन लॉक',
+    'Arogo is locked': 'Arogo लॉक है',
+    'Enter your PIN to carry on.': 'आगे बढ़ने के लिए अपना PIN डालें।',
+    'Enter your account password.': 'अपने खाते का पासवर्ड डालें।',
+    'Unlock': 'अनलॉक करें',
+    'Use my password instead': 'इसके बजाय पासवर्ड इस्तेमाल करें',
+    'Emergency info': 'आपातकालीन जानकारी',
+    'Enter your PIN': 'अपना PIN डालें',
+    'That PIN is not right': 'यह PIN सही नहीं है',
+    '%1 — %2 tries left': '%1 — %2 कोशिशें बची हैं',
+    'A PIN to reopen Arogo on this device. Two-factor protects signing in; this protects the session that is already signed in — which is what matters on a tablet the family shares.':
+      'इस डिवाइस पर Arogo दोबारा खोलने के लिए एक PIN। दो-चरणीय साइन-इन को सुरक्षित करता है; यह उस सत्र को सुरक्षित करता है जो पहले से साइन-इन है — परिवार के साझा टैबलेट पर यही मायने रखता है।',
+    'Could not check the screen lock': 'स्क्रीन लॉक जाँचा नहीं जा सका',
+    'The screen lock is off. Anyone who picks up this device and opens Arogo sees everything in it.':
+      'स्क्रीन लॉक बंद है। जो कोई यह डिवाइस उठाकर Arogo खोलेगा उसे इसमें सब कुछ दिख जाएगा।',
+    'Set a PIN': 'PIN सेट करें',
+    'Lock when idle': 'निष्क्रिय होने पर लॉक करें',
+    'Never': 'कभी नहीं',
+    'After %1 minutes': '%1 मिनट बाद',
+    'Show my emergency card on the lock screen': 'लॉक स्क्रीन पर मेरा आपातकालीन कार्ड दिखाएँ',
+    'Your allergies, conditions and emergency contacts, readable without the PIN. That is what an emergency card is for — but it does mean anyone holding this device can read it.':
+      'आपकी एलर्जी, बीमारियाँ और आपातकालीन संपर्क, PIN के बिना पढ़े जा सकेंगे। आपातकालीन कार्ड इसी के लिए होता है — पर इसका मतलब यह भी है कि यह डिवाइस पकड़े कोई भी इसे पढ़ सकता है।',
+    'Lock now': 'अभी लॉक करें',
+    'Change PIN': 'PIN बदलें',
+    'New PIN (4–8 digits)': 'नया PIN (4–8 अंक)',
+    'Your account password': 'आपके खाते का पासवर्ड',
+    'Your password is asked for so that someone holding this device unlocked cannot set a PIN of their own and lock you out.':
+      'पासवर्ड इसलिए पूछा जाता है ताकि यह डिवाइस खुला हुआ पकड़े कोई अपना PIN सेट करके आपको बाहर न कर दे।',
+    'Could not set the PIN': 'PIN सेट नहीं हो सका',
+    '✓ Screen lock is on': '✓ स्क्रीन लॉक चालू है',
+    'Turning the screen lock off needs your password.':
+      'स्क्रीन लॉक बंद करने के लिए आपका पासवर्ड चाहिए।',
+    'Screen lock is off': 'स्क्रीन लॉक बंद है',
+    'Could not lock': 'लॉक नहीं हो सका',
+    'The emergency card is not available on this locked device.':
+      'इस लॉक डिवाइस पर आपातकालीन कार्ड उपलब्ध नहीं है।',
+    'Shown without unlocking, because that is what an emergency card is for.':
+      'बिना अनलॉक किए दिखाया गया, क्योंकि आपातकालीन कार्ड इसी के लिए होता है।',
+    'Blood type': 'रक्त समूह',
+    'Emergency contact': 'आपातकालीन संपर्क',
+    'Name': 'नाम',
+    'Allergies': 'एलर्जी',
+    'Conditions': 'बीमारियाँ',
+
     // ── Falls, hearing and rehab ──────────────────────────────────────────
     'Safety': 'सुरक्षा',
     'Falls': 'गिरना',
@@ -2700,6 +2745,8 @@ async function showApp() {
   // that case, so clearing it needs its own call.
   try { reconcilePushPermission(); } catch(e) {}
   try { _watchModalVisibility(); }   catch(e) {}
+  try { _watchForLockedResponses(); } catch(e) {}
+  try { loadLock(); }                catch(e) {}
   try { scheduleTodoReminderChecks(); } catch(e) {}
   try { scheduleInstallPrompt(); }   catch(e) {}
   try { applyLang(); }               catch(e) {}
@@ -14491,6 +14538,302 @@ function printVisitPackPage() {
   w.document.close(); w.focus(); setTimeout(() => w.print(), 400);
 }
 
+// ── Screen lock ─────────────────────────────────────────────────────────────
+//
+// The lock itself lives on the server: a locked session gets 423 from every
+// endpoint bar a short allow-list, so this code cannot be the security. What it
+// is responsible for is (a) noticing idleness precisely, which only the page can
+// do, and (b) showing the lock screen the moment anything comes back 423 —
+// including a request the user never made, like a background refresh.
+//
+// That second part matters. If the client only ever locked on its own timer, a
+// tab restored from the background, a second tab, or a device whose timer never
+// ran would sit showing a full medical history that the server would refuse to
+// refresh. Watching for 423 means the UI can never be more open than the server.
+
+let _lockState = null;
+let _idleTimer = null;
+let _lockShown = false;
+
+async function loadLock() {
+  const el = document.getElementById('lock-panel');
+  const r = await fetch('/api/lock', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r) { if (el) el.innerHTML = `<div class="restore-row">${t('Could not check the screen lock')}</div>`; return; }
+  _lockState = r;
+  if (r.locked) { showLockScreen(); return; }
+  _armIdleTimer();
+  if (el) { el.innerHTML = _lockPanelHtml(r); _a11yEnhance(el); }
+}
+
+function _lockPanelHtml(r) {
+  if (!r.has_pin) {
+    return `<div class="restore-note" style="margin-bottom:12px">${t(
+      'The screen lock is off. Anyone who picks up this device and opens Arogo sees everything in it.')}</div>
+      <button class="btn-primary" data-ev-click="openLockSetup()">${t('Set a PIN')}</button>`;
+  }
+  const choices = (r.idle_choices || []).map(m =>
+    `<option value="${m}"${m === r.idle_minutes ? ' selected' : ''}>${
+      m === 0 ? t('Never') : tformat('After %1 minutes', m)}</option>`).join('');
+  return `<div class="restore-row"><span>${t('Screen lock')}</span><b>${t('On')}</b></div>
+    <div style="margin-top:12px">
+      <label class="form-label" for="lock-idle">${t('Lock when idle')}</label>
+      <select class="form-input" id="lock-idle" style="max-width:240px"
+              data-ev-change="saveLockIdle(this.value)">${choices}</select>
+    </div>
+    <label style="display:flex;gap:9px;align-items:flex-start;font-size:13.5px;margin-top:14px">
+      <input type="checkbox" id="lock-emerg"${r.emergency_while_locked ? ' checked' : ''}
+             data-ev-change="saveLockEmergency(this.checked)">
+      <span>${t('Show my emergency card on the lock screen')}<br>
+        <span style="color:var(--gray-400)">${t(
+          'Your allergies, conditions and emergency contacts, readable without the PIN. That is what an emergency card is for — but it does mean anyone holding this device can read it.')}</span></span>
+    </label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <button class="btn-outline" data-ev-click="lockNow()">${t('Lock now')}</button>
+      <button class="btn-outline" data-ev-click="openLockSetup()">${t('Change PIN')}</button>
+      <button class="btn-outline" data-ev-click="openLockRemove()">${t('Turn off')}</button>
+    </div>
+    <div id="lock-setup"></div>`;
+}
+
+function openLockSetup() {
+  const box = document.getElementById('lock-setup') || document.getElementById('lock-panel');
+  if (!box) return;
+  const html = `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
+      <div>
+        <label class="form-label" for="lock-new-pin">${t('New PIN (4–8 digits)')}</label>
+        <input class="form-input" id="lock-new-pin" type="password" inputmode="numeric"
+               maxlength="8" style="max-width:180px" autocomplete="off">
+      </div>
+      <div style="margin-top:10px">
+        <label class="form-label" for="lock-pw">${t('Your account password')}</label>
+        <input class="form-input" id="lock-pw" type="password" style="max-width:260px"
+               autocomplete="current-password">
+      </div>
+      <div class="restore-note">${t(
+        'Your password is asked for so that someone holding this device unlocked cannot set a PIN of their own and lock you out.')}</div>
+      <div class="form-actions" style="margin-top:12px">
+        <button class="btn-primary" data-ev-click="saveLockPin()">${t('Save')}</button>
+        <button class="btn-outline" data-ev-click="loadLock()">${t('Cancel')}</button>
+      </div>
+    </div>`;
+  if (box.id === 'lock-setup') box.innerHTML = html; else box.innerHTML += html;
+  _a11yEnhance(box);
+  document.getElementById('lock-new-pin')?.focus();
+}
+
+async function saveLockPin() {
+  const pin = document.getElementById('lock-new-pin')?.value || '';
+  const password = document.getElementById('lock-pw')?.value || '';
+  const r = await fetch('/api/lock/pin', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({pin, password}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast((r && r.error) || t('Could not set the PIN'), 'error'); return; }
+  showToast(t('✓ Screen lock is on'), 'success');
+  loadLock();
+}
+
+function openLockRemove() {
+  const box = document.getElementById('lock-setup');
+  if (!box) return;
+  box.innerHTML = `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
+      <p style="font-size:13.5px;margin:0 0 8px">${t(
+        'Turning the screen lock off needs your password.')}</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input class="form-input" type="password" id="lock-off-pw" style="max-width:240px"
+               autocomplete="current-password" aria-label="${t('Password')}">
+        <button class="btn-primary" data-ev-click="removeLockPin()">${t('Turn off')}</button>
+        <button class="btn-outline" data-ev-click="loadLock()">${t('Cancel')}</button>
+      </div></div>`;
+  _a11yEnhance(box);
+  document.getElementById('lock-off-pw')?.focus();
+}
+
+async function removeLockPin() {
+  const password = document.getElementById('lock-off-pw')?.value || '';
+  const r = await fetch('/api/lock/pin', {
+    method: 'DELETE', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({password}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast((r && r.error) || t('That did not work'), 'error'); return; }
+  showToast(t('Screen lock is off'), 'success');
+  loadLock();
+}
+
+async function saveLockIdle(minutes) {
+  await fetch('/api/lock/settings', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({idle_minutes: minutes}),
+  }).catch(() => {});
+  if (_lockState) _lockState.idle_minutes = Number(minutes);
+  _armIdleTimer();
+  showToast(t('✓ Saved'), 'success');
+}
+
+async function saveLockEmergency(on) {
+  await fetch('/api/lock/settings', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({emergency_while_locked: on ? 1 : 0}),
+  }).catch(() => {});
+  if (_lockState) _lockState.emergency_while_locked = !!on;
+  showToast(t('✓ Saved'), 'success');
+}
+
+async function lockNow() {
+  const r = await fetch('/api/lock/now', {method: 'POST', credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast((r && r.error) || t('Could not lock'), 'error'); return; }
+  showLockScreen();
+}
+
+// ── Idle ──
+// The page can see real activity; the server only sees requests. So the timer
+// lives here, and the server independently refuses anything from a session that
+// has not been seen for longer than the same window. Neither alone is enough:
+// a closed tab never fires its timer, and a server that only counted requests
+// would think a user reading one screen for ten minutes had gone away.
+function _armIdleTimer() {
+  clearTimeout(_idleTimer);
+  const mins = _lockState && _lockState.has_pin ? _lockState.idle_minutes : 0;
+  if (!mins) return;
+  _idleTimer = setTimeout(() => {
+    fetch('/api/lock/now', {method: 'POST', credentials: 'same-origin'})
+      .then(() => showLockScreen()).catch(() => showLockScreen());
+  }, mins * 60 * 1000);
+}
+
+['click', 'keydown', 'touchstart', 'scroll'].forEach(ev =>
+  document.addEventListener(ev, () => { if (!_lockShown) _armIdleTimer(); },
+                            {passive: true, capture: true}));
+
+function showLockScreen() {
+  const el = document.getElementById('lock-screen');
+  if (!el) return;
+  _lockShown = true;
+  clearTimeout(_idleTimer);
+  el.style.display = 'flex';
+  const err = document.getElementById('lock-error');
+  if (err) err.textContent = '';
+  const emg = document.getElementById('lock-emergency');
+  if (emg) emg.innerHTML = '';
+  const btn = document.getElementById('lock-emergency-btn');
+  if (btn) btn.style.display = (_lockState && _lockState.emergency_while_locked !== false)
+    ? '' : 'none';
+  const pin = document.getElementById('lock-pin');
+  if (pin) { pin.value = ''; pin.type = 'password'; setTimeout(() => pin.focus(), 80); }
+}
+
+function hideLockScreen() {
+  const el = document.getElementById('lock-screen');
+  if (el) el.style.display = 'none';
+  const pin = document.getElementById('lock-pin');
+  if (pin) pin.value = '';           // never leave it sitting in the DOM
+  _lockShown = false;
+  _armIdleTimer();
+}
+
+let _unlockWithPassword = false;
+
+function showUnlockPassword() {
+  _unlockWithPassword = true;
+  const pin = document.getElementById('lock-pin');
+  if (pin) { pin.value = ''; pin.maxLength = 200; pin.setAttribute('inputmode', 'text');
+             pin.setAttribute('aria-label', t('Password')); pin.focus(); }
+  const sub = document.querySelector('#lock-screen .lock-sub');
+  if (sub) sub.textContent = t('Enter your account password.');
+}
+
+async function submitUnlock() {
+  const val = document.getElementById('lock-pin')?.value || '';
+  const err = document.getElementById('lock-error');
+  if (!val) { if (err) err.textContent = t('Enter your PIN'); return; }
+  const body = _unlockWithPassword ? {password: val} : {pin: val};
+  const r = await fetch('/api/lock/unlock', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) {
+    // Say how many tries are left. Silently counting down to a lockout is how
+    // someone ends up locked out of their own medicines without warning.
+    if (err) err.textContent = (r && r.tries_left !== undefined)
+      ? tformat('%1 — %2 tries left', (r.error || t('That PIN is not right')), r.tries_left)
+      : ((r && r.error) || t('That did not work'));
+    const pin = document.getElementById('lock-pin');
+    if (pin) { pin.value = ''; pin.focus(); }
+    return;
+  }
+  _unlockWithPassword = false;
+  hideLockScreen();
+  // The screens behind the lock were rendered before it, and anything they
+  // tried to refresh while locked came back 423.
+  try { switchView(_activeViewName() || 'dashboard'); } catch (e) {}
+  loadLock();
+}
+
+async function showLockEmergency() {
+  const box = document.getElementById('lock-emergency');
+  if (!box) return;
+  box.innerHTML = `<div class="restore-note">${t('Loading…')}</div>`;
+  const d = await fetch('/api/health-id', {credentials: 'same-origin'})
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d) {
+    box.innerHTML = `<div class="restore-note">${t(
+      'The emergency card is not available on this locked device.')}</div>`;
+    return;
+  }
+  const line = (label, value) => value
+    ? `<div class="restore-row"><span>${escHtml(label)}</span><b>${escHtml(value)}</b></div>` : '';
+  const meds = (d.active_medicines || []).map(m => m.name).filter(Boolean);
+  box.innerHTML = `
+    ${line(t('Name'), (d.identity || {}).name)}
+    ${line(t('Blood type'), d.blood_type)}
+    ${line(t('Allergies'), d.allergies || (d.allergy_list || []).map(a => a.allergen).join(', '))}
+    ${line(t('Conditions'), d.conditions)}
+    ${meds.length ? `<div class="restore-row"><span>${t('Medicines')}</span>
+       <b>${escHtml(meds.join(', '))}</b></div>` : ''}
+    ${(d.contacts || []).map(c => line(c.name || t('Emergency contact'), c.phone)).join('')}
+    <div class="restore-note">${t('Shown without unlocking, because that is what an emergency card is for.')}</div>`;
+  _a11yEnhance(box);
+}
+
+// Anything coming back 423 means the server considers this device locked, even
+// if this tab never noticed. The UI must never be more open than the server.
+//
+// Wrapped once around fetch rather than added to each of the several hundred
+// call sites — partly because that is the only version that stays true, and
+// partly because the cases that matter are the requests nobody wrote by hand: a
+// background refresh, a second tab, a page restored from the phone's app
+// switcher hours later.
+let _lockFetchWrapped = false;
+
+function _watchForLockedResponses() {
+  if (_lockFetchWrapped || typeof fetch !== 'function') return;
+  const inner = fetch;
+  // A pass-through: the response object is returned untouched, so every caller
+  // behaves exactly as before. Only the side effect is new.
+  window.fetch = function (...args) {
+    return inner.apply(this, args).then(res => {
+      try {
+        if (res && res.status === 423 && !_lockShown) _onLockedResponse();
+      } catch (e) {}
+      return res;
+    });
+  };
+  _lockFetchWrapped = true;
+}
+
+function _onLockedResponse() {
+  _lockShown = true;                 // stop a burst of 423s stacking up
+  fetch('/api/lock', {credentials: 'same-origin'}).then(r => r.json())
+    .then(s => { _lockState = s; _lockShown = false; showLockScreen(); })
+    .catch(() => { _lockShown = false; showLockScreen(); });
+}
+
 // ── Two-factor sign-in ──────────────────────────────────────────────────────
 // The API for this shipped complete and tested, and then sat unreachable: there
 // was no screen, so nobody could turn it on. Everything here is that screen.
@@ -14687,6 +15030,7 @@ async function submit2faPassword(action) {
 }
 
 async function loadAccountActivity() {
+  loadLock();
   load2fa();
   const [sess, shares, log] = await Promise.all([
     fetch('/api/account/sessions', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
@@ -15683,7 +16027,7 @@ const NAV_TARGETS = [
   {v:'export',        l:'Export data',      k:'download backup backups restore data control privacy portability storage disk space full uploads orphaned files verified nightly copy snapshot am i backed up'},
   {v:'trash',         l:'Trash',            k:'trash deleted removed recover restore undo bin recycle got rid of by mistake accidentally'},
   {v:'episodes',      l:'Illness episodes', k:'illness episode sick bout flu fever infection when did this start unwell got ill'},
-  {v:'account-activity', l:'Sign-in & activity', k:'security sessions devices signed in sign out password log audit share links who opened account activity two factor two-factor 2fa mfa authenticator totp recovery codes second factor otp'},
+  {v:'account-activity', l:'Sign-in & activity', k:'security sessions devices signed in sign out password log audit share links who opened account activity two factor two-factor 2fa mfa authenticator totp recovery codes second factor otp screen lock pin passcode idle timeout auto lock locked shared tablet privacy'},
   {v:'wellbeing',     l:'Questionnaires',    k:'phq9 phq-9 gad7 gad-7 depression anxiety mood questionnaire screening score low feeling down worried'},
   {v:'donations',     l:'Blood donations',  k:'blood donation donate plasma platelets give blood eligible when can i donate'},
   {v:'datatrust',     l:'Data check',       k:'freshness stale gaps confidence quality last logged up to date reliability'},

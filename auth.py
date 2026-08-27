@@ -160,10 +160,31 @@ def read_token(token: str) -> str | None:
         from db.account_activity import session_is_live, touch_session
         if not session_is_live(sid, uid):
             return None
-        touch_session(sid, uid)
+        # Read last_seen BEFORE touching it. The screen lock's idle test asks
+        # "how long since this device was used", and touch_session sets that to
+        # now on every request — including the one being judged. Checking after
+        # the touch would mean the idle lock could never fire at all.
+        prev_seen, lock_on = None, False
+        try:
+            from db.core import execute as _ex
+            row = _ex('SELECT last_seen FROM user_sessions WHERE id=? AND user_id=?',
+                      (sid, uid), fetchone=True)
+            prev_seen = row['last_seen'] if row else None
+            from db.applock import is_enabled as _lock_on
+            lock_on = _lock_on(uid)
+        except Exception:
+            prev_seen, lock_on = None, False
+        # With the lock on, last_seen is the idle clock and has to be kept to the
+        # minute; otherwise the cheap hourly write is plenty.
+        if lock_on:
+            from db.account_activity import LOCKED_TOUCH_INTERVAL_SECONDS
+            touch_session(sid, uid, LOCKED_TOUCH_INTERVAL_SECONDS)
+        else:
+            touch_session(sid, uid)
         try:
             from flask import g as _g
             _g.session_id = sid
+            _g.session_last_seen = prev_seen
         except Exception:
             pass
         return uid
@@ -350,6 +371,30 @@ def require_auth(f):
         g.real_user_id = user_id
         g.user_id = user_id
         g.acting_as = None
+
+        # The screen lock, enforced here rather than in the page. A lock drawn
+        # over the UI is theatre — the session cookie is still valid, so
+        # devtools, another tab or curl walk straight past it. Checking at the
+        # one place every authenticated route passes through is what makes a
+        # locked device actually refuse to hand over the data.
+        #
+        # 423 rather than 401: the session is fine, it is the device that is
+        # shut. A 401 would make the client sign the user out, which is the
+        # opposite of what locking a tablet you are about to put down means.
+        try:
+            from db.applock import session_is_locked, path_allowed_while_locked
+            sid = getattr(g, 'session_id', None)
+            if sid and session_is_locked(sid, user_id,
+                                         getattr(g, 'session_last_seen', None)) \
+                    and not path_allowed_while_locked(request.path or '', user_id):
+                return jsonify({'error': 'This device is locked.',
+                                'code': 'LOCKED'}), 423
+        except Exception:
+            # A fault in the lock must never lock someone out of their own
+            # medicines. It fails open, and the failure is visible because the
+            # lock screen simply does not appear.
+            pass
+
         _apply_acting_as(user_id)
         # Even while legitimately managing a member, a caregiver must not be able
         # to read their private "diary" categories (journal, mood, cycle). Managing

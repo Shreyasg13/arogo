@@ -45,6 +45,9 @@ EVENT_KINDS = {
     'two_factor_enabled': 'Turned on two-factor sign-in',
     'two_factor_disabled': 'Turned off two-factor sign-in',
     'two_factor_recovery_codes_regenerated': 'Made new recovery codes',
+    'device_lock_enabled': 'Turned on the screen lock',
+    'device_lock_disabled': 'Turned off the screen lock',
+    'device_unlocked': 'Unlocked this device',
     'caregiver_granted': 'Gave someone access',
     'caregiver_revoked': 'Removed someone\'s access',
     'manage_granted': 'Allowed someone to manage this account',
@@ -116,19 +119,34 @@ def session_is_live(sid: str, uid: str) -> bool:
     return not r.get('revoked_at')
 
 
-def touch_session(sid: str, uid: str):
-    """Update last-seen. Called at most once an hour per session — a write on
-    every request would turn a read-mostly app into a write-heavy one for no
-    extra precision than "today"."""
+# How stale last_seen may get before it is rewritten. An hour is plenty for the
+# "where am I signed in" list, whose finest useful unit is "today", and a write
+# on every request would turn a read-mostly app into a write-heavy one — on a Pi
+# that also means needless wear on the SD card.
+TOUCH_INTERVAL_SECONDS = 3600
+
+# ...except when the screen lock is on. Then last_seen IS the idle clock, and an
+# hour of granularity would lock someone out mid-sentence while they were using
+# the app. A minute is precise enough for a fifteen-minute timeout and still
+# collapses a burst of requests into one write. Only sessions whose owner turned
+# the lock on pay this, which is the point: the cost lands on the feature that
+# asked for it.
+LOCKED_TOUCH_INTERVAL_SECONDS = 60
+
+
+def touch_session(sid: str, uid: str, min_interval: int = None):
+    """Update last-seen, at most once per `min_interval` seconds."""
     if not sid:
         return
+    if min_interval is None:
+        min_interval = TOUCH_INTERVAL_SECONDS
     try:
         r = execute("SELECT last_seen FROM user_sessions WHERE id=? AND user_id=?",
                     (sid, uid), fetchone=True)
         if not r:
             return
         last = dt.datetime.fromisoformat(r['last_seen'])
-        if (dt.datetime.now() - last).total_seconds() < 3600:
+        if (dt.datetime.now() - last).total_seconds() < min_interval:
             return
         execute("UPDATE user_sessions SET last_seen=? WHERE id=? AND user_id=?",
                 (now_iso(), sid, uid), commit=True)

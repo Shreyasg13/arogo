@@ -956,6 +956,32 @@ CREATE TABLE IF NOT EXISTS blood_donations (
     place TEXT DEFAULT '', notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+-- Screen lock over an already-signed-in session.
+--
+-- Two-factor protects signing IN. Nothing protected the session that is already
+-- signed in, and it lasts a week — so on the shared family tablet this app is
+-- built for, a whole medical history sits one tap away for whoever picks it up.
+-- The private-diary wall that hides mood and journal entries from a caregiver
+-- means nothing if the app is simply already open.
+--
+-- `pin_hash` is a real password hash, not a checksum: a 4-digit PIN is 10,000
+-- guesses, so slow hashing plus the lockout below is what makes it worth
+-- anything at all. `failures` and `locked_until` implement that lockout.
+--
+-- `emergency_while_locked` is the escape hatch, defaulting ON. The emergency
+-- card is already meant to be readable by a stranger who is helping you — that
+-- is what the QR on it is for — so a lock that hides it costs someone help. It
+-- is a setting because not everyone wants their conditions readable from a
+-- locked screen.
+CREATE TABLE IF NOT EXISTS user_lock (
+    user_id TEXT PRIMARY KEY,
+    pin_hash TEXT DEFAULT '',
+    idle_minutes INTEGER DEFAULT 15,
+    emergency_while_locked INTEGER DEFAULT 1,
+    failures INTEGER DEFAULT 0,
+    locked_until TEXT DEFAULT NULL,
+    updated_at TEXT NOT NULL
+);
 -- Falls. The app already builds for elder care — a care circle, dependents, a
 -- large-type mode — and had nowhere to record the single event that matters
 -- most in it. Falls are asked about at every review and answered from memory,
@@ -1489,6 +1515,15 @@ def migrate_add_refill_fields():
             execute(ddl)
         except Exception:
             pass  # already exists
+
+
+def migrate_add_session_lock():
+    """Per-session lock state. NULL means unlocked; a timestamp means the user
+    locked this device deliberately (idle locking is computed from last_seen)."""
+    try:
+        execute("ALTER TABLE user_sessions ADD COLUMN locked_at TEXT DEFAULT NULL")
+    except Exception:
+        pass
 
 
 def migrate_add_quiet_hours():
@@ -2106,6 +2141,7 @@ def init_db():
     migrate_add_refill_fields()
     migrate_add_dose_timing()
     migrate_add_quiet_hours()
+    migrate_add_session_lock()
     migrate_add_reminder_lead()
     migrate_add_advance_care()
     migrate_add_default_snooze()

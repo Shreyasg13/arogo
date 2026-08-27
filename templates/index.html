@@ -3334,6 +3334,16 @@
   </div>
 
   <div class="panel" style="padding:18px 20px;margin-bottom:20px">
+    <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Screen lock">Screen lock</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="A PIN to reopen Arogo on this device. Two-factor protects signing in; this protects the session that is already signed in — which is what matters on a tablet the family shares.">
+      A PIN to reopen Arogo on this device. Two-factor protects signing in; this
+      protects the session that is already signed in — which is what matters on a
+      tablet the family shares.</p>
+    <div id="lock-panel" aria-live="polite"><div class="restore-row">Loading…</div></div>
+  </div>
+
+  <div class="panel" style="padding:18px 20px;margin-bottom:20px">
     <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Two-factor sign-in">Two-factor sign-in</h2>
     <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
        data-i18n="A code from your phone as well as your password. It protects the account itself — your medicines, records and everything shared with family.">
@@ -3481,6 +3491,34 @@
 <!-- ══════════ MODALS ══════════ -->
 
 <!-- Upload Report Modal -->
+<!-- The lock screen. Not a modal-overlay: the shared modal machinery closes on
+     Escape and on a backdrop click, and a lock you can dismiss is not a lock.
+     It covers the app, has no close button, and offers exactly two ways past —
+     the PIN or the account password — plus the emergency card, which is meant
+     to be readable by whoever is helping you. -->
+<div id="lock-screen" style="display:none" role="dialog" aria-modal="true"
+     aria-labelledby="lock-screen-title">
+  <div class="lock-card">
+    <div class="lock-logo">🌱</div>
+    <h1 class="lock-title" id="lock-screen-title" data-i18n="Arogo is locked">Arogo is locked</h1>
+    <p class="lock-sub" data-i18n="Enter your PIN to carry on.">Enter your PIN to carry on.</p>
+    <input class="form-input lock-pin" id="lock-pin" type="password"
+           inputmode="numeric" autocomplete="off" maxlength="8"
+           aria-label="PIN" data-ev-keydown="if(event.key==='Enter')submitUnlock()">
+    <div id="lock-error" class="lock-error" role="alert" aria-live="assertive"></div>
+    <button class="btn-primary lock-go" data-ev-click="submitUnlock()"
+            data-i18n="Unlock">Unlock</button>
+    <div class="lock-alts">
+      <button class="lock-link" data-ev-click="showUnlockPassword()"
+              data-i18n="Use my password instead">Use my password instead</button>
+      <button class="lock-link" id="lock-emergency-btn" style="display:none"
+              data-ev-click="showLockEmergency()"
+              data-i18n="Emergency info">Emergency info</button>
+    </div>
+    <div id="lock-emergency" class="lock-emergency"></div>
+  </div>
+</div>
+
 <!-- Passphrase prompt for opening an encrypted export. The app's own rather
      than the browser's prompt(): that one cannot be styled, translated, or read
      properly by a screen reader. -->
