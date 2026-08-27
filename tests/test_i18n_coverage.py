@@ -33,11 +33,11 @@ INDEX = os.path.join(ROOT, 'templates', 'index.html')
 
 # Ratchet. Raise these when coverage improves; they may never be lowered without
 # a deliberate decision, which is the point of writing them down.
-MAX_UNTRANSLATED_CALLS = 68
+MAX_UNTRANSLATED_CALLS = 66
 # The 26 remaining attributes belong to older pages — meal planning, dose
 # tapering, snooze settings — that were outside the round which brought the
 # newer pages up to date. Named here rather than quietly tolerated.
-MAX_UNTRANSLATED_ATTRS = 26
+MAX_UNTRANSLATED_ATTRS = 25
 
 # Entries that are legitimately identical in both languages. Each needs a
 # reason, so the list cannot become a place to hide unfinished work.
@@ -190,6 +190,10 @@ REQUIRE_FULL_COVERAGE = [
     'loadVisitPack', '_vpWindowLine', 'renderVisitPack', 'loadMedChanges',
     'renderPushControl', 'disablePushNotifications', 'enablePushNotifications',
     'loadTrash', 'loadStorage',
+    'loadFalls', 'openFallForm', 'saveFall', '_fallsSummaryHtml',
+    'loadHearing', 'openHearingForm', 'saveHearing',
+    'loadRehab', 'openRehabForm', 'saveRehabPlan', 'logRehabSession',
+    'toggleRehabSessions', 'deleteRehabSession',
 ]
 
 TOP_LEVEL = re.compile(r'^(async function |function |const |let )')

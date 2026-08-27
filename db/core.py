@@ -956,6 +956,54 @@ CREATE TABLE IF NOT EXISTS blood_donations (
     place TEXT DEFAULT '', notes TEXT DEFAULT '',
     created_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+-- Falls. The app already builds for elder care — a care circle, dependents, a
+-- large-type mode — and had nowhere to record the single event that matters
+-- most in it. Falls are asked about at every review and answered from memory,
+-- badly, because each one felt minor at the time.
+--
+-- Every column is something the person who fell can answer. There is no risk
+-- score and no severity grade: those come from clinical instruments this app has
+-- no business imitating.
+CREATE TABLE IF NOT EXISTS falls (
+    id TEXT PRIMARY KEY, fell_on TEXT NOT NULL, time_of_day TEXT DEFAULT '',
+    place TEXT DEFAULT '', what_happened TEXT DEFAULT '',
+    injured INTEGER DEFAULT 0, injury TEXT DEFAULT '',
+    got_up_alone INTEGER DEFAULT NULL, saw_someone INTEGER DEFAULT 0,
+    notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+-- Hearing: tests, and the aids that follow them. Sits beside dental and vision,
+-- which already work this way. What a professional measured is recorded as
+-- THEIR finding in their words — the app never reads an audiogram.
+CREATE TABLE IF NOT EXISTS hearing_records (
+    id TEXT PRIMARY KEY, kind TEXT DEFAULT 'test',  -- test | aid | note
+    record_date TEXT NOT NULL, provider TEXT DEFAULT '',
+    left_ear TEXT DEFAULT '', right_ear TEXT DEFAULT '',
+    finding TEXT DEFAULT '', device TEXT DEFAULT '',
+    battery TEXT DEFAULT '', serviced_on TEXT DEFAULT '',
+    next_check TEXT DEFAULT '', notes TEXT DEFAULT '',
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+-- Rehab: "these exercises, twice a day, for six weeks" — the instruction that
+-- follows most procedures and injuries, and the one nobody tracks. The plan is
+-- whatever a physiotherapist gave the user; the app supplies no exercises and
+-- prescribes nothing.
+CREATE TABLE IF NOT EXISTS rehab_plans (
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, reason TEXT DEFAULT '',
+    prescribed_by TEXT DEFAULT '', times_per_day INTEGER DEFAULT 1,
+    started_on TEXT NOT NULL, until_date TEXT DEFAULT '',
+    instructions TEXT DEFAULT '', active INTEGER DEFAULT 1,
+    created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
+-- One completed session. `pain_after` is recorded because it is what the
+-- physiotherapist asks at the next appointment, and it is reported back as the
+-- user's own number — never compared to a target, never used to tell anyone to
+-- carry on or to stop.
+CREATE TABLE IF NOT EXISTS rehab_logs (
+    id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, date_key TEXT NOT NULL,
+    done INTEGER DEFAULT 1, pain_after INTEGER DEFAULT NULL,
+    notes TEXT DEFAULT '', created_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 -- Second-factor sign-in. `secret` is the shared TOTP key; `recovery` holds the
 -- one-time codes, hashed, because a recovery code is a password by another name.
 -- `confirmed_at` is NULL until the user has proved the authenticator works —
@@ -1991,6 +2039,10 @@ DATA_TABLES = [
     'questionnaire_runs',
     'blood_donations',
     'user_totp',
+    'falls',
+    'hearing_records',
+    'rehab_plans',
+    'rehab_logs',
 ]
 
 

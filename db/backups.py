@@ -143,6 +143,56 @@ def _prune() -> int:
     return removed
 
 
+# How long a copy off this machine stays fresh enough to count. Deliberately
+# generous: nagging someone weekly about a backup is how they learn to ignore
+# the message, and a month-old copy of a medication history is still worth
+# vastly more than nothing.
+OFFSITE_STALE_DAYS = 30
+
+
+def offsite_status() -> dict:
+    """When the user last took a copy OFF this machine.
+
+    The on-disk backups are the important half of the story and the misleading
+    half. They survive a mistake — a bad restore, a deleted record — and they do
+    not survive the one failure that is actually likely on a Raspberry Pi: the
+    SD card dying, or the box being lost or stolen. Both copies are on the same
+    card. Saying "backed up and verified" without saying that would be true and
+    would leave someone believing the wrong thing.
+
+    Read from the account activity log rather than tracked separately, because
+    that log already records every download and cannot be edited.
+
+    Returns has_any=False rather than a guess when nothing is recorded — a user
+    who downloaded a copy before this log existed is told there's no record, not
+    told they never did it.
+    """
+    from .core import execute, current_user_id
+    row = execute("""SELECT at FROM security_events
+                     WHERE user_id=? AND kind IN ('backup_downloaded', 'export_downloaded')
+                     ORDER BY at DESC LIMIT 1""",
+                  (current_user_id(),), fetchone=True)
+    if not row or not row['at']:
+        return {'has_any': False, 'last_at': None, 'age_days': None,
+                'stale': True, 'stale_after_days': OFFSITE_STALE_DAYS,
+                'note': 'No record of a copy taken off this server. Backups on '
+                        'the server survive a mistake; they do not survive the '
+                        'server.'}
+    try:
+        when = dt.datetime.fromisoformat(str(row['at']))
+    except ValueError:
+        # An unparseable timestamp is unknown, not zero. Reporting "0 days ago"
+        # from a broken value would be the most reassuring possible lie.
+        return {'has_any': True, 'last_at': str(row['at']), 'age_days': None,
+                'stale': True, 'stale_after_days': OFFSITE_STALE_DAYS,
+                'note': 'A copy was downloaded, but the date could not be read.'}
+    age_days = (dt.datetime.now() - when).days
+    return {'has_any': True, 'last_at': when.isoformat(),
+            'age_days': age_days,
+            'stale': age_days > OFFSITE_STALE_DAYS,
+            'stale_after_days': OFFSITE_STALE_DAYS}
+
+
 def status() -> dict:
     """How healthy the backups are, from what is on disk.
 

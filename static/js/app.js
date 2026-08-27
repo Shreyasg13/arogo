@@ -1841,6 +1841,143 @@ const I18N = {
     'last dose %1': 'आख़िरी खुराक: %1',
     'min %1': 'न्यूनतम %1',
     'max %1': 'अधिकतम %1',
+    // ── Falls, hearing and rehab ──────────────────────────────────────────
+    'Safety': 'सुरक्षा',
+    'Falls': 'गिरना',
+    'Every fall, with the date — so "have you had any falls?" has a real answer':
+      'हर बार गिरना, तारीख़ के साथ — ताकि “क्या आप कभी गिरे हैं?” का असली जवाब हो',
+    'Record a fall': 'गिरने की घटना दर्ज करें',
+    'Could not load your falls': 'आपका गिरने का रिकॉर्ड लोड नहीं हो सका',
+    'Nothing recorded yet. Add a fall when it happens — the details fade fast, and this is the list a doctor asks for.':
+      'अभी कुछ दर्ज नहीं। जब भी ऐसा हो तब दर्ज करें — ब्योरा जल्दी धुँधला पड़ जाता है, और डॉक्टर यही सूची माँगते हैं।',
+    'In the last %1': 'पिछले %1 में',
+    '%1 day': '%1 दिन',
+    'Last %1 day': 'पिछला %1 दिन',
+    '%1 falls': '%1 बार गिरे',
+    '%1 fall': '%1 बार गिरे',
+    'With an injury': 'चोट के साथ',
+    'Needed help getting up': 'उठने में मदद चाहिए थी',
+    'needed help getting up': 'उठने में मदद चाहिए थी',
+    'Injured': 'चोट लगी',
+    'saw someone about it': 'इसके लिए किसी को दिखाया',
+    'Where': 'कहाँ',
+    'When': 'कब',
+    'Time of day': 'दिन का समय',
+    'Not sure': 'पक्का नहीं',
+    'Not recorded': 'दर्ज नहीं',
+    'What happened': 'क्या हुआ',
+    'In your own words — tripped, felt dizzy, slipped':
+      'अपने शब्दों में — ठोकर लगी, चक्कर आया, फिसल गए',
+    'I was hurt': 'मुझे चोट लगी',
+    'Injury, if any': 'चोट, अगर लगी हो',
+    'I saw a doctor or nurse about it': 'मैंने इसके लिए डॉक्टर या नर्स को दिखाया',
+    'Getting up': 'उठना',
+    'I got up on my own': 'मैं ख़ुद उठ गया/गई',
+    'I needed help': 'मुझे मदद चाहिए थी',
+    'Could not save that': 'यह सहेजा नहीं जा सका',
+    '✓ Recorded': '✓ दर्ज हो गया',
+    'Removing this fall…': 'यह प्रविष्टि हटाई जा रही है…',
+
+    'Senses': 'इंद्रियाँ',
+    'Hearing': 'सुनना',
+    'Tests, what they found, and the aids that followed':
+      'जाँचें, उनमें क्या मिला, और उसके बाद की मशीनें',
+    'Add a test': 'जाँच जोड़ें',
+    'Add an aid': 'मशीन जोड़ें',
+    'Could not load your hearing records': 'आपके सुनने के रिकॉर्ड लोड नहीं हो सके',
+    'Nothing here yet. Add a hearing test when you have one, and your aids — the battery type and service date are exactly what nobody can find when they need it.':
+      'अभी यहाँ कुछ नहीं। जब जाँच कराएँ तब जोड़ें, और अपनी मशीनें भी — बैटरी का प्रकार और सर्विस की तारीख़ वही चीज़ें हैं जो ज़रूरत के वक़्त किसी को नहीं मिलतीं।',
+    'Dates you set': 'आपकी तय की गई तारीख़ें',
+    'battery %1': 'बैटरी %1',
+    'left: %1': 'बायाँ: %1',
+    'right: %1': 'दायाँ: %1',
+    'serviced %1': 'सर्विस %1',
+    'What a test found is recorded here as the clinician reported it. Arogo does not read audiograms or judge how well you hear.':
+      'जाँच में जो मिला वह यहाँ वैसे ही दर्ज है जैसे डॉक्टर ने बताया। Arogo न ऑडियोग्राम पढ़ता है और न यह आँकता है कि आप कितना सुनते हैं।',
+    'Fitted on': 'लगाई गई',
+    'Test date': 'जाँच की तारीख़',
+    'Who': 'किसने',
+    'Clinic or audiologist': 'क्लिनिक या ऑडियोलॉजिस्ट',
+    'Device': 'मशीन',
+    'Make and model': 'कंपनी और मॉडल',
+    'Battery': 'बैटरी',
+    'e.g. size 312, or rechargeable': 'जैसे साइज़ 312, या रिचार्जेबल',
+    'Last serviced': 'आख़िरी सर्विस',
+    'Left ear — what they said': 'बायाँ कान — उन्होंने क्या कहा',
+    'Right ear — what they said': 'दायाँ कान — उन्होंने क्या कहा',
+    'What they told you': 'उन्होंने आपको क्या बताया',
+    'In their words, as far as you remember': 'उनके शब्दों में, जितना याद हो',
+    'Next check, if they gave you one': 'अगली जाँच, अगर बताई गई हो',
+    'Removing this record…': 'यह रिकॉर्ड हटाया जा रहा है…',
+
+    'Recovery': 'रिकवरी',
+    'Rehab exercises': 'रिहैब व्यायाम',
+    'The exercises you were given, and how the course is actually going':
+      'आपको दिए गए व्यायाम, और कोर्स असल में कैसा चल रहा है',
+    'Add a plan': 'योजना जोड़ें',
+    'Could not load your plans': 'आपकी योजनाएँ लोड नहीं हो सकीं',
+    'No plans yet. Add the exercises your physiotherapist gave you, how many times a day, and for how long — Arogo keeps the count, not the programme.':
+      'अभी कोई योजना नहीं। फ़िज़ियोथेरेपिस्ट ने जो व्यायाम दिए हैं वे जोड़ें, दिन में कितनी बार और कितने समय तक — Arogo गिनती रखता है, व्यायाम नहीं बताता।',
+    'Last %1 days': 'पिछले %1 दिन',
+    '%1 of %2 sessions': '%2 में से %1 सत्र',
+    'No sessions scheduled in this window yet.': 'इस अवधि में अभी कोई सत्र निर्धारित नहीं।',
+    '%1 a day': 'दिन में %1 बार',
+    'Did it': 'कर लिया',
+    'Sessions': 'सत्र',
+    'No sessions logged yet.': 'अभी कोई सत्र दर्ज नहीं।',
+    'Could not load the sessions': 'सत्र लोड नहीं हो सके',
+    'pain %1/10': 'दर्द %1/10',
+    'Pain is your own number on your own scale, shown as you entered it.':
+      'दर्द आपका अपना नंबर है, आपके अपने पैमाने पर, जैसा आपने डाला वैसा ही दिखाया गया।',
+    'Pain afterwards, if you want to note it': 'बाद में दर्द, अगर दर्ज करना चाहें',
+    'Pain afterwards, 0 to 10': 'बाद में दर्द, 0 से 10',
+    'Skip the number': 'नंबर छोड़ दें',
+    'Your own scale, recorded as you typed it. Arogo never compares it to a target or tells you whether to carry on.':
+      'आपका अपना पैमाना, जैसा आपने लिखा वैसा दर्ज। Arogo इसकी किसी लक्ष्य से तुलना नहीं करता और न यह बताता है कि जारी रखें या नहीं।',
+    '✓ Logged': '✓ दर्ज हो गया',
+    'What are the exercises for': 'ये व्यायाम किसलिए हैं',
+    'e.g. Knee exercises after surgery': 'जैसे सर्जरी के बाद घुटने के व्यायाम',
+    'Who gave them to you': 'ये आपको किसने दिए',
+    'Times a day': 'दिन में कितनी बार',
+    'Starting': 'शुरुआत',
+    'Until, if you were told': 'कब तक, अगर बताया गया हो',
+    'The exercises themselves': 'व्यायाम ख़ुद',
+    'Copy what you were given. Arogo does not suggest exercises — yours came from someone who examined you.':
+      'आपको जो दिया गया वही लिखें। Arogo व्यायाम नहीं सुझाता — आपके व्यायाम उस व्यक्ति ने दिए हैं जिसने आपको देखा है।',
+    'Give the plan a name': 'योजना को कोई नाम दें',
+    'Removing this plan…': 'यह योजना हटाई जा रही है…',
+    'Could not remove that': 'यह हटाया नहीं जा सका',
+    '✓ Removed': '✓ हटा दिया गया',
+    '✓ Saved': '✓ सहेजा गया',
+    'Loading…': 'लोड हो रहा है…',
+    'Remove': 'हटाएँ',
+    'Cancel': 'रद्द करें',
+    'Save': 'सहेजें',
+
+    // Off-device backups and checking a backup file
+    'Last copy taken off this server': 'इस सर्वर से बाहर ली गई आख़िरी प्रति',
+    'Download a copy': 'एक प्रति डाउनलोड करें',
+    'Backups here live on the same card as your data, so they survive a mistake but not a lost or failed device. A copy older than %1 days is worth replacing.':
+      'यहाँ के बैकअप आपके डेटा वाले उसी कार्ड पर रहते हैं, इसलिए वे किसी ग़लती से बचा लेंगे पर डिवाइस खोने या ख़राब होने से नहीं। %1 दिन से पुरानी प्रति बदल लेना बेहतर है।',
+    'Check a backup opens': 'जाँचें कि बैकअप खुलता है',
+    'Opening the file…': 'फ़ाइल खोली जा रही है…',
+    'This file did not open. Do not rely on it as a backup.':
+      'यह फ़ाइल नहीं खुली। इस पर बैकअप के रूप में भरोसा न करें।',
+    'This file opens, and your records are in it':
+      'यह फ़ाइल खुलती है, और आपके रिकॉर्ड इसमें हैं',
+    'This file opens, but there is nothing in it to restore.':
+      'यह फ़ाइल खुलती है, पर इसमें वापस लाने लायक़ कुछ नहीं है।',
+    'This file opened, but there are no health records in it.':
+      'यह फ़ाइल खुल गई, पर इसमें कोई स्वास्थ्य रिकॉर्ड नहीं है।',
+    '%1 rows in the file could not be read and would be skipped by a restore.':
+      'फ़ाइल की %1 पंक्तियाँ पढ़ी नहीं जा सकीं और रीस्टोर उन्हें छोड़ देगा।',
+    'Nothing was changed. This only opened the file and counted what is inside — checking a backup should never be able to overwrite the data you still have.':
+      'कुछ भी नहीं बदला। इसने सिर्फ़ फ़ाइल खोलकर गिना कि उसमें क्या है — बैकअप जाँचने से वह डेटा कभी नहीं मिटना चाहिए जो आपके पास अब भी है।',
+    'That file could not be read': 'वह फ़ाइल पढ़ी नहीं जा सकी',
+    'Could not build the backup — try again': 'बैकअप नहीं बन सका — फिर कोशिश करें',
+    'Preparing your data…': 'आपका डेटा तैयार किया जा रहा है…',
+    'Total': 'कुल',
+
     'last %1': 'पिछला: %1',
     'next ~%1': 'अगला: लगभग %1',
     'last week: %1%': 'पिछले हफ़्ते: %1%',
@@ -3629,6 +3766,9 @@ function switchView(view) {
   if (view === 'claims')        loadClaims();
   if (view === 'allergies')     loadAllergies();
   if (view === 'dentalvision')  loadDentalVision();
+  if (view === 'hearing')       loadHearing();
+  if (view === 'falls')         loadFalls();
+  if (view === 'rehab')         loadRehab();
   if (view === 'supplies')      loadSupplies();
   if (view === 'symptomphotos') loadSymptomPhotos();
   if (view === 'binder')        loadHealthBinder();
@@ -13517,6 +13657,516 @@ async function loadMedChanges() {
   _a11yEnhance(el);
 }
 
+// "Last 1 days" and "1 falls" both read like a template that never got filled
+// in, which is a bad look on a page someone is about to show a clinician. The
+// singular form is a separate translatable string rather than a stripped "s",
+// because plural rules are not English's to impose on every language.
+function _nDays(n)      { return tformat(n === 1 ? 'Last %1 day' : 'Last %1 days', n); }
+function _nDaysPlain(n) { return tformat(n === 1 ? '%1 day' : '%1 days', n); }
+
+// ── Falls ───────────────────────────────────────────────────────────────────
+// The app builds for elder care throughout — a care circle, dependents, a
+// large-type mode — and had nowhere to write down the one event that matters
+// most in that setting.
+//
+// The page shows counts and where they happened, and stops there. No risk
+// score, no severity grade, no advice: those are clinical calls, and a number
+// invented here would look exactly like a real assessment.
+
+let _fallsMeta = null;
+
+async function loadFalls() {
+  const list = document.getElementById('falls-list');
+  if (!list) return;
+  if (!_fallsMeta) {
+    _fallsMeta = await fetch('/api/falls/meta', {credentials: 'same-origin'})
+      .then(r => r.json()).catch(() => ({places: [], times: []}));
+  }
+  const [d, s] = await Promise.all([
+    fetch('/api/falls', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+    fetch('/api/falls/summary', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+  ]);
+  if (!d) { list.innerHTML = `<div class="panel" style="padding:18px 20px">${t('Could not load your falls')}</div>`; return; }
+
+  const sum = document.getElementById('falls-summary');
+  if (sum) sum.innerHTML = _fallsSummaryHtml(s);
+
+  if (!d.falls.length) {
+    list.innerHTML = `<div class="panel" style="padding:22px 20px">
+      <div class="restore-note" style="margin:0">${t(
+        'Nothing recorded yet. Add a fall when it happens — the details fade fast, and this is the list a doctor asks for.')}</div></div>`;
+    return;
+  }
+  list.innerHTML = `<div class="panel" style="padding:8px 20px">${d.falls.map(f => `
+      <div class="restore-row" style="align-items:flex-start">
+        <span><b>${escHtml(f.fell_on)}</b>${f.time_label ? ' · ' + escHtml(f.time_label) : ''}
+          ${f.place_label ? '<br>' + escHtml(f.place_label) : ''}
+          ${f.what_happened ? `<br><span class="vp-dim">${escHtml(f.what_happened)}</span>` : ''}
+          ${f.injured ? `<br><span class="vp-dim">${t('Injured')}${f.injury ? ': ' + escHtml(f.injury) : ''}${
+            f.saw_someone ? ' · ' + t('saw someone about it') : ''}</span>` : ''}
+          ${f.got_up_alone === false ? `<br><span class="vp-dim">${t('needed help getting up')}</span>` : ''}
+        </span>
+        <button class="btn-outline" style="font-size:12px"
+                data-ev-click="deleteFall('${escHtml(f.id)}')">${t('Remove')}</button>
+      </div>`).join('')}</div>`;
+  _a11yEnhance(list);
+}
+
+function _fallsSummaryHtml(s) {
+  if (!s || !s.has_any) {
+    return s ? `<div class="panel" style="padding:14px 20px">
+        <div class="restore-note" style="margin:0">${escHtml(s.note || '')}</div></div>` : '';
+  }
+  const row = (label, value) =>
+    `<div class="restore-row"><span>${escHtml(label)}</span><b>${escHtml(String(value))}</b></div>`;
+  return `<div class="panel" style="padding:14px 20px;margin-bottom:16px">
+      ${row(tformat('In the last %1', _nDaysPlain(s.days)),
+            // "1 falls" reads like a placeholder on a page someone is about to
+            // show a doctor.
+            tformat(s.total === 1 ? '%1 fall' : '%1 falls', s.total))}
+      ${s.injured ? row(t('With an injury'), s.injured) : ''}
+      ${s.needed_help_up ? row(t('Needed help getting up'), s.needed_help_up) : ''}
+      ${s.by_place.length > 1 ? `<div style="margin-top:10px">
+        <div class="vp-dim" style="font-size:12px;margin-bottom:4px">${t('Where')}</div>
+        ${s.by_place.map(p => `<div class="restore-row"><span>${escHtml(p.label)}</span><b>${p.count}</b></div>`).join('')}
+      </div>` : ''}
+      <div class="restore-note">${escHtml(s.not_a_score)}</div>
+    </div>`;
+}
+
+function openFallForm() {
+  const box = document.getElementById('fall-form');
+  if (!box) return;
+  const places = (_fallsMeta?.places || []).map(p =>
+    `<option value="${escHtml(p.key)}">${escHtml(t(p.label))}</option>`).join('');
+  const times = (_fallsMeta?.times || []).map(p =>
+    `<option value="${escHtml(p.key)}">${escHtml(t(p.label))}</option>`).join('');
+  box.innerHTML = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div style="display:grid;gap:12px">
+        <div>
+          <label class="form-label" for="fall-date">${t('When')}</label>
+          <input type="date" class="form-input" id="fall-date" value="${localToday()}"
+                 style="max-width:200px">
+        </div>
+        <div>
+          <label class="form-label" for="fall-time">${t('Time of day')}</label>
+          <select class="form-input" id="fall-time" style="max-width:220px">
+            <option value="">${t('Not sure')}</option>${times}</select>
+        </div>
+        <div>
+          <label class="form-label" for="fall-place">${t('Where')}</label>
+          <select class="form-input" id="fall-place" style="max-width:260px">
+            <option value="">${t('Not sure')}</option>${places}</select>
+        </div>
+        <div>
+          <label class="form-label" for="fall-what">${t('What happened')}</label>
+          <textarea class="form-input" id="fall-what" rows="2"
+            placeholder="${t('In your own words — tripped, felt dizzy, slipped')}"></textarea>
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:13.5px">
+          <input type="checkbox" id="fall-injured"> ${t('I was hurt')}</label>
+        <div>
+          <label class="form-label" for="fall-injury">${t('Injury, if any')}</label>
+          <input class="form-input" id="fall-injury" style="max-width:340px">
+        </div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:13.5px">
+          <input type="checkbox" id="fall-saw"> ${t('I saw a doctor or nurse about it')}</label>
+        <div>
+          <label class="form-label" for="fall-gotup">${t('Getting up')}</label>
+          <select class="form-input" id="fall-gotup" style="max-width:260px">
+            <option value="">${t('Not recorded')}</option>
+            <option value="1">${t('I got up on my own')}</option>
+            <option value="0">${t('I needed help')}</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn-primary" data-ev-click="saveFall()">${t('Save')}</button>
+        <button class="btn-outline" data-ev-click="closeFallForm()">${t('Cancel')}</button>
+      </div>
+    </div>`;
+  _a11yEnhance(box);
+  document.getElementById('fall-date')?.focus();
+}
+
+function closeFallForm() {
+  const box = document.getElementById('fall-form');
+  if (box) box.innerHTML = '';
+}
+
+async function saveFall() {
+  const v = id => document.getElementById(id)?.value || '';
+  const gotUp = v('fall-gotup');
+  const r = await fetch('/api/falls', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      fell_on: v('fall-date'), time_of_day: v('fall-time'), place: v('fall-place'),
+      what_happened: v('fall-what'),
+      injured: document.getElementById('fall-injured')?.checked ? 1 : 0,
+      injury: v('fall-injury'),
+      saw_someone: document.getElementById('fall-saw')?.checked ? 1 : 0,
+      // '' means not recorded, which is different from "no" — the API keeps
+      // the distinction, so the UI must not flatten it here.
+      got_up_alone: gotUp === '' ? null : gotUp,
+    }),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast(t('Could not save that'), 'error'); return; }
+  closeFallForm();
+  showToast(t('✓ Recorded'), 'success');
+  loadFalls();
+}
+
+function deleteFall(id) {
+  undoable(t('Removing this fall…'), async () => {
+    await fetch('/api/falls/' + encodeURIComponent(id),
+                {method: 'DELETE', credentials: 'same-origin'});
+    loadFalls();
+  });
+}
+
+// ── Hearing ─────────────────────────────────────────────────────────────────
+// Beside dental and vision, which already work this way: the app holds what a
+// professional said, in their words, plus the upkeep that follows. It never
+// reads an audiogram.
+
+async function loadHearing() {
+  const body = document.getElementById('hearing-body');
+  if (!body) return;
+  const [d, o] = await Promise.all([
+    fetch('/api/hearing', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+    fetch('/api/hearing/overview', {credentials: 'same-origin'}).then(r => r.json()).catch(() => null),
+  ]);
+  if (!d) { body.innerHTML = `<div class="panel" style="padding:18px 20px">${t('Could not load your hearing records')}</div>`; return; }
+  if (!d.records.length) {
+    body.innerHTML = `<div class="panel" style="padding:22px 20px">
+      <div class="restore-note" style="margin:0">${t(
+        'Nothing here yet. Add a hearing test when you have one, and your aids — the battery type and service date are exactly what nobody can find when they need it.')}</div></div>`;
+    return;
+  }
+  const due = (o && o.due || []).filter(x => x.date);
+  body.innerHTML = `
+    ${due.length ? `<div class="panel" style="padding:14px 20px;margin-bottom:16px">
+      <div class="vp-dim" style="font-size:12px;margin-bottom:6px">${t('Dates you set')}</div>
+      ${due.map(x => `<div class="restore-row"><span>${escHtml(x.label)}</span>
+        <b${x.overdue ? ' style="color:var(--warn,#8a6100)"' : ''}>${escHtml(x.date)}</b></div>`).join('')}
+    </div>` : ''}
+    <div class="panel" style="padding:8px 20px">${d.records.map(r => `
+      <div class="restore-row" style="align-items:flex-start">
+        <span><b>${escHtml(r.kind_label)}</b> · ${escHtml(r.record_date)}
+          ${r.provider ? '<br>' + escHtml(r.provider) : ''}
+          ${r.device ? `<br><span class="vp-dim">${escHtml(r.device)}${
+            r.battery ? ' · ' + tformat('battery %1', escHtml(r.battery)) : ''}</span>` : ''}
+          ${(r.left_ear || r.right_ear) ? `<br><span class="vp-dim">${
+            [r.left_ear ? tformat('left: %1', escHtml(r.left_ear)) : '',
+             r.right_ear ? tformat('right: %1', escHtml(r.right_ear)) : ''
+            ].filter(Boolean).join(' · ')}</span>` : ''}
+          ${r.finding ? `<br><span class="vp-dim">${escHtml(r.finding)}</span>` : ''}
+          ${r.serviced_on ? `<br><span class="vp-dim">${tformat('serviced %1', escHtml(r.serviced_on))}</span>` : ''}
+        </span>
+        <button class="btn-outline" style="font-size:12px"
+                data-ev-click="deleteHearing('${escHtml(r.id)}')">${t('Remove')}</button>
+      </div>`).join('')}</div>
+    <div class="panel" style="padding:14px 20px;margin-top:16px">
+      <div class="restore-note" style="margin:0">${t(
+        'What a test found is recorded here as the clinician reported it. Arogo does not read audiograms or judge how well you hear.')}</div>
+    </div>`;
+  _a11yEnhance(body);
+}
+
+function openHearingForm(kind) {
+  const box = document.getElementById('hearing-form');
+  if (!box) return;
+  const isAid = kind === 'aid';
+  box.innerHTML = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div style="display:grid;gap:12px">
+        <div>
+          <label class="form-label" for="hear-date">${isAid ? t('Fitted on') : t('Test date')}</label>
+          <input type="date" class="form-input" id="hear-date" value="${localToday()}" style="max-width:200px">
+        </div>
+        <div>
+          <label class="form-label" for="hear-provider">${t('Who')}</label>
+          <input class="form-input" id="hear-provider" style="max-width:340px"
+                 placeholder="${t('Clinic or audiologist')}">
+        </div>
+        ${isAid ? `
+        <div>
+          <label class="form-label" for="hear-device">${t('Device')}</label>
+          <input class="form-input" id="hear-device" style="max-width:340px"
+                 placeholder="${t('Make and model')}">
+        </div>
+        <div>
+          <label class="form-label" for="hear-battery">${t('Battery')}</label>
+          <input class="form-input" id="hear-battery" style="max-width:240px"
+                 placeholder="${t('e.g. size 312, or rechargeable')}">
+        </div>
+        <div>
+          <label class="form-label" for="hear-serviced">${t('Last serviced')}</label>
+          <input type="date" class="form-input" id="hear-serviced" style="max-width:200px">
+        </div>` : `
+        <div>
+          <label class="form-label" for="hear-left">${t('Left ear — what they said')}</label>
+          <input class="form-input" id="hear-left" style="max-width:420px">
+        </div>
+        <div>
+          <label class="form-label" for="hear-right">${t('Right ear — what they said')}</label>
+          <input class="form-input" id="hear-right" style="max-width:420px">
+        </div>
+        <div>
+          <label class="form-label" for="hear-finding">${t('What they told you')}</label>
+          <textarea class="form-input" id="hear-finding" rows="2"
+            placeholder="${t('In their words, as far as you remember')}"></textarea>
+        </div>`}
+        <div>
+          <label class="form-label" for="hear-next">${t('Next check, if they gave you one')}</label>
+          <input type="date" class="form-input" id="hear-next" style="max-width:200px">
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn-primary" data-ev-click="saveHearing('${escHtml(kind)}')">${t('Save')}</button>
+        <button class="btn-outline" data-ev-click="closeHearingForm()">${t('Cancel')}</button>
+      </div>
+    </div>`;
+  _a11yEnhance(box);
+  document.getElementById('hear-date')?.focus();
+}
+
+function closeHearingForm() {
+  const box = document.getElementById('hearing-form');
+  if (box) box.innerHTML = '';
+}
+
+async function saveHearing(kind) {
+  const v = id => document.getElementById(id)?.value || '';
+  const r = await fetch('/api/hearing', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      kind, record_date: v('hear-date'), provider: v('hear-provider'),
+      device: v('hear-device'), battery: v('hear-battery'),
+      serviced_on: v('hear-serviced'), left_ear: v('hear-left'),
+      right_ear: v('hear-right'), finding: v('hear-finding'),
+      next_check: v('hear-next'),
+    }),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast(t('Could not save that'), 'error'); return; }
+  closeHearingForm();
+  showToast(t('✓ Saved'), 'success');
+  loadHearing();
+}
+
+function deleteHearing(id) {
+  undoable(t('Removing this record…'), async () => {
+    await fetch('/api/hearing/' + encodeURIComponent(id),
+                {method: 'DELETE', credentials: 'same-origin'});
+    loadHearing();
+  });
+}
+
+// ── Rehab exercises ─────────────────────────────────────────────────────────
+// "These exercises, twice a day, for six weeks" — the instruction that follows
+// most procedures and that nobody tracks.
+//
+// The app supplies no exercises and never says whether to push on or stop.
+// Pain is recorded because it is the first thing a physiotherapist asks, and
+// it is shown back as the user's own number.
+
+async function loadRehab() {
+  const el = document.getElementById('rehab-list');
+  if (!el) return;
+  const d = await fetch('/api/rehab', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d) { el.innerHTML = `<div class="panel" style="padding:18px 20px">${t('Could not load your plans')}</div>`; return; }
+  if (!d.plans.length) {
+    el.innerHTML = `<div class="panel" style="padding:22px 20px">
+      <div class="restore-note" style="margin:0">${t(
+        'No plans yet. Add the exercises your physiotherapist gave you, how many times a day, and for how long — Arogo keeps the count, not the programme.')}</div></div>`;
+    return;
+  }
+  el.innerHTML = d.plans.map(p => {
+    const a = p.adherence;
+    // No target and no verdict — the number and the window it covers.
+    const adh = (a && a.pct !== null)
+      ? `<div class="restore-row"><span>${_nDays(a.days)}</span>
+           <b>${tformat('%1 of %2 sessions', a.done, a.scheduled)} · ${a.pct}%</b></div>`
+      : `<div class="restore-note">${escHtml((a && a.note) || t('No sessions scheduled in this window yet.'))}</div>`;
+    return `<div class="panel" style="padding:16px 20px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline">
+        <div>
+          <b style="font-size:15px">${escHtml(p.name)}</b>
+          ${p.ended ? ` <span class="vp-dim">${t('finished')}</span>` : ''}
+          <div class="vp-dim" style="font-size:12.5px">
+            ${escHtml(tformat('%1 a day', p.times_per_day))}${
+              p.reason ? ' · ' + escHtml(p.reason) : ''}${
+              p.prescribed_by ? ' · ' + escHtml(p.prescribed_by) : ''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${p.ended ? '' : `<button class="btn-primary" style="font-size:12px"
+             data-ev-click="logRehabSession('${escHtml(p.id)}')">${t('Did it')}</button>`}
+          <button class="btn-outline" style="font-size:12px"
+                  data-ev-click="toggleRehabSessions('${escHtml(p.id)}')">${t('Sessions')}</button>
+          <button class="btn-outline" style="font-size:12px"
+                  data-ev-click="deleteRehabPlan('${escHtml(p.id)}')">${t('Remove')}</button>
+        </div>
+      </div>
+      ${p.instructions ? `<div class="restore-note">${escHtml(p.instructions)}</div>` : ''}
+      ${adh}
+      <div id="rehab-pain-${escHtml(p.id)}"></div>
+      <div id="rehab-sessions-${escHtml(p.id)}"></div>
+    </div>`;
+  }).join('');
+  _a11yEnhance(el);
+}
+
+// The sessions behind the percentage. A number nobody can open is a number
+// nobody can correct — and a mis-tapped "did it" would otherwise be permanent.
+async function toggleRehabSessions(pid) {
+  const box = document.getElementById('rehab-sessions-' + pid);
+  if (!box) return;
+  if (box.innerHTML) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="restore-note">${t('Loading…')}</div>`;
+  const d = await fetch(`/api/rehab/${encodeURIComponent(pid)}/sessions`,
+                        {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!d || !d.sessions) { box.innerHTML = `<div class="restore-note">${t('Could not load the sessions')}</div>`; return; }
+  if (!d.sessions.length) {
+    box.innerHTML = `<div class="restore-note">${t('No sessions logged yet.')}</div>`;
+    return;
+  }
+  // Pain numbers listed in date order, with no direction claimed. Two numbers a
+  // fortnight apart are two moments, and "improving" is the sentence someone
+  // uses to decide whether to keep going.
+  box.innerHTML = `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-100)">
+      ${d.sessions.map(s => `<div class="restore-row">
+        <span>${escHtml(s.date_key)}${s.pain_after !== null && s.pain_after !== undefined
+          ? ' · ' + tformat('pain %1/10', s.pain_after) : ''}${
+          s.notes ? ' · ' + escHtml(s.notes) : ''}</span>
+        <button class="btn-outline" style="font-size:12px"
+                data-ev-click="deleteRehabSession('${escHtml(s.id)}','${escHtml(pid)}')">${t('Remove')}</button>
+      </div>`).join('')}
+      <div class="restore-note">${t('Pain is your own number on your own scale, shown as you entered it.')}</div>
+    </div>`;
+  _a11yEnhance(box);
+}
+
+async function deleteRehabSession(lid, pid) {
+  const r = await fetch('/api/rehab/session/' + encodeURIComponent(lid),
+                        {method: 'DELETE', credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast(t('Could not remove that'), 'error'); return; }
+  showToast(t('✓ Removed'), 'success');
+  // The percentage changes when a session goes, so the whole card is redrawn.
+  loadRehab();
+}
+
+// Asked after the session, not before: a pain field on the way in reads as a
+// gate on whether you are allowed to do your exercises.
+function logRehabSession(pid) {
+  const box = document.getElementById('rehab-pain-' + pid);
+  if (!box) return;
+  box.innerHTML = `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--gray-100)">
+      <label class="form-label" for="rehab-pain-in-${escHtml(pid)}">${t('Pain afterwards, if you want to note it')}</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="number" min="0" max="10" class="form-input" style="max-width:100px"
+               id="rehab-pain-in-${escHtml(pid)}" placeholder="0–10"
+               aria-label="${t('Pain afterwards, 0 to 10')}">
+        <button class="btn-primary" data-ev-click="saveRehabSession('${escHtml(pid)}')">${t('Save')}</button>
+        <button class="btn-outline" data-ev-click="saveRehabSession('${escHtml(pid)}',true)">${t('Skip the number')}</button>
+      </div>
+      <div class="restore-note">${t(
+        'Your own scale, recorded as you typed it. Arogo never compares it to a target or tells you whether to carry on.')}</div>
+    </div>`;
+  _a11yEnhance(box);
+  document.getElementById('rehab-pain-in-' + pid)?.focus();
+}
+
+async function saveRehabSession(pid, skipPain) {
+  const raw = document.getElementById('rehab-pain-in-' + pid)?.value;
+  const r = await fetch(`/api/rehab/${encodeURIComponent(pid)}/log`, {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({pain_after: skipPain ? null : (raw === '' ? null : raw)}),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast(t('Could not save that'), 'error'); return; }
+  showToast(t('✓ Logged'), 'success');
+  loadRehab();
+}
+
+function openRehabForm() {
+  const box = document.getElementById('rehab-form');
+  if (!box) return;
+  box.innerHTML = `<div class="panel" style="padding:18px 20px;margin-bottom:16px">
+      <div style="display:grid;gap:12px">
+        <div>
+          <label class="form-label" for="rehab-name">${t('What are the exercises for')}</label>
+          <input class="form-input" id="rehab-name" style="max-width:420px"
+                 placeholder="${t('e.g. Knee exercises after surgery')}">
+        </div>
+        <div>
+          <label class="form-label" for="rehab-by">${t('Who gave them to you')}</label>
+          <input class="form-input" id="rehab-by" style="max-width:340px">
+        </div>
+        <div>
+          <label class="form-label" for="rehab-per-day">${t('Times a day')}</label>
+          <input type="number" min="1" max="12" class="form-input" id="rehab-per-day"
+                 value="2" style="max-width:110px">
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div>
+            <label class="form-label" for="rehab-from">${t('Starting')}</label>
+            <input type="date" class="form-input" id="rehab-from" value="${localToday()}" style="max-width:200px">
+          </div>
+          <div>
+            <label class="form-label" for="rehab-until">${t('Until, if you were told')}</label>
+            <input type="date" class="form-input" id="rehab-until" style="max-width:200px">
+          </div>
+        </div>
+        <div>
+          <label class="form-label" for="rehab-instructions">${t('The exercises themselves')}</label>
+          <textarea class="form-input" id="rehab-instructions" rows="4"
+            placeholder="${t('Copy what you were given. Arogo does not suggest exercises — yours came from someone who examined you.')}"></textarea>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:16px">
+        <button class="btn-primary" data-ev-click="saveRehabPlan()">${t('Save')}</button>
+        <button class="btn-outline" data-ev-click="closeRehabForm()">${t('Cancel')}</button>
+      </div>
+    </div>`;
+  _a11yEnhance(box);
+  document.getElementById('rehab-name')?.focus();
+}
+
+function closeRehabForm() {
+  const box = document.getElementById('rehab-form');
+  if (box) box.innerHTML = '';
+}
+
+async function saveRehabPlan() {
+  const v = id => document.getElementById(id)?.value || '';
+  if (!v('rehab-name').trim()) { showToast(t('Give the plan a name'), 'info'); return; }
+  const r = await fetch('/api/rehab', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name: v('rehab-name'), prescribed_by: v('rehab-by'),
+      times_per_day: v('rehab-per-day'), started_on: v('rehab-from'),
+      until_date: v('rehab-until'), instructions: v('rehab-instructions'),
+    }),
+  }).then(r => r.json()).catch(() => null);
+  if (!r || !r.success) { showToast((r && r.error) || t('Could not save that'), 'error'); return; }
+  closeRehabForm();
+  showToast(t('✓ Saved'), 'success');
+  loadRehab();
+}
+
+function deleteRehabPlan(pid) {
+  undoable(t('Removing this plan…'), async () => {
+    await fetch('/api/rehab/' + encodeURIComponent(pid),
+                {method: 'DELETE', credentials: 'same-origin'});
+    loadRehab();
+  });
+}
+
 // ── Appointment pack ────────────────────────────────────────────────────────
 // Every section here already existed on its own screen. What did not exist was
 // the one page you can print and carry, which is why "has anything changed since
@@ -14484,10 +15134,33 @@ async function loadBackups() {
       ? `<div class="restore-note">${tformat(
           'Anything logged since then is not in a backup yet. Backups are called stale after %1 hours.',
           s.stale_after_hours)}</div>` : ''}
-    <div class="restore-note">${t(
-      'Backups live on this same server, so they survive a mistake but not a lost or stolen device. Download your data as well if that matters to you.')}</div>
+    ${_offsiteLine(s.offsite)}
     ${run}`;
   _a11yEnhance(el);
+}
+
+// The half of the story the on-disk backups cannot tell. Both the database and
+// its backups sit on the same SD card, so "backed up and verified" is true and
+// says nothing about the failure that is actually likely: the card dying, or
+// the box being lost. This states the gap and dates it.
+function _offsiteLine(o) {
+  if (!o) return '';
+  const download = `<button class="btn-outline" style="font-size:12px;margin-top:8px"
+      data-ev-click="downloadBackup()">${t('Download a copy')}</button>`;
+  if (!o.has_any) {
+    return `<div class="restore-note">${escHtml(o.note || '')}</div>${download}`;
+  }
+  if (o.age_days === null) {
+    return `<div class="restore-note">${escHtml(o.note || '')}</div>${download}`;
+  }
+  const when = o.age_days <= 0 ? t('today')
+             : o.age_days === 1 ? t('yesterday')
+             : tformat('%1 days ago', o.age_days);
+  return `<div class="restore-row"><span>${t('Last copy taken off this server')}</span>
+      <b${o.stale ? ' style="color:var(--warn,#8a6100)"' : ''}>${escHtml(when)}</b></div>
+    ${o.stale ? `<div class="restore-note">${tformat(
+      'Backups here live on the same card as your data, so they survive a mistake but not a lost or failed device. A copy older than %1 days is worth replacing.',
+      o.stale_after_days)}</div>${download}` : ''}`;
 }
 
 async function runBackupNow() {
@@ -14861,6 +15534,9 @@ const NAV_TARGETS = [
   {v:'immunizations', l:'Vaccines',         k:'immunization shots'},
   {v:'allergies',     l:'Allergies',        k:'reaction'},
   {v:'dentalvision',  l:'Dental & vision',  k:'teeth dentist eye glasses optician prescription'},
+  {v:'hearing',       l:'Hearing',          k:'hearing ear ears deaf hard of hearing audiologist audiogram hearing aid battery tinnitus'},
+  {v:'falls',         l:'Falls',            k:'fall fell falls trip tripped slipped balance dizzy stumble fell over got up floor safety mobility'},
+  {v:'rehab',         l:'Rehab exercises',  k:'rehab physio physiotherapy exercises stretches recovery after surgery knee shoulder back programme sessions'},
   {v:'supplies',      l:'Home supplies',    k:'first aid kit otc bandage inventory'},
   {v:'symptomphotos', l:'Photo journal',    k:'rash wound swelling photo'},
   {v:'timeline',      l:'Timeline',         k:'history'},
@@ -22558,25 +23234,16 @@ async function doExport() {
   const sections = [..._exportSelected].join(',');
   const url = `/api/export?format=${_exportFmt}&sections=${sections}&from=${from}&to=${to}`;
 
-  const pass = (document.getElementById('export-passphrase')?.value || '');
-  const wants = !!document.getElementById('export-encrypt')?.checked;
+  const pass = _exportPassphraseOrNull();
+  if (pass === false) return;                       // asked for, and not usable
 
-  if (!wants) {
+  if (!pass) {
     // Unprotected: let the browser stream it straight to disk as before.
     const a = document.createElement('a');
     a.href = url; a.download = '';
     document.body.appendChild(a); a.click();
     document.body.removeChild(a);
     showToast(tformat('Downloading %1 export…', _exportFmt.toUpperCase()), 'success');
-    return;
-  }
-
-  if (!arogoCryptoAvailable()) {
-    showToast(t('This browser cannot encrypt the file. Download it unprotected, or use a browser that supports WebCrypto.'), 'error');
-    return;
-  }
-  if (pass.length < 8) {
-    showToast(t('Use a passphrase of at least 8 characters — this is the only thing protecting the file.'), 'error');
     return;
   }
   showToast(t('Encrypting…'), 'info');
@@ -22676,24 +23343,14 @@ async function downloadAllData() {
   // in one document — so it honours the same passphrase checkbox as the scoped
   // export above it. Protecting the small export and not this one would be
   // exactly backwards.
-  const wants = !!document.getElementById('export-encrypt')?.checked;
-  const pass = (document.getElementById('export-passphrase')?.value || '');
-  if (wants) {
-    if (!arogoCryptoAvailable()) {
-      showToast(t('This browser cannot encrypt the file. Untick the passphrase box to download it unprotected.'), 'error');
-      return;
-    }
-    if (pass.length < 8) {
-      showToast(t('Use a passphrase of at least 8 characters — this is the only thing protecting the file.'), 'error');
-      return;
-    }
-  }
+  const pass = _exportPassphraseOrNull();
+  if (pass === false) return;                       // asked for, and not usable
   showToast(t('Preparing your data…'), 'info');
   try {
     const r = await fetch('/api/account/export', {credentials: 'same-origin'});
     if (!r.ok) throw new Error('export failed');
     const text = await r.text();
-    if (wants) {
+    if (pass) {
       downloadBlob(await arogoEncrypt(text, pass), 'arogo-my-data.json.arogo-enc',
                    'application/octet-stream');
       showToast(t('✓ Downloaded, encrypted. Nobody can open it without that passphrase — not even Arogo.'), 'success');
@@ -22741,64 +23398,173 @@ async function downloadScopedData() {
 let _restoreData = null;
 
 async function downloadBackup() {
+  // This file is the most complete one the app produces — every table this user
+  // owns — and it was the one download path left unencrypted while the scoped
+  // export and the "download everything" button both honoured the passphrase
+  // box. Protecting the two smaller files and not this one was backwards.
+  const pass = _exportPassphraseOrNull();
+  if (pass === false) return;                       // asked for, and not usable
   try {
     const r = await fetch('/api/backup', {credentials: 'same-origin'});
     if (!r.ok) throw new Error('backup failed');
-    const blob = await r.blob();
     const cd = r.headers.get('Content-Disposition') || '';
     const m = cd.match(/filename="([^"]+)"/);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = m ? m[1] : 'arogo-backup.json';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('✓ Backup downloaded', 'success');
-  } catch { showToast('Could not build the backup — try again', 'error'); }
+    const name = m ? m[1] : 'arogo-backup.json';
+    const text = await r.text();
+    if (pass) {
+      downloadBlob(await arogoEncrypt(text, pass), name + '.arogo-enc',
+                   'application/octet-stream');
+      showToast(t('✓ Downloaded, encrypted. Nobody can open it without that passphrase — not even Arogo.'), 'success');
+    } else {
+      downloadBlob(text, name, 'application/json');
+      showToast(t('✓ Backup downloaded'), 'success');
+    }
+    // The backup panel shows how long since the last copy left this machine.
+    try { loadBackups(); } catch (e) {}
+  } catch { showToast(t('Could not build the backup — try again'), 'error'); }
 }
 
-function onRestoreFile(input) {
-  const f = input.files && input.files[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = async () => {
-    let text = reader.result;
+// Shared by all three download paths so they cannot drift again.
+//   null  → the user did not ask for a passphrase; download in the clear
+//   false → they did, but it cannot be honoured; the caller must stop
+//   string → use it
+function _exportPassphraseOrNull() {
+  if (!document.getElementById('export-encrypt')?.checked) return null;
+  const pass = document.getElementById('export-passphrase')?.value || '';
+  if (!arogoCryptoAvailable()) {
+    showToast(t('This browser cannot encrypt the file. Untick the passphrase box to download it unprotected.'), 'error');
+    return false;
+  }
+  if (pass.length < 8) {
+    showToast(t('Use a passphrase of at least 8 characters — this is the only thing protecting the file.'), 'error');
+    return false;
+  }
+  return pass;
+}
 
-    // An encrypted export is recognised by its own header, so the user never
-    // has to remember which kind of file they picked.
-    if (isArogoEncrypted(text)) {
-      const pass = await askExportPassphrase();
-      if (pass === null) return;                    // cancelled
-      try {
-        text = await arogoDecrypt(text, pass);
-      } catch (e) {
-        showToast(e.message === 'unsupported-format'
-          ? t('This file was written by a newer version of Arogo and cannot be opened here.')
-          // AES-GCM cannot tell a wrong passphrase from a damaged file, and
-          // claiming to know which would send someone hunting for a typo in a
-          // passphrase that was right all along.
-          : t('That passphrase did not open the file. Either it is wrong, or the file was damaged.'),
-          'error');
-        return;
+// Read a picked file and get usable JSON out of it, decrypting first when the
+// file says it is encrypted. Shared by restore and by the check-only path so
+// the two can never disagree about what "this file opens" means.
+// Resolves to null when the user cancels or the file cannot be read; the reason
+// has already been shown by then.
+function _readBackupFile(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onerror = () => {
+      showToast(t('That file could not be read'), 'error');
+      resolve(null);
+    };
+    reader.onload = async () => {
+      let text = reader.result;
+      // Recognised by its own header, so the user never has to remember which
+      // kind of file they picked.
+      if (isArogoEncrypted(text)) {
+        const pass = await askExportPassphrase();
+        if (pass === null) { resolve(null); return; }          // cancelled
+        try {
+          text = await arogoDecrypt(text, pass);
+        } catch (e) {
+          showToast(e.message === 'unsupported-format'
+            ? t('This file was written by a newer version of Arogo and cannot be opened here.')
+            // AES-GCM cannot tell a wrong passphrase from a damaged file, and
+            // claiming to know which would send someone hunting for a typo in a
+            // passphrase that was right all along.
+            : t('That passphrase did not open the file. Either it is wrong, or the file was damaged.'),
+            'error');
+          resolve(null); return;
+        }
       }
-    }
+      try { resolve(JSON.parse(text)); }
+      catch { showToast(t("That file isn't valid JSON"), 'error'); resolve(null); }
+    };
+    reader.readAsText(file);
+  });
+}
 
-    let data;
-    try { data = JSON.parse(text); }
-    catch { showToast(t("That file isn't valid JSON"), 'error'); return; }
-    _restoreData = data;
-    const el = document.getElementById('restore-preview');
-    if (el) { el.style.display = 'block'; el.innerHTML =
-      `<div class="restore-row">${t('Checking the file…')}</div>`; }
-    // Ask the server what this would actually do — it knows every table the
-    // restore touches, and how many of your rows each one would remove.
-    const p = await fetch('/api/import/preview', {
-      method: 'POST', credentials: 'same-origin',
-      headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data),
-    }).then(r => r.json()).catch(() => null);
-    renderRestorePreview(p);
-  };
-  reader.readAsText(f);
+async function onRestoreFile(input) {
+  const f = input.files && input.files[0];
   input.value = '';                    // allow re-selecting the same file later
+  if (!f) return;
+  const data = await _readBackupFile(f);
+  if (!data) return;
+  _restoreData = data;
+  const el = document.getElementById('restore-preview');
+  if (el) { el.style.display = 'block'; el.innerHTML =
+    `<div class="restore-row">${t('Checking the file…')}</div>`; }
+  // Ask the server what this would actually do — it knows every table the
+  // restore touches, and how many of your rows each one would remove.
+  const p = await fetch('/api/import/preview', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data),
+  }).then(r => r.json()).catch(() => null);
+  renderRestorePreview(p);
+}
+
+// Check-only. Same read, same decrypt, same server-side preview — and then
+// deliberately NOT the restore button.
+//
+// This exists because of the specific way a backup fails people: it sits
+// untouched for a year, and the moment it is needed is the moment nobody can
+// afford to find out the passphrase was wrong or the file was truncated. The
+// only way to know a backup works is to open it, and there has to be a way to
+// do that which cannot accidentally overwrite the data you still have.
+async function onCheckBackupFile(input) {
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  const el = document.getElementById('restore-preview');
+  if (el) { el.style.display = 'block'; el.innerHTML =
+    `<div class="restore-row">${t('Opening the file…')}</div>`; }
+  const data = await _readBackupFile(f);
+  if (!data) {
+    // The specific reason was already shown. What matters here is the verdict.
+    if (el) el.innerHTML = `<div class="restore-warn"><div class="restore-row"><b>${
+      t('This file did not open. Do not rely on it as a backup.')}</b></div></div>`;
+    return;
+  }
+  // _restoreData is deliberately NOT set: nothing about checking a file should
+  // leave the app one click away from replacing everything with it.
+  _restoreData = null;
+  const p = await fetch('/api/import/preview', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data),
+  }).then(r => r.json()).catch(() => null);
+  renderBackupCheck(p, f.name);
+}
+
+function renderBackupCheck(p, filename) {
+  const el = document.getElementById('restore-preview');
+  if (!el) return;
+  el.style.display = 'block';
+  if (!p || !p.ok) {
+    el.innerHTML = `<div class="restore-warn"><div class="restore-row"><b>${
+      t('This file opened, but there are no health records in it.')}</b></div>
+      <div class="restore-note">${escHtml((p && p.error) || '')}</div></div>`;
+    return;
+  }
+  const rows = (p.tables || []).filter(e => e.incoming > 0);
+  const total = (p.totals && p.totals.incoming) || 0;
+  const unreadable = (p.totals && p.totals.unreadable) || 0;
+  // A file that opens but carries nothing is not a working backup, and saying
+  // "✓ opens" over an empty list would be the most misleading possible verdict.
+  if (!total) {
+    el.innerHTML = `<div class="restore-warn"><div class="restore-row"><b>${
+      t('This file opens, but there is nothing in it to restore.')}</b></div>
+      <div class="restore-note">${escHtml(filename)}</div></div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="restore-row"><span>✓ <b>${t('This file opens, and your records are in it')}</b></span></div>
+    <div class="restore-note">${escHtml(filename)}</div>
+    <div class="restore-list">${rows.map(e =>
+      `<div class="restore-row"><span>${escHtml(e.label)}</span><b>${_nRows(e.incoming)}</b></div>`).join('')}</div>
+    <div class="restore-row"><span>${t('Total')}</span><b>${_nRows(total)}</b></div>
+    ${unreadable ? `<div class="restore-note">${tformat(
+      '%1 rows in the file could not be read and would be skipped by a restore.',
+      unreadable)}</div>` : ''}
+    <div class="restore-note">${t(
+      'Nothing was changed. This only opened the file and counted what is inside — checking a backup should never be able to overwrite the data you still have.')}</div>`;
+  _a11yEnhance(el);
 }
 
 // "1 record" not "1 records" — a count the user is about to act on shouldn't

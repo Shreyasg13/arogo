@@ -126,8 +126,13 @@ def api_2fa_new_recovery_codes():
 def api_backups():
     """Status of the newest backup, verified on every call rather than trusted.
     The only thing worse than no backup is one everybody believes in."""
-    from db.backups import status
-    return jsonify(status())
+    from db.backups import status, offsite_status
+    out = status()
+    # The server-side backups and the copies that have left the server are two
+    # different claims, and reporting only the first is how "backed up and
+    # verified" ends up meaning less than the person reading it thinks.
+    out['offsite'] = offsite_status()
+    return jsonify(out)
 
 
 @bp.route('/api/backups/run', methods=['POST'])

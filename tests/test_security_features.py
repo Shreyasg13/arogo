@@ -491,3 +491,89 @@ def test_the_setup_qr_does_not_echo_the_secret_back(app):
     c, uid = _register(app, "sec26@medeasy.test")
     out = c.post("/api/2fa/setup").get_json()
     assert "text" not in out["qr"], "the QR payload echoes the otpauth URI back"
+
+
+# ── Copies that have left this machine ──────────────────────────────────────
+# The on-disk backups are the important half of the story and the misleading
+# half: both they and the database sit on the same SD card. "Backed up and
+# verified" is true and says nothing about the failure that is actually likely.
+
+def test_offsite_reports_no_record_rather_than_guessing(app):
+    """Someone who downloaded a copy before this log existed must be told there
+    is no record — not told they never did it, and not given a made-up date."""
+    from db.backups import offsite_status
+    c, uid = _register(app, "sec27@medeasy.test")
+    with user_context(uid):
+        out = offsite_status()
+    assert out["has_any"] is False
+    assert out["age_days"] is None
+    assert out["stale"] is True, "no known copy must count as not covered"
+    assert "off this server" in out["note"].lower()
+
+
+def test_downloading_a_backup_records_the_copy(app):
+    from db.backups import offsite_status
+    c, uid = _register(app, "sec28@medeasy.test")
+    assert c.get("/api/backup").status_code == 200
+    with user_context(uid):
+        out = offsite_status()
+    assert out["has_any"] is True
+    assert out["age_days"] == 0
+    assert out["stale"] is False
+
+
+def test_an_old_copy_is_reported_stale(app):
+    from db.backups import offsite_status, OFFSITE_STALE_DAYS
+    import datetime as dt
+    c, uid = _register(app, "sec29@medeasy.test")
+    c.get("/api/backup")
+    old = (dt.datetime.now() - dt.timedelta(days=OFFSITE_STALE_DAYS + 5)).isoformat()
+    with user_context(uid):
+        execute("UPDATE security_events SET at=? WHERE user_id=? AND kind=?",
+                (old, uid, "backup_downloaded"), commit=True)
+        out = offsite_status()
+    assert out["age_days"] >= OFFSITE_STALE_DAYS
+    assert out["stale"] is True
+
+
+def test_an_unreadable_date_is_unknown_not_zero(app):
+    """"0 days ago" from a broken timestamp is the most reassuring possible
+    lie a backup panel can tell."""
+    from db.backups import offsite_status
+    c, uid = _register(app, "sec30@medeasy.test")
+    c.get("/api/backup")
+    with user_context(uid):
+        execute("UPDATE security_events SET at=? WHERE user_id=? AND kind=?",
+                ("not-a-timestamp", uid, "backup_downloaded"), commit=True)
+        out = offsite_status()
+    assert out["age_days"] is None
+    assert out["stale"] is True
+
+
+def test_an_export_counts_as_a_copy_too(app):
+    """A scoped export is also data leaving the machine. Counting only the
+    backup button would nag someone who does keep copies."""
+    from db.backups import offsite_status
+    c, uid = _register(app, "sec31@medeasy.test")
+    with user_context(uid):
+        from db.account_activity import log_event
+        log_event("export_downloaded", uid=uid)
+        out = offsite_status()
+    assert out["has_any"] is True
+
+
+def test_offsite_is_scoped_per_user(app):
+    """One person's diligence must not mark another as covered."""
+    from db.backups import offsite_status
+    ca, ua = _register(app, "sec32a@medeasy.test")
+    cb, ub = _register(app, "sec32b@medeasy.test")
+    ca.get("/api/backup")
+    with user_context(ub):
+        assert offsite_status()["has_any"] is False
+
+
+def test_the_backups_route_reports_both_halves(app):
+    c, uid = _register(app, "sec33@medeasy.test")
+    out = c.get("/api/backups").get_json()
+    assert "offsite" in out, "the route reports only the on-server backups"
+    assert "stale" in out["offsite"]

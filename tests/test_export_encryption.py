@@ -15,8 +15,10 @@ standalone script. Neither side is allowed to reimplement the format; if they
 ever drift, this fails.
 """
 import base64
+import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -164,3 +166,98 @@ def test_the_ui_does_not_claim_the_database_is_encrypted():
     for overclaim in ('database is encrypted', 'all your data is encrypted',
                       'end-to-end encrypted', 'fully encrypted'):
         assert overclaim not in panel, f'the export panel claims: {overclaim}'
+
+
+# ── Every download path honours the passphrase ──────────────────────────────
+# The bug this prevents actually shipped: the scoped export and the "download
+# everything" button were wired to the passphrase box and downloadBackup() was
+# not — leaving the single most complete file the app produces as the only one
+# still written in the clear.
+
+DOWNLOAD_PATHS = ['doExport', 'downloadAllData', 'downloadBackup']
+
+TOP_LEVEL = re.compile(r'^(async function |function |const |let )')
+
+
+def _js():
+    return io.open(os.path.join(ROOT, 'static', 'js', 'app.js'),
+                   encoding='utf-8').read()
+
+
+def _function_body(name):
+    lines = _js().split('\n')
+    pat = re.compile(r'^(?:async )?function ' + re.escape(name) + r'\s*\(')
+    start = next((i for i, ln in enumerate(lines) if pat.match(ln)), None)
+    assert start is not None, f'{name} does not exist'
+    end = next((j for j in range(start + 1, len(lines))
+                if TOP_LEVEL.match(lines[j])), len(lines))
+    return '\n'.join(lines[start:end])
+
+
+@pytest.mark.parametrize('fn', DOWNLOAD_PATHS)
+def test_every_download_path_asks_the_same_question(fn):
+    """One helper decides, so a fourth download path cannot quietly skip it."""
+    body = _function_body(fn)
+    assert '_exportPassphraseOrNull()' in body, (
+        f'{fn} does not consult the passphrase setting, so it writes in the '
+        f'clear even when the user asked for protection')
+
+
+@pytest.mark.parametrize('fn', DOWNLOAD_PATHS)
+def test_a_download_stops_when_the_passphrase_cannot_be_honoured(fn):
+    """Falling through to an unprotected download after the user ticked the box
+    is the one outcome worse than refusing: they believe it is encrypted."""
+    body = _function_body(fn)
+    assert 'false' in body.split('_exportPassphraseOrNull()')[1][:120], (
+        f'{fn} does not handle the "asked for, cannot honour" case')
+
+
+@pytest.mark.parametrize('fn', ['doExport', 'downloadAllData', 'downloadBackup'])
+def test_a_protected_download_actually_encrypts(fn):
+    body = _function_body(fn)
+    assert 'arogoEncrypt' in body, f'{fn} never encrypts anything'
+
+
+def test_the_helper_refuses_rather_than_weakening(fn=None):
+    body = _function_body('_exportPassphraseOrNull')
+    assert 'arogoCryptoAvailable()' in body, 'it does not check WebCrypto exists'
+    assert 'length < 8' in body, 'it does not enforce a minimum passphrase'
+    # It must never silently return a usable value in those cases.
+    assert body.count('return false') >= 2
+
+
+# ── An encrypted backup must still be selectable ────────────────────────────
+
+def test_the_restore_picker_accepts_encrypted_backups():
+    """The file picker filtered to .json, so encrypting a backup quietly made it
+    impossible to choose for a restore — protection that destroys the thing it
+    protects."""
+    raw = io.open(os.path.join(ROOT, 'templates', 'index.html'),
+                  encoding='utf-8').read()
+    m = re.search(r'<input[^>]*id="restore-file"[^>]*>', raw)
+    assert m, 'the restore file input is gone'
+    assert '.arogo-enc' in m.group(0), (
+        'the restore picker will not show encrypted backups')
+
+
+def test_the_check_picker_accepts_encrypted_backups():
+    raw = io.open(os.path.join(ROOT, 'templates', 'index.html'),
+                  encoding='utf-8').read()
+    m = re.search(r'<input[^>]*id="check-backup-file"[^>]*>', raw)
+    assert m, 'the check-a-backup input is gone'
+    assert '.arogo-enc' in m.group(0)
+
+
+def test_checking_a_backup_cannot_restore_it():
+    """Checking must never leave the app one click away from replacing
+    everything with the file being inspected."""
+    body = _function_body('onCheckBackupFile')
+    assert '_restoreData = null' in body, (
+        'checking a file arms the restore button')
+    assert 'import_all' not in body and '/api/import\'' not in body
+
+
+def test_both_file_paths_share_one_reader():
+    """Restore and check must agree on what "this file opens" means."""
+    for fn in ('onRestoreFile', 'onCheckBackupFile'):
+        assert '_readBackupFile(' in _function_body(fn), fn

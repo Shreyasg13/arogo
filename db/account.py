@@ -62,6 +62,8 @@ EXPORT_CATEGORIES = [
     # where they were signed in and what changed about access.
     ('account', 'Sign-in & activity log', ['user_sessions', 'security_events']),
     ('donations', 'Blood donations', ['blood_donations']),
+    ('mobility', 'Falls & rehab', ['falls', 'rehab_plans', 'rehab_logs']),
+    ('hearing', 'Hearing', ['hearing_records']),
     ('private', 'Private — journal, mood, cycle, menopause, pregnancy',
      ['thoughts', 'menstrual_cycles', 'cycle_symptoms', 'menopause_logs', 'pregnancy', 'pregnancy_logs',
       'questionnaire_runs']),
@@ -159,6 +161,10 @@ TABLE_LABELS = {
     'questionnaire_runs': 'Questionnaires',
     'blood_donations': 'Blood donations',
     'user_totp': 'Two-factor sign-in',
+    'falls': 'Falls',
+    'hearing_records': 'Hearing',
+    'rehab_plans': 'Rehab plans',
+    'rehab_logs': 'Rehab sessions',
     # Not restorable, but still named — the preview tells the user what it is
     # skipping and why, and "oauth tokens" is not a thing anyone recognises.
     'oauth_tokens': 'Connected apps', 'share_snapshots': 'Share links',

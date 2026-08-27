@@ -3209,8 +3209,17 @@
       <button class="btn-primary" data-ev-click="downloadBackup()">⬇️ Download backup</button>
       <label class="btn-outline" style="cursor:pointer;margin:0">
         ⬆️ Restore from backup
-        <input type="file" id="restore-file" accept="application/json,.json"
+        <!-- .arogo-enc must be accepted here. Without it the file picker filters
+             out every encrypted backup this app writes, so protecting a backup
+             would quietly make it unrestorable. -->
+        <input type="file" id="restore-file" accept="application/json,.json,.arogo-enc"
                style="display:none" data-ev-change="onRestoreFile(this)">
+      </label>
+      <label class="btn-outline" style="cursor:pointer;margin:0"
+             title="Opens the file and reports what is in it. Changes nothing.">
+        🔍 <span data-i18n="Check a backup opens">Check a backup opens</span>
+        <input type="file" id="check-backup-file" accept="application/json,.json,.arogo-enc"
+               style="display:none" data-ev-change="onCheckBackupFile(this)">
       </label>
     </div>
     <div id="restore-preview" style="display:none;margin-top:14px"></div>
@@ -3361,6 +3370,63 @@
       edited or deleted — that is what makes it worth reading.</p>
     <div id="activity-log"></div>
   </div>
+</div>
+
+<!-- ═══════════ FALLS ═══════════ -->
+<div id="view-falls" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Safety">Safety</div>
+      <h1 class="page-title" data-i18n="Falls">Falls</h1>
+      <p class="page-subtitle" data-i18n="Every fall, with the date — so &quot;have you had any falls?&quot; has a real answer">
+        Every fall, with the date — so "have you had any falls?" has a real answer</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn-primary" data-ev-click="openFallForm()"
+              data-i18n="Record a fall">Record a fall</button>
+    </div>
+  </div>
+  <div id="fall-form"></div>
+  <div id="falls-summary" aria-live="polite"></div>
+  <div id="falls-list" aria-live="polite"><div class="restore-row">Loading…</div></div>
+</div>
+
+<!-- ═══════════ HEARING ═══════════ -->
+<div id="view-hearing" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Senses">Senses</div>
+      <h1 class="page-title" data-i18n="Hearing">Hearing</h1>
+      <p class="page-subtitle" data-i18n="Tests, what they found, and the aids that followed">
+        Tests, what they found, and the aids that followed</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn-outline" data-ev-click="openHearingForm('test')"
+              data-i18n="Add a test">Add a test</button>
+      <button class="btn-outline" data-ev-click="openHearingForm('aid')"
+              data-i18n="Add an aid">Add an aid</button>
+    </div>
+  </div>
+  <div id="hearing-form"></div>
+  <div id="hearing-body" aria-live="polite"><div class="restore-row">Loading…</div></div>
+</div>
+
+<!-- ═══════════ REHAB ═══════════ -->
+<div id="view-rehab" class="view">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow" data-i18n="Recovery">Recovery</div>
+      <h1 class="page-title" data-i18n="Rehab exercises">Rehab exercises</h1>
+      <p class="page-subtitle" data-i18n="The exercises you were given, and how the course is actually going">
+        The exercises you were given, and how the course is actually going</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn-primary" data-ev-click="openRehabForm()"
+              data-i18n="Add a plan">Add a plan</button>
+    </div>
+  </div>
+  <div id="rehab-form"></div>
+  <div id="rehab-list" aria-live="polite"><div class="restore-row">Loading…</div></div>
 </div>
 
 <!-- ═══════════ APPOINTMENT PACK ═══════════ -->
