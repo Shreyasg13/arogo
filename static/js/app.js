@@ -1841,6 +1841,9 @@ const I18N = {
     'last dose %1': 'आख़िरी खुराक: %1',
     'min %1': 'न्यूनतम %1',
     'max %1': 'अधिकतम %1',
+    'This translation has not been checked by a native speaker yet. Tell us anything that reads wrong.':
+      'इस अनुवाद को अभी तक किसी मातृभाषी ने नहीं जाँचा है। जो कुछ भी ग़लत लगे, हमें बताएँ।',
+
     // ── The tail ──────────────────────────────────────────────────────────
     // The last strings that were still English: leftovers on older pages —
     // meal planning, dose tapering, snooze settings, trips, questionnaires.
@@ -2243,12 +2246,26 @@ const I18N = {
 // so a half-built pack can't be selected. To add Tamil etc.: write I18N.ta = {…}
 // then add {code:'ta', native:'தமிழ்', english:'Tamil'} here (mirror SERVER_LANGS
 // in i18n_server.py for emails/push). Scaffolded, not yet translated: ta/te/bn/mr.
+// `reviewed` says whether a native speaker has read the pack. It is not
+// decoration: an app that talks about doses and symptoms in a language nobody
+// fluent has checked can be confidently wrong, and the person reading it has no
+// way to tell. An unreviewed language is still offered — half the point of
+// shipping it is to get it read — but it says so, once, on the way in.
+//
+// A language only belongs in this list once its pack covers EVERY string the UI
+// can ask for. That is enforced by tests/test_i18n_coverage.py rather than at
+// runtime, because a partly-translated medical interface is worse than an
+// English one: the reader cannot tell which half they are looking at.
 const SUPPORTED_LANGS = [
-  { code: 'en', native: 'English',  english: 'English' },
-  { code: 'hi', native: 'हिन्दी',   english: 'Hindi'   },
+  { code: 'en', native: 'English',  english: 'English', reviewed: true },
+  { code: 'hi', native: 'हिन्दी',   english: 'Hindi',   reviewed: false },
+  // Bengali is being translated. It stays out of this list until its pack
+  // covers every string — the tests enforce that, and this comment is the
+  // reminder of why: a language that is offered while half-done drops the
+  // reader into English mid-sentence with no way to tell which half is which.
+  // { code: 'bn', native: 'বাংলা',   english: 'Bengali', reviewed: false },
   // { code: 'ta', native: 'தமிழ்',   english: 'Tamil'   },   // add I18N.ta first
   // { code: 'te', native: 'తెలుగు',  english: 'Telugu'  },
-  // { code: 'bn', native: 'বাংলা',   english: 'Bengali' },
   // { code: 'mr', native: 'मराठी',   english: 'Marathi' },
 ];
 // Only offer a language that is English (the base) or actually has a pack.
@@ -2304,6 +2321,14 @@ function setLanguage(code) {
   // re-localizes when its view re-renders, so re-run the active view's loader.
   const v = _activeViewName();
   if (v) { try { switchView(v); } catch (e) {} }
+  // Said once, in the language being switched to, so it is legible to the
+  // person it concerns. Not a blocking dialog — it is a caveat, not a warning.
+  try {
+    const meta = _langMeta(code);
+    if (code !== 'en' && meta && meta.reviewed === false) {
+      showToast(t('This translation has not been checked by a native speaker yet. Tell us anything that reads wrong.'), 'info');
+    }
+  } catch (e) {}
   // Mirror the choice to the server profile so the headless mailer + scheduler
   // (emails, push reminders) can localize too — they have no localStorage.
   // Fire-and-forget; the localStorage value above already drives the UI.

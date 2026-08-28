@@ -113,17 +113,48 @@ def _unescape(js_literal):
                       .replace('\\\\', '\\'))
 
 
+# One key/value pair in a pack: 'key': 'value' or "key": 'value'.
+# Groups: (single-quoted key, double-quoted key, value).
+_PAIRS = re.compile(
+    r"""(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)")\s*:\s*'((?:[^'\\]|\\.)*)'""")
+
+
 def _keys(text):
     return {_unescape(a or b) for a, b in KEY.findall(text)}
 CALL = re.compile(r"\bt(?:format)?\(\s*'((?:[^'\\]|\\.)*)'")
 
 
-def hindi_keys():
+def pack_keys(code):
+    """The keys in one language's pack."""
     i18n, _ = _split_i18n(_source())
-    m = re.search(r"^\s{2}hi:\s*\{", i18n, re.M)
-    assert m, 'the Hindi pack is gone'
+    m = re.search(r"^\s{2}" + re.escape(code) + r":\s*\{", i18n, re.M)
+    assert m, f'the {code} pack is gone'
     end = _brace_match(i18n, m.end() - 1)
     return _keys(i18n[m.end():end])
+
+
+def hindi_keys():
+    return pack_keys('hi')
+
+
+def listed_languages():
+    """Languages the picker will actually offer, English aside. Read from
+    SUPPORTED_LANGS rather than from the packs, because the question this file
+    asks is "is everything we OFFER complete", not "is everything we happen to
+    have translated"."""
+    src = _source()
+    block = src[src.index('const SUPPORTED_LANGS = ['):]
+    block = block[:block.index(']')]
+    out = []
+    for line in block.splitlines():
+        code = re.search(r"code:\s*'([a-z-]+)'", line)
+        if not code or line.strip().startswith('//'):
+            continue
+        if code.group(1) == 'en':
+            continue
+        reviewed = re.search(r'reviewed:\s*(true|false)', line)
+        out.append((code.group(1), reviewed.group(1) == 'true' if reviewed else None))
+    return out
 
 
 def used_strings():
@@ -308,3 +339,77 @@ def test_the_known_glued_list_does_not_go_stale():
     gone = sorted(KNOWN_GLUED - present)
     assert not gone, ('these are listed as known-glued but no longer appear — '
                       'remove them from KNOWN_GLUED: ' + ', '.join(gone))
+
+
+# ── Any language we offer, not just Hindi ───────────────────────────────────
+# A partly-translated medical interface is worse than an English one: the reader
+# cannot tell which half they are looking at, and the half that is missing is
+# invisible. So the rule is not "translate as much as you can" — it is "a
+# language appears in the picker only when its pack is complete".
+
+def test_every_offered_language_has_a_pack():
+    for code, _reviewed in listed_languages():
+        keys = pack_keys(code)
+        assert len(keys) > 100, f'{code} is offered but its pack is nearly empty'
+
+
+@pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
+def test_every_offered_language_is_complete(code):
+    needed = used_strings() | template_strings()
+    missing = sorted(needed - pack_keys(code))
+    assert not missing, (
+        f'{code} is offered in the language picker but {len(missing)} strings '
+        f'have no translation, so those screens would silently fall back to '
+        f'English mid-sentence. Either finish the pack or take the language out '
+        f'of SUPPORTED_LANGS. First few: ' + '; '.join(m[:60] for m in missing[:6]))
+
+
+@pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
+def test_every_offered_language_declares_whether_it_was_reviewed(code):
+    """An app that talks about doses in a language nobody fluent has checked can
+    be confidently wrong, and the reader cannot tell. Saying so is the minimum."""
+    declared = dict(listed_languages())
+    assert declared[code] is not None, (
+        f'{code} does not say whether a native speaker has read it — add '
+        f'reviewed: true/false to its SUPPORTED_LANGS entry')
+
+
+def test_an_unreviewed_language_says_so_in_the_app():
+    src = _source()
+    assert 'reviewed === false' in src, (
+        'nothing checks the reviewed flag, so an unchecked translation would be '
+        'presented exactly like a checked one')
+    assert 'has not been checked by a native speaker' in src
+
+
+@pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
+def test_no_pack_leaves_entries_as_english(code):
+    i18n, _ = _split_i18n(_source())
+    m = re.search(r"^\s{2}" + re.escape(code) + r":\s*\{", i18n, re.M)
+    block = i18n[m.end():_brace_match(i18n, m.end() - 1)]
+    pairs = _PAIRS.findall(block)
+    same = [_unescape(a or b) for a, b, val in pairs
+            if _unescape(a or b) == _unescape(val)
+            and re.search(r'[A-Za-z]{4}', a or b)
+            and _unescape(a or b) not in SAME_IN_BOTH]
+    assert not same, (f'{code} entries still hold the English string: '
+                      + ', '.join(same[:10]))
+
+
+@pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
+def test_placeholders_survive_translation(code):
+    """%1 and %2 are substituted at runtime. A translation that drops one prints
+    nothing where a dose or a date should be; one that invents an extra prints a
+    literal %3 at the user."""
+    i18n, _ = _split_i18n(_source())
+    m = re.search(r"^\s{2}" + re.escape(code) + r":\s*\{", i18n, re.M)
+    block = i18n[m.end():_brace_match(i18n, m.end() - 1)]
+    pairs = _PAIRS.findall(block)
+    broken = []
+    for a, b, val in pairs:
+        en, tr = _unescape(a or b), _unescape(val)
+        if set(re.findall(r'%\d', en)) != set(re.findall(r'%\d', tr)):
+            broken.append(en)
+    assert not broken, (
+        f'{code} translations change the placeholders, so a value would go '
+        f'missing or a literal %n would be shown: ' + '; '.join(b[:60] for b in broken[:6]))
