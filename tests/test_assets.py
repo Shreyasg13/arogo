@@ -20,8 +20,9 @@ def static_folder():
     return create_app().static_folder
 
 
-def _deva(s):
-    return sum(1 for c in s if 'ऀ' <= c <= 'ॿ')
+# _deva() counted Devanagari characters in the bundle, back when translation
+# packs lived inside app.js. They are separate JSON files now and nothing in the
+# bundle is Devanagari, so it counted zero and would have passed forever.
 
 
 def test_version_is_a_stable_content_hash(static_folder):
@@ -40,11 +41,15 @@ def test_minify_preserves_globals_translations_and_never_grows(static_folder):
     for token in ('function t(', 'function tformat', 'function markDoseTaken'):
         assert token in mn['app_js'], token
 
-    # A concrete translated UI string survives minification untouched.
-    assert 'दवाइयाँ' in mn['app_js']
-    # Comments may shed a handful of Devanagari chars, but never string content,
-    # so the count can only drop by the (few) chars that lived in comments.
-    assert _deva(mn['app_js']) <= _deva(raw['app_js'])
+    # Translation LOOKUP KEYS survive minification untouched. This used to check
+    # for a Devanagari string, back when the packs were bundled inside app.js.
+    # They are fetched from /static/i18n/<code>.json now — and are not minified
+    # at all — so the thing at risk here is the other half of the lookup: the
+    # English key at the call site. A minifier that rewrote one of these would
+    # leave t() searching the pack for a string that no longer exists, and the
+    # UI would silently fall back to English.
+    for key in ("t('Medicines')", "t('Cancel')", "t('Save')"):
+        assert key in mn['app_js'], f'{key} did not survive minification'
 
     # Minified is never larger than source (equal if the minifiers are absent).
     assert len(mn['app_js']) <= len(raw['app_js'])

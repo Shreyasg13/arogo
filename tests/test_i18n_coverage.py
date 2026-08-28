@@ -124,13 +124,29 @@ def _keys(text):
 CALL = re.compile(r"\bt(?:format)?\(\s*'((?:[^'\\]|\\.)*)'")
 
 
+I18N_DIR = os.path.join(ROOT, 'static', 'i18n')
+
+
+def pack_path(code):
+    return os.path.join(I18N_DIR, f'{code}.json')
+
+
+def pack(code):
+    """One language's pack, read from the JSON file the browser fetches.
+
+    Packs used to live inside app.js and were parsed out of it with a regex.
+    They are separate files now — bundling them made every English reader
+    download every language — so this reads the same bytes the app does, which
+    is both simpler and impossible to get subtly wrong.
+    """
+    import json
+    with io.open(pack_path(code), encoding='utf-8') as fh:
+        return json.load(fh)
+
+
 def pack_keys(code):
-    """The keys in one language's pack."""
-    i18n, _ = _split_i18n(_source())
-    m = re.search(r"^\s{2}" + re.escape(code) + r":\s*\{", i18n, re.M)
-    assert m, f'the {code} pack is gone'
-    end = _brace_match(i18n, m.end() - 1)
-    return _keys(i18n[m.end():end])
+    assert os.path.exists(pack_path(code)), f'the {code} pack is gone'
+    return set(pack(code).keys())
 
 
 def hindi_keys():
@@ -179,15 +195,11 @@ def test_the_hindi_pack_is_substantial():
 
 
 def test_no_translation_is_left_as_english():
-    """An entry whose Hindi is identical to its English is usually a forgotten
-    placeholder. A handful are legitimately the same — a number format, a brand
-    name — so this only flags entries with actual letters in them."""
-    i18n, _ = _split_i18n(_source())
-    m = re.search(r"^\s{2}hi:\s*\{", i18n, re.M)
-    block = i18n[m.end():_brace_match(i18n, m.end() - 1)]
-    pairs = re.findall(r"'((?:[^'\\]|\\.)*)'\s*:\s*'((?:[^'\\]|\\.)*)'", block)
-    same = [en for en, hi in pairs
-            if en == hi and re.search(r'[A-Za-z]{4}', en)
+    """An entry whose translation is identical to its English is usually a
+    forgotten placeholder. A handful are legitimately the same — an acronym, a
+    brand name — so this only flags entries with actual letters in them."""
+    same = [en for en, tr in pack('hi').items()
+            if en == tr and re.search(r'[A-Za-z]{4}', en)
             and en not in SAME_IN_BOTH]
     assert not same, ('these Hindi entries are still the English string: '
                       + ', '.join(same[:10]))
@@ -195,14 +207,11 @@ def test_no_translation_is_left_as_english():
 
 def test_every_same_in_both_entry_is_real_and_explained():
     """A stale exemption is worse than none — it silently stops checking."""
-    i18n, _ = _split_i18n(_source())
-    m = re.search(r"^\s{2}hi:\s*\{", i18n, re.M)
-    block = i18n[m.end():_brace_match(i18n, m.end() - 1)]
-    pairs = dict(re.findall(r"'((?:[^'\\]|\\.)*)'\s*:\s*'((?:[^'\\]|\\.)*)'", block))
+    hi = pack('hi')
     for key, reason in SAME_IN_BOTH.items():
         assert len(reason) > 40, f'{key} needs a real reason'
-        assert key in pairs, f'{key} is exempted but no longer in the pack'
-        assert pairs[key] == key, (
+        assert key in hi, f'{key} is exempted but no longer in the pack'
+        assert hi[key] == key, (
             f'{key} now has a real translation — remove it from SAME_IN_BOTH')
 
 
@@ -384,14 +393,9 @@ def test_an_unreviewed_language_says_so_in_the_app():
 
 @pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
 def test_no_pack_leaves_entries_as_english(code):
-    i18n, _ = _split_i18n(_source())
-    m = re.search(r"^\s{2}" + re.escape(code) + r":\s*\{", i18n, re.M)
-    block = i18n[m.end():_brace_match(i18n, m.end() - 1)]
-    pairs = _PAIRS.findall(block)
-    same = [_unescape(a or b) for a, b, val in pairs
-            if _unescape(a or b) == _unescape(val)
-            and re.search(r'[A-Za-z]{4}', a or b)
-            and _unescape(a or b) not in SAME_IN_BOTH]
+    same = [en for en, tr in pack(code).items()
+            if en == tr and re.search(r'[A-Za-z]{4}', en)
+            and en not in SAME_IN_BOTH]
     assert not same, (f'{code} entries still hold the English string: '
                       + ', '.join(same[:10]))
 
@@ -401,15 +405,69 @@ def test_placeholders_survive_translation(code):
     """%1 and %2 are substituted at runtime. A translation that drops one prints
     nothing where a dose or a date should be; one that invents an extra prints a
     literal %3 at the user."""
-    i18n, _ = _split_i18n(_source())
-    m = re.search(r"^\s{2}" + re.escape(code) + r":\s*\{", i18n, re.M)
-    block = i18n[m.end():_brace_match(i18n, m.end() - 1)]
-    pairs = _PAIRS.findall(block)
-    broken = []
-    for a, b, val in pairs:
-        en, tr = _unescape(a or b), _unescape(val)
-        if set(re.findall(r'%\d', en)) != set(re.findall(r'%\d', tr)):
-            broken.append(en)
+    broken = [en for en, tr in pack(code).items()
+              if set(re.findall(r'%\d', en)) != set(re.findall(r'%\d', tr))]
     assert not broken, (
         f'{code} translations change the placeholders, so a value would go '
         f'missing or a literal %n would be shown: ' + '; '.join(b[:60] for b in broken[:6]))
+
+
+# ── What the coverage number does NOT mean ──────────────────────────────────
+#
+# "Zero untranslated" means every string that ASKS to be translated has a
+# translation. It does not mean there is no English on screen: a string that was
+# never wrapped in t() and carries no data-i18n is invisible to this file, and
+# was invisible on the dashboard for months — the onboarding checklist, the
+# greeting, the calorie line and the read-aloud button all sat in English while
+# the rest of the app spoke Hindi.
+#
+# Nothing static can find those in general; the reliable check is to switch the
+# app to Hindi and look for Latin text. Doing that on the dashboard found 21
+# such strings; wiring the checklist, the greeting and the calorie line brought
+# it to 13. The rest — the notification banner, the daily briefing, the refill
+# banner, the check-in card, parts of the todo list — are a known, measured gap
+# and not a claim this file makes any statement about.
+#
+# So: "0 untranslated" here means "nothing that asked was refused". It does not
+# mean the app speaks Hindi everywhere, and it should never be quoted as if it
+# did.
+#
+# What CAN be pinned is the set already found and fixed, so they cannot revert.
+
+DYNAMICALLY_TRANSLATED = [
+    # Passed to t() as a variable, so the call-site scan cannot see the string.
+    'Add your first medication', 'Connect a family member',
+    'Log your first meal', 'Log a glass of water', 'Create a habit',
+    'Good morning', 'Good afternoon', 'Good evening',
+    'kcal remaining', 'kcal over budget', 'calories today',
+    'Read aloud', 'Stop', 'Welcome to Arogo — %1/%2 done',
+]
+
+
+@pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
+def test_dynamically_translated_strings_are_in_every_pack(code):
+    """These reach t() as variables — FIRSTRUN_STEPS labels, the greeting, the
+    calorie verdict. The call-site scan cannot see them, so they are listed by
+    hand or they silently fall back to English."""
+    missing = [s for s in DYNAMICALLY_TRANSLATED if s not in pack(code)]
+    assert not missing, (
+        f'{code} is missing strings that are translated dynamically: '
+        + '; '.join(missing))
+
+
+def test_those_strings_are_actually_still_used():
+    """A list of hand-declared strings goes stale silently. Each of these must
+    still appear in app.js, or it is dead weight pretending to be coverage."""
+    src = _source()
+    gone = [s for s in DYNAMICALLY_TRANSLATED
+            if s.split('%1')[0][:24] not in src]
+    assert not gone, ('these are declared as dynamically translated but no '
+                      'longer appear in app.js: ' + '; '.join(gone))
+
+
+def test_the_onboarding_checklist_goes_through_t():
+    """It is the first screen anyone sees, and it was English for every Hindi
+    reader who ever opened the app."""
+    src = _source()
+    assert '${t(s.label)}' in src, (
+        'the first-run checklist renders its labels untranslated')

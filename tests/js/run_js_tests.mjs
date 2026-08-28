@@ -50,7 +50,14 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 sandbox.window.addEventListener = noop;
 vm.createContext(sandbox);
-vm.runInContext(src, sandbox, { filename: 'app.js' });
+vm.runInContext(src + ';globalThis.__I18N = I18N;', sandbox, { filename: 'app.js' });
+
+// Language packs are fetched at runtime now, not bundled — so load the real
+// Hindi pack the same way the browser would. Tests that assert t() actually
+// translates were silently exercising a pack that is no longer in app.js;
+// reading the shipped file means they check what users get.
+sandbox.__I18N.hi = JSON.parse(
+  fs.readFileSync(path.join(ROOT, 'static', 'i18n', 'hi.json'), 'utf8'));
 
 // ── Tiny test runner ──
 let passed = 0, failed = 0;

@@ -23,10 +23,19 @@ The remaining levers were all bad trades:
   list and index.html reference the same stable URLs on purpose, and ETag/304 is
   the cost of keeping that simple.
 
-So what this file does instead is hold the line. The numbers below are what the
-app weighs today; the budgets sit a little above them. A change that adds a
-hundred kilobytes to a first load on mobile data now fails the build and says
-so, which is worth more than a risky refactor that saves fifty.
+One lever DID turn out to be worth pulling, and it was found by measuring the
+cost of a feature rather than by looking for savings. Adding a second language
+would have pushed the bundle to 434KB against a 400KB budget — and the number
+was the smaller problem. Every English reader would have downloaded a language
+they will never see. Packs moved to /static/i18n/<code>.json, fetched only when
+someone selects that language, which took app.js from 363KB to 294KB for
+everyone and made a third and fourth language cost nothing to anyone who does
+not read them.
+
+So what this file does is hold the line. The numbers below are what the app
+weighs today; the budgets sit a little above them. A change that adds a hundred
+kilobytes to a first load on mobile data now fails the build and says what it
+cost, which is worth more than a risky refactor that saves fifty.
 """
 import gzip
 import io
@@ -45,10 +54,10 @@ KB = 1024
 
 # Budgets in KB, gzipped — what a browser actually pulls down. Headroom is
 # deliberately modest: a budget with 50% slack stops being a budget.
-BUDGET_APP_JS = 400
+BUDGET_APP_JS = 320
 BUDGET_STYLE = 62
 BUDGET_INDEX = 62
-BUDGET_FIRST_LOAD = 520
+BUDGET_FIRST_LOAD = 440
 
 
 def _gz_kb(text):
@@ -176,3 +185,39 @@ def test_the_asset_urls_stay_stable_for_the_service_worker():
     for asset in ('/static/js/app.js', '/static/css/style.css'):
         assert f'"{asset}"' in html, f'{asset} is no longer referenced plainly'
         assert asset in _read(SW), f'{asset} is not in the service worker shell'
+
+
+# ── Translation packs stay out of the bundle ────────────────────────────────
+# Packs used to live inside app.js. That was fine with one language and became
+# untenable at two: a second full pack pushed the bundle to 434KB against a
+# 400KB budget, and — worse than the number — made every English reader
+# download a language they will never see. They are fetched on demand now, which
+# is what makes a third and fourth language possible at all.
+
+def test_no_language_pack_is_bundled_into_app_js():
+    src = _read(APP_JS)
+    i = src.index('const I18N = ')
+    # The declaration should be the empty English base and nothing else. A pack
+    # pasted back in would show up as thousands of lines here.
+    tail = src[i:i + 400]
+    assert 'en: {}' in tail, (
+        'a translation pack looks bundled into app.js again — packs belong in '
+        'static/i18n/<code>.json so only the readers of that language pay for it')
+
+
+def test_every_pack_is_a_separate_fetchable_file():
+    import glob
+    packs = glob.glob(os.path.join(ROOT, 'static', 'i18n', '*.json'))
+    assert packs, 'no language packs found on disk'
+    for p in packs:
+        kb = os.path.getsize(p) / KB
+        assert kb < 600, f'{os.path.basename(p)} is {kb:.0f}KB — unexpectedly large'
+
+
+def test_a_pack_is_only_paid_for_by_its_readers():
+    """The whole point of the split. English must not pull a pack at all."""
+    src = _read(APP_JS)
+    assert 'loadLangPack' in src
+    body = src[src.index('async function loadLangPack'):]
+    assert "code === 'en'" in body[:400], (
+        'English falls through to a fetch, so it downloads a pack it does not use')
