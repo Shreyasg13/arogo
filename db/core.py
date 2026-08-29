@@ -131,6 +131,36 @@ _IS_MEMORY = DB_PATH == ":memory:"
 if _IS_MEMORY:
     import atexit as _atexit
     import tempfile as _tempfile
+
+    # Sweep whatever earlier runs left behind, before creating this run's file.
+    #
+    # atexit cleans up a process that exits normally and does nothing at all for
+    # one that is killed — a cancelled test run, a timeout, a closed terminal.
+    # With eight xdist workers each holding a database plus its WAL, those
+    # corpses accumulate fast: 606 files and 783MB of them filled a disk here
+    # and turned every subsequent test run into a wall of
+    # sqlite3.OperationalError, which looks like a code fault and is not one.
+    #
+    # Only files older than an hour are removed, and only ones matching this
+    # module's own prefix — a concurrent test run's database must never be
+    # deleted out from under it.
+    def _sweep_stale_test_dbs():
+        import glob
+        import time
+        cutoff = time.time() - 3600
+        for path in glob.glob(os.path.join(_tempfile.gettempdir(),
+                                           "arogo-test-*.db*")):
+            try:
+                if os.path.getmtime(path) < cutoff:
+                    os.remove(path)
+            except OSError:
+                pass
+
+    try:
+        _sweep_stale_test_dbs()
+    except Exception:
+        pass                    # housekeeping must never break a test run
+
     _mem_fd, _MEMORY_FILE = _tempfile.mkstemp(prefix=f"arogo-test-{os.getpid()}-",
                                               suffix=".db")
     os.close(_mem_fd)

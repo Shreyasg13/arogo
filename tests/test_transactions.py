@@ -296,3 +296,39 @@ def test_nested_savepoints_get_distinct_names():
             assert inner.ok is False
             execute("INSERT INTO _tx_probe (id, note) VALUES (?, ?)", ("after", "2"))
     assert _rows() == {"outer", "after"}
+
+
+# ── Test databases must not accumulate ──────────────────────────────────────
+
+def test_stale_test_databases_are_swept_at_startup():
+    """A killed test run leaves its database behind: atexit cleans up a normal
+    exit and does nothing for a timeout, a cancelled run or a closed terminal.
+    With eight xdist workers each holding a database plus a WAL, the corpses
+    add up — 606 files and 783MB of them filled a disk here, after which every
+    run failed with sqlite3.OperationalError that looked like a code fault.
+
+    The sweep must be narrow in both directions: only this module's own prefix,
+    and only files old enough that no live run could own them.
+    """
+    import inspect
+    import db.core as core
+    src = inspect.getsource(core)
+    assert '_sweep_stale_test_dbs' in src, 'nothing cleans up leaked test databases'
+    body = src[src.index('def _sweep_stale_test_dbs'):]
+    body = body[:body.index('_mem_fd')]
+    assert 'arogo-test-' in body, 'the sweep is not scoped to our own files'
+    assert 'getmtime' in body, (
+        'the sweep has no age check, so it could delete a concurrent run\'s '
+        'database out from under it')
+    assert 'except OSError' in body, 'housekeeping must not break a test run'
+
+
+def test_the_sweep_never_breaks_a_run():
+    """Whatever goes wrong in housekeeping, the suite still has to start."""
+    import inspect
+    import db.core as core
+    src = inspect.getsource(core)
+    # The CALL site, not the definition — searching for the bare name finds
+    # `def _sweep_stale_test_dbs():` first and would pass on nothing.
+    call = src[src.index('        _sweep_stale_test_dbs()'):]
+    assert 'except Exception' in call[:200]

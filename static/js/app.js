@@ -106,11 +106,7 @@ async function loadLangPack(code) {
 const SUPPORTED_LANGS = [
   { code: 'en', native: 'English',  english: 'English', reviewed: true },
   { code: 'hi', native: 'हिन्दी',   english: 'Hindi',   reviewed: false },
-  // Bengali is being translated. It stays out of this list until its pack
-  // covers every string — the tests enforce that, and this comment is the
-  // reminder of why: a language that is offered while half-done drops the
-  // reader into English mid-sentence with no way to tell which half is which.
-  // { code: 'bn', native: 'বাংলা',   english: 'Bengali', reviewed: false },
+  { code: 'bn', native: 'বাংলা',   english: 'Bengali', reviewed: false },
   // { code: 'ta', native: 'தமிழ்',   english: 'Tamil'   },   // add I18N.ta first
   // { code: 'te', native: 'తెలుగు',  english: 'Telugu'  },
   // { code: 'mr', native: 'मराठी',   english: 'Marathi' },
@@ -182,6 +178,12 @@ async function setLanguage(code) {
   // re-localizes when its view re-renders, so re-run the active view's loader.
   const v = _activeViewName();
   if (v) { try { switchView(v); } catch (e) {} }
+  // Chrome outside any view: the greeting is written once at boot, so switching
+  // language left it in the old one until the next reload. (The daily briefing
+  // beside it is rebuilt from dose data by its own caller, and is one of the
+  // strings still not wired for translation at all — see the note in
+  // tests/test_i18n_coverage.py.)
+  try { setGreeting(); } catch (e) {}
   // Said once, in the language being switched to, so it is legible to the
   // person it concerns. Not a blocking dialog — it is a caveat, not a warning.
   try {
@@ -2598,20 +2600,25 @@ async function loadDashboard() {
 
   // Calorie balance — calm inline stat (no coloured card)
   fetch('/api/calorie-balance').then(r => r.json()).then(cb => {
-    const t = cb.today || {};
+    // NOT `const t` — that shadows the global t() translation function inside
+    // this callback, and the resulting "t is not a function" was swallowed
+    // whole by the .catch() below. The sub-label silently stopped updating and
+    // looked merely untranslated. The i18n notes warn about this exact trap;
+    // it still caught me.
+    const today = cb.today || {};
     // No target → no budget, so there is no "remaining". Show what they
     // actually ate, which needs no target to be true. `net ?? 0` used to turn
     // a missing budget into "2000 kcal remaining" — the most confident thing
     // on a new user's first screen, about a number nobody had computed.
     if (!cb.has_target) {
-      setText('dash-cal-deficit', t.eaten || 0);
+      setText('dash-cal-deficit', today.eaten || 0);
       setText('dash-cal-deficit-sub',
-        t.eaten ? 'calories eaten' : 'no meals logged yet');
+        t(today.eaten ? 'calories eaten' : 'no meals logged yet'));
     } else {
-      const net = t.net ?? 0;
+      const net = today.net ?? 0;
       setText('dash-cal-deficit', Math.abs(net));
       setText('dash-cal-deficit-sub',
-        t.burned > 0 ? `${t.burned} kcal burned` :
+        today.burned > 0 ? tformat('%1 kcal burned', today.burned) :
         t(net > 100 ? 'kcal remaining' : net < -100 ? 'kcal over budget' : 'calories today'));
     }
     renderNextAction(doses, cb);   // refine the hero once calorie state is known
