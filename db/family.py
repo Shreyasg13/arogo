@@ -341,9 +341,14 @@ def member_summary(target_uid: str) -> dict:
         meds = execute("""SELECT id, name, dosage, unit, frequency FROM medicines
                           WHERE user_id=? AND active=1 ORDER BY name""",
                        (target_uid,), fetchall=True)
+        # Matched to `meds`, which is the live medicine list — without the
+        # EXISTS the count could include doses of deleted medicines and show a
+        # family member "3 of 5 doses" against a list of three.
         doses = execute("""SELECT COUNT(*) AS total,
                                   SUM(CASE WHEN taken=1 THEN 1 ELSE 0 END) AS taken
-                           FROM dose_logs WHERE user_id=? AND date_key=?""",
+                           FROM dose_logs d WHERE d.user_id=? AND d.date_key=?
+                             AND EXISTS (SELECT 1 FROM medicines m
+                                         WHERE m.id = d.medicine_id AND m.user_id = d.user_id)""",
                         (target_uid, today), fetchone=True)
         out['medicines'] = {
             'active': meds,

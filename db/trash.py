@@ -322,9 +322,24 @@ def purge(item_id: str) -> bool:
     if not item:
         return False
     _delete_payload_files([item])
+    # The children go with it. Soft-deleting a medicine deliberately leaves its
+    # dose logs behind so a restore reunites them; purging it is the point at
+    # which that can never happen again, and leaving them would strand rows that
+    # go on counting toward adherence for a medicine that no longer exists.
+    _purge_children_of(item, uid)
     execute("DELETE FROM deleted_items WHERE id=? AND user_id=?", (item_id, uid),
             commit=True)
     return True
+
+
+def _purge_children_of(item, uid):
+    """Best-effort cascade for one trashed row being destroyed for good."""
+    try:
+        from .integrity import purge_children
+        purge_children(item['table_name'], item['row_id'], uid)
+    except Exception:
+        # Never let housekeeping block the deletion the user asked for.
+        pass
 
 
 def empty_trash() -> int:
@@ -333,6 +348,8 @@ def empty_trash() -> int:
     items = execute("SELECT * FROM deleted_items WHERE user_id=?", (uid,),
                     fetchall=True) or []
     _delete_payload_files(items)
+    for item in items:
+        _purge_children_of(item, uid)
     execute("DELETE FROM deleted_items WHERE user_id=?", (uid,), commit=True)
     return len(items)
 
@@ -350,6 +367,11 @@ def purge_expired(now_iso_str: str = None) -> int:
     if not items:
         return 0
     _delete_payload_files(items)
+    # Thirty days up is the other way a row becomes unrecoverable, so it
+    # cascades exactly as an explicit purge does. This one runs unattended from
+    # the scheduler, which is precisely how the orphans accumulated unnoticed.
+    for item in items:
+        _purge_children_of(item, item['user_id'])
     execute("DELETE FROM deleted_items WHERE expires_at <= ?", (cutoff,), commit=True)
     return len(items)
 

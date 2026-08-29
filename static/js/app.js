@@ -13679,6 +13679,43 @@ function _backupFailureText(r) {
   return (r && r.error) || t('The backup did not complete');
 }
 
+// ── Referential drift ───────────────────────────────────────────────────────
+// Rows whose parent was destroyed for good. They can never be shown anywhere
+// and they used to count toward adherence, so the panel says what they are and
+// offers to clear them — but only appears when there is something to say.
+async function loadIntegrity() {
+  const el = document.getElementById('integrity-report');
+  if (!el) return;
+  const r = await fetch('/api/storage/integrity', {credentials: 'same-origin'})
+    .then(r => r.json()).catch(() => null);
+  if (!r || !r.total) { el.innerHTML = ''; return; }   // nothing to say, say nothing
+  el.innerHTML = `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--gray-100)">
+      <div class="restore-row"><span>${t('Left over from deleted records')}</span>
+        <b>${tformat(r.total === 1 ? '%1 row' : '%1 rows', r.total)}</b></div>
+      ${r.orphans.map(o => `<div class="restore-row">
+        <span class="vp-dim">${escHtml(o.child.replace(/_/g, ' '))}</span>
+        <span class="vp-dim">${o.count}</span></div>`).join('')}
+      <div class="restore-note">${escHtml(r.note)}</div>
+      <button class="btn-outline" style="margin-top:10px"
+              data-ev-click="repairIntegrity()">${t('Clear them')}</button>
+    </div>`;
+  _a11yEnhance(el);
+}
+
+function repairIntegrity() {
+  // Undoable like every other delete in the app — although by construction
+  // these rows reference nothing that still exists, so there is nothing the
+  // user can lose by clearing them.
+  undoable(t('Clearing leftover rows…'), async () => {
+    const r = await fetch('/api/storage/integrity',
+                          {method: 'POST', credentials: 'same-origin'})
+      .then(r => r.json()).catch(() => null);
+    if (r && r.success) showToast(tformat('✓ Cleared %1 rows', r.removed), 'success');
+    else showToast(t('Could not clear those'), 'error');
+    loadIntegrity();
+  });
+}
+
 async function loadStorage() {
   const el = document.getElementById('storage-report');
   if (!el) return;
@@ -21527,6 +21564,7 @@ async function initExportView() {
   await loadExportCounts();
   loadScopedExportCats();
   try { loadStorage(); } catch (e) {}
+  try { loadIntegrity(); } catch (e) {}
   try { loadBackups(); } catch (e) {}
 }
 

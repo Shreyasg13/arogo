@@ -3234,6 +3234,11 @@
       How much room your files and database take on this server, and how much is
       left. If the disk fills, Arogo can stop saving what you log.</p>
     <div id="storage-report" aria-live="polite"><div class="restore-row">Checking…</div></div>
+    <!-- Referential drift. Files are not the only thing that gets stranded: a
+         medicine purged from the trash used to leave its dose logs behind for
+         good, and the weekly adherence figure counted them. Rendered by
+         loadIntegrity(); hidden entirely when there is nothing to report. -->
+    <div id="integrity-report" aria-live="polite"></div>
   </div>
 
   <!-- Backups. The nightly job and its verification shipped working and then

@@ -739,8 +739,15 @@ def get_insight_cards(limit: int = 3) -> list:
         pass
 
     # 2. Medicine adherence this week (needs ≥5 logged doses)
+    # Only doses of medicines the user still has. Without the EXISTS this counted
+    # logs whose medicine had been deleted — 42% of them on one account — so
+    # "Only 55% of doses taken this week" was partly a verdict on medicines that
+    # had been gone for months, and the user could do nothing about it.
     r = execute("""SELECT COUNT(*) AS n, SUM(CASE WHEN taken=1 THEN 1 ELSE 0 END) AS t
-                   FROM dose_logs WHERE user_id=? AND date_key>=?""", (uid, d7), fetchone=True)
+                   FROM dose_logs d WHERE d.user_id=? AND d.date_key>=?
+                     AND EXISTS (SELECT 1 FROM medicines m
+                                 WHERE m.id = d.medicine_id AND m.user_id = d.user_id)""",
+                (uid, d7), fetchone=True)
     if r and (r['n'] or 0) >= 5:
         pct = round((r['t'] or 0) / r['n'] * 100)
         if pct >= 90:
