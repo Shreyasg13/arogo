@@ -123,6 +123,15 @@ def _keys(text):
     return {_unescape(a or b) for a, b in KEY.findall(text)}
 CALL = re.compile(r"\bt(?:format)?\(\s*'((?:[^'\\]|\\.)*)'")
 
+# Functions that translate their own argument at the sink, so callers pass a
+# bare English literal on purpose: showToast does `el.textContent = t(msg)`.
+# That is a fine pattern, but it made 139 strings invisible to every check in
+# this file — they LOOK untranslated, so nothing scanned them, and 127 of them
+# had no Bengali at all while the pack reported itself complete. A sink call is
+# a translation call; it belongs in the same set as an explicit one.
+SINK = re.compile(
+    r"\bshowToast\(\s*(?:'((?:[^'\\]|\\.){2,}?)'|\"((?:[^\"\\]|\\.){2,}?)\")")
+
 
 I18N_DIR = os.path.join(ROOT, 'static', 'i18n')
 
@@ -175,10 +184,14 @@ def listed_languages():
 
 def used_strings():
     _, body = _split_i18n(_source())
+    body = _drop_comment_lines(body)
     # Unescaped for the same reason the keys are: t('who\\'s here') looks up the
     # key who's here. Comparing raw source on one side and unescaped on the
     # other would report every apostrophe-bearing string as untranslated.
-    return {_unescape(s) for s in CALL.findall(_drop_comment_lines(body))}
+    out = {_unescape(s) for s in CALL.findall(body)}
+    for sq, dq in SINK.findall(body):
+        out.add(_unescape(sq or dq))
+    return out
 
 
 def template_strings():
@@ -410,6 +423,220 @@ def test_placeholders_survive_translation(code):
     assert not broken, (
         f'{code} translations change the placeholders, so a value would go '
         f'missing or a literal %n would be shown: ' + '; '.join(b[:60] for b in broken[:6]))
+
+
+# ── Labels the server writes and the client translates ──────────────────────
+#
+# A third blind spot, and the subtlest. `t(m.timing_text)` translates a value
+# the SERVER produced, so the string never appears as a literal anywhere in the
+# JS — every scanner in this file walks straight past it. Five of the six
+# timing labels had no Hindi and no Bengali, and the packs still reported
+# themselves complete, because nothing knew to look for them.
+#
+# The fix is a registry: name the Python tables whose values reach a t() call,
+# and read the values from the module itself so the list cannot drift from the
+# source of truth. Adding a seventh timing label now fails this test until it
+# is translated, which is the whole point.
+#
+# NOT a complete account of server-supplied text. Other endpoints send `label`
+# fields that the client renders raw (the restore preview, donation kinds); they
+# are a larger, separate piece of work and are deliberately not claimed here.
+# What this covers is what goes through t().
+
+SERVER_LABELS = [
+    ('db.medicines', 'TIMING_LABELS',
+     'Dose timing ("with food", "at bedtime"). Rendered through medTimingText, '
+     'which calls t() on the server-supplied value.'),
+]
+
+
+@pytest.mark.parametrize('module,name,why', SERVER_LABELS)
+@pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
+def test_server_supplied_labels_are_translated(code, module, name, why):
+    mod = __import__(module, fromlist=[name])
+    values = {v for v in getattr(mod, name).values() if v}
+    missing = sorted(values - pack_keys(code))
+    assert not missing, (
+        f'{module}.{name} — {why}\n'
+        f'{code} has no translation for: ' + ', '.join(missing))
+
+
+def test_the_translating_chokepoint_still_exists():
+    """The registry above is only true while medTimingText actually calls t().
+    If someone inlines it back to a raw value, the labels stop being translated
+    and every test here keeps passing — so assert the chokepoint itself."""
+    src = _source()
+    body = _function_body(src.split('\n'), 'medTimingText')
+    assert body is not None, 'medTimingText is gone — update SERVER_LABELS'
+    # Anchored so `t` must be its own identifier. A plain `'t(' in body` is
+    # satisfied by the function's OWN NAME — medTimingTex*t(*m) — so the first
+    # version of this test passed happily against a chokepoint I had deliberately
+    # broken. A guard that cannot fail is worse than no guard: it reads as proof.
+    assert re.search(r'(?<![A-Za-z0-9_$])t\(', body), (
+        'medTimingText no longer translates its value, so server-supplied dose '
+        'timings would render in English inside an otherwise translated app')
+
+
+# ── Text that was never wrapped at all ──────────────────────────────────────
+#
+# Every check above asks "does this t() call have a translation". None of them
+# could see a string that was never handed to t() in the first place — and that
+# was the actual bug: the check-in card, the spoken briefing, the refill list
+# and the notification panel were not partly translated, they were never wired.
+# The packs reported themselves 100% complete the whole time, because a literal
+# sitting between two tags is invisible to a scanner that only reads t(...).
+#
+# So this reads the other side: the text a template literal actually renders.
+# It is deliberately scoped to a list of functions rather than the whole file —
+# a whole-file version would need an exemption list longer than itself, and an
+# exemption list is how a guard stops guarding. A function joins this list when
+# its page has been wired, and then it cannot silently regress.
+
+WIRED = [
+    'renderCheckin', 'ciShowSummary', 'initDailyCheckin',
+    'composeSpokenBriefing', 'renderRefillList', '_refillStatusLabel',
+    'renderNotifications', 'timeAgo',
+]
+
+_TAG = re.compile(r'<[^>]*>')
+_ENTITY = re.compile(r'&[a-z]+;|&#\d+;')
+_WORDS = re.compile(r"[A-Za-z][A-Za-z'’\-]*(?:\s+[A-Za-z][A-Za-z'’\-]*)*")
+
+# Words that appear in rendered text but are not prose: bare HTML/CSS tokens
+# that survive tag-stripping, and the handful of proper nouns the app shows
+# untranslated on purpose.
+_NOT_PROSE = re.compile(
+    r'^(?:kcal|ml|mg|bpm|mmHg|km|kg|cm|BMI|BSA|MAP|WHtR|CSV|PDF|QR|SMS|'
+    r'Arogo|HIIT)$')
+
+
+def _strip_interpolations(s):
+    """Replace ${...} with a marker, honouring nesting. What is left is the
+    literal text — which is exactly the text that cannot be translated."""
+    out, i, n = [], 0, len(s)
+    while i < n:
+        if s[i] == '$' and i + 1 < n and s[i + 1] == '{':
+            depth, i = 1, i + 2
+            while i < n and depth:
+                depth += {'{': 1, '}': -1}.get(s[i], 0)
+                i += 1
+            out.append('\x00')
+        else:
+            out.append(s[i])
+            i += 1
+    return ''.join(out)
+
+
+def _template_literals(body):
+    """Backtick strings in `body`, with their ${} contents left in place so
+    _strip_interpolations can remove them as units."""
+    out, i, n = [], 0, len(body)
+    while i < n:
+        if body[i] != '`':
+            i += 1
+            continue
+        j, depth, buf = i + 1, 0, []
+        while j < n:
+            c = body[j]
+            if c == '\\':
+                buf.append(body[j:j + 2])
+                j += 2
+                continue
+            if c == '$' and j + 1 < n and body[j + 1] == '{':
+                depth += 1
+            elif c == '}' and depth:
+                depth -= 1
+            elif c == '`' and not depth:
+                break
+            buf.append(c)
+            j += 1
+        out.append(''.join(buf))
+        i = j + 1
+    return out
+
+
+def _rendered_text(chunk):
+    """The prose a template literal puts on screen, if any."""
+    if '<' not in chunk:
+        return []                       # a URL or a storage key, not markup
+    t = _strip_interpolations(chunk)
+    t = _TAG.sub('\x00', t)             # attributes go with the tag
+    t = _ENTITY.sub(' ', t)
+    found = []
+    for seg in t.split('\x00'):
+        for m in _WORDS.finditer(seg):
+            w = m.group(0).strip()
+            if len(w) >= 3 and not _NOT_PROSE.match(w):
+                found.append(w)
+    return found
+
+
+@pytest.mark.parametrize('fn', WIRED)
+def test_a_wired_function_renders_no_bare_english(fn):
+    lines = _source().split('\n')
+    body = _function_body(lines, fn)
+    assert body is not None, f'{fn} no longer exists — update WIRED'
+    bare = set()
+    for chunk in _template_literals(_drop_comment_lines(body)):
+        bare.update(_rendered_text(chunk))
+    assert not bare, (
+        f'{fn} renders text that was never passed to t(), so it stays English '
+        f'in every language: ' + ', '.join(sorted(bare)[:10]))
+
+
+# ── Dates follow the language too ───────────────────────────────────────────
+#
+# Translating every string still left "Friday, August 28" on a Hindi screen,
+# because a date is not a string the pack ever sees — it is produced by
+# toLocaleDateString, and 26 call sites had 'en-US' written into them. A
+# translated app that dates everything in English is not translated; it is an
+# English app wearing a pack. These two tests hold the fix in place: every
+# language must carry a locale, and no call site may name one itself.
+
+def test_every_language_declares_a_date_locale():
+    """Including English. A language with no locale silently falls back to
+    en-GB, which reads as working — the app switches, the dates do not."""
+    src = _source()
+    block = src[src.index('const SUPPORTED_LANGS = ['):]
+    block = block[:block.index('\n];')]
+    for line in block.splitlines():
+        if line.strip().startswith('//') or 'code:' not in line:
+            continue
+        code = re.search(r"code:\s*'([a-z-]+)'", line).group(1)
+        loc = re.search(r"locale:\s*'([A-Za-z-]+)'", line)
+        assert loc, (
+            f'{code} is offered but declares no date locale, so its dates would '
+            f'render in English while the rest of the screen is translated')
+        assert '-' in loc.group(1), (
+            f'{code} has locale {loc.group(1)!r}; use a full BCP-47 tag like '
+            f'hi-IN — region decides d/m/y vs m/d/y, not just month names')
+
+
+# The two exceptions below are not date formatting:
+#   - the comment recording why this rule exists
+#   - nothing else, currently. Keep this list empty if you can.
+_LOCALE_EXEMPT = ()
+
+
+def test_no_date_is_formatted_with_a_hardcoded_locale():
+    """toLocale*String(<literal>) pins that one date to one language forever,
+    and it fails silently: the screen still renders, just in English."""
+    bad = []
+    # Walked over the WHOLE file, numbering as we go, and skipping comment lines
+    # in place rather than stripping them first. Stripping renumbers everything
+    # after the first comment, so the failure points at an innocent line — the
+    # same trap the glued-fragment test above documents. A guard that names the
+    # wrong line costs more time than no guard.
+    for i, line in enumerate(_source().splitlines(), 1):
+        if line.lstrip().startswith('//') or line.strip() in _LOCALE_EXEMPT:
+            continue
+        # A quoted tag, or the [] form — both mean "not the app's language".
+        for m in re.finditer(r"toLocale\w*String\(\s*(?:'([^']*)'|\"([^\"]*)\"|\[\s*\])", line):
+            bad.append(f'line {i}: {(m.group(1) or m.group(2) or "[]")}')
+    assert not bad, (
+        'these format a date or number with a fixed locale instead of '
+        '_locale(), so they stay English no matter what language the user '
+        'chose:\n  ' + '\n  '.join(bad[:12]))
 
 
 # ── What the coverage number does NOT mean ──────────────────────────────────

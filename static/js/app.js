@@ -103,13 +103,18 @@ async function loadLangPack(code) {
 // can ask for. That is enforced by tests/test_i18n_coverage.py rather than at
 // runtime, because a partly-translated medical interface is worse than an
 // English one: the reader cannot tell which half they are looking at.
+// `locale` is the BCP-47 tag for dates and numbers. It lives here, on the
+// language record, rather than in a second list beside it: a separate map is a
+// list you can forget to add to, and forgetting it is silent — the language
+// switches, the dates quietly stay English. Keeping it on the record makes
+// omission a missing field the coverage test can see.
 const SUPPORTED_LANGS = [
-  { code: 'en', native: 'English',  english: 'English', reviewed: true },
-  { code: 'hi', native: 'हिन्दी',   english: 'Hindi',   reviewed: false },
-  { code: 'bn', native: 'বাংলা',   english: 'Bengali', reviewed: false },
-  // { code: 'ta', native: 'தமிழ்',   english: 'Tamil'   },   // add I18N.ta first
-  // { code: 'te', native: 'తెలుగు',  english: 'Telugu'  },
-  // { code: 'mr', native: 'मराठी',   english: 'Marathi' },
+  { code: 'en', native: 'English',  english: 'English', locale: 'en-GB', reviewed: true },
+  { code: 'hi', native: 'हिन्दी',   english: 'Hindi',   locale: 'hi-IN', reviewed: false },
+  { code: 'bn', native: 'বাংলা',   english: 'Bengali', locale: 'bn-IN', reviewed: false },
+  // { code: 'ta', native: 'தமிழ்',   english: 'Tamil',   locale: 'ta-IN' },  // add I18N.ta first
+  // { code: 'te', native: 'తెలుగు',  english: 'Telugu',  locale: 'te-IN' },
+  // { code: 'mr', native: 'मराठी',   english: 'Marathi', locale: 'mr-IN' },
 ];
 // Only offer a language that is English (the base) or actually has a pack.
 function _availableLangs() {
@@ -132,6 +137,16 @@ function _lang() {
   } catch (e) { return 'en'; }
 }
 function t(s) { const d = I18N[_lang()]; return (d && d[s]) || s; }
+
+// The locale for dates and numbers, following the app's language.
+//
+// 26 call sites passed 'en-US' outright, so "Friday, August 28" stayed English
+// on every screen no matter what the user had chosen — the app spoke Hindi and
+// dated everything in English. Region matters for more than month names: an
+// Indian-language user reading d/m/y should not be handed m/d/y.
+function _locale() {
+  return _langMeta(_lang()).locale || 'en-GB';
+}
 // Interpolating translate: the key carries %1, %2… placeholders that are
 // filled from the trailing arguments AFTER translation. In English mode t()
 // returns the key verbatim, so the English sentence renders too. Used for the
@@ -498,12 +513,22 @@ function undoable(message, commit, delayMs = 4500) {
 // ── Date helpers — always use LOCAL date, never UTC ───────────
 // new Date().toISOString() returns UTC — wrong for users in UTC+N timezones.
 // Example: in India (UTC+5:30) at 11pm, toISOString() gives yesterday's date.
-function localToday() {
-  const d = new Date();
+// The YYYY-MM-DD key for any date, in local time. This is a storage key, not
+// something a user reads, so it must NOT follow the app's language: one call
+// site built it with toLocaleDateString('en-CA') — correct output, but the
+// moment that locale followed the UI it would have produced Devanagari
+// numerals, the key would have matched nothing, and the only symptom would
+// have been a date label quietly going wrong. Keys are built, never formatted.
+function localDateKey(date) {
+  const d = date || new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function localToday() {
+  return localDateKey();
 }
 
 function localDatetime(date) {
@@ -1773,9 +1798,9 @@ function setGreeting() {
   const el = document.getElementById('greeting');
   if (el) el.textContent = t(g);
   const hd = document.getElementById('header-date');
-  if (hd) hd.textContent = new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  if (hd) hd.textContent = new Date().toLocaleDateString(_locale(), { weekday:'long', month:'long', day:'numeric', year:'numeric' });
   const mt = document.getElementById('med-today-date');
-  if (mt) mt.textContent = new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  if (mt) mt.textContent = new Date().toLocaleDateString(_locale(), { weekday:'short', month:'short', day:'numeric' });
 }
 
 function setDates() {
@@ -2023,7 +2048,7 @@ async function addAlertContact() {
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) { showToast(d.error || 'Could not add contact', 'error'); return; }
-  showToast('Added ' + name);
+  showToast(tformat('Added %1', name));
   loadAlertContacts();
 }
 
@@ -2284,7 +2309,7 @@ async function sendFamilyInvite() {
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) { showToast(d.error || 'Could not send invite', 'error'); return; }
-  showToast('Invite sent to ' + email);
+  showToast(tformat('Invite sent to %1', email));
   loadFamily();
 }
 
@@ -2746,31 +2771,51 @@ function speakText(text) {
   if (!_canSpeak() || !text) return;
   speechSynthesis.cancel();                    // never stack utterances
   const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.95; u.pitch = 1; u.lang = 'en-US';   // a touch slow, easier to follow
+  // A touch slow, easier to follow — and in the language the page is written
+  // in. Reading a Hindi summary aloud in an English voice mangles every word
+  // of it, and read-aloud exists for the users least able to work around that.
+  u.rate = 0.95; u.pitch = 1; u.lang = _locale();
   u.onend = u.onerror = () => { _speaking = false; _updateReadBtn(); };
   _speaking = true; _updateReadBtn();
   speechSynthesis.speak(u);
 }
 
 // Compose a natural spoken sentence — kept pure so it's easy to reason about.
+// Spoken aloud, so it is translated like anything else on screen — more so,
+// in fact: the voice now follows the app's language, and a Hindi voice reading
+// an English sentence mangles every word of it.
+//
+// The singular and plural cases are separate strings rather than English's
+// `+ 's'`. Adding a letter is not how plurals work outside English, and the
+// translator cannot fix a sentence that was assembled after they saw it.
 function composeSpokenBriefing(doses, low, hour) {
   const parts = [];
-  parts.push(hour < 12 ? 'Good morning.' : hour < 18 ? 'Good afternoon.' : 'Good evening.');
+  parts.push(hour < 12 ? t('Good morning.') : hour < 18 ? t('Good afternoon.') : t('Good evening.'));
   const list = Array.isArray(doses) ? doses : [];
   const untaken = list.filter(d => !d.taken);
   if (!list.length) {
-    parts.push('You have no medicines scheduled today.');
+    parts.push(t('You have no medicines scheduled today.'));
   } else if (!untaken.length) {
-    parts.push('You have taken all your doses today. Well done.');
+    parts.push(t('You have taken all your doses today. Well done.'));
   } else {
-    parts.push(`You have ${untaken.length} dose${untaken.length > 1 ? 's' : ''} left today.`);
+    parts.push(untaken.length === 1
+      ? t('You have 1 dose left today.')
+      : tformat('You have %1 doses left today.', untaken.length));
     const hhmm = `${String(hour).padStart(2, '0')}:00`;
     const sorted = untaken.filter(d => d.time).sort((a, b) => a.time.localeCompare(b.time));
     const next = sorted.find(d => d.time >= hhmm) || sorted[0];
-    if (next) parts.push(`Your next is ${next.med_name} at ${_mc12h(next.time)}${next.timing_text ? ', ' + next.timing_text : ''}.`);
+    // The medicine name is the user's own text and stays as they typed it.
+    if (next) {
+      const timing = medTimingText(next);
+      parts.push(timing
+        ? tformat('Your next is %1 at %2, %3.', next.med_name, _mc12h(next.time), timing)
+        : tformat('Your next is %1 at %2.', next.med_name, _mc12h(next.time)));
+    }
   }
   if (Array.isArray(low) && low.length) {
-    parts.push(`${low.length} medicine${low.length > 1 ? 's are' : ' is'} running low.`);
+    parts.push(low.length === 1
+      ? t('1 medicine is running low.')
+      : tformat('%1 medicines are running low.', low.length));
   }
   return parts.join(' ');
 }
@@ -2928,8 +2973,8 @@ function _glanceWhen(iso) {
     const diff = Math.round((d - today) / 86400000);
     if (diff === 0) return t('today');
     if (diff === 1) return t('tomorrow');
-    if (diff > 1 && diff < 7) return d.toLocaleDateString([], { weekday: 'long' });
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    if (diff > 1 && diff < 7) return d.toLocaleDateString(_locale(), { weekday: 'long' });
+    return d.toLocaleDateString(_locale(), { month: 'short', day: 'numeric' });
   } catch (e) { return iso; }
 }
 
@@ -3219,7 +3264,7 @@ async function loadShareLinks() {
   el.innerHTML = snaps.map(s => {
     const url = origin + '/share/' + s.token;
     const badge = { active: '#22C55E', expired: '#94A3B8', revoked: '#EF4444' }[s.status] || '#94A3B8';
-    const exp = new Date(s.expires_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    const exp = new Date(s.expires_at).toLocaleDateString(_locale(), { month: 'short', day: 'numeric', year: 'numeric' });
     const active = s.status === 'active';
     return `<div class="share-row">
       <div class="share-row-main">
@@ -3272,7 +3317,7 @@ function _renderVisitPrep(vp, esc, fmt) {
 function renderDoctorSummary(d) {
   const esc = escapeHtml;
   const p = d.person || {};
-  const fmt = iso => { try { return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); } catch (e) { return iso || ''; } };
+  const fmt = iso => { try { return new Date(iso + 'T12:00:00').toLocaleDateString(_locale(), {month:'short', day:'numeric', year:'numeric'}); } catch (e) { return iso || ''; } };
 
   const meds = (d.medications || []).length
     ? `<table class="ds-table"><thead><tr><th>Medicine</th><th>Dose</th><th>Schedule</th></tr></thead><tbody>`
@@ -3398,7 +3443,7 @@ function buildSymptomLogHtml(rows) {
   const sorted = rows.slice().sort((a, b) => (b.date_key || '').localeCompare(a.date_key || '')
     || (a.time_of_day || '').localeCompare(b.time_of_day || ''));
   const body = sorted.map(s => {
-    const d = (() => { try { return new Date(s.date_key + 'T12:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return s.date_key || ''; } })();
+    const d = (() => { try { return new Date(s.date_key + 'T12:00:00').toLocaleDateString(_locale(), { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return s.date_key || ''; } })();
     const sev = s.severity != null ? `${s.severity}/10` : '';
     return `<tr><td>${esc(d)}</td><td>${esc(s.name || '')}</td><td>${esc(sev)}</td><td>${esc(s.time_of_day || '')}</td><td>${esc(s.notes || '')}</td></tr>`;
   }).join('');
@@ -3424,9 +3469,16 @@ function buildSymptomLogHtml(rows) {
 
 // Human timing label for a medicine/dose object. Backend supplies timing_text;
 // fall back to the older with_food flag so nothing regresses.
+//
+// Translated here. timing_text arrives from the server as English prose, but it
+// is NOT user data — it comes from a fixed table of seven labels in
+// db/medicines.py (TIMING_LABELS), so it is interface text that happens to be
+// rendered server-side. It was the one phrase still in English in an otherwise
+// Hindi dose reminder: "आपकी अगली Aspirin है, 9:00 PM बजे, with food।"
+// The medicine name beside it stays as the user typed it; this does not.
 function medTimingText(m) {
   if (!m) return '';
-  return m.timing_text || (m.with_food ? 'with food' : '');
+  return t(m.timing_text || (m.with_food ? 'with food' : ''));
 }
 
 // ── Refill shopping list (everything to pick up on a pharmacy run) ──
@@ -3495,9 +3547,11 @@ async function savePharmacy() {
 function closeRefillList() { const m = document.getElementById('refill-modal'); if (m) m.style.display = 'none'; }
 
 function _refillStatusLabel(it) {
-  if (it.ordered) return '<span class="rf-tag rf-tag--ordered">on the way</span>';
-  if (it.out) return '<span class="rf-tag rf-tag--out">out of stock</span>';
-  if (it.days_left != null) return `<span class="rf-tag rf-tag--low">~${it.days_left}d left</span>`;
+  if (it.ordered) return `<span class="rf-tag rf-tag--ordered">${t('on the way')}</span>`;
+  if (it.out) return `<span class="rf-tag rf-tag--out">${t('out of stock')}</span>`;
+  // "~5d left" reads as a unit, so the whole thing is one string — a translator
+  // needs to be able to move the number and drop the English "d".
+  if (it.days_left != null) return `<span class="rf-tag rf-tag--low">${tformat('~%1d left', it.days_left)}</span>`;
   return '';
 }
 
@@ -3505,7 +3559,7 @@ function renderRefillList(d) {
   const esc = escHtml;
   const items = (d && d.items) || [];
   if (!items.length) {
-    return `<div class="rf-empty">✅ Nothing to refill — every tracked medicine has enough on hand.</div>` + _pharmacyBar(d || {});
+    return `<div class="rf-empty">✅ ${t('Nothing to refill — every tracked medicine has enough on hand.')}</div>` + _pharmacyBar(d || {});
   }
   const rows = items.map((it, i) => `
     <label class="rf-row">
@@ -3517,7 +3571,7 @@ function renderRefillList(d) {
       </div>
     </label>`).join('');
   return _pharmacyBar(d) + `<div class="rf-list">${rows}</div>
-    <p class="rf-hint">Tick items as you go. Ordered ones sit at the bottom.</p>`;
+    <p class="rf-hint">${t('Tick items as you go. Ordered ones sit at the bottom.')}</p>`;
 }
 
 function printRefillList() {
@@ -3568,7 +3622,7 @@ function renderMedHistory(events) {
   if (!events.length) {
     return `<div class="mh-empty">No changes yet. Adding, pausing, or restocking a medicine will show up here.</div>`;
   }
-  const fmt = at => { try { return new Date(at).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}); } catch(e){ return (at||'').slice(0,10); } };
+  const fmt = at => { try { return new Date(at).toLocaleDateString(_locale(), {month:'short', day:'numeric', year:'numeric'}); } catch(e){ return (at||'').slice(0,10); } };
   const rows = events.map(e => {
     const m = MED_EVENT_META[e.kind] || { icon:'•', label:e.kind, color:'var(--gray-500)' };
     return `<div class="mh-row">
@@ -3610,7 +3664,7 @@ function renderPlanner(d) {
     const timeCell = `<div class="planner-time"><span class="planner-hour">${esc(_mc12h(row.time))}</span><span class="planner-slotlbl">${esc(row.label)}</span></div>`;
     const cells = row.cells.map((meds, i) => {
       const today = d.days[i].is_today;
-      const chips = meds.map(m => `<span class="planner-chip" title="${esc(m.name)}${m.dose ? ' · ' + esc(m.dose) : ''}${m.timing_text ? ' · ' + esc(m.timing_text) : ''}"><span class="planner-chip-icon">${esc(m.icon)}</span>${esc(m.name)}</span>`).join('');
+      const chips = meds.map(m => `<span class="planner-chip" title="${esc(m.name)}${m.dose ? ' · ' + esc(m.dose) : ''}${m.timing_text ? ' · ' + esc(medTimingText(m)) : ''}"><span class="planner-chip-icon">${esc(m.icon)}</span>${esc(m.name)}</span>`).join('');
       return `<div class="planner-cell${today ? ' is-today' : ''}">${chips || '<span class="planner-dash">–</span>'}</div>`;
     }).join('');
     return timeCell + cells;
@@ -3682,14 +3736,17 @@ function buildPlannerPrintHtml(d) {
 </body></html>`;
 }
 
+// AM/PM are English abbreviations, not universal symbols — Hindi writes पूर्वाह्न
+// / अपराह्न, and a 12-hour clock is not how every language states a time at all.
+// The whole thing is one string so a translator can reorder or drop the marker.
 function _mc12h(hhmm) {
   const parts = String(hhmm).split(':');
   let h = parseInt(parts[0], 10);
   const m = parts[1] || '00';
   if (isNaN(h)) return hhmm;
-  const ap = h < 12 ? 'AM' : 'PM';
+  const am = h < 12;
   h = h % 12; if (h === 0) h = 12;
-  return `${h}:${m} ${ap}`;
+  return am ? tformat('%1:%2 AM', h, m) : tformat('%1:%2 PM', h, m);
 }
 
 function buildMedCardHtml(d) {
@@ -3697,7 +3754,7 @@ function buildMedCardHtml(d) {
   const p = d.person || {};
   const emg = d.emergency || {};
   let gen = d.generated || '';
-  try { gen = new Date(d.generated + 'T12:00:00').toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}); } catch (e) {}
+  try { gen = new Date(d.generated + 'T12:00:00').toLocaleDateString(_locale(), {month:'long', day:'numeric', year:'numeric'}); } catch (e) {}
 
   const medLine = m => `
     <div class="mc-med">
@@ -3822,7 +3879,7 @@ async function openCalorieBreakdown() {
 
   // Date label
   const d = new Date(today + 'T12:00:00');
-  setText('cbd-date-label', d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' }));
+  setText('cbd-date-label', d.toLocaleDateString(_locale(), { weekday:'long', month:'long', day:'numeric' }));
 
   // Equation — show budget (target + burned) not raw target
   setText('cbd-target-val', known ? budget + ' kcal' : 'Not set');
@@ -4702,7 +4759,7 @@ function renderMissedDoses(d) {
       <span class="panel-badge">${tformat('Last %1 days', d.days)}</span>
     </div>
     <div style="padding:14px 16px">
-      <div class="miss-headline">${tformat('Your %1 dose is the easiest to forget — taken %2% of the time (%3 missed).', wBold, w.pct, w.missed)}${w.timing_text ? ' ' + tformat('Take it %1.', esc(w.timing_text)) : ''}</div>
+      <div class="miss-headline">${tformat('Your %1 dose is the easiest to forget — taken %2% of the time (%3 missed).', wBold, w.pct, w.missed)}${w.timing_text ? ' ' + tformat('Take it %1.', esc(medTimingText(w))) : ''}</div>
       <div class="miss-list">${rows}</div>
       <p class="miss-note">${t('Tip: if a slot keeps slipping, try moving its time or turning on a reminder for it.')}</p>
     </div>
@@ -7337,7 +7394,7 @@ async function triggerSync(service) {
       showToast(data.error || 'Sync failed', 'error');
     }
   } catch(e) {
-    showToast('Sync error: ' + e.message, 'error');
+    showToast(tformat('Sync error: %1', e.message), 'error');
   }
 }
 
@@ -7376,7 +7433,7 @@ connectService = function(service) {
 
   if (!popup) {
     // Popups blocked — redirect the whole page instead
-    showToast('Redirecting to ' + (SERVICE_LABELS[service] || service) + '…');
+    showToast(tformat('Redirecting to %1…', SERVICE_LABELS[service] || service));
     sessionStorage.setItem('oauth_return', 'fitness');
     window.location.href = url;
     return;
@@ -7509,7 +7566,7 @@ async function loadConsistency() {
 
   if (consistency.best_month) {
     const [y, m] = consistency.best_month.split('-');
-    const label = new Date(parseInt(y), parseInt(m)-1).toLocaleDateString('en-US', { month:'short', year:'numeric' });
+    const label = new Date(parseInt(y), parseInt(m)-1).toLocaleDateString(_locale(), { month:'short', year:'numeric' });
     setText('con-best-month', label);
   } else {
     setText('con-best-month', '—');
@@ -7628,7 +7685,7 @@ function showDayDetail(dateStr) {
   if (!detail || !dateEl || !bodyEl) return;
 
   const d = new Date(dateStr + 'T12:00:00');
-  dateEl.textContent = d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
+  dateEl.textContent = d.toLocaleDateString(_locale(), { weekday:'long', month:'long', day:'numeric', year:'numeric' });
 
   bodyEl.innerHTML = info.activities.map(a => `
     <div class="cal-detail-activity">
@@ -7683,7 +7740,7 @@ function renderMonthlyChart(monthly) {
 
   el.innerHTML = monthly.map(m => {
     const [year, mon] = m.month.split('-');
-    const label = new Date(parseInt(year), parseInt(mon)-1).toLocaleDateString('en-US', { month:'short', year:'2-digit' });
+    const label = new Date(parseInt(year), parseInt(mon)-1).toLocaleDateString(_locale(), { month:'short', year:'2-digit' });
     const pct   = ((m.active_days / maxDays) * 100).toFixed(0);
     const isEmpty = m.active_days === 0;
 
@@ -7833,7 +7890,7 @@ function actTypeColor(type) {
 function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T12:00:00');
-  return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+  return d.toLocaleDateString(_locale(), { weekday:'short', month:'short', day:'numeric', year:'numeric' });
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -7892,7 +7949,7 @@ async function loadFoodTracker() {
     const today = localToday();
     lbl.textContent = foodDate === today
       ? "Today's nutrition"
-      : d.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+      : d.toLocaleDateString(_locale(), { weekday:'long', month:'short', day:'numeric' });
   }
 
   // Macro rings
@@ -7986,7 +8043,7 @@ function renderMealSections(byMeal) {
                 padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;
                 font-size:13px;color:var(--teal-800)">
       <span>📅</span>
-      <span>${t('Viewing')} <strong>${new Date(foodDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</strong>
+      <span>${t('Viewing')} <strong>${new Date(foodDate+'T12:00:00').toLocaleDateString(_locale(),{weekday:'long',month:'long',day:'numeric'})}</strong>
        — ${t('you can still add, edit, or delete items for this day.')}</span>
     </div>` : '';
 
@@ -9116,7 +9173,7 @@ async function loadThoughts(dateStr) {
     const today = localToday();
     titleEl.textContent = currentThoughtsDate === today
       ? "Today's thoughts"
-      : d.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+      : d.toLocaleDateString(_locale(), { weekday:'long', month:'long', day:'numeric' });
   }
 
   // Disable textarea if limit reached
@@ -9208,7 +9265,7 @@ function renderThoughtsList(thoughts) {
     return;
   }
   el.innerHTML = thoughts.map(th => {
-    const time = new Date(th.created_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+    const time = new Date(th.created_at).toLocaleTimeString(_locale(), { hour:'numeric', minute:'2-digit' });
     const mood = th.mood || 'neutral';
     return `<div class="thought-card" data-mood="${mood}" data-id="${th.id}">
       <div class="thought-card-header">
@@ -9403,7 +9460,7 @@ async function loadTodos() {
   setText('td-pending-count', pending.length);
   setText('td-done-count',    done.length);
   setText('td-overdue-count', overdue.length);
-  setText('td-progress-label', `${donePct}% done`);
+  setText('td-progress-label', tformat('%1% done', donePct));
   const fill = document.getElementById('td-progress-fill');
   if (fill) fill.style.width = donePct + '%';
 
@@ -9481,7 +9538,7 @@ function renderTodoCard(td, today) {
     metaHtml += `<span class="todo-badge ${isOverdue?'overdue':'due'}">📅 ${dueLbl}</span>`;
   }
   if (td.reminder_at) {
-    const rt = new Date(td.reminder_at).toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const rt = new Date(td.reminder_at).toLocaleString(_locale(), {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
     metaHtml += `<span class="todo-badge reminder">🔔 ${rt}</span>`;
   }
 
@@ -9621,7 +9678,9 @@ async function toggleTodo(id) {
   if (r.success) {
     const todo = allTodos.find(t => t.id === id);
     if (todo) {
-      const msg = r.todo.status === 'done' ? `✅ "${todo.title}" completed!` : `↩️ Moved back to pending`;
+      const msg = r.todo.status === 'done'
+        ? '✅ ' + tformat('"%1" completed!', todo.title)
+        : '↩️ ' + t('Moved back to pending');
       showToast(msg, r.todo.status === 'done' ? 'success' : 'info');
     }
     loadTodos();
@@ -9630,7 +9689,7 @@ async function toggleTodo(id) {
 
 function deleteTodo(id) {
   const todo = allTodos.find(t => t.id === id);
-  undoable(`Deleting "${todo?.title || 'task'}"…`, async () => {
+  undoable(tformat('Deleting "%1"…', todo?.title || t('task')), async () => {
     await fetch(`/api/todos/${id}`, { method:'DELETE' });
     loadTodos();
   });
@@ -9991,7 +10050,7 @@ async function loadHabits() {
 
   // ── Update page subtitle with today's date ──
   const sub = document.getElementById('habits-date-label');
-  if (sub) sub.textContent = new Date(today + 'T12:00:00').toLocaleDateString('en-US',
+  if (sub) sub.textContent = new Date(today + 'T12:00:00').toLocaleDateString(_locale(),
     {weekday:'long', month:'long', day:'numeric'});
 
   // ── TODAY CHECKLIST ──────────────────────────────────────────────────────
@@ -10998,7 +11057,7 @@ async function loadSymptoms() {
     const d = new Date(date+'T12:00:00');
     const today = localToday();
     const dateLabel = date === today ? 'Today' :
-      d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+      d.toLocaleDateString(_locale(), { weekday:'short', month:'short', day:'numeric' });
 
     const rows = syms.map(s => {
       const rm = s.region ? regionMetaMap[s.region] : null;
@@ -14961,7 +15020,7 @@ async function loadNotifications() {
   _allNotifs = r.notifications || [];
   updateNotifBadge(r.unread);
   const totalEl = document.getElementById('notif-unread-total');
-  if (totalEl) totalEl.textContent = r.unread > 0 ? `${r.unread} unread` : '';
+  if (totalEl) totalEl.textContent = r.unread > 0 ? tformat('%1 unread', r.unread) : '';
   renderNotifications();
 }
 
@@ -14975,8 +15034,8 @@ function renderNotifications() {
   if (!items.length) {
     el.innerHTML = `<div class="notif-empty">
       <div class="notif-empty-icon">🔔</div>
-      <div class="notif-empty-title">All clear!</div>
-      <div class="notif-empty-sub">${_notifFilter === 'all' ? 'No notifications yet' : 'No ' + _notifFilter + ' notifications'}</div>
+      <div class="notif-empty-title">${t('All clear!')}</div>
+      <div class="notif-empty-sub">${_notifFilter === 'all' ? t('No notifications yet') : tformat('No %1 notifications', t(_notifFilter))}</div>
     </div>`;
     return;
   }
@@ -14988,8 +15047,12 @@ function renderNotifications() {
     (byDate[d] = byDate[d]||[]).push(n);
   });
 
-  const today = new Date().toISOString().slice(0,10);
-  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  // Local, not toISOString(). toISOString() is UTC: at 9pm in India it returns
+  // tomorrow's date, so tonight's notifications compared unequal to "today" and
+  // got a full date heading instead of "Today" — every evening, for every user
+  // east of UTC. Same rule as everywhere else in the file.
+  const today = localToday();
+  const yesterday = localDateKey(new Date(Date.now() - 86400000));
 
   const NOTIF_STYLES = {
     medicine: {bg:'#EDF2F5', border:'#BFDBFE', icon:'💊'},
@@ -15004,7 +15067,7 @@ function renderNotifications() {
   };
 
   el.innerHTML = Object.entries(byDate).map(([date, notifs]) => {
-    const label = date === today ? 'Today' : date === yesterday ? 'Yesterday' : new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const label = date === today ? t('Today') : date === yesterday ? t('Yesterday') : new Date(date+'T12:00:00').toLocaleDateString(_locale(),{weekday:'long',month:'long',day:'numeric'});
     const rows = notifs.map(n => {
       const style = NOTIF_STYLES[n.type] || NOTIF_STYLES.system;
       const ago   = timeAgo(n.created_at);
@@ -15024,12 +15087,15 @@ function renderNotifications() {
   }).join('');
 }
 
+// Each unit is its own string, including the "m"/"h"/"d" — those are English
+// abbreviations, not symbols, and a translator has to be free to replace them
+// and to put the number where their language puts it.
 function timeAgo(isoStr) {
   const diff = Math.floor((Date.now() - new Date(isoStr)) / 1000);
-  if (diff < 60)   return 'just now';
-  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
-  if (diff < 86400)return Math.floor(diff/3600) + 'h ago';
-  return Math.floor(diff/86400) + 'd ago';
+  if (diff < 60)   return t('just now');
+  if (diff < 3600) return tformat('%1m ago', Math.floor(diff/60));
+  if (diff < 86400)return tformat('%1h ago', Math.floor(diff/3600));
+  return tformat('%1d ago', Math.floor(diff/86400));
 }
 
 async function markNotifRead(id) {
@@ -15444,9 +15510,9 @@ async function loadReport() {
   // Build the period label
   const d1 = new Date(r.period?.start + 'T12:00:00');
   const d2 = new Date(r.period?.end + 'T12:00:00');
-  const periodStr = d1.toLocaleDateString('en-US',{month:'short',day:'numeric'}) + ' – ' +
-                    d2.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const generatedStr = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const periodStr = d1.toLocaleDateString(_locale(),{month:'short',day:'numeric'}) + ' – ' +
+                    d2.toLocaleDateString(_locale(),{month:'short',day:'numeric',year:'numeric'});
+  const generatedStr = new Date().toLocaleDateString(_locale(),{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 
   // Metric bar helper
   const metricBar = (val, max, color) => {
@@ -16192,16 +16258,15 @@ async function renderSleepFocal() {
   const qEmoji = { 1: '😩', 2: '😕', 3: '😐', 4: '😊', 5: '😴' }[last.quality] || '';
   // "last night" only when the newest log really is last night — otherwise it
   // claimed a days-old entry was last night's. Fall back to its date.
-  const _y = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+  const _y = localDateKey(new Date(Date.now() - 86400000));
   const lastLabel = (last.date_key === localToday() || last.date_key === _y)
     ? t('last night')
-    : new Date(last.date_key + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
+    : new Date(last.date_key + 'T12:00:00').toLocaleDateString(_locale(), {month:'short', day:'numeric'});
   const byDate = {}; logs.forEach(l => { byDate[l.date_key] = l.duration_h; });
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate() - i);
-    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    days.push({ h: byDate[k] || 0, lbl: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()] });
+    days.push({ h: byDate[localDateKey(d)] || 0, lbl: ['S', 'M', 'T', 'W', 'T', 'F', 'S'][d.getDay()] });
   }
   const maxH = Math.max(9, ...days.map(d => d.h));
   const bars = days.map(d => `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
@@ -16584,7 +16649,7 @@ function renderFasting(d) {
   let top;
   if (d.active) {
     const started = new Date(Date.parse(d.active.start_at));
-    const startLbl = started.toLocaleString([], {weekday:'short', hour:'2-digit', minute:'2-digit'});
+    const startLbl = started.toLocaleString(_locale(), {weekday:'short', hour:'2-digit', minute:'2-digit'});
     // Compute the first paint from the SAME client clock _tickFast uses, so the
     // display doesn't jump on the first tick if the server's local time differs.
     const target = d.active.target_hours || 0;
@@ -16630,7 +16695,7 @@ function renderFasting(d) {
   if ((d.history || []).length) {
     const rows = d.history.map(h => {
       const dt = new Date(Date.parse(h.start_at));
-      const day = dt.toLocaleDateString([], {month:'short', day:'numeric'});
+      const day = dt.toLocaleDateString(_locale(), {month:'short', day:'numeric'});
       const hit = h.reached_target ? '<span class="fast-hit">✓</span>' : '';
       return `<div class="fast-hist-row">
           <div class="fast-hist-day">${day}</div>
@@ -19418,7 +19483,7 @@ function renderUpcoming(d) {
       const ty = UPC_TYPE[e.type] || {icon:'•', label:e.type};
       const when = _upcWhen(e.days_until);
       const dt = new Date(e.date + 'T12:00:00');
-      const dayLbl = dt.toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+      const dayLbl = dt.toLocaleDateString(_locale(), {weekday:'short', month:'short', day:'numeric'});
       const who = e.who ? `<span class="upc-who">${escHtml(e.who)}</span>` : '';
       const detail = e.detail && e.type !== 'dependent' ? ` · ${escHtml(e.detail)}` : '';
       return `<div class="upc-item">
@@ -19483,7 +19548,7 @@ function renderMealPlan(d) {
   const daysHtml = (d.days || []).map(day => {
     const dt = new Date(day.date + 'T12:00:00');
     const isToday = day.date === today;
-    const dayLbl = dt.toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'});
+    const dayLbl = dt.toLocaleDateString(_locale(), {weekday:'long', month:'short', day:'numeric'});
     const slots = Object.entries(MEAL_SLOTS).map(([k, v]) => {
       const items = day.meals[k] || [];
       if (!items.length) return '';
@@ -19643,7 +19708,7 @@ async function loadMedSpendTimeline() {
   const max = Math.max(...d.timeline.map(t => t.spend), 1);
   const bars = d.timeline.map(t => {
     const h = Math.round(t.spend / max * 70);
-    const mlabel = new Date(t.month + '-01T12:00:00').toLocaleDateString([], { month: 'short' });
+    const mlabel = new Date(t.month + '-01T12:00:00').toLocaleDateString(_locale(), { month: 'short' });
     return `<div class="mst-col" title="${t.month}: ${_rupee(t.spend)}">
       <div class="mst-bar" style="height:${h}px"></div><div class="mst-x">${mlabel}</div></div>`;
   }).join('');
@@ -19675,7 +19740,7 @@ function renderMedBudget(d) {
     runouts = `<div class="panel" style="padding:22px;text-align:center;color:var(--gray-400);font-size:13px">${t('Track pill counts on your medicines to forecast run-out dates.')}</div>`;
   } else {
     const rows = d.run_outs.map(r => {
-      const dt = new Date(r.run_out + 'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+      const dt = new Date(r.run_out + 'T12:00:00').toLocaleDateString(_locale(), {weekday:'short', month:'short', day:'numeric'});
       return `<div class="mb-run-row${r.low ? ' mb-run-low' : ''}">
           <span class="mb-run-name">${escHtml(r.icon || '💊')} ${escHtml(r.name)}</span>
           <span class="mb-run-days">${tformat('%1 days left', Math.round(r.days_left))}</span>
@@ -19770,7 +19835,7 @@ async function loadWorkoutSessions() {
   }
   el.innerHTML = d.sessions.map(s => {
     const setStr = s.sets.map(st => `${st.reps}×${st.weight || t('BW')}`).join(' · ');
-    const dateStr = new Date(s.date_key + 'T12:00:00').toLocaleDateString([], {weekday:'short', month:'short', day:'numeric'});
+    const dateStr = new Date(s.date_key + 'T12:00:00').toLocaleDateString(_locale(), {weekday:'short', month:'short', day:'numeric'});
     const oneRm = s.best_1rm > 0 ? `<span class="wk-1rm">${t('est. 1RM')} ${s.best_1rm}${s.unit}</span>` : '';
     return `<div class="panel wk-session" style="padding:14px 18px;margin-bottom:10px">
       <div class="wk-session-head">
@@ -19881,7 +19946,7 @@ async function loadTaperSteps() {
     return;
   }
   const rows = d.steps.map(s => {
-    const dt = new Date(s.start_date + 'T12:00:00').toLocaleDateString([], {month:'short', day:'numeric', year:'numeric'});
+    const dt = new Date(s.start_date + 'T12:00:00').toLocaleDateString(_locale(), {month:'short', day:'numeric', year:'numeric'});
     const when = s.status === 'upcoming' && s.days_until != null ? ` · ${tformat('in %1 days', s.days_until)}` : '';
     return `<div class="tp-step tp-step--${s.status}">
         <div class="tp-step-dot"></div>
@@ -20095,7 +20160,7 @@ function toggleTimelineType(key) {
 function _monthKey(iso) { return (iso || '').slice(0, 7); }
 function _monthTitle(ym) {
   const [y, m] = ym.split('-').map(Number);
-  return new Date(y, m - 1, 1).toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+  return new Date(y, m - 1, 1).toLocaleDateString(_locale(), {month: 'long', year: 'numeric'});
 }
 
 function renderTimeline(d) {
@@ -20363,12 +20428,12 @@ let _countryList = [];
 function _money(n, opts) {
   const v = Math.round((n || 0) * 100) / 100;
   try { return _userCurrency.symbol + v.toLocaleString(_userCurrency.locale, opts || {}); }
-  catch (e) { return _userCurrency.symbol + v.toLocaleString('en-US', opts || {}); }
+  catch (e) { return _userCurrency.symbol + v.toLocaleString(_locale(), opts || {}); }
 }
 // Kept for callers that want a whole-number amount; now country-aware.
 function _rupee(n) {
   try { return _userCurrency.symbol + Math.round(n || 0).toLocaleString(_userCurrency.locale); }
-  catch (e) { return _userCurrency.symbol + Math.round(n || 0).toLocaleString('en-US'); }
+  catch (e) { return _userCurrency.symbol + Math.round(n || 0).toLocaleString(_locale()); }
 }
 // Display/input units. Data is always STORED canonically (weight kg, height cm,
 // glucose mg/dL); these only decide how it's shown and what an entered number
@@ -20491,7 +20556,7 @@ function spendNextMonth() {
 
 function _monthLabel(m) {
   const [y, mo] = m.split('-').map(Number);
-  return new Date(y, mo - 1, 1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
+  return new Date(y, mo - 1, 1).toLocaleDateString(_locale(), {month:'long', year:'numeric'});
 }
 
 function renderSpendingView(d, trendMonths) {
@@ -22307,15 +22372,18 @@ async function initDailyCheckin() {
   const prompt = document.getElementById('dash-checkin-prompt');
   if (!prompt) return;
   const labels = { mood:'mood', sleep:'sleep', symptoms:'symptoms', water:'water' };
-  const parts  = stepsToShow.map(s => labels[s]).filter(Boolean);
+  // Translated here rather than in the map: the map's values are also the step
+  // keys' English names, and translating at the definition would freeze them to
+  // whatever language was active when the file loaded.
+  const parts  = stepsToShow.map(s => labels[s]).filter(Boolean).map(t);
   prompt.innerHTML = `
     <div class="checkin-prompt-icon">☀️</div>
     <div class="checkin-prompt-body">
-      <div class="checkin-prompt-title">Daily check-in</div>
-      <div class="checkin-prompt-sub">A quick 30 seconds — ${parts.join(', ')}.</div>
+      <div class="checkin-prompt-title">${t('Daily check-in')}</div>
+      <div class="checkin-prompt-sub">${tformat('A quick 30 seconds — %1.', parts.join(', '))}</div>
     </div>
     <button class="checkin-prompt-start" data-ev-click="startDailyCheckin()">${t('Start')}</button>
-    <button class="checkin-prompt-dismiss" data-ev-click="dismissCheckinPrompt()" title="Not now" aria-label="Dismiss">✕</button>`;
+    <button class="checkin-prompt-dismiss" data-ev-click="dismissCheckinPrompt()" title="${escHtml(t('Not now'))}" aria-label="${escHtml(t('Dismiss'))}">✕</button>`;
   prompt.style.display = 'flex';
 }
 
@@ -22366,23 +22434,27 @@ function renderCheckin() {
   if (!body || !footer) return;
 
   const stepNum = ciStep + 1;
+  // The whole label is one translatable phrase, not "Step" + numbers + a name
+  // glued together — a language that counts differently ("4 में से 1") cannot
+  // be built out of English fragments joined in English order.
+  const stepLabel = name => tformat('Step %1 of %2 · %3', stepNum, totalSteps, name);
 
   // ── Step: Mood ──────────────────────────────────────────────
   if (currentStepName === 'mood') {
     body.innerHTML = `
-      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · How you feel</div>
-      <div class="ci-question">Good morning! How are you feeling?</div>
+      <div class="ci-step-label">${stepLabel(t('How you feel'))}</div>
+      <div class="ci-question">${t('Good morning! How are you feeling?')}</div>
       <div class="ci-mood-grid">
         ${CI_MOODS.map((m, i) => `
           <button class="ci-mood-btn${ciSel.mood === i ? ' active' : ''}"
                   data-ev-click="ciPickMood(${i})">
             <span class="ci-mood-emoji">${m.emoji}</span>
-            <span class="ci-mood-label">${m.label}</span>
+            <span class="ci-mood-label">${t(m.label)}</span>
           </button>`).join('')}
       </div>
       ${ciSel.mood !== null ? `
         <textarea class="ci-note" rows="2" maxlength="500"
-                  placeholder="Anything on your mind? Adds a note to your journal (optional)…"
+                  placeholder="${escHtml(t('Anything on your mind? Adds a note to your journal (optional)…'))}"
                   data-ev-input="ciSetNote(this.value)">${escHtml(ciSel.note || '')}</textarea>` : ''}`;
     footer.innerHTML = `
       <button class="ci-btn-primary" data-ev-click="ciNext()"
@@ -22392,14 +22464,14 @@ function renderCheckin() {
   // ── Step: Sleep ─────────────────────────────────────────────
   else if (currentStepName === 'sleep') {
     body.innerHTML = `
-      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · Sleep</div>
-      <div class="ci-question">How much did you sleep last night?</div>
+      <div class="ci-step-label">${stepLabel(t('Sleep'))}</div>
+      <div class="ci-question">${t('How much did you sleep last night?')}</div>
       <div class="ci-sleep-grid">
         ${CI_SLEEP.map((s, i) => `
           <button class="ci-sleep-btn${ciSel.sleep === i ? ' active' : ''}"
                   data-ev-click="ciPickSleep(${i})">
-            <div class="ci-sleep-dur">${s.label}</div>
-            <div class="ci-sleep-qual">${s.sub}</div>
+            <div class="ci-sleep-dur">${t(s.label)}</div>
+            <div class="ci-sleep-qual">${t(s.sub)}</div>
           </button>`).join('')}
       </div>`;
     footer.innerHTML = `
@@ -22411,14 +22483,14 @@ function renderCheckin() {
   // ── Step: Symptoms ──────────────────────────────────────────
   else if (currentStepName === 'symptoms') {
     body.innerHTML = `
-      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · Symptoms</div>
-      <div class="ci-question">Any symptoms today?</div>
+      <div class="ci-step-label">${stepLabel(t('Symptoms'))}</div>
+      <div class="ci-question">${t('Any symptoms today?')}</div>
       <div class="ci-sym-list">
         <button class="ci-none-btn${ciSel.symptoms.length === 0 ? ' active' : ''}"
-                data-ev-click="ciClearSymptoms()">None, feeling fine</button>
+                data-ev-click="ciClearSymptoms()">${t('None, feeling fine')}</button>
         ${CI_SYMPTOMS.map(s => `
           <button class="ci-sym-btn${ciSel.symptoms.includes(s) ? ' active' : ''}"
-                  data-ev-click="ciToggleSymptom('${s}')">${s}</button>`).join('')}
+                  data-ev-click="ciToggleSymptom('${s}')">${t(s)}</button>`).join('')}
       </div>`;
     const isFirst = ciStep === 0;
     footer.innerHTML = `
@@ -22429,8 +22501,8 @@ function renderCheckin() {
   // ── Step: Hydration ─────────────────────────────────────────
   else if (currentStepName === 'water') {
     body.innerHTML = `
-      <div class="ci-step-label">Step ${stepNum} of ${totalSteps} · Hydration</div>
-      <div class="ci-question">How much have you had to drink so far?</div>
+      <div class="ci-step-label">${stepLabel(t('Hydration'))}</div>
+      <div class="ci-question">${t('How much have you had to drink so far?')}</div>
       <div class="ci-water-grid">
         ${CI_WATER.map((w, i) => `
           <button class="ci-water-btn${ciSel.water === i ? ' active' : ''}"
@@ -22575,28 +22647,28 @@ function ciShowSummary() {
   const sleepObj = ciSel.sleep !== null ? CI_SLEEP[ciSel.sleep] : null;
   const waterObj = ciSel.water !== null ? CI_WATER[ciSel.water] : null;
   const symText  = ciSel.symptoms.length
-    ? ciSel.symptoms.slice(0, 2).join(', ') + (ciSel.symptoms.length > 2 ? ` +${ciSel.symptoms.length - 2}` : '')
-    : 'None';
+    ? ciSel.symptoms.slice(0, 2).map(t).join(', ') + (ciSel.symptoms.length > 2 ? ` +${ciSel.symptoms.length - 2}` : '')
+    : t('None');
 
   body.innerHTML = `
-    <div class="ci-step-label" style="color:var(--teal-600)">All done</div>
-    <div class="ci-question" style="font-size:17px;margin-bottom:18px">Good start to the day!</div>
+    <div class="ci-step-label" style="color:var(--teal-600)">${t('All done')}</div>
+    <div class="ci-question" style="font-size:17px;margin-bottom:18px">${t('Good start to the day!')}</div>
     <div class="ci-summary-grid">
       <div class="ci-sum-card">
-        <div class="ci-sum-val">${moodObj ? moodObj.emoji + ' ' + moodObj.label : '—'}</div>
-        <div class="ci-sum-lab">Mood</div>
+        <div class="ci-sum-val">${moodObj ? moodObj.emoji + ' ' + t(moodObj.label) : '—'}</div>
+        <div class="ci-sum-lab">${t('Mood')}</div>
       </div>
       <div class="ci-sum-card">
-        <div class="ci-sum-val">${sleepObj ? sleepObj.label : '—'}</div>
-        <div class="ci-sum-lab">Sleep</div>
+        <div class="ci-sum-val">${sleepObj ? t(sleepObj.label) : '—'}</div>
+        <div class="ci-sum-lab">${t('Sleep')}</div>
       </div>
       <div class="ci-sum-card">
         <div class="ci-sum-val" style="font-size:13px">${symText}</div>
-        <div class="ci-sum-lab">Symptoms</div>
+        <div class="ci-sum-lab">${t('Symptoms')}</div>
       </div>
       <div class="ci-sum-card">
-        <div class="ci-sum-val">${waterObj ? waterObj.label : '—'}</div>
-        <div class="ci-sum-lab">Hydration</div>
+        <div class="ci-sum-val">${waterObj ? t(waterObj.label) : '—'}</div>
+        <div class="ci-sum-lab">${t('Hydration')}</div>
       </div>
     </div>`;
 
@@ -22947,7 +23019,7 @@ function renderSymptomTimeline(d) {
     return Math.min(100, Math.max(0, ((t - from) / span) * 100));
   };
   const sevColor = s => s>=8?'#EF4444':s>=5?'#F59E0B':'#22C55E';
-  const fmt = iso => { try { return new Date(iso+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}); } catch(e){ return iso; } };
+  const fmt = iso => { try { return new Date(iso+'T12:00:00').toLocaleDateString(_locale(),{month:'short',day:'numeric'}); } catch(e){ return iso; } };
 
   const started = d.meds.filter(m => m.started_in_window);
   const ongoing = d.meds.filter(m => !m.started_in_window);
@@ -23642,7 +23714,7 @@ async function loadFitnessPRs() {
   const PRCards = Object.entries(grouped).map(([cat, group]) => {
     const metricsHTML = group.metrics.map(pr => {
       const val    = pr.value_display || (pr.unit === 'km' ? pr.value + ' km' : pr.value + ' ' + pr.unit);
-      const date   = new Date(pr.date + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+      const date   = new Date(pr.date + 'T12:00:00').toLocaleDateString(_locale(), {month:'short', day:'numeric', year:'numeric'});
       const newTag = pr.is_recent
         ? '<span class="pr-new-tag">🏆 New!</span>'
         : '';
@@ -24153,14 +24225,14 @@ async function loadWeightProgressChart(days) {
     const daysLeft = Math.round((eta - new Date()) / 86400000);
     etaText = daysLeft <= 0
       ? '🎉 Goal reached!'
-      : `At your current pace, ~${daysLeft} days to your goal (${eta.toLocaleDateString('en-US',{month:'short',day:'numeric'})})`;
+      : `At your current pace, ~${daysLeft} days to your goal (${eta.toLocaleDateString(_locale(),{month:'short',day:'numeric'})})`;
   } else if (s.on_track === false && hasGoal) {
     etaText = "You're not moving toward your goal at your current pace yet.";
   } else if (s.eta_date) {
     const eta = new Date(s.eta_date + 'T12:00:00');
     const daysLeft = Math.round((eta - new Date()) / 86400000);
     if (daysLeft > 0)
-      etaText = `On plan: ~${daysLeft} days to go (${eta.toLocaleDateString('en-US',{month:'short',day:'numeric'})})`;
+      etaText = `On plan: ~${daysLeft} days to go (${eta.toLocaleDateString(_locale(),{month:'short',day:'numeric'})})`;
   }
   const etaColor = s.on_track === false ? '#B4443A' : '#468A5B';
 
