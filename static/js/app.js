@@ -13775,6 +13775,65 @@ function repairIntegrity() {
   });
 }
 
+// ── Server setup ────────────────────────────────────────────────────────────
+// Renders db/readiness.py. Deliberately shows the working items too, not only
+// the problems: "email is not set up" means one thing on a page that also says
+// what IS working, and something much more alarming on a page that only ever
+// lists faults. A green line is information.
+
+const _READY_ICON = {ok: '✓', degraded: '!', off: '○'};
+
+async function loadReadiness() {
+  const el = document.getElementById('readiness-report');
+  if (!el) return;
+  const r = await coalescedGet('/api/server/readiness').catch(() => null);
+  if (!r) { el.innerHTML = `<div class="restore-row">${t('Could not read the server setup')}</div>`; return; }
+
+  // Core problems first and stated plainly. Someone skimming should not have to
+  // work out that "session secret" is more urgent than "WhatsApp".
+  const head = r.core_problems.length
+    ? `<div class="rd-alert">${escHtml(tformat(
+         r.core_problems.length === 1
+           ? '%1 thing here puts your data at risk.'
+           : '%1 things here put your data at risk.', r.core_problems.length))}</div>`
+    : '';
+
+  const rows = r.items.map(i => {
+    // The cost and fix are only shown for things that are not working. On a
+    // healthy line they would be a wall of text about a problem nobody has.
+    const explain = i.status === 'ok' ? '' : `
+      <div class="rd-cost">${escHtml(t(i.cost))}</div>
+      <div class="rd-fix"><code>${escHtml(t(i.fix))}</code></div>`;
+    return `<div class="rd-item rd-${i.status}">
+      <div class="rd-line">
+        <span class="rd-dot" aria-hidden="true">${_READY_ICON[i.status] || '·'}</span>
+        <span class="rd-name">${escHtml(t(i.name))}</span>
+        <span class="rd-detail">${escHtml(_readyDetail(i.detail))}</span>
+        <span class="rd-status">${escHtml(t(_readyWord(i.status)))}</span>
+      </div>${explain}</div>`;
+  }).join('');
+
+  el.innerHTML = head + `<div class="rd-list">${rows}</div>`;
+  _a11yEnhance(el);
+}
+
+// The server sends {text, args} — an English template plus its values — rather
+// than a finished sentence, so the sentence can be translated here and the
+// values stay values. A hostname or a byte count is not translatable text.
+function _readyDetail(d) {
+  if (!d) return '';
+  if (typeof d === 'string') return d;              // raw data, as sent
+  return tformat.apply(null, [d.text].concat(d.args || []));
+}
+
+// Words, not colours. The status has to survive being read aloud, printed in
+// black and white, or looked at by someone who cannot tell the dot's colour.
+function _readyWord(status) {
+  return status === 'ok' ? 'working'
+       : status === 'degraded' ? 'needs attention'
+       : 'not set up';
+}
+
 async function loadStorage() {
   const el = document.getElementById('storage-report');
   if (!el) return;
@@ -21628,6 +21687,7 @@ async function initExportView() {
   renderExportSections();
   await loadExportCounts();
   loadScopedExportCats();
+  try { loadReadiness(); } catch (e) {}
   try { loadStorage(); } catch (e) {}
   try { loadIntegrity(); } catch (e) {}
   try { loadBackups(); } catch (e) {}

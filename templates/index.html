@@ -3225,6 +3225,26 @@
     <div id="restore-preview" style="display:none;margin-top:14px"></div>
   </div>
 
+  <!-- Server setup. Arogo self-hosts, so whoever runs it is also whoever has to
+       notice it is half-configured — and until now nothing said so. Verification
+       emails printed to the server log while the screen said "check your inbox";
+       a caregiver SOS with no Twilio account is written to stderr and reported
+       as sent. The fallbacks are deliberate and stay. This is the missing half:
+       one place that says which are in force and what each one costs.
+       Rendered by loadReadiness(). -->
+  <div class="panel" style="padding:18px 20px;margin-top:20px">
+    <h2 class="panel-title" style="margin-bottom:4px"
+        data-i18n="🩺 Server setup">🩺 Server setup</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="What this server is set up to do, and what it quietly cannot. Anything not configured falls back to writing into the server log, which works for testing and reaches nobody in real life.">
+      What this server is set up to do, and what it quietly cannot. Anything not
+      configured falls back to writing into the server log, which works for
+      testing and reaches nobody in real life.</p>
+    <div id="readiness-report" aria-live="polite">
+      <div class="restore-row" data-i18n="Checking…">Checking…</div>
+    </div>
+  </div>
+
   <!-- Disk usage. Arogo self-hosts on a Pi, so uploads sit on an SD card with a
        hard limit and nobody watching it — when it fills, writes start failing
        and a logged dose quietly doesn't save. Rendered by loadStorage(). -->

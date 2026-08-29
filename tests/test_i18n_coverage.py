@@ -47,6 +47,13 @@ MAX_UNTRANSLATED_ATTRS = 0
 SAME_IN_BOTH = {
     '⚡ HIIT': 'An acronym used as-is in Hindi fitness writing; transliterating '
               'it to एचआईआईटी would be less recognisable, not more.',
+    'PostgreSQL': 'A product name. It is written PostgreSQL on the page you '
+                  'would go to in order to install or configure it, so '
+                  'transliterating it here would break the only link between '
+                  'this line and everything else about it.',
+    'SQLite, %1 MB': 'Same: SQLite is a product name, MB is an SI-derived unit '
+                     'written the same way in Hindi and Bengali technical '
+                     'text, and the size itself is a value.',
 }
 
 
@@ -443,22 +450,66 @@ def test_placeholders_survive_translation(code):
 # are a larger, separate piece of work and are deliberately not claimed here.
 # What this covers is what goes through t().
 
+def _timing_labels():
+    from db.medicines import TIMING_LABELS
+    return {v for v in TIMING_LABELS.values() if v}
+
+
+def _readiness_strings():
+    """Every name, cost and fix on the server-setup page.
+
+    The page exists to tell someone what is broken and what to type. Half of it
+    arriving in English would make it least useful to exactly the reader who
+    needed a translated app in the first place.
+    """
+    from db.readiness import CHECKS
+    return {s for c in CHECKS for s in (c['name'], c['cost'], c['fix'])}
+
+
+# detail('...') templates are built at call time, so no runtime object holds
+# them all — a check only produces its own. Read from the source instead, the
+# same way the JS side is read, so a template added tomorrow is covered without
+# anyone remembering to list it here.
+_DETAIL_CALL = re.compile(r"\bdetail\(\s*'((?:[^'\\]|\\.)*)'")
+
+
+def _readiness_details():
+    src = io.open(os.path.join(ROOT, 'db', 'readiness.py'), encoding='utf-8').read()
+    out = set()
+    for line in src.splitlines():
+        if line.lstrip().startswith('#'):
+            continue
+        for m in _DETAIL_CALL.finditer(line):
+            s = _unescape(m.group(1))
+            # '%1' alone is a passthrough for data (a hostname, an error
+            # string) — there is nothing there to translate.
+            if s.strip() != '%1':
+                out.add(s)
+    return out
+
+
 SERVER_LABELS = [
-    ('db.medicines', 'TIMING_LABELS',
+    ('db.medicines.TIMING_LABELS', _timing_labels,
      'Dose timing ("with food", "at bedtime"). Rendered through medTimingText, '
      'which calls t() on the server-supplied value.'),
+    ('db.readiness.CHECKS', _readiness_strings,
+     'The server-setup report. Names, costs and fixes are written in Python '
+     'and passed through t() on the client.'),
+    ("db.readiness detail('…')", _readiness_details,
+     'Detail lines on the server-setup page. The server sends the template and '
+     'its values separately; the client runs tformat() on them.'),
 ]
 
 
-@pytest.mark.parametrize('module,name,why', SERVER_LABELS)
+@pytest.mark.parametrize('where,values,why', SERVER_LABELS,
+                         ids=[s[0] for s in SERVER_LABELS])
 @pytest.mark.parametrize('code', [c for c, _ in listed_languages()])
-def test_server_supplied_labels_are_translated(code, module, name, why):
-    mod = __import__(module, fromlist=[name])
-    values = {v for v in getattr(mod, name).values() if v}
-    missing = sorted(values - pack_keys(code))
+def test_server_supplied_labels_are_translated(code, where, values, why):
+    missing = sorted(values() - pack_keys(code))
     assert not missing, (
-        f'{module}.{name} — {why}\n'
-        f'{code} has no translation for: ' + ', '.join(missing))
+        f'{where} — {why}\n'
+        f'{code} has no translation for: '
+        + '; '.join(m[:70] for m in missing[:6]))
 
 
 def test_the_translating_chokepoint_still_exists():
