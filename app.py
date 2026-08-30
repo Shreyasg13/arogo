@@ -59,6 +59,7 @@ def create_app(config=Config):
     from routes.family    import bp as family_bp
     from routes.push      import bp as push_bp
     from routes.storage   import bp as storage_bp
+    from routes.corrections import bp as corrections_bp
     from routes.trash     import bp as trash_bp
     from routes.situational import bp as situational_bp
     from routes.account_activity import bp as account_activity_bp
@@ -139,6 +140,7 @@ def create_app(config=Config):
     app.register_blueprint(health_reminders_bp)
     app.register_blueprint(vitals_import_bp)
     app.register_blueprint(storage_bp)
+    app.register_blueprint(corrections_bp)
     app.register_blueprint(trash_bp)
     app.register_blueprint(situational_bp)
     app.register_blueprint(account_activity_bp)

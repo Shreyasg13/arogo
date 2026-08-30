@@ -460,6 +460,8 @@ NOT_SEARCHABLE = {
     'dose_logs':             'taken/skipped ticks; the medicine is searchable',
     'dose_snoozes':          'transient reminder state',
     'lab_rechecks':          'a flag per lab key; the result is searchable',
+    'entry_edits':           'the before/after values of a correction; the '
+                             'entry that was corrected is itself searchable',
     'rehab_logs':            'one tick per session done; the plan is searchable',
     'vital_targets':         'numeric targets; shown on the vitals page',
     'environment_days':      'imported AQI/weather numbers, not records',

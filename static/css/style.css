@@ -7100,6 +7100,28 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .restore-warn .restore-row { color:inherit; border-bottom-color:rgba(138,74,68,.22); }
 .restore-warn .restore-row b { color:#8a4a44; }
 .restore-note { font-size:12.5px; color:var(--gray-400); line-height:1.6; margin-top:8px; }
+/* ── Corrected entries ────────────────────────────────────────────────────
+   A correction is a good thing to have made, so this is a quiet note beside
+   the value, not a warning colour. It exists because a health record whose
+   numbers change silently is worse than one you cannot edit. */
+.corrected-mark {
+  margin-left: 7px; font-size: 10.5px; letter-spacing: .02em;
+  color: var(--gray-400); background: var(--gray-50, #F0EDE6);
+  border-radius: 5px; padding: 1px 6px; vertical-align: 1px;
+  white-space: nowrap;
+}
+.correct-history { margin-top: 14px; }
+.correct-history-title {
+  font-size: 12px; font-weight: 600; color: var(--gray-500);
+  margin-bottom: 6px;
+}
+.correct-history-row {
+  display: flex; gap: 10px; font-size: 12.5px; color: var(--gray-500);
+  padding: 5px 0; border-top: 1px solid var(--gray-50, #F0EDE6);
+  line-height: 1.5;
+}
+.correct-history-when { flex: none; color: var(--gray-400); min-width: 4.5em; }
+
 /* ── Server setup report ──────────────────────────────────────────────────
    Status is carried by a glyph and a word, never by colour alone — the page
    has to work in greyscale, read aloud, and for the ~8% of men who cannot

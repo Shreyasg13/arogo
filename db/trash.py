@@ -140,6 +140,9 @@ NOT_TRASHABLE = {
     'lab_rechecks': 'a flag on a lab, not a record',
     'notification_log': 'app-generated alerts, not the user\'s records',
     'sync_log': 'integration diagnostics',
+    'entry_edits': 'what an entry said before it was corrected. Being able to '
+                   'delete the evidence of a correction would defeat the point '
+                   'of keeping it; it goes when its entry is purged',
     'oauth_tokens': 'disconnecting an integration must actually disconnect it — '
                     'a recoverable token is a security problem, not a convenience',
     'push_subscriptions': 'turning notifications off must take effect at once',

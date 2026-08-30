@@ -931,6 +931,17 @@ CREATE TABLE IF NOT EXISTS health_notes (
     entity_label TEXT DEFAULT '', body TEXT NOT NULL, pinned INTEGER DEFAULT 0,
     created_at TEXT NOT NULL, updated_at TEXT NOT NULL, user_id TEXT NOT NULL
 );
+-- What an entry said before it was corrected. The app could delete a health
+-- entry but not fix one, so a typo could only be erased and re-entered — losing
+-- the original timestamp and leaving no sign the number had ever been different.
+-- Corrections are allowed now, and this is the half that keeps them honest: if
+-- you showed a reading to a doctor last week and it reads differently today,
+-- the record says so. See db/corrections.py.
+CREATE TABLE IF NOT EXISTS entry_edits (
+    id TEXT PRIMARY KEY, table_name TEXT NOT NULL, row_id TEXT NOT NULL,
+    before_json TEXT NOT NULL, after_json TEXT NOT NULL,
+    edited_at TEXT NOT NULL, user_id TEXT NOT NULL
+);
 -- A deleted row, kept whole so it can be put back. `payload` is the original
 -- row as JSON; `kind`/`label` are captured at delete time because the thing that
 -- could describe the row is exactly what was removed.
@@ -2096,6 +2107,7 @@ DATA_TABLES = [
     'environment_days',
     'insurance_policies',
     'health_notes',
+    'entry_edits',
     'deleted_items',
     'travel_trips',
     'illness_episodes',

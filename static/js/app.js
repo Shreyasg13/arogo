@@ -11063,8 +11063,17 @@ async function loadSymptoms() {
   }
 
   const sevColor = s => s>=8?'#EF4444':s>=5?'#F59E0B':'#22C55E';
-  const sevLabel = s => s>=8?'Severe':s>=7?'High':s>=5?'Moderate':s>=3?'Mild':'Minimal';
+  const sevLabel = s => t(s>=8?'Severe':s>=7?'High':s>=5?'Moderate':s>=3?'Mild':'Minimal');
   const TMAP = { morning:'☀️ Morning', afternoon:'🌤️ Afternoon', evening:'🌆 Evening', night:'🌙 Night', all_day:'🔄 All day' };
+
+  // Which of these rows have been corrected, in one request rather than one
+  // per row. Failure is silent: the marker is worth having, not worth blocking
+  // the list for.
+  rememberCorrectionRows('symptoms', r);
+  const edits = await fetch(
+    `/api/entries/symptoms/edits?ids=${r.map(s => encodeURIComponent(s.id)).join(',')}`,
+    {credentials: 'same-origin'})
+    .then(x => x.ok ? x.json() : null).then(x => (x && x.edits) || {}).catch(() => ({}));
 
   // Group by date for better readability
   const byDate = {};
@@ -11081,7 +11090,7 @@ async function loadSymptoms() {
   el.innerHTML = filterBanner + bulkHead + Object.entries(byDate).map(([date, syms]) => {
     const d = new Date(date+'T12:00:00');
     const today = localToday();
-    const dateLabel = date === today ? 'Today' :
+    const dateLabel = date === today ? t('Today') :
       d.toLocaleDateString(_locale(), { weekday:'short', month:'short', day:'numeric' });
 
     const rows = syms.map(s => {
@@ -11092,13 +11101,19 @@ async function loadSymptoms() {
         ${bulkCheckbox('symptoms', s.id)}
         <div class="symptom-dot" style="background:${sevColor(s.severity)}"></div>
         <div class="symptom-info">
-          <div class="symptom-name-text">${escHtml(s.name)}</div>
-          <div class="symptom-meta">${TMAP[s.time_of_day]||s.time_of_day}${regionTag}${durationTag(s)}${s.notes?' · '+escHtml(s.notes):''}</div>
+          <div class="symptom-name-text">${escHtml(s.name)}${correctedMark(edits, s.id)}</div>
+          <div class="symptom-meta">${t(TMAP[s.time_of_day]||s.time_of_day)}${regionTag}${durationTag(s)}${s.notes?' · '+escHtml(s.notes):''}</div>
         </div>
         <span class="symptom-severity-badge" style="background:${sevColor(s.severity)}1A;color:${sevColor(s.severity)}">
           ${s.severity}/10 · ${sevLabel(s.severity)}
         </span>
-        <button class="todo-act-btn del" data-ev-click="delSymptom('${s.id}')" title="Remove">
+        <button class="todo-act-btn" data-ev-click="openCorrection('symptoms','${s.id}')"
+                title="${escHtml(t('Correct this entry'))}"
+                aria-label="${escHtml(t('Correct this entry'))}">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+        </button>
+        <button class="todo-act-btn del" data-ev-click="delSymptom('${s.id}')"
+                title="${escHtml(t('Remove'))}" aria-label="${escHtml(t('Remove'))}">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
         </button>
       </div>`;
@@ -11111,6 +11126,141 @@ async function loadSymptoms() {
   }).join('');
   _bulkRefresh('symptoms');
   loadSymptomTimeline();
+}
+
+// ── Correcting an entry ─────────────────────────────────────────────────────
+//
+// One form for every correctable table. The fields come from the server
+// (GET /api/entries/<table>/fields), which is the same declaration the server
+// validates against — so this cannot offer a field the server will reject, and
+// adding a field does not mean editing two files.
+//
+// The correction is visible, not silent. A health record whose numbers change
+// quietly is worse than one you cannot edit: what the entry said before is
+// shown in the form and marked on the row afterwards.
+
+let _correcting = null;   // {table, id, before}
+
+async function openCorrection(table, id) {
+  const [spec, edits] = await Promise.all([
+    fetch(`/api/entries/${encodeURIComponent(table)}/fields`,
+          {credentials: 'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch(`/api/entries/${encodeURIComponent(table)}/edits?ids=${encodeURIComponent(id)}`,
+          {credentials: 'same-origin'}).then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+  if (!spec || !spec.fields) { showToast('Could not open that', 'error'); return; }
+
+  const row = _correctionRow(table, id);
+  if (!row) { showToast('Could not open that', 'error'); return; }
+  _correcting = {table, id};
+
+  const box = document.getElementById('correct-fields');
+  box.innerHTML = spec.fields.map(f => {
+    const v = row[f.name];
+    const val = (v === null || v === undefined) ? '' : String(v);
+    if (f.type === 'choice') {
+      return `<div class="form-group">
+        <label class="form-label">${escHtml(t(f.label))}</label>
+        <select class="form-input" data-cf="${escHtml(f.name)}">
+          ${(f.choices || []).map(c =>
+            `<option value="${escHtml(c)}"${c === val ? ' selected' : ''}>${escHtml(t(c))}</option>`).join('')}
+        </select></div>`;
+    }
+    const type = f.type === 'date' ? 'date' : f.type === 'number' ? 'number' : 'text';
+    const bounds = (f.min !== undefined ? ` min="${f.min}"` : '') +
+                   (f.max !== undefined ? ` max="${f.max}"` : '');
+    return `<div class="form-group">
+      <label class="form-label">${escHtml(t(f.label))}</label>
+      <input class="form-input" type="${type}"${bounds}
+             data-cf="${escHtml(f.name)}" value="${escHtml(val)}"></div>`;
+  }).join('');
+
+  renderCorrectionHistory((edits && edits.edits && edits.edits[id]) || []);
+  document.getElementById('correct-modal-overlay').style.display = 'flex';
+  _a11yEnhance(box);
+}
+
+// The row is read from what the list already rendered rather than re-fetched:
+// the caller has it, and a second round trip to show a form the user opened
+// from that very row would only add a way for the two to disagree.
+let _correctionRows = {};
+function rememberCorrectionRows(table, rows) {
+  _correctionRows[table] = Object.fromEntries((rows || []).map(r => [r.id, r]));
+}
+function _correctionRow(table, id) {
+  return (_correctionRows[table] || {})[id];
+}
+
+function renderCorrectionHistory(hist) {
+  const el = document.getElementById('correct-history');
+  if (!el) return;
+  if (!hist.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="correct-history-title">${t('Earlier versions')}</div>` +
+    hist.map(h => {
+      const parts = Object.keys(h.before).map(f =>
+        tformat('%1: %2 → %3', escHtml(t(_correctionLabel(f))),
+                escHtml(String(h.before[f] ?? '—')),
+                escHtml(String(h.after[f] ?? '—'))));
+      return `<div class="correct-history-row">
+        <span class="correct-history-when">${escHtml(_shortWhen(h.at))}</span>
+        <span>${parts.join(' · ')}</span></div>`;
+    }).join('');
+}
+
+// Field labels for the history line. Falls back to the raw column name rather
+// than hiding a change nobody named — an unlabelled change still happened.
+const _CORRECTION_LABELS = {
+  value: 'Value', value2: 'Second value', date_key: 'Date', notes: 'Notes',
+  name: 'Symptom', severity: 'Severity', time_of_day: 'Time of day',
+  weight_kg: 'Weight', body_fat_pct: 'Body fat', waist_cm: 'Waist',
+  hip_cm: 'Hip', chest_cm: 'Chest', arm_cm: 'Arm',
+};
+function _correctionLabel(f) { return _CORRECTION_LABELS[f] || f; }
+
+function _shortWhen(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleDateString(_locale(), {month: 'short', day: 'numeric'});
+}
+
+async function saveCorrection() {
+  if (!_correcting) return;
+  const {table, id} = _correcting;
+  const changes = {};
+  document.querySelectorAll('#correct-fields [data-cf]').forEach(el => {
+    changes[el.getAttribute('data-cf')] = el.value;
+  });
+  const r = await fetch(`/api/entries/${encodeURIComponent(table)}/${encodeURIComponent(id)}`, {
+    method: 'PATCH', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(changes),
+  }).then(r => r.json()).catch(() => null);
+
+  if (!r || !r.success) { showToast('Could not save that', 'error'); return; }
+  closeModal('correct-modal-overlay');
+  const n = Object.keys(r.changed || {}).length;
+  showToast(n ? t('Corrected') : t('Nothing changed'));
+  _correcting = null;
+  _reloadAfterCorrection(table);
+}
+
+// Each table's list plus whatever reads from it. A corrected weight that left
+// the trend chart showing the old number would be worse than no correction.
+function _reloadAfterCorrection(table) {
+  const after = {
+    symptoms:     ['loadSymptoms', 'loadSymptomPatterns', 'loadSymptomBodyMap', 'loadWellnessStrip'],
+    vitals:       ['loadVitals', 'loadVitalTrends', 'loadVitalSparks'],
+    body_metrics: ['loadBodyView', 'loadWeightProgressChart', 'loadBodyTrends'],
+  }[table] || [];
+  after.forEach(fn => { try { if (typeof window[fn] === 'function') window[fn](); } catch (e) {} });
+}
+
+// A small marker on a row that has been corrected. Not a warning — a
+// correction is a good thing to have made — but the record should say so.
+function correctedMark(edits, id) {
+  const h = (edits || {})[id];
+  if (!h || !h.length) return '';
+  return `<span class="corrected-mark" data-i18n-title="Corrected — tap edit to see what it said before"
+    title="${escHtml(t('Corrected — tap edit to see what it said before'))}">${t('corrected')}</span>`;
 }
 
 function bulkDeleteSymptoms() {
@@ -11367,6 +11517,11 @@ async function loadVitals() {
   // imported twice, is otherwise removed one row at a time — which is the
   // friction that leaves wrong data in place because tidying it is too tedious.
   // Deleting is safe here: vitals go to the trash for thirty days.
+  rememberCorrectionRows('vitals', r);
+  const vEdits = await fetch(
+    `/api/entries/vitals/edits?ids=${r.map(v => encodeURIComponent(v.id)).join(',')}`,
+    {credentials: 'same-origin'})
+    .then(x => x.ok ? x.json() : null).then(x => (x && x.edits) || {}).catch(() => ({}));
   el.innerHTML = `
     <label class="bulk-all"><input type="checkbox"
       data-ev-change="bulkToggleAll('vitals',this.checked)"> ${t('Select all')}</label>
@@ -11379,11 +11534,16 @@ async function loadVitals() {
       ${bulkCheckbox('vitals', v.id)}
       <div class="vital-type-icon">${cfg.icon}</div>
       <div class="vital-info">
-        <div class="vital-reading">${display} <span style="font-size:12px;color:var(--gray-400)">${escHtml(v.unit)}</span></div>
+        <div class="vital-reading">${display} <span style="font-size:12px;color:var(--gray-400)">${escHtml(v.unit)}</span>${correctedMark(vEdits, v.id)}</div>
         <div class="vital-meta">${escHtml(v.date_key)} ${v.notes ? '· '+escHtml(v.notes) : ''}</div>
       </div>
       ${flagStr ? `<span class="vital-flag ${flagStr}">${t(flagStr.charAt(0).toUpperCase()+flagStr.slice(1))}</span>` : ''}
-      <button class="todo-act-btn del" data-ev-click="delVital('${v.id}')">
+      <button class="todo-act-btn" data-ev-click="openCorrection('vitals','${v.id}')"
+              title="${escHtml(t('Correct this entry'))}" aria-label="${escHtml(t('Correct this entry'))}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+      </button>
+      <button class="todo-act-btn del" data-ev-click="delVital('${v.id}')"
+              title="${escHtml(t('Remove'))}" aria-label="${escHtml(t('Remove'))}">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
     </div>`;
@@ -21322,14 +21482,26 @@ async function loadBodyMetricsView() {
   const r = await fetch('/api/body-metrics').then(r => r.json()).catch(() => []);
   const rows = (Array.isArray(r) ? r : []).slice(0,5);
   if (!rows.length) { el.innerHTML = `<p style="color:var(--gray-400);font-size:13px;text-align:center;padding:12px 0">${t('No entries yet')}</p>`; return; }
+  // The weight typo lives here — this list had neither an edit nor a delete,
+  // so a 95 entered for 59 could only be fixed by an admin or not at all.
+  rememberCorrectionRows('body_metrics', rows);
+  const bEdits = await fetch(
+    `/api/entries/body_metrics/edits?ids=${rows.map(m => encodeURIComponent(m.id)).join(',')}`,
+    {credentials: 'same-origin'})
+    .then(x => x.ok ? x.json() : null).then(x => (x && x.edits) || {}).catch(() => ({}));
   el.innerHTML = rows.map(m => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--gray-50)">
-      <div style="font-size:12px;color:var(--gray-400)">${m.date_key}</div>
-      <div style="font-size:13px;font-weight:600;color:var(--gray-800)">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--gray-50)">
+      <div style="font-size:12px;color:var(--gray-400)">${escHtml(m.date_key)}</div>
+      <div style="font-size:13px;font-weight:600;color:var(--gray-800);margin-left:auto">
         ${m.weight_kg ? fmtWeight(m.weight_kg) : ''}
         ${m.bmi ? ' · BMI ' + m.bmi : ''}
-        ${m.body_fat_pct ? ' · ' + m.body_fat_pct + '% fat' : ''}
+        ${m.body_fat_pct ? ' · ' + tformat('%1% fat', m.body_fat_pct) : ''}
+        ${correctedMark(bEdits, m.id)}
       </div>
+      <button class="todo-act-btn" data-ev-click="openCorrection('body_metrics','${m.id}')"
+              title="${escHtml(t('Correct this entry'))}" aria-label="${escHtml(t('Correct this entry'))}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>
+      </button>
     </div>`).join('');
 }
 

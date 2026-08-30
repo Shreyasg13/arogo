@@ -117,7 +117,29 @@ def purge_children(parent_table: str, parent_id: str, uid: str) -> int:
         except Exception:
             # Housekeeping must never break the delete the user asked for.
             continue
+    removed += _purge_corrections(parent_table, parent_id, uid)
     return removed
+
+
+def _purge_corrections(parent_table: str, parent_id: str, uid: str) -> int:
+    """Corrections belong to the entry they corrected.
+
+    Not expressible in RELATIONS: entry_edits points at a row in ANY table via
+    (table_name, row_id), so it has no single parent to declare. Handled here
+    instead — and handled at all, because NOT_TRASHABLE says corrections cannot
+    be deleted on their own precisely on the grounds that they go with the
+    entry. That has to be true, not just written down.
+    """
+    try:
+        n = execute("""SELECT COUNT(*) AS n FROM entry_edits
+                       WHERE table_name=? AND row_id=? AND user_id=?""",
+                    (parent_table, parent_id, uid), fetchone=True)
+        execute("""DELETE FROM entry_edits
+                   WHERE table_name=? AND row_id=? AND user_id=?""",
+                (parent_table, parent_id, uid), commit=True)
+        return (n or {}).get('n', 0) or 0
+    except Exception:
+        return 0
 
 
 # ── Reporting and repair ────────────────────────────────────────────────────
