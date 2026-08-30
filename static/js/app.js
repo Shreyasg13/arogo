@@ -2640,6 +2640,7 @@ async function loadDashboard() {
   try { loadProfileCompleteness(); } catch (e) {}
   try { loadConditionCheckin(); } catch (e) {}
   try { loadReminderHealth(); } catch (e) {}
+  try { loadDormant(); } catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([
@@ -11128,6 +11129,92 @@ async function loadSymptoms() {
   loadSymptomTimeline();
 }
 
+// ── Capability the data earned, still switched off ──────────────────────────
+//
+// Twenty-five blood-pressure readings and no target range, so nothing in the
+// app can say whether one of them is in range. The feature exists, the data
+// exists, and nothing joins them.
+//
+// The rule that keeps this from becoming a nag is in db/dormant.py: nothing
+// appears until the data earns it. Here the rule is about volume — the
+// dashboard shows ONE, the data-check page shows the rest.
+
+let _dormant = [];
+
+async function loadDormant() {
+  const el = document.getElementById('dash-dormant');
+  if (!el) return;
+  const r = await coalescedGet('/api/dormant').catch(() => null);
+  _dormant = (r && r.items) || [];
+  if (!_dormant.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+
+  const d = _dormant[0];
+  el.innerHTML = `
+    <div class="dormant-body">
+      <div class="dormant-name">${escHtml(t(d.name))}</div>
+      <div class="dormant-unlocks">${escHtml(_dormantSentence(d))}</div>
+    </div>
+    <button class="dormant-go" data-ev-click="switchView('${d.view}')">${escHtml(t(d.step))}</button>
+    <button class="dormant-dismiss" data-ev-click="dismissDormant('${d.key}')"
+            title="${escHtml(t('Stop offering this'))}"
+            aria-label="${escHtml(t('Stop offering this'))}">✕</button>`;
+  el.style.display = 'flex';
+  _a11yEnhance(el);
+}
+
+// The sentence carries the account's own numbers — a suggestion with none of
+// your data in it is a brochure. The server sends the template and the count
+// separately so it translates like everything else.
+function _dormantSentence(d) {
+  return tformat(d.unlocks, (d.detail && d.detail.count) || '');
+}
+
+async function dismissDormant(key) {
+  await fetch(`/api/dormant/${encodeURIComponent(key)}/dismiss`,
+              {method: 'POST', credentials: 'same-origin'}).catch(() => {});
+  // Not undoable() — this is a preference, not a deletion, and it is reversible
+  // from the data-check page where the dismissed ones are listed.
+  showToast(t('Won\'t offer that again'));
+  try { loadDormant(); } catch (e) {}
+  try { loadDormantList(); } catch (e) {}
+}
+
+async function restoreDormant(key) {
+  await fetch(`/api/dormant/${encodeURIComponent(key)}/dismiss`,
+              {method: 'DELETE', credentials: 'same-origin'}).catch(() => {});
+  try { loadDormant(); } catch (e) {}
+  try { loadDormantList(); } catch (e) {}
+}
+
+async function loadDormantList() {
+  const el = document.getElementById('dormant-list');
+  if (!el) return;
+  const r = await fetch('/api/dormant?all=1', {credentials: 'same-origin'})
+    .then(x => x.ok ? x.json() : null).catch(() => null);
+  const items = (r && r.items) || [];
+  if (!items.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `<div class="panel" style="padding:18px 20px;margin-top:20px">
+    <h2 class="panel-title" style="margin-bottom:4px">${t('Already in your data, not switched on')}</h2>
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+      ${t('Things your own logs would light up. Nothing here asks you to log more — only to connect what you already have.')}</p>
+    ${items.map(d => `
+      <div class="dormant-row${d.dismissed ? ' dormant-row--off' : ''}">
+        <div class="dormant-body">
+          <div class="dormant-name">${escHtml(t(d.name))}</div>
+          <div class="dormant-unlocks">${escHtml(_dormantSentence(d))}</div>
+        </div>
+        ${d.dismissed
+          ? `<button class="btn-outline btn-sm" data-ev-click="restoreDormant('${d.key}')">${t('Offer again')}</button>`
+          : `<button class="btn-outline btn-sm" data-ev-click="switchView('${d.view}')">${escHtml(t(d.step))}</button>
+             <button class="dormant-dismiss" data-ev-click="dismissDormant('${d.key}')"
+                     title="${escHtml(t('Stop offering this'))}"
+                     aria-label="${escHtml(t('Stop offering this'))}">✕</button>`}
+      </div>`).join('')}
+  </div>`;
+  _a11yEnhance(el);
+}
+
 // ── Correcting an entry ─────────────────────────────────────────────────────
 //
 // One form for every correctable table. The fields come from the server
@@ -18281,6 +18368,7 @@ async function loadDataTrust() {
     .then(r => r.ok ? r.json() : null).catch(() => null);
   if (!d) { el.innerHTML = `<div class="dv-empty">${t('Could not load your data check.')}</div>`; return; }
   el.innerHTML = renderDataTrust(d);
+  try { loadDormantList(); } catch (e) {}
 }
 
 function renderDataTrust(d) {

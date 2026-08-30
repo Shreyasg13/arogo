@@ -513,7 +513,20 @@ def _export_section_names():
             for m in [re.search(r"name:\s*'((?:[^'\\]|\\.)*)'", line)] if m}
 
 
+def _dormant_strings():
+    """The name, unlocks sentence and step for each dormant-capability check.
+
+    Written in Python and rendered with t()/tformat() on a variable, so no scan
+    of the JS can see them — the same blind spot as the tables below.
+    """
+    from db.dormant import CHECKS
+    return {s for c in CHECKS for s in (c['name'], c['unlocks'], c['step'])}
+
+
 SERVER_LABELS = [
+    ('db.dormant.CHECKS', _dormant_strings,
+     'The dormant-capability panel. Names, unlocks lines and steps are Python '
+     'strings passed through t() on the client.'),
     ('static/js/app.js EXPORT_SECTIONS', _export_section_names,
      'Export card labels. Rendered with t(s.name), so the literal never appears '
      'at a call site.'),

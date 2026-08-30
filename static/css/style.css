@@ -7100,6 +7100,46 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .restore-warn .restore-row { color:inherit; border-bottom-color:rgba(138,74,68,.22); }
 .restore-warn .restore-row b { color:#8a4a44; }
 .restore-note { font-size:12.5px; color:var(--gray-400); line-height:1.6; margin-top:8px; }
+/* ── Capability the data earned, still off ────────────────────────────────
+   Deliberately quiet. This is information, not an alert: nothing here is
+   wrong, something is merely unconnected. An amber "action needed" treatment
+   would turn a useful nudge into a chore the user learns to ignore. */
+.dormant-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; margin-bottom: 14px;
+  background: var(--gray-0); border: 1px solid var(--gray-100);
+  border-radius: 12px;
+}
+.dormant-body { flex: 1; min-width: 0; }
+.dormant-name { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+.dormant-unlocks {
+  font-size: 12.5px; color: var(--gray-500); line-height: 1.55; margin-top: 2px;
+}
+.dormant-go {
+  flex: none; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  padding: 7px 13px; border-radius: 8px; white-space: nowrap;
+  background: var(--gray-50, #F0EDE6); color: var(--gray-700);
+  border: 1px solid var(--gray-100); font-family: inherit;
+}
+.dormant-dismiss {
+  flex: none; background: none; border: none; cursor: pointer;
+  color: var(--gray-400); font-size: 14px; line-height: 1;
+  padding: 6px; border-radius: 6px;
+}
+.dormant-dismiss:hover { color: var(--gray-700); background: var(--gray-50, #F0EDE6); }
+.dormant-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 0; border-top: 1px solid var(--gray-50, #F0EDE6);
+}
+.dormant-row:first-of-type { border-top: none; }
+/* A dismissed suggestion is still listed, faded, with a way back — a one-way
+   "never show me this" is a setting the user cannot find again. */
+.dormant-row--off { opacity: .55; }
+@media (max-width: 600px) {
+  .dormant-card, .dormant-row { flex-wrap: wrap; }
+  .dormant-body { flex-basis: 100%; }
+}
+
 /* ── Corrected entries ────────────────────────────────────────────────────
    A correction is a good thing to have made, so this is a quiet note beside
    the value, not a warning colour. It exists because a health record whose

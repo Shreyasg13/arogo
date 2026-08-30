@@ -1,8 +1,12 @@
 """
-routes/corrections.py — correcting an entry instead of deleting it.
+routes/corrections.py — correcting an entry, and the setup it never had.
 
-PATCH /api/entries/<table>/<row_id>   — apply a correction
-GET   /api/entries/<table>/edits      — what was corrected, for a list of rows
+PATCH  /api/entries/<table>/<row_id>       — apply a correction
+GET    /api/entries/<table>/fields         — what the correction form offers
+GET    /api/entries/<table>/edits          — what was corrected, for a set of rows
+GET    /api/dormant                        — capability the data earned, still off
+POST   /api/dormant/<key>/dismiss          — stop offering one
+DELETE /api/dormant/<key>/dismiss          — offer it again
 
 One blueprint rather than a PATCH bolted onto each feature's routes. The rule
 about what a person may rewrite in their own health record is a single decision
@@ -32,6 +36,33 @@ def api_correct_entry(table, row_id):
     except LookupError:
         return jsonify({'success': False, 'error': 'no such entry'}), 404
     return jsonify({'success': True, **result})
+
+
+@bp.route('/api/dormant')
+@require_auth
+def api_dormant():
+    """Capability this account's own data has earned but never switched on."""
+    from db.dormant import report
+    return jsonify(report(include_dismissed=bool(request.args.get('all'))))
+
+
+@bp.route('/api/dormant/<key>/dismiss', methods=['POST'])
+@require_auth
+def api_dormant_dismiss(key):
+    from db.dormant import dismiss
+    if not dismiss(key):
+        return jsonify({'success': False, 'error': 'unknown suggestion'}), 400
+    return jsonify({'success': True})
+
+
+@bp.route('/api/dormant/<key>/dismiss', methods=['DELETE'])
+@require_auth
+def api_dormant_restore(key):
+    """Undo a dismissal. A one-way "never show me this" with no way back is a
+    setting the user cannot find again."""
+    from db.dormant import restore
+    restore(key)
+    return jsonify({'success': True})
 
 
 @bp.route('/api/entries/<table>/fields')

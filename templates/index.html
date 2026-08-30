@@ -705,6 +705,13 @@
   <!-- Daily check-in nudge (user-initiated; filled by initDailyCheckin) -->
   <div id="dash-checkin-prompt" class="checkin-prompt" style="display:none"></div>
 
+  <!-- One thing this account's own data has earned and never switched on
+       (filled by loadDormant). Deliberately ONE at a time: six suggestions on
+       the dashboard is a chore list, one quiet line is a useful nudge. The
+       full set lives in the data check. Nothing appears until the data earns
+       it, and each can be waved away for good. -->
+  <div id="dash-dormant" class="dormant-card" style="display:none"></div>
+
   <!-- Encouragements received from family (filled by loadEncouragements) -->
   <div id="dash-encouragements" class="cheer-panel" style="display:none"></div>
 
@@ -2734,6 +2741,10 @@
     </div>
   </div>
   <div id="datatrust-content"></div>
+  <!-- The full list of capability the data has earned and never switched on.
+       Sits here because this page is already about the state of the record
+       rather than about doing more. Rendered by loadDormantList(). -->
+  <div id="dormant-list"></div>
 </div>
 
 <!-- ═══════════ WHAT THIS MEANS (plain-language glossary) ═══════════ -->

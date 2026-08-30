@@ -1340,6 +1340,20 @@ def migrate_add_language():
         pass  # already exists
 
 
+def migrate_add_dormant_dismissed():
+    """Which "you could switch this on" suggestions this user has waved away.
+
+    A comma-separated list on the profile rather than a table of its own: it is
+    one short string per user, and a table for it would be a table to migrate,
+    export, restore, search and trash. It cannot live in app_config — that is
+    global, so one person's dismissal would silence everyone's.
+    """
+    try:
+        execute("ALTER TABLE user_profile ADD COLUMN dormant_dismissed TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_country():
     """Add country column to user_profile. Drives currency, number formatting and
     the medical-spend financial year (see db/locale_config). NULL → India default,
@@ -2170,6 +2184,7 @@ def init_db():
     migrate_add_ui_mode()
     migrate_add_language()
     migrate_add_country()
+    migrate_add_dormant_dismissed()
     migrate_add_unit_prefs()
     migrate_add_idem_keys()
     migrate_add_symptom_duration()
