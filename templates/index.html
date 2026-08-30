@@ -3250,10 +3250,11 @@
        and a logged dose quietly doesn't save. Rendered by loadStorage(). -->
   <div class="panel" style="padding:18px 20px;margin-top:20px">
     <h2 class="panel-title" style="margin-bottom:4px" data-i18n="🗄️ Storage">🗄️ Storage</h2>
-    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="How much room your files and database take on this server, and how much is left. If the disk fills, Arogo can stop saving what you log.">
       How much room your files and database take on this server, and how much is
       left. If the disk fills, Arogo can stop saving what you log.</p>
-    <div id="storage-report" aria-live="polite"><div class="restore-row">Checking…</div></div>
+    <div id="storage-report" aria-live="polite"><div class="restore-row" data-i18n="Checking…">Checking…</div></div>
     <!-- Referential drift. Files are not the only thing that gets stranded: a
          medicine purged from the trash used to leave its dose logs behind for
          good, and the weekly adherence figure counted them. Rendered by
@@ -3271,17 +3272,25 @@
       A copy of your whole database, taken nightly on this server. Each one is
       opened and read back before it counts — a file that will not open is not a
       backup.</p>
-    <div id="backup-status" aria-live="polite"><div class="restore-row">Checking…</div></div>
+    <div id="backup-status" aria-live="polite"><div class="restore-row" data-i18n="Checking…">Checking…</div></div>
   </div>
 
   <!-- Danger zone: account deletion -->
   <div class="panel" id="delete-account-panel" style="padding:18px 20px;margin-top:20px;border:1px solid #f3c2c2">
     <h2 class="panel-title" style="margin-bottom:4px;color:#B91C1C" data-i18n="Delete my account">Delete my account</h2>
-    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
-      Permanently deletes your account and <b>all</b> your data — medicines, logs,
+    <!-- The inline <b> around "all" is gone on purpose. applyLang sets
+         textContent, so markup inside a translated string cannot survive; the
+         alternative — three spans with the bold word in the middle — is the
+         glued-fragment bug, and it would hard-code English word order into the
+         most consequential sentence in the app. One sentence, one key. An
+         English island in the danger zone is worse than losing one bold word. -->
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="Permanently deletes your account and all your data — medicines, logs, family links, everything. This cannot be undone. Consider downloading your data first.">
+      Permanently deletes your account and all your data — medicines, logs,
       family links, everything. This cannot be undone. Consider downloading your
       data first.</p>
     <button class="btn-outline" style="color:#B91C1C;border-color:#e7a3a3"
+            data-i18n="Delete account…"
             data-ev-click="openDeleteAccount()">Delete account…</button>
   </div>
 

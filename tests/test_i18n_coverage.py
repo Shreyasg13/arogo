@@ -702,13 +702,24 @@ def test_no_date_is_formatted_with_a_hardcoded_locale():
 # Nothing static can find those in general; the reliable check is to switch the
 # app to Hindi and look for Latin text. Doing that on the dashboard found 21
 # such strings; wiring the checklist, the greeting and the calorie line brought
-# it to 13. The rest — the notification banner, the daily briefing, the refill
-# banner, the check-in card, parts of the todo list — are a known, measured gap
-# and not a claim this file makes any statement about.
+# it to 13. The named remainder — the notification banner, the daily briefing,
+# the refill banner, the check-in card, parts of the todo list — has since been
+# wired, and test_a_wired_function_renders_no_bare_english now holds those
+# functions so they cannot drift back.
+#
+# The general problem is NOT solved. That test covers a declared list of
+# functions, not the file; a sweep of every view found 147 distinct English
+# strings, of which the ones above were a part. What is left is real and
+# unmeasured here.
 #
 # So: "0 untranslated" here means "nothing that asked was refused". It does not
 # mean the app speaks Hindi everywhere, and it should never be quoted as if it
 # did.
+#
+# Server-side outbound text is a separate axis again: i18n_server.SERVER_LANGS
+# is ('en', 'hi'), so a Bengali or Marathi user's dose reminders and emails
+# arrive in English. normalize_lang() gates that deliberately — English is
+# better than a half-rendered pack — but it is a gap, not a finished state.
 #
 # What CAN be pinned is the set already found and fixed, so they cannot revert.
 

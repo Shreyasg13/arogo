@@ -112,9 +112,9 @@ const SUPPORTED_LANGS = [
   { code: 'en', native: 'English',  english: 'English', locale: 'en-GB', reviewed: true },
   { code: 'hi', native: 'हिन्दी',   english: 'Hindi',   locale: 'hi-IN', reviewed: false },
   { code: 'bn', native: 'বাংলা',   english: 'Bengali', locale: 'bn-IN', reviewed: false },
+  { code: 'mr', native: 'मराठी',   english: 'Marathi', locale: 'mr-IN', reviewed: false },
   // { code: 'ta', native: 'தமிழ்',   english: 'Tamil',   locale: 'ta-IN' },  // add I18N.ta first
   // { code: 'te', native: 'తెలుగు',  english: 'Telugu',  locale: 'te-IN' },
-  // { code: 'mr', native: 'मराठी',   english: 'Marathi', locale: 'mr-IN' },
 ];
 // Only offer a language that is English (the base) or actually has a pack.
 function _availableLangs() {
