@@ -162,9 +162,20 @@ function applyLang() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = t(el.getAttribute('data-i18n'));
   });
-  // Input placeholders (tagged data-i18n-ph="English placeholder").
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph')));
+  // Attributes that carry text a person reads or hears. Same shape as the
+  // element form: the attribute holds the English, which is also the key.
+  //
+  // aria-label and title were the last untranslated layer in the app, and the
+  // least visible one — an accessible name is read by a screen reader and by
+  // nobody else, so an English `aria-label="Dismiss"` on a Marathi page looks
+  // perfect and sounds wrong to exactly the user who has no other way to know
+  // what the button does.
+  [['data-i18n-ph', 'placeholder'],
+   ['data-i18n-aria', 'aria-label'],
+   ['data-i18n-title', 'title']].forEach(([tag, attr]) => {
+    document.querySelectorAll(`[${tag}]`).forEach(el => {
+      el.setAttribute(attr, t(el.getAttribute(tag)));
+    });
   });
   // The nav control shows the CURRENT language's own name; tapping it opens the
   // picker (rather than blindly flipping to a single "other" language).
@@ -5714,10 +5725,9 @@ async function openMedDetail(id) {
   // impossible by construction (max=today).
   let backfillHtml = '';
   if (!d.is_prn && (d.times || []).length) {
-    const today = (typeof localToday === 'function') ? localToday()
-      : new Date().toISOString().slice(0, 10);
+    const today = localToday();
     const y = new Date(); y.setDate(y.getDate() - 1);
-    const yesterday = y.toISOString().slice(0, 10);
+    const yesterday = localDateKey(y);
     const timeOpts = d.times.map(tm => `<option value="${escapeHtml(tm)}">${escapeHtml(tm)}</option>`).join('');
     backfillHtml = `<div class="mdt-section"><h4>${t('Log a missed entry')}</h4>
       <p class="mdt-fineprint" style="margin:0 0 8px">${t('Forgot to log a dose? Record it for a past day so your history is accurate.')}</p>
@@ -5751,8 +5761,7 @@ async function submitBackfillDose(id, taken) {
   const date = (document.getElementById('mdt-bf-date') || {}).value;
   const time = (document.getElementById('mdt-bf-time') || {}).value;
   if (!date || !time) { showToast('Pick a date and time', 'error'); return; }
-  const today = (typeof localToday === 'function') ? localToday()
-    : new Date().toISOString().slice(0, 10);
+  const today = localToday();
   if (date > today) { showToast("A dose can't be logged for a future day", 'error'); return; }
   const res = await fetch(`/api/medicines/${id}/log`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -21693,8 +21702,8 @@ let _exportCounts   = {};
 
 async function initExportView() {
   // Set default dates
-  const today = new Date().toISOString().slice(0,10);
-  const yearAgo = new Date(Date.now() - 365*86400000).toISOString().slice(0,10);
+  const today = localToday();
+  const yearAgo = localDateKey(new Date(Date.now() - 365*86400000));
   const fromEl = document.getElementById('export-from-date');
   const toEl   = document.getElementById('export-to-date');
   if (fromEl && !fromEl.value) fromEl.value = yearAgo;
@@ -21711,7 +21720,7 @@ async function initExportView() {
 
 async function loadExportCounts() {
   const from = document.getElementById('export-from-date')?.value || '2000-01-01';
-  const to   = document.getElementById('export-to-date')?.value   || new Date().toISOString().slice(0,10);
+  const to   = document.getElementById('export-to-date')?.value   || localToday();
   const r = await fetch(`/api/export/counts?from=${from}&to=${to}`).then(r=>r.json()).catch(()=>({}));
   _exportCounts = r;
   renderExportSections();
@@ -21724,12 +21733,15 @@ function renderExportSections() {
   el.innerHTML = EXPORT_SECTIONS.map(s => {
     const selected = _exportSelected.has(s.key);
     const count = _exportCounts[s.key];
-    const countStr = count != null ? `${count} record${count!==1?'s':''}` : '—';
+    // Singular and plural as separate keys, not `record${'s'}` — appending a
+    // letter is not how plurals work outside English.
+    const countStr = count == null ? '—'
+      : count === 1 ? t('1 record') : tformat('%1 records', count);
     return `<div class="export-section-card ${selected?'selected':''}" data-ev-click="toggleExportSection('${s.key}')">
       <div class="export-section-check"></div>
       <div class="export-section-icon">${s.icon}</div>
       <div class="export-section-info">
-        <div class="export-section-name">${s.name}</div>
+        <div class="export-section-name">${t(s.name)}</div>
         <div class="export-section-count">${countStr}</div>
       </div>
     </div>`;
@@ -21754,11 +21766,13 @@ function updateExportEstimate() {
   const el = document.getElementById('export-size-estimate');
   if (!el) return;
   const total = [..._exportSelected].reduce((sum, k) => sum + (_exportCounts[k]||0), 0);
-  el.textContent = total > 0 ? `~${total} records selected` : 'Nothing selected';
-  // Update button text
+  el.textContent = total > 0 ? tformat('~%1 records selected', total)
+                             : t('Nothing selected');
+  // Update button text. The format name (JSON/CSV) is a proper noun and stays;
+  // everything around it is one phrase so word order is the translator's.
   const btn = document.getElementById('export-download-btn');
   const fmtLabel = _exportFmt.toUpperCase();
-  if (btn) btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download ${fmtLabel} (${total} records)`;
+  if (btn) btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${escHtml(tformat('Download %1 (%2 records)', fmtLabel, total))}`;
 }
 
 function setExportFmt(fmt) {
@@ -21768,7 +21782,7 @@ function setExportFmt(fmt) {
 }
 
 function setExportPreset(days) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = localToday();
   const fromEl = document.getElementById('export-from-date');
   const toEl   = document.getElementById('export-to-date');
   if (!fromEl || !toEl) return;
@@ -21776,7 +21790,7 @@ function setExportPreset(days) {
   if (days === 0) {
     fromEl.value = '2000-01-01';
   } else {
-    fromEl.value = new Date(Date.now() - days*86400000).toISOString().slice(0,10);
+    fromEl.value = localDateKey(new Date(Date.now() - days*86400000));
   }
   loadExportCounts();
 }
@@ -21898,7 +21912,7 @@ async function arogoDecrypt(blob, passphrase) {
 async function doExport() {
   if (_exportSelected.size === 0) { showToast('Select at least one section', 'error'); return; }
   const from = document.getElementById('export-from-date')?.value || '2000-01-01';
-  const to   = document.getElementById('export-to-date')?.value   || new Date().toISOString().slice(0,10);
+  const to   = document.getElementById('export-to-date')?.value   || localToday();
   const sections = [..._exportSelected].join(',');
   const url = `/api/export?format=${_exportFmt}&sections=${sections}&from=${from}&to=${to}`;
 
@@ -21921,7 +21935,7 @@ async function doExport() {
       return r.text();
     });
     const armoured = await arogoEncrypt(text, pass);
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = localToday();
     downloadBlob(armoured, `arogo-export-${stamp}.${_exportFmt}.arogo-enc`,
                  'application/octet-stream');
     // Said plainly, because there is no recovery path and no reset link. The

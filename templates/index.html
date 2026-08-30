@@ -195,7 +195,7 @@
 <a href="#app-main" class="skip-link" data-i18n="Skip to main content">Skip to main content</a>
 
 <!-- ── SIDEBAR ── -->
-<aside class="sidebar" id="app-sidebar" aria-label="Primary">
+<aside class="sidebar" id="app-sidebar" data-i18n-aria="Primary" aria-label="Primary">
   <div class="logo">
     <div class="logo-icon">
       <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
@@ -211,7 +211,7 @@
     </div>
   </div>
 
-  <nav class="sidebar-nav" aria-label="Main navigation">
+  <nav class="sidebar-nav" data-i18n-aria="Main navigation" aria-label="Main navigation">
     <a href="#" class="nav-item active" aria-current="page" data-view="dashboard" data-essential>
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
       <span data-i18n="Dashboard">Dashboard</span>
@@ -518,12 +518,12 @@
       <div class="gs-header">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;color:var(--gray-400)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="global-search-input"
-          placeholder="Search — or log: water 500, bp 120/80…"
+          data-i18n-ph="Search — or log: water 500, bp 120/80…" placeholder="Search — or log: water 500, bp 120/80…"
           data-ev-input="runGlobalSearch(this.value)"
           data-ev-keydown="handleSearchKey(event)"
           autocomplete="off" spellcheck="false">
         <button type="button" class="gs-mic" id="gs-mic" data-ev-click="startVoiceSearch()"
-          title="Speak to log — e.g. &quot;2 rotis and dal for lunch&quot;" aria-label="Voice input"
+          data-i18n-title="Speak to log — e.g. &quot;2 rotis and dal for lunch&quot;" title="Speak to log — e.g. &quot;2 rotis and dal for lunch&quot;" data-i18n-aria="Voice input" aria-label="Voice input"
           style="display:none;background:none;border:none;cursor:pointer;font-size:16px;padding:2px 6px;flex-shrink:0">🎤</button>
         <div class="gs-kbd">Esc</div>
       </div>
@@ -576,7 +576,7 @@
       <span id="theme-toggle-icon">🌙</span> <span id="theme-toggle-label">Dark mode</span>
     </button>
     <button class="theme-toggle-btn" data-ev-click="toggleSimpleMode()" id="simple-toggle"
-            aria-label="Toggle simple view with larger text">
+            data-i18n-aria="Toggle simple view with larger text" aria-label="Toggle simple view with larger text">
       <span id="simple-toggle-icon">🔍</span> <span id="simple-toggle-label">Simple view</span>
     </button>
   </div>
@@ -627,14 +627,14 @@
       <h1 class="page-title" id="dash-title" data-i18n="Today">Today</h1>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <button class="dash-icon-btn" data-ev-click="switchView('consistency')" title="Consistency" id="dash-consistency-btn">
+      <button class="dash-icon-btn" data-ev-click="switchView('consistency')" data-i18n-title="Consistency" title="Consistency" id="dash-consistency-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span class="dash-icon-btn-badge" id="dash-streak-badge" style="display:none">0</span>
       </button>
-      <button class="dash-icon-btn" data-ev-click="openProfileModal()" title="Health Profile">
+      <button class="dash-icon-btn" data-ev-click="openProfileModal()" data-i18n-title="Health Profile" title="Health Profile">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
       </button>
-      <button class="dash-icon-btn" data-ev-click="openGlobalSearch()" title="Search (Ctrl+K)">
+      <button class="dash-icon-btn" data-ev-click="openGlobalSearch()" data-i18n-title="Search (Ctrl+K)" title="Search (Ctrl+K)">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
       <div class="header-date" id="header-date"></div>
@@ -732,9 +732,9 @@
         <a href="#" class="panel-link" data-ev-click="switchView('todos');return false" data-i18n="Manage →">Manage →</a>
       </div>
       <div class="dash-todo-add">
-        <input type="text" id="dash-todo-input" placeholder="Add a task…" autocomplete="off"
-               aria-label="Add a task" data-ev-keydown="dashAddTodoKey(event)">
-        <button class="dash-todo-add-btn" data-ev-click="dashAddTodo()" aria-label="Add task">＋</button>
+        <input type="text" id="dash-todo-input" data-i18n-ph="Add a task…" placeholder="Add a task…" autocomplete="off"
+               data-i18n-aria="Add a task" aria-label="Add a task" data-ev-keydown="dashAddTodoKey(event)">
+        <button class="dash-todo-add-btn" data-ev-click="dashAddTodo()" data-i18n-aria="Add task" aria-label="Add task">＋</button>
       </div>
       <div id="dash-todos-list" class="dash-todos-list"></div>
     </div>
@@ -762,7 +762,7 @@
       <p class="page-subtitle" id="reports-count-label">Upload and track your reports</p>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-outline" data-ev-click="openDoctorSummary()" title="A printable summary for your next appointment">
+      <button class="btn-outline" data-ev-click="openDoctorSummary()" data-i18n-title="A printable summary for your next appointment" title="A printable summary for your next appointment">
         🩺 Doctor summary
       </button>
       <button class="btn-outline" data-ev-click="openShareManager()" title="Create a private, expiring link to a safe health summary" data-i18n-title="Create a private, expiring link to a safe health summary">
@@ -780,7 +780,7 @@
   <div class="filter-bar">
     <div class="search-box">
       <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="search-input" class="search-input" placeholder="Search reports, patients, tags…">
+      <input type="text" id="search-input" class="search-input" data-i18n-ph="Search reports, patients, tags…" placeholder="Search reports, patients, tags…">
     </div>
     <select class="filter-select" id="severity-filter">
       <option value="">All Severities</option>
@@ -1024,7 +1024,7 @@
       <div class="panel sym-history-panel">
         <div class="panel-header">
           <h2 class="panel-title" data-i18n="Symptom History">Symptom History</h2>
-          <button class="btn-outline btn-sm" data-ev-click="openSymptomLog()" title="A printable symptom log for your doctor" data-i18n="🖨 Print log">🖨 Print log</button>
+          <button class="btn-outline btn-sm" data-ev-click="openSymptomLog()" data-i18n-title="A printable symptom log for your doctor" title="A printable symptom log for your doctor" data-i18n="🖨 Print log">🖨 Print log</button>
         </div>
         <div id="symptoms-list" class="sym-history-list"></div>
       </div>
@@ -1151,20 +1151,20 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Insurance Provider</label>
-                <input type="text" class="form-input" id="em-insurance-provider" placeholder="e.g. Blue Cross">
+                <input type="text" class="form-input" id="em-insurance-provider" data-i18n-ph="e.g. Blue Cross" placeholder="e.g. Blue Cross">
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Allergies</label>
-              <textarea class="form-input" id="em-allergies" rows="2" placeholder="e.g. Penicillin, Peanuts, Latex…"></textarea>
+              <textarea class="form-input" id="em-allergies" rows="2" data-i18n-ph="e.g. Penicillin, Peanuts, Latex…" placeholder="e.g. Penicillin, Peanuts, Latex…"></textarea>
             </div>
             <div class="form-group">
               <label class="form-label">Medical Conditions</label>
-              <textarea class="form-input" id="em-conditions" rows="2" placeholder="e.g. Type 2 Diabetes, Hypertension…"></textarea>
+              <textarea class="form-input" id="em-conditions" rows="2" data-i18n-ph="e.g. Type 2 Diabetes, Hypertension…" placeholder="e.g. Type 2 Diabetes, Hypertension…"></textarea>
             </div>
             <div class="form-group">
               <label class="form-label">Current Medications</label>
-              <textarea class="form-input" id="em-medications" rows="2" placeholder="e.g. Metformin 500mg, Lisinopril 10mg…"></textarea>
+              <textarea class="form-input" id="em-medications" rows="2" data-i18n-ph="e.g. Metformin 500mg, Lisinopril 10mg…" placeholder="e.g. Metformin 500mg, Lisinopril 10mg…"></textarea>
             </div>
             <div class="ac-divider">
               <span data-i18n="Advance care &amp; wishes">Advance care &amp; wishes</span>
@@ -1182,23 +1182,23 @@
               </div>
               <div class="form-group">
                 <label class="form-label" data-i18n="Where directives are kept">Where directives are kept</label>
-                <input type="text" class="form-input" id="em-directive-location" placeholder="e.g. Home safe, with my brother, GP file">
+                <input type="text" class="form-input" id="em-directive-location" data-i18n-ph="e.g. Home safe, with my brother, GP file" placeholder="e.g. Home safe, with my brother, GP file">
               </div>
             </div>
             <div class="form-group">
               <label class="form-label" data-i18n="Medical wishes / directives">Medical wishes / directives</label>
-              <textarea class="form-input" id="em-directive-wishes" rows="2" placeholder="In your own words — anything you'd want known in an emergency"></textarea>
+              <textarea class="form-input" id="em-directive-wishes" rows="2" data-i18n-ph="In your own words — anything you'd want known in an emergency" placeholder="In your own words — anything you'd want known in an emergency"></textarea>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Emergency Contact 1</label>
-                <input type="text" class="form-input" id="em-c1-name" placeholder="Name" style="margin-bottom:6px">
-                <input type="tel" class="form-input" id="em-c1-phone" placeholder="Phone number">
+                <input type="text" class="form-input" id="em-c1-name" data-i18n-ph="Name" placeholder="Name" style="margin-bottom:6px">
+                <input type="tel" class="form-input" id="em-c1-phone" data-i18n-ph="Phone number" placeholder="Phone number">
               </div>
               <div class="form-group">
                 <label class="form-label">Emergency Contact 2</label>
-                <input type="text" class="form-input" id="em-c2-name" placeholder="Name" style="margin-bottom:6px">
-                <input type="tel" class="form-input" id="em-c2-phone" placeholder="Phone number">
+                <input type="text" class="form-input" id="em-c2-name" data-i18n-ph="Name" placeholder="Name" style="margin-bottom:6px">
+                <input type="tel" class="form-input" id="em-c2-phone" data-i18n-ph="Phone number" placeholder="Phone number">
               </div>
             </div>
             <button class="btn-primary" style="width:100%" data-ev-click="saveEmergencyInfo()">Save Health Card</button>
@@ -1237,7 +1237,7 @@
     <div class="modal" id="injection-sheet">
       <div class="modal-head">
         <div class="modal-title" id="injection-modal-title" data-i18n="💉 Injection sites">💉 Injection sites</div>
-        <button class="modal-close" aria-label="Close"  data-ev-click="closeInjectionSites()">×</button>
+        <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeInjectionSites()">×</button>
       </div>
       <div class="modal-body">
         <div id="injection-content"></div>
@@ -1252,7 +1252,7 @@
       <div class="lsab-title">Refill needed</div>
       <div class="lsab-items" id="lsab-items"></div>
     </div>
-    <button class="lsab-btn" data-ev-click="openRefillList()" title="See everything to pick up, as a checklist">🛒 Shopping list</button>
+    <button class="lsab-btn" data-ev-click="openRefillList()" data-i18n-title="See everything to pick up, as a checklist" title="See everything to pick up, as a checklist">🛒 Shopping list</button>
   </div>
 
   <!-- K1: expiring/expired medicines banner -->
@@ -1268,7 +1268,7 @@
     <div class="modal" id="refill-sheet">
       <div class="modal-head no-print">
         <div class="modal-title" id="refill-modal-title" data-i18n="🛒 Refill shopping list">🛒 Refill shopping list</div>
-        <button class="modal-close" aria-label="Close"  data-ev-click="closeRefillList()">×</button>
+        <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeRefillList()">×</button>
       </div>
       <div class="modal-body">
         <div id="refill-content"></div>
@@ -1285,27 +1285,27 @@
       <p class="page-subtitle" data-i18n="Daily doses &amp; reminders">Daily doses &amp; reminders</p>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-outline" data-ev-click="openPillPlanner()" title="A day-by-day grid of what to take this week">
+      <button class="btn-outline" data-ev-click="openPillPlanner()" data-i18n-title="A day-by-day grid of what to take this week" title="A day-by-day grid of what to take this week">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
         <span data-i18n="This week">This week</span>
       </button>
-      <button class="btn-outline" data-ev-click="openMedHistory()" title="A dated record of what changed — started, stopped, restocked">
+      <button class="btn-outline" data-ev-click="openMedHistory()" data-i18n-title="A dated record of what changed — started, stopped, restocked" title="A dated record of what changed — started, stopped, restocked">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 106 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
         <span data-i18n="History">History</span>
       </button>
-      <button class="btn-outline" data-ev-click="openMedCard()" title="A one-page card of your medicines for the fridge or your wallet">
+      <button class="btn-outline" data-ev-click="openMedCard()" data-i18n-title="A one-page card of your medicines for the fridge or your wallet" title="A one-page card of your medicines for the fridge or your wallet">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
         <span data-i18n="Printable card">Printable card</span>
       </button>
-      <button class="btn-outline" data-ev-click="openWeekSchedule()" title="A printable week grid of what to take when — for the fridge">
+      <button class="btn-outline" data-ev-click="openWeekSchedule()" data-i18n-title="A printable week grid of what to take when — for the fridge" title="A printable week grid of what to take when — for the fridge">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span data-i18n="Week schedule">Week schedule</span>
       </button>
-      <button class="btn-outline" data-ev-click="openInjectionSites()" title="Track and rotate injection sites for injectable medicines">
+      <button class="btn-outline" data-ev-click="openInjectionSites()" data-i18n-title="Track and rotate injection sites for injectable medicines" title="Track and rotate injection sites for injectable medicines">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2l4 4"/><path d="M17 7l3-3"/><path d="M19 9L8.7 19.3a2.4 2.4 0 01-1.4.7l-3.6.5.5-3.6a2.4 2.4 0 01.7-1.4L15 5z"/><path d="M9 11l4 4"/></svg>
         <span data-i18n="Injection sites">Injection sites</span>
       </button>
-      <button class="btn-outline" data-ev-click="openRxImport()" title="Read medicines from a prescription">
+      <button class="btn-outline" data-ev-click="openRxImport()" data-i18n-title="Read medicines from a prescription" title="Read medicines from a prescription">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <span data-i18n="Import prescription">Import prescription</span>
       </button>
@@ -1396,7 +1396,7 @@
       <button class="btn-outline" data-ev-click="signOut()" style="font-size:12px;padding:6px 12px">
         Sign out
       </button>
-      <button class="btn-icon-labeled" data-ev-click="switchView('consistency')" title="Consistency Tracker">
+      <button class="btn-icon-labeled" data-ev-click="switchView('consistency')" data-i18n-title="Consistency Tracker" title="Consistency Tracker">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg>
         <span id="fitness-streak-badge" class="streak-pill" style="display:none"></span>
       </button>
@@ -1600,11 +1600,11 @@
     </div>
     <div class="header-actions">
       <div class="cal-nav">
-        <button aria-label="Previous month" class="btn-icon cal-prev" data-ev-click="calPrevMonth()">
+        <button data-i18n-aria="Previous month" aria-label="Previous month" class="btn-icon cal-prev" data-ev-click="calPrevMonth()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <span class="cal-month-label" id="cal-month-label">Loading…</span>
-        <button aria-label="Next month" class="btn-icon cal-next" data-ev-click="calNextMonth()">
+        <button data-i18n-aria="Next month" aria-label="Next month" class="btn-icon cal-next" data-ev-click="calNextMonth()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -1699,7 +1699,7 @@
               <div class="cal-detail-date-dot"></div>
               <span id="cal-detail-date"></span>
             </div>
-            <button aria-label="Close day details" class="btn-icon" data-ev-click="hideEl('cal-day-detail')" style="width:22px;height:22px">
+            <button data-i18n-aria="Close day details" aria-label="Close day details" class="btn-icon" data-ev-click="hideEl('cal-day-detail')" style="width:22px;height:22px">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -1732,7 +1732,7 @@
     <div style="display:flex;gap:8px;padding:0 16px 12px;flex-wrap:wrap">
       <div class="search-box" style="flex:1;min-width:160px">
         <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" class="search-input" id="history-search" placeholder="Search activities…" style="font-size:12.5px;padding:7px 10px 7px 30px">
+        <input type="text" class="search-input" id="history-search" data-i18n-ph="Search activities…" placeholder="Search activities…" style="font-size:12.5px;padding:7px 10px 7px 30px">
       </div>
       <select class="filter-select" id="history-type-filter" style="font-size:12px;padding:7px 26px 7px 9px">
         <option value="">All types</option>
@@ -1829,11 +1829,11 @@
     </div>
     <div class="header-actions">
       <div class="food-date-nav">
-        <button aria-label="Previous day" class="btn-icon" data-ev-click="foodDateShift(-1)">
+        <button data-i18n-aria="Previous day" aria-label="Previous day" class="btn-icon" data-ev-click="foodDateShift(-1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <input type="date" class="form-input" id="food-date-picker" data-ev-change="loadFoodDay(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
-        <button aria-label="Next day" class="btn-icon" data-ev-click="foodDateShift(1)">
+        <button data-i18n-aria="Next day" aria-label="Next day" class="btn-icon" data-ev-click="foodDateShift(1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -1978,11 +1978,11 @@
     </div>
     <div class="header-actions">
       <div class="thoughts-date-nav">
-        <button aria-label="Previous day" class="btn-icon" data-ev-click="thoughtsDateShift(-1)">
+        <button data-i18n-aria="Previous day" aria-label="Previous day" class="btn-icon" data-ev-click="thoughtsDateShift(-1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <input type="date" class="form-input" id="thoughts-date-picker" data-ev-change="loadThoughts(this.value)" style="width:148px;font-size:13px;padding:7px 10px">
-        <button aria-label="Next day" class="btn-icon" data-ev-click="thoughtsDateShift(1)">
+        <button data-i18n-aria="Next day" aria-label="Next day" class="btn-icon" data-ev-click="thoughtsDateShift(1)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -2002,15 +2002,15 @@
             <!-- "Rough" is offered by the check-in and the push actions; the
                  journal — the richest picker — didn't have it, so a mood the
                  app records and displays couldn't be chosen here. -->
-            <button type="button" class="mood-btn" data-mood="terrible" data-ev-click="selectMood('terrible')" title="Rough">😩</button>
-            <button type="button" class="mood-btn selected" data-mood="neutral" data-ev-click="selectMood('neutral')" title="Neutral">😐</button>
-            <button type="button" class="mood-btn" data-mood="happy"   data-ev-click="selectMood('happy')"   title="Happy">😊</button>
-            <button type="button" class="mood-btn" data-mood="excited" data-ev-click="selectMood('excited')" title="Excited">🤩</button>
-            <button type="button" class="mood-btn" data-mood="calm"    data-ev-click="selectMood('calm')"    title="Calm">😌</button>
-            <button type="button" class="mood-btn" data-mood="anxious" data-ev-click="selectMood('anxious')" title="Anxious">😰</button>
-            <button type="button" class="mood-btn" data-mood="tired"   data-ev-click="selectMood('tired')"   title="Tired">😴</button>
-            <button type="button" class="mood-btn" data-mood="sad"     data-ev-click="selectMood('sad')"     title="Sad">😞</button>
-            <button type="button" class="mood-btn" data-mood="angry"   data-ev-click="selectMood('angry')"   title="Angry">😤</button>
+            <button type="button" class="mood-btn" data-mood="terrible" data-ev-click="selectMood('terrible')" data-i18n-title="Rough" title="Rough">😩</button>
+            <button type="button" class="mood-btn selected" data-mood="neutral" data-ev-click="selectMood('neutral')" data-i18n-title="Neutral" title="Neutral">😐</button>
+            <button type="button" class="mood-btn" data-mood="happy"   data-ev-click="selectMood('happy')"   data-i18n-title="Happy" title="Happy">😊</button>
+            <button type="button" class="mood-btn" data-mood="excited" data-ev-click="selectMood('excited')" data-i18n-title="Excited" title="Excited">🤩</button>
+            <button type="button" class="mood-btn" data-mood="calm"    data-ev-click="selectMood('calm')"    data-i18n-title="Calm" title="Calm">😌</button>
+            <button type="button" class="mood-btn" data-mood="anxious" data-ev-click="selectMood('anxious')" data-i18n-title="Anxious" title="Anxious">😰</button>
+            <button type="button" class="mood-btn" data-mood="tired"   data-ev-click="selectMood('tired')"   data-i18n-title="Tired" title="Tired">😴</button>
+            <button type="button" class="mood-btn" data-mood="sad"     data-ev-click="selectMood('sad')"     data-i18n-title="Sad" title="Sad">😞</button>
+            <button type="button" class="mood-btn" data-mood="angry"   data-ev-click="selectMood('angry')"   data-i18n-title="Angry" title="Angry">😤</button>
           </div>
         </div>
         <div class="thoughts-quota" id="thoughts-quota">
@@ -2035,7 +2035,7 @@
       </div>
       <div class="composer-body">
         <textarea id="thought-textarea" class="thought-textarea"
-          placeholder="What's on your mind right now? …"
+          data-i18n-ph="What's on your mind right now? …" placeholder="What's on your mind right now? …"
           maxlength="1000" data-ev-input="updateThoughtCounter(this)"></textarea>
         <div class="composer-footer">
           <span class="thought-char-count" id="thought-char-count">0 / 1000</span>
@@ -3009,7 +3009,7 @@
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
       <div class="form-group" style="margin-bottom:0;flex:1;min-width:140px">
         <label class="form-label" data-i18n="Where">Where</label>
-        <input class="form-input" id="trip-label" placeholder="Tokyo">
+        <input class="form-input" id="trip-label" data-i18n-ph="Tokyo" placeholder="Tokyo">
       </div>
       <div class="form-group" style="margin-bottom:0;flex:1;min-width:170px">
         <label class="form-label" data-i18n="Time zone">Time zone</label>
@@ -3054,7 +3054,7 @@
     <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
       <div class="form-group" style="margin-bottom:0;flex:1;min-width:160px">
         <label class="form-label" data-i18n="What was it?">What was it?</label>
-        <input class="form-input" id="episode-name" placeholder="Flu, chest infection…">
+        <input class="form-input" id="episode-name" data-i18n-ph="Flu, chest infection…" placeholder="Flu, chest infection…">
       </div>
       <div class="form-group" style="margin-bottom:0">
         <label class="form-label" data-i18n="Started">Started</label>
@@ -3097,7 +3097,8 @@
   <div class="page-header">
     <div>
       <h1 class="page-title" data-i18n="Export Your Data">Export Your Data</h1>
-      <p class="page-subtitle">Download everything Arogo has stored about your health</p>
+      <p class="page-subtitle"
+         data-i18n="Download everything Arogo has stored about your health">Download everything Arogo has stored about your health</p>
     </div>
   </div>
 
@@ -3105,37 +3106,43 @@
   <div class="export-controls panel">
     <div class="export-controls-body">
       <div class="export-format-group">
-        <div class="export-ctrl-label">Format</div>
+        <div class="export-ctrl-label" data-i18n="Format">Format</div>
         <div class="export-format-toggle">
           <button class="export-fmt-btn active" data-fmt="json" data-ev-click="setExportFmt('json')">
             <span class="export-fmt-icon">{ }</span>
             <span class="export-fmt-name">JSON</span>
-            <span class="export-fmt-desc">Structured, for developers</span>
+            <span class="export-fmt-desc"
+                  data-i18n="Structured, for developers">Structured, for developers</span>
           </button>
           <button class="export-fmt-btn" data-fmt="csv" data-ev-click="setExportFmt('csv')">
             <span class="export-fmt-icon">⊞</span>
             <span class="export-fmt-name">CSV</span>
-            <span class="export-fmt-desc">For Excel / Google Sheets</span>
+            <span class="export-fmt-desc"
+                  data-i18n="For Excel / Google Sheets">For Excel / Google Sheets</span>
           </button>
         </div>
       </div>
       <div class="export-date-group">
-        <div class="export-ctrl-label">Date range</div>
+        <div class="export-ctrl-label" data-i18n="Date range">Date range</div>
         <div class="export-date-row">
           <div>
-            <label class="form-label" style="font-size:11px">From</label>
+            <label class="form-label" style="font-size:11px" data-i18n="From">From</label>
             <input type="date" class="form-input" id="export-from-date" style="font-size:13px">
           </div>
           <div style="padding-top:24px;color:var(--gray-400)">→</div>
           <div>
-            <label class="form-label" style="font-size:11px">To</label>
+            <label class="form-label" style="font-size:11px" data-i18n="To">To</label>
             <input type="date" class="form-input" id="export-to-date" style="font-size:13px">
           </div>
           <div style="display:flex;flex-direction:column;gap:5px;padding-top:20px">
-            <button class="export-preset-btn" data-ev-click="setExportPreset(30)">Last 30 days</button>
-            <button class="export-preset-btn" data-ev-click="setExportPreset(90)">Last 90 days</button>
-            <button class="export-preset-btn" data-ev-click="setExportPreset(365)">Last year</button>
-            <button class="export-preset-btn" data-ev-click="setExportPreset(0)">All time</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(30)"
+                    data-i18n="Last 30 days">Last 30 days</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(90)"
+                    data-i18n="Last 90 days">Last 90 days</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(365)"
+                    data-i18n="Last year">Last year</button>
+            <button class="export-preset-btn" data-ev-click="setExportPreset(0)"
+                    data-i18n="All time">All time</button>
           </div>
         </div>
       </div>
@@ -3165,8 +3172,8 @@
     <div id="export-passphrase-row" style="display:none;margin-top:12px">
       <input class="form-input" type="password" id="export-passphrase"
              style="max-width:320px" autocomplete="new-password"
-             placeholder="At least 8 characters"
-             aria-label="Passphrase for the exported file">
+             data-i18n-ph="At least 8 characters" placeholder="At least 8 characters"
+             data-i18n-aria="Passphrase for the exported file" aria-label="Passphrase for the exported file">
       <p style="font-size:12.5px;color:var(--gray-400);margin:8px 0 0;max-width:46em"
          data-i18n="Arogo never sees this passphrase, so it cannot reset it or open the file for you. If you lose it the file is gone. The format is documented and scripts/decrypt_export.py opens it without Arogo.">
         Arogo never sees this passphrase, so it cannot reset it or open the file
@@ -3193,10 +3200,12 @@
   <!-- Complete export (everything we hold) -->
   <div class="panel" style="padding:18px 20px;margin-top:20px">
     <h2 class="panel-title" style="margin-bottom:4px" data-i18n="Download everything">Download everything</h2>
-    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
-      A single file with <b>every record</b> Arogo holds about you, across all
+    <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px"
+       data-i18n="A single file with every record Arogo holds about you, across all features — not just the range above. This is your data; take it anytime.">
+      A single file with every record Arogo holds about you, across all
       features — not just the range above. This is your data; take it anytime.</p>
-    <button class="btn-outline" data-ev-click="downloadAllData()">Download all my data (JSON)</button>
+    <button class="btn-outline" data-ev-click="downloadAllData()"
+            data-i18n="Download all my data (JSON)">Download all my data (JSON)</button>
 
     <div style="margin-top:16px;border-top:1px solid var(--gray-100);padding-top:14px">
       <div style="font-size:13.5px;font-weight:600;margin-bottom:4px" data-i18n="Or export only some categories">Or export only some categories</div>
@@ -3223,13 +3232,16 @@
   <div class="panel" style="padding:18px 20px;margin-top:20px">
     <h2 class="panel-title" style="margin-bottom:4px" data-i18n="💾 Backup &amp; restore">💾 Backup &amp; restore</h2>
     <p style="font-size:13px;color:var(--gray-400);margin-bottom:12px">
-      Save a one-file backup of your health data, and restore it later — handy if
-      you run Arogo on your own server. Restoring <b>replaces</b> your current data
-      with the backup's, so you'll get to review it first.</p>
+      <span data-i18n="Save a one-file backup of your health data, and restore it later — handy if you run Arogo on your own server."
+        >Save a one-file backup of your health data, and restore it later — handy if
+        you run Arogo on your own server.</span>
+      <b data-i18n="Restoring replaces your current data with the backup's, so you'll get to review it first."
+        >Restoring replaces your current data with the backup's, so you'll get to review it first.</b></p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <button class="btn-primary" data-ev-click="downloadBackup()">⬇️ Download backup</button>
+      <button class="btn-primary" data-ev-click="downloadBackup()"
+              data-i18n="⬇️ Download backup">⬇️ Download backup</button>
       <label class="btn-outline" style="cursor:pointer;margin:0">
-        ⬆️ Restore from backup
+        <span data-i18n="⬆️ Restore from backup">⬆️ Restore from backup</span>
         <!-- .arogo-enc must be accepted here. Without it the file picker filters
              out every encrypted backup this app writes, so protecting a backup
              would quietly make it unrestorable. -->
@@ -3237,7 +3249,7 @@
                style="display:none" data-ev-change="onRestoreFile(this)">
       </label>
       <label class="btn-outline" style="cursor:pointer;margin:0"
-             title="Opens the file and reports what is in it. Changes nothing.">
+             data-i18n-title="Opens the file and reports what is in it. Changes nothing." title="Opens the file and reports what is in it. Changes nothing.">
         🔍 <span data-i18n="Check a backup opens">Check a backup opens</span>
         <input type="file" id="check-backup-file" accept="application/json,.json,.arogo-enc"
                style="display:none" data-ev-change="onCheckBackupFile(this)">
@@ -3366,7 +3378,7 @@
       </div>
       <div class="form-group" style="margin-bottom:0;flex:1;min-width:150px">
         <label class="form-label" data-i18n="Where">Where</label>
-        <input class="form-input" id="donation-place" placeholder="Blood bank, camp…">
+        <input class="form-input" id="donation-place" data-i18n-ph="Blood bank, camp…" placeholder="Blood bank, camp…">
       </div>
       <button class="btn-primary" style="padding:11px 18px" data-ev-click="saveDonation()">
         <span data-i18n="Add">Add</span>
@@ -3531,7 +3543,7 @@
   <div class="panel" style="padding:18px 20px">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
       <input class="form-input" id="trash-search" style="flex:1;min-width:180px"
-             placeholder="Search what you deleted" aria-label="Search the trash"
+             data-i18n-ph="Search what you deleted" placeholder="Search what you deleted" data-i18n-aria="Search the trash" aria-label="Search the trash"
              data-ev-input="loadTrash()">
       <button class="btn-outline" data-ev-click="emptyTrash()"
               data-i18n="Empty trash">Empty trash</button>
@@ -3559,7 +3571,7 @@
     <p class="lock-sub" data-i18n="Enter your PIN to carry on.">Enter your PIN to carry on.</p>
     <input class="form-input lock-pin" id="lock-pin" type="password"
            inputmode="numeric" autocomplete="off" maxlength="8"
-           aria-label="PIN" data-ev-keydown="if(event.key==='Enter')submitUnlock()">
+           data-i18n-aria="PIN" aria-label="PIN" data-ev-keydown="if(event.key==='Enter')submitUnlock()">
     <div id="lock-error" class="lock-error" role="alert" aria-live="assertive"></div>
     <button class="btn-primary lock-go" data-ev-click="submitUnlock()"
             data-i18n="Unlock">Unlock</button>
@@ -3584,7 +3596,7 @@
     <div class="modal-head">
       <div class="modal-title" id="passphrase-title"
            data-i18n="This file is protected">This file is protected</div>
-      <button class="modal-close" aria-label="Close"  data-ev-click="cancelPassphrase()">×</button>
+      <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="cancelPassphrase()">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:13.5px;margin:0 0 12px"
@@ -3592,7 +3604,7 @@
         Enter the passphrase you chose when you downloaded it. Arogo does not
         have a copy.</p>
       <input class="form-input" type="password" id="passphrase-input"
-             autocomplete="current-password" aria-label="Passphrase"
+             autocomplete="current-password" data-i18n-aria="Passphrase" aria-label="Passphrase"
              data-ev-keydown="if(event.key==='Enter')submitPassphrase()">
       <div class="form-actions" style="margin-top:16px">
         <button class="btn-primary" data-ev-click="submitPassphrase()"
@@ -3608,7 +3620,7 @@
 <div class="modal modal--wide">
   <div class="modal-head">
     <h2 class="modal-title" id="upload-modal-overlay-title" data-i18n="Upload Medical Report">Upload Medical Report</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('upload-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('upload-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3629,15 +3641,15 @@
           <div class="file-preview-name" id="file-preview-name"></div>
           <div class="file-preview-size" id="file-preview-size"></div>
         </div>
-        <button aria-label="Remove the chosen file" class="btn-icon" data-ev-click="clearFile()">
+        <button data-i18n-aria="Remove the chosen file" aria-label="Remove the chosen file" class="btn-icon" data-ev-click="clearFile()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
     </div>
     <form id="upload-form" class="form-col">
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Patient Name</label><input type="text" class="form-input" name="patient_name" placeholder="Full name" required></div>
-        <div class="form-group"><label class="form-label">Doctor</label><input type="text" class="form-input" name="doctor" placeholder="Dr. Name"></div>
+        <div class="form-group"><label class="form-label">Patient Name</label><input type="text" class="form-input" name="patient_name" data-i18n-ph="Full name" placeholder="Full name" required></div>
+        <div class="form-group"><label class="form-label">Doctor</label><input type="text" class="form-input" name="doctor" data-i18n-ph="Dr. Name" placeholder="Dr. Name"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Report Type</label>
@@ -3657,11 +3669,11 @@
         <div class="tags-picker" id="tags-picker">
           {% for tag in tags %}<button type="button" class="tag-btn" data-tag="{{ tag }}">{{ tag }}</button>{% endfor %}
         </div>
-        <div class="custom-tag-row"><input type="text" class="form-input" id="custom-tag-input" placeholder="Custom tag…" style="flex:1"><button type="button" class="btn-outline-sm" data-ev-click="addCustomTag()">Add</button></div>
+        <div class="custom-tag-row"><input type="text" class="form-input" id="custom-tag-input" data-i18n-ph="Custom tag…" placeholder="Custom tag…" style="flex:1"><button type="button" class="btn-outline-sm" data-ev-click="addCustomTag()">Add</button></div>
         <div class="selected-tags" id="selected-tags"></div>
       </div>
       <div class="form-group"><label class="form-label">Analysis Notes</label>
-        <textarea class="form-input form-textarea" name="analysis_notes" rows="3" placeholder="Clinical observations, findings…"></textarea>
+        <textarea class="form-input form-textarea" name="analysis_notes" rows="3" data-i18n-ph="Clinical observations, findings…" placeholder="Clinical observations, findings…"></textarea>
       </div>
       <div class="form-actions">
         <button type="button" class="btn-outline" data-ev-click="closeModal('upload-modal-overlay')">Cancel</button>
@@ -3681,7 +3693,7 @@
       <p class="modal-subtitle" style="font-size:13px;color:var(--gray-400);margin-top:2px">
         We'll suggest medicines — you confirm each before it's added.</p>
     </div>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('rx-import-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('rx-import-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3715,7 +3727,7 @@
       <h2 class="modal-title" id="restock-modal-overlay-title" data-i18n="Update Pill Stock">Update Pill Stock</h2>
       <p class="modal-subtitle" id="restock-med-name" style="font-size:13px;color:var(--gray-400);margin-top:2px"></p>
     </div>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('restock-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('restock-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3747,7 +3759,7 @@
     <div class="form-group" style="margin-top:12px">
       <label class="form-label">Pharmacy note <span style="font-weight:400;color:var(--gray-400)">— optional</span></label>
       <input type="text" class="form-input" id="restock-pharmacy" maxlength="200"
-             placeholder="e.g. Apollo near home · order on 1mg">
+             data-i18n-ph="e.g. Apollo near home · order on 1mg" placeholder="e.g. Apollo near home · order on 1mg">
     </div>
     <div class="form-actions">
       <button type="button" class="btn-outline" data-ev-click="closeModal('restock-modal-overlay')">Cancel</button>
@@ -3761,7 +3773,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="med-modal-overlay-title" data-i18n="Add Medicine">Add Medicine</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('med-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('med-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3771,7 +3783,7 @@
         <label class="form-label" data-i18n="Medicine Name">Medicine Name</label>
         <input type="text" class="form-input" id="med-name-input" name="name" placeholder="e.g. Metformin, Aspirin" data-i18n-ph="e.g. Metformin, Aspirin" required
                autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false"
-               aria-controls="med-name-suggest" aria-label="Medicine name"
+               aria-controls="med-name-suggest" data-i18n-aria="Medicine name" aria-label="Medicine name"
                data-ev-input="drugAutocomplete(this.value)" data-ev-keydown="drugAutocompleteKey(event)">
         <div id="med-name-suggest" class="drug-suggest" role="listbox" style="display:none"></div>
         <div id="med-name-dup" style="display:none;font-size:12px;color:var(--amber-600,#b45309);margin-top:6px"></div>
@@ -3815,7 +3827,7 @@
       </div>
       <div class="form-group" id="med-times-group"><label class="form-label" data-i18n="Reminder Times">Reminder Times</label>
         <div id="time-slots" class="time-slots">
-          <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button aria-label="Remove this time" type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+          <div class="time-slot-row"><input type="time" class="form-input time-input" value="08:00"><button data-i18n-aria="Remove this time" aria-label="Remove this time" type="button" class="btn-icon slot-remove" data-ev-click="removeTimeSlot(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
         </div>
         <button type="button" class="btn-outline-sm" data-ev-click="addTimeSlot()" style="margin-top:8px" data-i18n="+ Add time">+ Add time</button>
       </div>
@@ -3828,19 +3840,19 @@
         <label class="form-label" data-i18n="Icon &amp; Color">Icon & Color</label>
         <div class="icon-picker">
           <div class="icon-options">
-            <button aria-label="Icon: pill" type="button" class="icon-opt selected" data-icon="💊">💊</button>
-            <button aria-label="Icon: injection" type="button" class="icon-opt" data-icon="💉">💉</button>
-            <button aria-label="Icon: stethoscope" type="button" class="icon-opt" data-icon="🩺">🩺</button>
-            <button aria-label="Icon: heart" type="button" class="icon-opt" data-icon="❤️">❤️</button>
-            <button aria-label="Icon: anatomical heart" type="button" class="icon-opt" data-icon="🫀">🫀</button>
-            <button aria-label="Icon: DNA" type="button" class="icon-opt" data-icon="🧬">🧬</button>
+            <button data-i18n-aria="Icon: pill" aria-label="Icon: pill" type="button" class="icon-opt selected" data-icon="💊">💊</button>
+            <button data-i18n-aria="Icon: injection" aria-label="Icon: injection" type="button" class="icon-opt" data-icon="💉">💉</button>
+            <button data-i18n-aria="Icon: stethoscope" aria-label="Icon: stethoscope" type="button" class="icon-opt" data-icon="🩺">🩺</button>
+            <button data-i18n-aria="Icon: heart" aria-label="Icon: heart" type="button" class="icon-opt" data-icon="❤️">❤️</button>
+            <button data-i18n-aria="Icon: anatomical heart" aria-label="Icon: anatomical heart" type="button" class="icon-opt" data-icon="🫀">🫀</button>
+            <button data-i18n-aria="Icon: DNA" aria-label="Icon: DNA" type="button" class="icon-opt" data-icon="🧬">🧬</button>
           </div>
           <div class="color-options">
-            <button aria-label="Colour: teal" type="button" class="color-opt selected" data-color="teal" style="background:#4F8D74"></button>
-            <button aria-label="Colour: blue" type="button" class="color-opt" data-color="blue" style="background:#5E8299"></button>
-            <button aria-label="Colour: terracotta" type="button" class="color-opt" data-color="purple" style="background:#D07D4E"></button>
-            <button aria-label="Colour: red" type="button" class="color-opt" data-color="red" style="background:#DC2626"></button>
-            <button aria-label="Colour: amber" type="button" class="color-opt" data-color="amber" style="background:#E0A34E"></button>
+            <button data-i18n-aria="Colour: teal" aria-label="Colour: teal" type="button" class="color-opt selected" data-color="teal" style="background:#4F8D74"></button>
+            <button data-i18n-aria="Colour: blue" aria-label="Colour: blue" type="button" class="color-opt" data-color="blue" style="background:#5E8299"></button>
+            <button data-i18n-aria="Colour: terracotta" aria-label="Colour: terracotta" type="button" class="color-opt" data-color="purple" style="background:#D07D4E"></button>
+            <button data-i18n-aria="Colour: red" aria-label="Colour: red" type="button" class="color-opt" data-color="red" style="background:#DC2626"></button>
+            <button data-i18n-aria="Colour: amber" aria-label="Colour: amber" type="button" class="color-opt" data-color="amber" style="background:#E0A34E"></button>
           </div>
         </div>
       </div>
@@ -3911,7 +3923,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="activity-modal-overlay-title" data-i18n="Log Activity">Log Activity</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('activity-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('activity-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -3984,7 +3996,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Name / Title</label>
-          <input type="text" class="form-input" name="name" id="act-name" placeholder="Morning Run">
+          <input type="text" class="form-input" name="name" id="act-name" data-i18n-ph="Morning Run" placeholder="Morning Run">
         </div>
         <div class="form-group">
           <label class="form-label">Date</label>
@@ -3998,7 +4010,7 @@
       <!-- Always-visible: notes -->
       <div class="form-group">
         <label class="form-label">Notes</label>
-        <input type="text" class="form-input" name="notes" placeholder="How did it feel?">
+        <input type="text" class="form-input" name="notes" data-i18n-ph="How did it feel?" placeholder="How did it feel?">
       </div>
       <div class="form-actions">
         <button type="button" class="btn-outline" data-ev-click="closeModal('activity-modal-overlay')">Cancel</button>
@@ -4014,7 +4026,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="connect-modal-overlay-title" data-i18n="Connect Fitness App">Connect Fitness App</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('connect-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('connect-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4077,7 +4089,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="rdetail-title">Report</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('report-detail-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('report-detail-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4089,7 +4101,7 @@
 <div class="notif-banner" id="notif-banner" style="display:none">
   <span>🔔 Enable notifications to receive medicine reminders</span>
   <button class="btn-outline-sm" data-ev-click="requestNotifPermission()">Enable</button>
-  <button aria-label="Dismiss" class="btn-icon" data-ev-click="hideEl('notif-banner')" style="color:#fff">✕</button>
+  <button data-i18n-aria="Dismiss" aria-label="Dismiss" class="btn-icon" data-ev-click="hideEl('notif-banner')" style="color:#fff">✕</button>
 </div>
 
 
@@ -4098,7 +4110,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="apple-modal-overlay-title" data-i18n="Import Apple Health">Import Apple Health</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('apple-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('apple-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4129,7 +4141,7 @@
 <div class="modal modal--wide">
   <div class="modal-head">
     <h2 class="modal-title" id="add-food-overlay-title" data-i18n="Add Food">Add Food</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('add-food-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('add-food-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4139,15 +4151,15 @@
       <div class="food-search-bar-wrap">
         <div class="search-box">
           <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" class="search-input" id="food-search-input" placeholder="Search any food…" data-ev-input="searchFoodDB(this.value)">
-          <button aria-label="Clear the search" class="food-search-clear" id="food-search-clear" data-ev-click="clearFoodSearch()" style="display:none">
+          <input type="text" class="search-input" id="food-search-input" data-i18n-ph="Search any food…" placeholder="Search any food…" data-ev-input="searchFoodDB(this.value)">
+          <button data-i18n-aria="Clear the search" aria-label="Clear the search" class="food-search-clear" id="food-search-clear" data-ev-click="clearFoodSearch()" style="display:none">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
       </div>
 
       <!-- Diet preference filter — only suggest foods matching the diet -->
-      <div class="diet-pref-row" id="diet-pref-row" role="group" aria-label="Diet preference">
+      <div class="diet-pref-row" id="diet-pref-row" role="group" data-i18n-aria="Diet preference" aria-label="Diet preference">
         <button class="diet-chip active" data-diet=""       data-ev-click="setDietPref('')">All</button>
         <button class="diet-chip"        data-diet="veg"    data-ev-click="setDietPref('veg')">🥦 Veg</button>
         <button class="diet-chip"        data-diet="egg"    data-ev-click="setDietPref('egg')">🥚 Eggetarian</button>
@@ -4170,7 +4182,7 @@
         <!-- Active category badge -->
         <div class="food-cat-active-badge" id="food-cat-active-badge" style="display:none">
           <span id="food-cat-active-text"></span>
-          <button aria-label="Clear the category filter" data-ev-click="filterFoodCat('')" class="food-cat-clear-btn">✕</button>
+          <button data-i18n-aria="Clear the category filter" aria-label="Clear the category filter" data-ev-click="filterFoodCat('')" class="food-cat-clear-btn">✕</button>
         </div>
       </div>
 
@@ -4187,11 +4199,11 @@
       <div id="custom-food-form" class="custom-food-form" style="display:none">
         <div class="custom-food-form-header">
           <span style="font-weight:700;font-size:13px;color:var(--gray-800)">Create custom food</span>
-          <button aria-label="Close" type="button" data-ev-click="closeCustomFoodForm()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1">×</button>
+          <button data-i18n-aria="Close" aria-label="Close" type="button" data-ev-click="closeCustomFoodForm()" style="background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:18px;line-height:1">×</button>
         </div>
         <div class="form-group">
           <label class="form-label">Food name *</label>
-          <input type="text" class="form-input" id="cf-name" placeholder="e.g. My Protein Shake">
+          <input type="text" class="form-input" id="cf-name" data-i18n-ph="e.g. My Protein Shake" placeholder="e.g. My Protein Shake">
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group">
@@ -4246,7 +4258,7 @@
       <h2 class="modal-title" id="calorie-breakdown-overlay-title" data-i18n="Today's Calorie Balance">Today's Calorie Balance</h2>
       <p style="font-size:12px;color:var(--gray-400);margin-top:2px" id="cbd-date-label">Today</p>
     </div>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('calorie-breakdown-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('calorie-breakdown-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4347,7 +4359,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="profile-modal-overlay-title" data-i18n="Health Profile">Health Profile</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('profile-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('profile-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4357,7 +4369,7 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Name</label>
-          <input type="text" class="form-input" name="name" placeholder="Your name">
+          <input type="text" class="form-input" name="name" data-i18n-ph="Your name" placeholder="Your name">
         </div>
         <div class="form-group">
           <label class="form-label">Age</label>
@@ -4494,7 +4506,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="todo-modal-title">Add Task</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('todo-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('todo-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4502,11 +4514,11 @@
     <input type="hidden" id="todo-edit-id">
     <div class="form-group">
       <label class="form-label">Task title <span style="color:var(--red-500)">*</span></label>
-      <input type="text" class="form-input" id="todo-title-input" placeholder="What needs to be done?" maxlength="200">
+      <input type="text" class="form-input" id="todo-title-input" data-i18n-ph="What needs to be done?" placeholder="What needs to be done?" maxlength="200">
     </div>
     <div class="form-group">
       <label class="form-label">Notes (optional)</label>
-      <textarea class="form-input" id="todo-notes-input" placeholder="Add details, links, or context…" rows="3" style="resize:vertical"></textarea>
+      <textarea class="form-input" id="todo-notes-input" data-i18n-ph="Add details, links, or context…" placeholder="Add details, links, or context…" rows="3" style="resize:vertical"></textarea>
     </div>
     <div class="form-row">
       <div class="form-group">
@@ -4553,7 +4565,7 @@
 <div class="modal">
   <div class="modal-head">
     <h2 class="modal-title" id="habit-modal-overlay-title" data-i18n="Add New Habit">Add New Habit</h2>
-    <button class="modal-close" aria-label="Close"  data-ev-click="closeModal('habit-modal-overlay')">
+    <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeModal('habit-modal-overlay')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
@@ -4584,21 +4596,21 @@
       <div class="form-group" style="flex:1">
         <label class="form-label">Habit name</label>
         <input type="text" class="form-input" id="habit-name-input"
-               placeholder="e.g. Morning walk, No coffee…" maxlength="60">
+               data-i18n-ph="e.g. Morning walk, No coffee…" placeholder="e.g. Morning walk, No coffee…" maxlength="60">
       </div>
     </div>
     <div class="form-group">
       <label class="form-label">Colour</label>
       <div class="habit-color-picker" id="habit-color-picker">
-        <button type="button" class="habit-color-btn selected" data-color="#4F8D74" data-ev-click="selectHabitColor('#4F8D74')" style="background:#4F8D74" title="Teal"></button>
-        <button type="button" class="habit-color-btn" data-color="#5E8299" data-ev-click="selectHabitColor('#5E8299')" style="background:#5E8299" title="Blue"></button>
-        <button type="button" class="habit-color-btn" data-color="#D07D4E" data-ev-click="selectHabitColor('#D07D4E')" style="background:#D07D4E" title="Purple"></button>
-        <button type="button" class="habit-color-btn" data-color="#E0A34E" data-ev-click="selectHabitColor('#E0A34E')" style="background:#E0A34E" title="Amber"></button>
-        <button type="button" class="habit-color-btn" data-color="#DC2626" data-ev-click="selectHabitColor('#DC2626')" style="background:#DC2626" title="Red"></button>
-        <button type="button" class="habit-color-btn" data-color="#5A9E70" data-ev-click="selectHabitColor('#5A9E70')" style="background:#5A9E70" title="Green"></button>
-        <button type="button" class="habit-color-btn" data-color="#06B6D4" data-ev-click="selectHabitColor('#06B6D4')" style="background:#06B6D4" title="Cyan"></button>
-        <button type="button" class="habit-color-btn" data-color="#EC4899" data-ev-click="selectHabitColor('#EC4899')" style="background:#EC4899" title="Pink"></button>
-        <button type="button" class="habit-color-btn" data-color="#6366F1" data-ev-click="selectHabitColor('#6366F1')" style="background:#6366F1" title="Indigo"></button>
+        <button type="button" class="habit-color-btn selected" data-color="#4F8D74" data-ev-click="selectHabitColor('#4F8D74')" style="background:#4F8D74" data-i18n-title="Teal" title="Teal"></button>
+        <button type="button" class="habit-color-btn" data-color="#5E8299" data-ev-click="selectHabitColor('#5E8299')" style="background:#5E8299" data-i18n-title="Blue" title="Blue"></button>
+        <button type="button" class="habit-color-btn" data-color="#D07D4E" data-ev-click="selectHabitColor('#D07D4E')" style="background:#D07D4E" data-i18n-title="Purple" title="Purple"></button>
+        <button type="button" class="habit-color-btn" data-color="#E0A34E" data-ev-click="selectHabitColor('#E0A34E')" style="background:#E0A34E" data-i18n-title="Amber" title="Amber"></button>
+        <button type="button" class="habit-color-btn" data-color="#DC2626" data-ev-click="selectHabitColor('#DC2626')" style="background:#DC2626" data-i18n-title="Red" title="Red"></button>
+        <button type="button" class="habit-color-btn" data-color="#5A9E70" data-ev-click="selectHabitColor('#5A9E70')" style="background:#5A9E70" data-i18n-title="Green" title="Green"></button>
+        <button type="button" class="habit-color-btn" data-color="#06B6D4" data-ev-click="selectHabitColor('#06B6D4')" style="background:#06B6D4" data-i18n-title="Cyan" title="Cyan"></button>
+        <button type="button" class="habit-color-btn" data-color="#EC4899" data-ev-click="selectHabitColor('#EC4899')" style="background:#EC4899" data-i18n-title="Pink" title="Pink"></button>
+        <button type="button" class="habit-color-btn" data-color="#6366F1" data-ev-click="selectHabitColor('#6366F1')" style="background:#6366F1" data-i18n-title="Indigo" title="Indigo"></button>
       </div>
     </div>
     <div class="form-actions">
@@ -4611,7 +4623,7 @@
 
 <!-- Toast -->
 <!-- ── Quick-log FAB + sheet ── -->
-<button id="quick-fab" style="display:none" data-ev-click="toggleQuickLog()" aria-label="Quick log">
+<button id="quick-fab" style="display:none" data-ev-click="toggleQuickLog()" data-i18n-aria="Quick log" aria-label="Quick log">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
@@ -4634,11 +4646,11 @@
 
     <div class="qlg-label">😊 Mood</div>
     <div class="qlg-row">
-      <button aria-label="Mood: terrible" class="qlg-chip qlg-emoji" data-ev-click="quickMood('terrible')">😩</button>
-      <button aria-label="Mood: sad" class="qlg-chip qlg-emoji" data-ev-click="quickMood('sad')">😕</button>
-      <button aria-label="Mood: neutral" class="qlg-chip qlg-emoji" data-ev-click="quickMood('neutral')">😐</button>
-      <button aria-label="Mood: happy" class="qlg-chip qlg-emoji" data-ev-click="quickMood('happy')">😊</button>
-      <button aria-label="Mood: excited" class="qlg-chip qlg-emoji" data-ev-click="quickMood('excited')">🤩</button>
+      <button data-i18n-aria="Mood: terrible" aria-label="Mood: terrible" class="qlg-chip qlg-emoji" data-ev-click="quickMood('terrible')">😩</button>
+      <button data-i18n-aria="Mood: sad" aria-label="Mood: sad" class="qlg-chip qlg-emoji" data-ev-click="quickMood('sad')">😕</button>
+      <button data-i18n-aria="Mood: neutral" aria-label="Mood: neutral" class="qlg-chip qlg-emoji" data-ev-click="quickMood('neutral')">😐</button>
+      <button data-i18n-aria="Mood: happy" aria-label="Mood: happy" class="qlg-chip qlg-emoji" data-ev-click="quickMood('happy')">😊</button>
+      <button data-i18n-aria="Mood: excited" aria-label="Mood: excited" class="qlg-chip qlg-emoji" data-ev-click="quickMood('excited')">🤩</button>
     </div>
 
     <div class="qlg-label">⚖️ Weight</div>
@@ -4662,7 +4674,7 @@
   <div class="qlg-panel" style="max-width:420px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
       <div class="qlg-title" style="flex:1">Scan food barcode</div>
-      <button aria-label="Close the scanner" class="btn-icon" data-ev-click="closeBarcodeScanner()">✕</button>
+      <button data-i18n-aria="Close the scanner" aria-label="Close the scanner" class="btn-icon" data-ev-click="closeBarcodeScanner()">✕</button>
     </div>
 
     <!-- Live camera scan (where BarcodeDetector is supported) -->
@@ -4690,7 +4702,7 @@
 </div>
 
 <!-- ── Mobile bottom tab bar (≤768px) ── -->
-<nav class="mobile-tabbar" id="mobile-tabbar" aria-label="Primary (mobile)">
+<nav class="mobile-tabbar" id="mobile-tabbar" data-i18n-aria="Primary (mobile)" aria-label="Primary (mobile)">
   <a href="#" class="mtab" data-view="dashboard" data-essential>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>
     <span data-i18n="Home">Home</span>
@@ -4728,9 +4740,9 @@
     <a href="#" class="mmore" data-view="notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg><span data-i18n="Alerts">Alerts</span></a>
     <button class="mmore" data-ev-click="toggleTheme()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><span data-i18n="Theme">Theme</span></button>
-    <button class="mmore" data-ev-click="toggleSimpleMode()" aria-label="Toggle simple view">
+    <button class="mmore" data-ev-click="toggleSimpleMode()" data-i18n-aria="Toggle simple view" aria-label="Toggle simple view">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><span id="simple-toggle-label-m">Simple view</span></button>
-    <button class="mmore" data-ev-click="openLanguagePicker()" aria-label="Change language" aria-haspopup="menu">
+    <button class="mmore" data-ev-click="openLanguagePicker()" data-i18n-aria="Change language" aria-label="Change language" aria-haspopup="menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span id="lang-toggle-label">हिन्दी</span></button>
   </div>
 </div>
@@ -4740,7 +4752,7 @@
   <div class="modal modal--wide" id="doctor-summary-sheet">
     <div class="modal-head no-print">
       <div class="modal-title" id="doctor-summary-modal-title" data-i18n="Doctor visit summary">Doctor visit summary</div>
-      <button class="modal-close" aria-label="Close"  data-ev-click="closeDoctorSummary()">×</button>
+      <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeDoctorSummary()">×</button>
     </div>
     <div class="modal-body">
       <div id="doctor-summary-content"></div>
@@ -4756,7 +4768,7 @@
   <div class="modal" id="share-manager-sheet" style="max-width:520px">
     <div class="modal-head">
       <div class="modal-title" id="share-manager-modal-title" data-i18n="Shareable health snapshot">Shareable health snapshot</div>
-      <button class="modal-close" aria-label="Close"  data-ev-click="closeShareManager()">×</button>
+      <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeShareManager()">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--gray-500);margin-top:0" data-i18n="A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.">A private, expiring, read-only link to a safe summary: your medicines, latest vitals, conditions, allergies and adherence. It never includes your journal, cycle, or mood.</p>
@@ -4787,7 +4799,7 @@
   <div class="modal" id="welcome-tour-sheet" style="max-width:440px">
     <div class="modal-head">
       <div class="modal-title" id="welcome-tour-modal-title" data-i18n="Welcome to Arogo">Welcome to Arogo</div>
-      <button class="modal-close" data-ev-click="closeWelcomeTour()" aria-label="Close">×</button>
+      <button class="modal-close" data-ev-click="closeWelcomeTour()" data-i18n-aria="Close" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="welcome-tour-body"></div>
   </div>
@@ -4798,7 +4810,7 @@
   <div class="modal" id="voice-sheet" style="max-width:440px">
     <div class="modal-head">
       <div class="modal-title" id="voice-modal-title" data-i18n="Voice log">Voice log</div>
-      <button class="modal-close" data-ev-click="closeVoiceLog()" aria-label="Close">×</button>
+      <button class="modal-close" data-ev-click="closeVoiceLog()" data-i18n-aria="Close" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="voice-body"></div>
   </div>
@@ -4811,7 +4823,7 @@
       <div class="modal-title" id="visit-detail-modal-title" data-i18n="Visit">Visit</div>
       <div style="display:flex;align-items:center;gap:6px">
         <button class="btn-outline btn-sm" data-ev-click="printVisitSummary()" data-i18n="🖨 Print">🖨 Print</button>
-        <button class="modal-close" data-ev-click="closeVisitDetail()" aria-label="Close">×</button>
+        <button class="modal-close" data-ev-click="closeVisitDetail()" data-i18n-aria="Close" aria-label="Close">×</button>
       </div>
     </div>
     <div class="modal-body" id="visit-detail-body"></div>
@@ -4822,7 +4834,7 @@
   <div class="modal" id="sos-sheet" style="max-width:420px">
     <div class="modal-head">
       <div class="modal-title" id="sos-modal-title" data-i18n="🆘 Send an urgent alert?">🆘 Send an urgent alert?</div>
-      <button class="modal-close" aria-label="Close"  data-ev-click="closeSos()">×</button>
+      <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeSos()">×</button>
     </div>
     <div class="modal-body">
       <p style="font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:12px">
@@ -4842,7 +4854,7 @@
   <div class="modal" id="medhistory-sheet">
     <div class="modal-head">
       <div class="modal-title" id="medhistory-modal-title" data-i18n="🕘 Medicine history">🕘 Medicine history</div>
-      <button class="modal-close" aria-label="Close"  data-ev-click="closeMedHistory()">×</button>
+      <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closeMedHistory()">×</button>
     </div>
     <div class="modal-body">
       <div id="medhistory-content"></div>
@@ -4854,7 +4866,7 @@
   <div class="modal modal--wide" id="planner-sheet">
     <div class="modal-head">
       <div class="modal-title" id="planner-modal-title" data-i18n="📅 This week's plan">📅 This week's plan</div>
-      <button class="modal-close" aria-label="Close"  data-ev-click="closePlanner()">×</button>
+      <button class="modal-close" data-i18n-aria="Close" aria-label="Close"  data-ev-click="closePlanner()">×</button>
     </div>
     <div class="modal-body">
       <div id="planner-content"></div>
@@ -4871,13 +4883,13 @@
      there is no static heading to point at. It pointed at "checkin-title",
      which nothing has ever created — a dangling reference is worse than none,
      because the browser falls back to no name while the markup looks right. -->
-<div class="modal-overlay" id="checkin-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="Daily check-in">
+<div class="modal-overlay" id="checkin-overlay" style="display:none" role="dialog" aria-modal="true" data-i18n-aria="Daily check-in" aria-label="Daily check-in">
   <div class="modal" style="max-width:460px;width:100%">
 
     <!-- Progress dots + close -->
     <div class="modal-head" style="padding-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px" id="checkin-dots"></div>
-      <button class="modal-close" data-ev-click="closeCheckin()" aria-label="Skip check-in">
+      <button class="modal-close" data-ev-click="closeCheckin()" data-i18n-aria="Skip check-in" aria-label="Skip check-in">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
@@ -4941,7 +4953,7 @@
             <div class="form-group" style="grid-column:1/-1;margin-bottom:0">
               <label class="form-label">Full name <span style="color:#EF4444">*</span></label>
               <input type="text" class="form-input" id="ob-name"
-                     placeholder="Your name" autocomplete="name">
+                     data-i18n-ph="Your name" placeholder="Your name" autocomplete="name">
             </div>
 
             <!-- Age -->

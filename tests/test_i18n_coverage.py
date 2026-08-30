@@ -213,7 +213,7 @@ def template_strings():
     raw = io.open(INDEX, encoding='utf-8').read()
     # Decoded, because getAttribute() returns the decoded value.
     return {html_mod.unescape(a)
-            for a in re.findall(r'data-i18n(?:-ph)?="([^"]*)"', raw)}
+            for a in re.findall(r'data-i18n(?:-ph|-aria|-title)?="([^"]*)"', raw)}
 
 
 # ── The pack is real ────────────────────────────────────────────────────────
@@ -497,7 +497,26 @@ def _readiness_details():
     return out
 
 
+def _export_section_names():
+    """The card labels in the export view.
+
+    A JS-side registry translated as `t(s.name)`, so the string is a variable at
+    the call site and no scan can see it — the same blind spot as the Python
+    tables below, on the other side of the wire. Read out of app.js so adding a
+    twelfth section fails this test until it is translated.
+    """
+    src = _source()
+    block = src[src.index('const EXPORT_SECTIONS = ['):]
+    block = block[:block.index('\n];')]
+    return {m.group(1) for line in block.splitlines()
+            if not line.strip().startswith('//')
+            for m in [re.search(r"name:\s*'((?:[^'\\]|\\.)*)'", line)] if m}
+
+
 SERVER_LABELS = [
+    ('static/js/app.js EXPORT_SECTIONS', _export_section_names,
+     'Export card labels. Rendered with t(s.name), so the literal never appears '
+     'at a call site.'),
     ('db.medicines.TIMING_LABELS', _timing_labels,
      'Dose timing ("with food", "at bedtime"). Rendered through medTimingText, '
      'which calls t() on the server-supplied value.'),
@@ -556,6 +575,7 @@ WIRED = [
     'renderCheckin', 'ciShowSummary', 'initDailyCheckin',
     'composeSpokenBriefing', 'renderRefillList', '_refillStatusLabel',
     'renderNotifications', 'timeAgo',
+    'renderExportSections', 'updateExportEstimate',
 ]
 
 _TAG = re.compile(r'<[^>]*>')
@@ -644,6 +664,70 @@ def test_a_wired_function_renders_no_bare_english(fn):
         f'in every language: ' + ', '.join(sorted(bare)[:10]))
 
 
+# ── Text that lives in an attribute ─────────────────────────────────────────
+#
+# placeholder, aria-label and title are read by a person exactly like the text
+# between the tags — and aria-label is read by the user who has no other way to
+# find out what a control does. All three were untranslated app-wide: 49
+# placeholders, 46 aria-labels, 34 titles, in an app that speaks four languages.
+#
+# A partly-tagged attribute layer is the failure this codebase keeps meeting —
+# a list that looks complete because nothing counts what is missing. So this
+# counts: every human-readable attribute value must carry its data-i18n-* twin.
+
+_ATTR_PAIRS = [('placeholder', 'data-i18n-ph'),
+               ('aria-label', 'data-i18n-aria'),
+               ('title', 'data-i18n-title')]
+
+# Values that are not prose and are correctly left alone. Each needs a reason.
+_ATTR_EXEMPT = {
+    'you@example.com': 'An email-shaped example. It is a format, not a phrase, '
+                       'and it is recognisable in every script.',
+    'Asia/Tokyo': 'An IANA time-zone identifier. It is a literal the browser '
+                  'matches on, not a word — translating it breaks the lookup.',
+}
+
+
+def _attr_values(raw, attr):
+    """Human-readable values of `attr`, comments stripped."""
+    body = re.sub(r'<!--.*?-->', ' ', raw, flags=re.S)
+    return {html_mod.unescape(v) for v in re.findall(attr + r'="([^"]+)"', body)
+            if re.search(r'[A-Za-z]{3}', v)}
+
+
+@pytest.mark.parametrize('attr,tag', _ATTR_PAIRS, ids=[a for a, _ in _ATTR_PAIRS])
+def test_every_readable_attribute_is_tagged_for_translation(attr, tag):
+    raw = io.open(INDEX, encoding='utf-8').read()
+    untagged = sorted(_attr_values(raw, attr)
+                      - _attr_values(raw, tag)
+                      - set(_ATTR_EXEMPT))
+    assert not untagged, (
+        f'{len(untagged)} {attr} values have no {tag}, so they stay English in '
+        f'every language: ' + '; '.join(repr(u) for u in untagged[:8]))
+
+
+def test_the_attribute_exemptions_are_still_real():
+    """An exemption list goes stale silently — that is how it stops being a
+    list of decisions and becomes a place to hide work."""
+    raw = io.open(INDEX, encoding='utf-8').read()
+    present = set()
+    for attr, _tag in _ATTR_PAIRS:
+        present |= _attr_values(raw, attr)
+    stale = sorted(set(_ATTR_EXEMPT) - present)
+    assert not stale, f'exempted but no longer in the template: {stale}'
+    for value, why in _ATTR_EXEMPT.items():
+        assert len(why) > 25, f'{value!r} is exempted without a real reason'
+
+
+def test_apply_lang_actually_writes_those_attributes():
+    """Tagging without the runtime half changes nothing at all."""
+    body = _drop_comment_lines(_function_body(_source().split('\n'), 'applyLang') or '')
+    for _attr, tag in _ATTR_PAIRS:
+        assert tag in body, f'applyLang never reads {tag}, so tagging it does nothing'
+    for attr in ('placeholder', 'aria-label', 'title'):
+        assert f"'{attr}'" in body, f'applyLang never writes {attr}'
+
+
 # ── The front door ──────────────────────────────────────────────────────────
 #
 # The sign-in screen held 0 of the page's 627 translation tags, and the pack was
@@ -726,6 +810,30 @@ def test_every_language_declares_a_date_locale():
 #   - the comment recording why this rule exists
 #   - nothing else, currently. Keep this list empty if you can.
 _LOCALE_EXEMPT = ()
+
+
+def test_no_date_key_is_built_from_utc():
+    """`new Date().toISOString().slice(0,10)` is a UTC date, not a local one.
+
+    Not an i18n rule as such, but it lives here because it is the same mistake
+    in the same place: a date that looks right to whoever wrote it and is wrong
+    for everyone east or west of them. In IST (UTC+5:30) it returns YESTERDAY
+    between midnight and 5:30am — the notification panel grouped tonight's items
+    under the wrong heading, and the export view set its end date to yesterday,
+    silently leaving today's records out of the file.
+
+    Use localToday() / localDateKey(d), which build the key from local parts.
+    """
+    bad = []
+    for i, line in enumerate(_source().splitlines(), 1):
+        if line.lstrip().startswith('//'):
+            continue
+        if re.search(r'toISOString\(\)\s*\.\s*slice\(\s*0\s*,\s*10\s*\)', line):
+            bad.append(f'line {i}: {line.strip()[:90]}')
+    assert not bad, (
+        'these build a YYYY-MM-DD key from UTC, so they are a day off for part '
+        'of every day outside UTC — use localToday() or localDateKey():\n  '
+        + '\n  '.join(bad[:10]))
 
 
 def test_no_date_is_formatted_with_a_hardcoded_locale():
