@@ -548,6 +548,18 @@ function browserTimezone() {
 
 // Called on page load — check if we have a valid session
 async function initAuth() {
+  // The pack, before anything decides what to render. Packs are fetched on
+  // demand and that only used to happen after sign-in, so the sign-in screen
+  // itself was English for everyone — someone who had set the app to Marathi
+  // signed out and hit an English wall on the way back in. Awaited here rather
+  // than inside showAuthScreen() because that function is synchronous and is
+  // called from three places.
+  //
+  // Failure is not fatal: loadLangPack returns false and applyLang falls back
+  // to the English keys. A sign-in screen in the wrong language beats no
+  // sign-in screen.
+  try { await loadLangPack(_lang()); } catch (e) {}
+
   // Arriving from a password-reset email link (/?reset=TOKEN)
   const resetToken = new URLSearchParams(location.search).get('reset');
   if (resetToken) {
@@ -599,6 +611,10 @@ function showAuthScreen() {
   if (fab) fab.style.display = 'none';
   const tabbar = document.getElementById('mobile-tabbar');
   if (tabbar) tabbar.style.visibility = 'hidden';
+  // applyLang already ran at DOMContentLoaded, before initAuth had fetched the
+  // pack, so at that point every key still resolved to its English self. Re-run
+  // it now that the pack is in.
+  try { applyLang(); } catch (e) {}
 }
 
 // ── PWA install coaching ──────────────────────────────────────────

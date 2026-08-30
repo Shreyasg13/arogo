@@ -31,7 +31,8 @@
         </svg>
         <h1 style="font-size:26px;font-weight:700;font-family:'EB Garamond',serif;
                    color:var(--gray-900);margin-bottom:4px">Arogo</h1>
-        <p style="font-size:14px;color:var(--gray-400)">Health, together</p>
+        <p style="font-size:14px;color:var(--gray-400)"
+           data-i18n="Health, together">Health, together</p>
       </div>
 
       <!-- Card -->
@@ -44,14 +45,16 @@
                   style="flex:1;padding:8px;border:none;border-radius:8px;
                          font-size:14px;font-weight:600;cursor:pointer;
                          background:var(--gray-0);color:var(--gray-800);
-                         font-family:'Manrope',sans-serif;transition:all .15s">
+                         font-family:'Manrope',sans-serif;transition:all .15s"
+                  data-i18n="Sign in">
             Sign in
           </button>
           <button id="auth-tab-register" data-ev-click="switchAuthTab('register')"
                   style="flex:1;padding:8px;border:none;border-radius:8px;
                          font-size:14px;font-weight:600;cursor:pointer;
                          background:transparent;color:var(--gray-400);
-                         font-family:'Manrope',sans-serif;transition:all .15s">
+                         font-family:'Manrope',sans-serif;transition:all .15s"
+                  data-i18n="Create account">
             Create account
           </button>
         </div>
@@ -69,22 +72,25 @@
         <!-- Login form -->
         <div id="auth-form-login">
           <div class="form-group">
-            <label class="form-label">Email address</label>
+            <label class="form-label" data-i18n="Email address">Email address</label>
             <input type="email" class="form-input" id="login-email"
                    placeholder="you@example.com" autocomplete="email">
           </div>
           <div class="form-group">
-            <label class="form-label">Password</label>
+            <label class="form-label" data-i18n="Password">Password</label>
             <input type="password" class="form-input" id="login-password"
+                   data-i18n-ph="Your password"
                    placeholder="Your password" autocomplete="current-password">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  data-ev-click="submitLogin()" id="login-btn">
+                  data-ev-click="submitLogin()" id="login-btn"
+                  data-i18n="Sign in">
             Sign in
           </button>
           <p style="text-align:center;margin-top:12px">
             <a href="#" data-ev-click="showForgotForm();return false"
-               style="font-size:13px;color:#3E7862;text-decoration:none">
+               style="font-size:13px;color:#3E7862;text-decoration:none"
+               data-i18n="Forgot password?">
               Forgot password?
             </a>
           </p>
@@ -93,45 +99,52 @@
         <!-- Register form (hidden) -->
         <div id="auth-form-register" style="display:none">
           <div class="form-group">
-            <label class="form-label">Your name</label>
+            <label class="form-label" data-i18n="Your name">Your name</label>
             <input type="text" class="form-input" id="reg-name"
+                   data-i18n-ph="e.g. Ayush"
                    placeholder="e.g. Ayush" autocomplete="name">
           </div>
           <div class="form-group">
-            <label class="form-label">Email address</label>
+            <label class="form-label" data-i18n="Email address">Email address</label>
             <input type="email" class="form-input" id="reg-email"
                    placeholder="you@example.com" autocomplete="email">
           </div>
           <div class="form-group">
-            <label class="form-label">Password
-              <span style="font-weight:400;color:var(--gray-400)"> — 8+ characters</span>
+            <label class="form-label"><span data-i18n="Password">Password</span>
+              <span style="font-weight:400;color:var(--gray-400)"
+                    data-i18n=" — 8+ characters"> — 8+ characters</span>
             </label>
             <input type="password" class="form-input" id="reg-password"
+                   data-i18n-ph="Choose a strong password"
                    placeholder="Choose a strong password" autocomplete="new-password">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  data-ev-click="submitRegister()" id="register-btn">
+                  data-ev-click="submitRegister()" id="register-btn"
+                  data-i18n="Create account">
             Create account
           </button>
         </div>
 
         <!-- Forgot password form (hidden) -->
         <div id="auth-form-forgot" style="display:none">
-          <p style="font-size:13px;color:var(--gray-400);margin-bottom:16px;line-height:1.5">
+          <p style="font-size:13px;color:var(--gray-400);margin-bottom:16px;line-height:1.5"
+             data-i18n="Enter your email and we'll send you a link to reset your password.">
             Enter your email and we'll send you a link to reset your password.
           </p>
           <div class="form-group">
-            <label class="form-label">Email address</label>
+            <label class="form-label" data-i18n="Email address">Email address</label>
             <input type="email" class="form-input" id="forgot-email"
                    placeholder="you@example.com" autocomplete="email">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  data-ev-click="submitForgot()" id="forgot-btn">
+                  data-ev-click="submitForgot()" id="forgot-btn"
+                  data-i18n="Send reset link">
             Send reset link
           </button>
           <p style="text-align:center;margin-top:12px">
             <a href="#" data-ev-click="backToLogin();return false"
-               style="font-size:13px;color:#3E7862;text-decoration:none">
+               style="font-size:13px;color:#3E7862;text-decoration:none"
+               data-i18n="← Back to sign in">
               &larr; Back to sign in
             </a>
           </p>
@@ -140,19 +153,23 @@
         <!-- Reset password form (hidden — shown when URL has ?reset=token) -->
         <div id="auth-form-reset" style="display:none">
           <div class="form-group">
-            <label class="form-label">New password
-              <span style="font-weight:400;color:var(--gray-400)"> — 8+ characters</span>
+            <label class="form-label"><span data-i18n="New password">New password</span>
+              <span style="font-weight:400;color:var(--gray-400)"
+                    data-i18n=" — 8+ characters"> — 8+ characters</span>
             </label>
             <input type="password" class="form-input" id="reset-password"
+                   data-i18n-ph="Choose a new password"
                    placeholder="Choose a new password" autocomplete="new-password">
           </div>
           <button class="btn-primary" style="width:100%;padding:12px;font-size:14px"
-                  data-ev-click="submitReset()" id="reset-btn">
+                  data-ev-click="submitReset()" id="reset-btn"
+                  data-i18n="Set new password">
             Set new password
           </button>
           <p style="text-align:center;margin-top:12px">
             <a href="#" data-ev-click="backToLogin();return false"
-               style="font-size:13px;color:#3E7862;text-decoration:none">
+               style="font-size:13px;color:#3E7862;text-decoration:none"
+               data-i18n="← Back to sign in">
               &larr; Back to sign in
             </a>
           </p>
@@ -160,8 +177,10 @@
 
         <!-- Footer note -->
         <p style="font-size:12px;color:var(--gray-400);text-align:center;margin-top:16px;line-height:1.5">
-          Your health data is stored securely and never shared without your consent.
-          <br><a href="/how-it-works" style="color:#3E7862;text-decoration:none">How Arogo works &rarr;</a>
+          <span data-i18n="Your health data is stored securely and never shared without your consent."
+            >Your health data is stored securely and never shared without your consent.</span>
+          <br><a href="/how-it-works" style="color:#3E7862;text-decoration:none"
+                 data-i18n="How Arogo works →">How Arogo works &rarr;</a>
         </p>
       </div>
 
@@ -3159,13 +3178,15 @@
   <!-- Select all + download -->
   <div class="export-action-bar">
     <div class="export-action-left">
-      <button class="btn-outline" data-ev-click="setAllExportSections(true)">Select all</button>
-      <button class="btn-outline" data-ev-click="setAllExportSections(false)">Deselect all</button>
+      <button class="btn-outline" data-ev-click="setAllExportSections(true)"
+              data-i18n="Select all">Select all</button>
+      <button class="btn-outline" data-ev-click="setAllExportSections(false)"
+              data-i18n="Deselect all">Deselect all</button>
       <span class="export-size-estimate" id="export-size-estimate"></span>
     </div>
     <button class="btn-primary export-download-btn" data-ev-click="doExport()" id="export-download-btn">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Download JSON
+      <span data-i18n="Download JSON">Download JSON</span>
     </button>
   </div>
 

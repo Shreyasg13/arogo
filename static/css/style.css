@@ -4555,6 +4555,15 @@ body { font-family:'Manrope',sans-serif; background:var(--gray-25); color:var(--
 .export-action-left { display: flex; align-items: center; gap: 10px; }
 .export-size-estimate { font-size: 12px; color: var(--gray-400); font-family: 'JetBrains Mono', monospace; }
 .export-download-btn { min-width: 180px; justify-content: center; }
+/* At 375px the left group plus a 180px-minimum button is wider than the screen,
+   and the bar does not wrap — so the whole PAGE scrolled sideways by 15px. The
+   rule is that wide content scrolls inside its own container, never the body.
+   Below 600px the bar stacks and the button gives up its minimum width. */
+@media (max-width: 600px) {
+  .export-action-bar { flex-wrap: wrap; }
+  .export-action-left { flex-wrap: wrap; }
+  .export-download-btn { min-width: 0; width: 100%; }
+}
 
 /* ════════════════════════════════════
    HABITS PAGE — Today strip + cards

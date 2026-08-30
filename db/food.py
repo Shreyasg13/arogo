@@ -24,14 +24,21 @@ def get_profile() -> dict:
 
 
 def get_user_language(user_id: str) -> str:
-    """The stored UI language ('hi'/'en') for any user_id, for the headless
-    mailer and scheduler which act on behalf of a user without a request context.
-    Defaults to 'en' for unknown users, no profile, or NULL. Never raises."""
+    """The stored UI language for any user_id, for the headless mailer and
+    scheduler which act on behalf of a user without a request context.
+    Defaults to 'en' for unknown users, no profile, or NULL. Never raises.
+
+    Clamped through i18n_server.normalize_lang rather than a literal check.
+    This used to read `'hi' if lang == 'hi' else 'en'`, which threw away every
+    other language ON READ — so even once the column held 'mr', every email and
+    push came out English, and the bug survived fixing the write path.
+    """
     try:
         r = execute("SELECT language FROM user_profile WHERE user_id=? LIMIT 1",
                     (user_id,), fetchone=True)
         lang = (dict(r).get('language') if r else None)
-        return 'hi' if lang == 'hi' else 'en'
+        from i18n_server import normalize_lang
+        return normalize_lang(lang)
     except Exception:
         return 'en'
 
@@ -72,13 +79,20 @@ def update_profile(data: dict) -> dict:
     elif ui_mode not in (None, 'simple', 'standard'):
         ui_mode = p.get('ui_mode')  # ignore garbage, keep existing
 
-    # Chosen UI language — 'hi'/'en'/None. Stored so the headless mailer and
-    # scheduler (no browser) can localize emails and push. Anything unknown is
-    # ignored so garbage can't silently switch someone's reminders to gibberish.
+    # Chosen UI language. Stored so the headless mailer and scheduler (no
+    # browser) can localize emails and push. Anything unknown is ignored so
+    # garbage can't silently switch someone's reminders to gibberish.
+    #
+    # The accepted set is read from i18n_server.SERVER_LANGS rather than written
+    # out here. It was a hardcoded ('en', 'hi') — a fourth copy of the language
+    # list — so when Bengali and Marathi shipped, the picker offered them, the
+    # UI translated, and this quietly refused to store the choice. The reminders
+    # stayed English and nothing anywhere said why.
+    from i18n_server import SERVER_LANGS
     language = data.get('language', p.get('language'))
     if language in ('', 'none', 'default'):
         language = None
-    elif language not in (None, 'en', 'hi'):
+    elif language is not None and language not in SERVER_LANGS:
         language = p.get('language')  # ignore garbage, keep existing
 
     # Country: validate against the known set; keep existing on garbage. Drives

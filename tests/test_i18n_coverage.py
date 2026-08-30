@@ -202,9 +202,18 @@ def used_strings():
 
 
 def template_strings():
+    """Every string the template asks applyLang to translate.
+
+    Both attributes, not just data-i18n. The placeholder form was missing here,
+    so 17 placeholders were never checked against any pack — 16 of them had no
+    Bengali and no Marathi, and the sign-in screen shipped with a translated
+    label above an English "Your password". A placeholder is read by exactly the
+    person who has not filled the field in yet.
+    """
     raw = io.open(INDEX, encoding='utf-8').read()
     # Decoded, because getAttribute() returns the decoded value.
-    return {html_mod.unescape(a) for a in re.findall(r'data-i18n="([^"]*)"', raw)}
+    return {html_mod.unescape(a)
+            for a in re.findall(r'data-i18n(?:-ph)?="([^"]*)"', raw)}
 
 
 # ── The pack is real ────────────────────────────────────────────────────────
@@ -633,6 +642,56 @@ def test_a_wired_function_renders_no_bare_english(fn):
     assert not bare, (
         f'{fn} renders text that was never passed to t(), so it stays English '
         f'in every language: ' + ', '.join(sorted(bare)[:10]))
+
+
+# ── The front door ──────────────────────────────────────────────────────────
+#
+# The sign-in screen held 0 of the page's 627 translation tags, and the pack was
+# not even fetched before it rendered — packs load on demand and that only
+# happened after sign-in. So the app spoke four languages and its front door
+# spoke one: set the app to Marathi, sign out, and come back to an English wall.
+#
+# Two separate failures, so two separate checks. Tagging the markup without
+# loading the pack renders English anyway, and loading the pack without tagging
+# the markup does nothing at all.
+
+def test_the_sign_in_screen_is_tagged_for_translation():
+    raw = io.open(INDEX, encoding='utf-8').read()
+    start = raw.index('id="auth-screen"')
+    # The auth screen ends where the app shell begins.
+    end = raw.index('<div class="app-shell">', start)
+    block = raw[start:end]
+    tagged = len(re.findall(r'data-i18n(?:-ph)?=', block))
+    assert tagged >= 15, (
+        f'the sign-in screen carries only {tagged} translation tags. It is the '
+        f'one screen every user sees before anything else, and it was English '
+        f'for every language until 2026-08-29.')
+    # And the strings a signed-out user actually reads must be among them.
+    for must in ('Sign in', 'Create account', 'Forgot password?',
+                 'Email address', 'Password'):
+        assert f'data-i18n="{must}"' in block, f'{must!r} is not tagged'
+
+
+def test_the_language_pack_loads_before_the_sign_in_screen():
+    """A tagged screen with no pack loaded renders English and looks fine.
+
+    Comments are stripped before looking. The first version of this checked
+    `'loadLangPack' in body`, and the comment ABOVE the call explains why the
+    call is there — so deleting the call left the test green. A guard that its
+    own documentation can satisfy is not a guard.
+    """
+    src = _source()
+    lines = src.split('\n')
+    body = _drop_comment_lines(_function_body(lines, 'initAuth') or '')
+    assert body, 'initAuth is gone — this check needs rewriting'
+    assert 'loadLangPack(' in body, (
+        'initAuth no longer loads the language pack, so the sign-in screen '
+        'renders before any translation exists and falls back to English')
+    shown = _drop_comment_lines(_function_body(lines, 'showAuthScreen') or '')
+    assert 'applyLang(' in shown, (
+        'showAuthScreen no longer re-applies the language. applyLang runs at '
+        'DOMContentLoaded, BEFORE initAuth has fetched the pack, so without '
+        'this the tags resolve to their English selves.')
 
 
 # ── Dates follow the language too ───────────────────────────────────────────
