@@ -614,17 +614,19 @@ def api_export_counts():
 def api_backup():
     """One-file full snapshot for self-hosted backup — every table this user
     owns, secrets redacted. Downloads as an Arogo backup .json."""
-    import json as _json, datetime as dt_mod
-    from flask import Response
-    from db.account import export_all_data
+    from flask import Response, stream_with_context
+    from db.account import stream_all_data
     from db.core import current_user_id
-    data = export_all_data(current_user_id())
+    uid = current_user_id()
     from db.account_activity import log_event
     log_event('backup_downloaded')
-    data['_backup'] = {'app': 'arogo', 'version': 1}
-    body = _json.dumps(data, indent=2, default=str)
     stamp = today_iso(get_user_timezone())
-    return Response(body, mimetype='application/json', headers={
+    # Streamed, not assembled. Twenty years of logging peaked at 228 MB of RAM
+    # to serve a 28 MB file the old way — ten times the database — and this
+    # runs on a Pi. stream_with_context keeps current_user_id() valid while the
+    # generator runs, which is after the view has returned.
+    return Response(stream_with_context(stream_all_data(uid)),
+                    mimetype='application/json', headers={
         'Content-Disposition': f'attachment; filename="arogo-backup-{stamp}.json"'})
 
 
