@@ -37,17 +37,21 @@ import json
 import os
 import random
 import sys
-import tempfile
 import time
 
-DB = os.path.join(tempfile.gettempdir(), 'arogo-scale-bench.db')
-os.environ['MEDEASY_DB'] = DB
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Before anything can reach db.core, which reads DB_PATH once at import time.
+# use_throwaway_db raises if that has already happened, rather than letting this
+# believe it is sandboxed while it writes to the real database.
+from scripts.sandbox import use_throwaway_db          # noqa: E402
+DB = use_throwaway_db('arogo-scale-bench', fresh=False)
 
 random.seed(20260829)          # same dataset every run, so timings compare
 
 from app import create_app                                          # noqa: E402
 from db.core import execute, init_db, new_id, now_iso, user_context  # noqa: E402
+from scripts.sandbox import assert_not_live                          # noqa: E402
 
 YEARS = int(os.environ.get('BENCH_YEARS', '5'))
 DAYS = 365 * YEARS
@@ -71,6 +75,7 @@ def seed():
     if os.path.exists(DB):
         os.remove(DB)
     init_db()
+    assert_not_live()               # belt and braces before writing 73,000 rows
     app = create_app()
     app.config['TESTING'] = True
     c = app.test_client()

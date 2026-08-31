@@ -26,6 +26,34 @@ bp = Blueprint('auth', __name__)
 
 EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
+# Top-level domains RFC 2606 and RFC 6761 set aside so they can never be
+# registered as real ones. Every test and fixture in this repository uses them,
+# which makes them a reliable marker for "this is scaffolding".
+_RESERVED_TLDS = ('.test', '.example', '.invalid', '.localhost')
+
+
+def _reserved_test_domain(email: str):
+    """A refusal message when scaffolding is being written to the real database.
+
+    A one-off script written to check a change end-to-end imported the app,
+    registered e2e-…@x.test and wrote fixture rows into the live database.
+    Nothing stopped it, and nothing would have said so afterwards either.
+
+    These TLDs cannot exist on the internet, so refusing them costs no real
+    person an account. It only applies to the live database: the test suite
+    runs in memory and benchmarks point at their own file, and both must keep
+    working — a guard that blocks the tests would simply be turned off.
+    """
+    from db.core import IS_LIVE_DB
+    if not IS_LIVE_DB:
+        return None
+    domain = email.rsplit('@', 1)[-1]
+    if domain.endswith(_RESERVED_TLDS):
+        return ('That address uses a reserved test domain, so this looks like '
+                'test data being written to the real database. Point '
+                'MEDEASY_DB at another file first.')
+    return None
+
 
 # ── Register ───────────────────────────────────────────────────────────────────
 
@@ -40,6 +68,9 @@ def register():
     # Validate
     if not email or not EMAIL_RE.match(email):
         return jsonify({'error': 'Valid email address required'}), 400
+    reserved = _reserved_test_domain(email)
+    if reserved:
+        return jsonify({'error': reserved}), 400
     name = name or email.split('@')[0]   # default to email prefix if blank
     pw_err = validate_password_strength(pw)
     if pw_err:

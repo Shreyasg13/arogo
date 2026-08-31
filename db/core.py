@@ -80,9 +80,25 @@ def valid_date(v):
 
 # ── Backend selection ─────────────────────────────────────────────────────────
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH  = os.environ.get("MEDEASY_DB", os.path.join(ROOT_DIR, "medeasy.db"))
+DEFAULT_DB_PATH = os.path.join(ROOT_DIR, "medeasy.db")
+DB_PATH  = os.environ.get("MEDEASY_DB", DEFAULT_DB_PATH)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 IS_POSTGRES  = DATABASE_URL.startswith(("postgres://", "postgresql://"))
+
+# True when this process is talking to the REAL database — the one holding a
+# person's medicines and doses — rather than an in-memory test database or a
+# throwaway file a benchmark pointed itself at.
+#
+# This exists because a one-off script written to check a change end-to-end
+# imported the app, registered a user, and wrote fixture rows straight into the
+# live database. The rows were removed, but "remember to set MEDEASY_DB" is not
+# a safeguard; it is a thing to forget. Anything that could plausibly be test
+# scaffolding now has to say out loud that it means the real one.
+#
+# Deliberately NOT "is this a file database": a benchmark pointing at its own
+# file is doing the right thing and must not be obstructed.
+IS_LIVE_DB = bool(DATABASE_URL) or (
+    os.path.abspath(DB_PATH) == os.path.abspath(DEFAULT_DB_PATH))
 
 # ── Connection ────────────────────────────────────────────────────────────────
 # One connection per thread, never one per process.
@@ -2258,3 +2274,28 @@ def init_db():
     migrate_add_custom_food_barcode()
     migrate_claim_default_data()
     print(f"[DB] Ready — {'PostgreSQL' if IS_POSTGRES else DB_PATH}")
+    _warn_if_live_and_probably_a_script()
+
+
+def _warn_if_live_and_probably_a_script():
+    """Say plainly when something that is not the server opens the real data.
+
+    The old banner printed the path and I read straight past it while a script
+    wrote fixture rows into it. A path is not a warning; this is. Only for
+    processes that are not the app or the scheduler — the server saying "you are
+    using your database" every boot would be noise, and noise gets ignored,
+    which is how the banner failed in the first place.
+    """
+    if not IS_LIVE_DB:
+        return
+    try:
+        import sys
+        entry = os.path.basename(getattr(sys.modules.get('__main__'), '__file__', '') or '')
+        if entry in ('app.py', 'run_scheduler.py', 'wsgi.py'):
+            return
+        print('[DB] ****  THIS IS THE REAL DATABASE  ****', file=sys.stderr)
+        print('[DB] Anything written now lands in actual health records. Set '
+              'MEDEASY_DB to a throwaway file BEFORE importing db.core if this '
+              'is a test, a benchmark or a one-off check.', file=sys.stderr)
+    except Exception:
+        pass                      # a warning must never break the thing it warns about
