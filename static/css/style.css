@@ -7100,6 +7100,43 @@ body { font-family: 'Manrope', system-ui, sans-serif; }
 .restore-warn .restore-row { color:inherit; border-bottom-color:rgba(138,74,68,.22); }
 .restore-warn .restore-row b { color:#8a4a44; }
 .restore-note { font-size:12.5px; color:var(--gray-400); line-height:1.6; margin-top:8px; }
+/* ── A menu you choose ────────────────────────────────────────────────────
+   display:none rather than visibility or opacity: a hidden nav item must be
+   out of the tab order too, or the menu still has fifty-five stops for anyone
+   navigating by keyboard. */
+.nav-item--hidden, .nav-group--empty { display: none; }
+.nav-edit-btn {
+  display: block; width: calc(100% - 24px); margin: 10px 12px 16px;
+  padding: 8px 10px; font-size: 12px; font-family: inherit; cursor: pointer;
+  color: var(--gray-400); background: none; text-align: left;
+  border: 1px dashed var(--gray-100); border-radius: 8px;
+}
+.nav-edit-btn:hover { color: var(--gray-700); border-color: var(--gray-400); }
+.nav-edit-group { margin-bottom: 14px; }
+.nav-edit-head {
+  font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--gray-400);
+  padding-bottom: 5px; border-bottom: 1px solid var(--gray-50, #F0EDE6);
+}
+.nav-edit-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 2px; font-size: 13.5px; color: var(--gray-800); cursor: pointer;
+}
+/* The app sets accent-color per checkbox rather than globally; without it these
+   fall back to the browser default, which reads as an error state on a list
+   where every tick is the normal case. */
+.nav-edit-row input[type="checkbox"] {
+  width: 16px; height: 16px; flex-shrink: 0;
+  accent-color: var(--teal-600, #4F8D74);
+}
+/* An essential section shows as ticked-and-locked rather than being left out
+   of the list — "why can't I find X here" is worse than a disabled tick. */
+.nav-edit-row--fixed { cursor: default; color: var(--gray-400); }
+.nav-edit-note {
+  margin-left: auto; font-size: 11px; color: var(--gray-400);
+  background: var(--gray-50, #F0EDE6); border-radius: 5px; padding: 1px 6px;
+}
+
 /* ── Capability the data earned, still off ────────────────────────────────
    Deliberately quiet. This is information, not an alert: nothing here is
    wrong, something is merely unconnected. An amber "action needed" treatment

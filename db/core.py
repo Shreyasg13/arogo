@@ -1354,6 +1354,20 @@ def migrate_add_dormant_dismissed():
         pass  # already exists
 
 
+def migrate_add_nav_hidden():
+    """Which of the app's sections this user has taken out of their menu.
+
+    Same reasoning as dormant_dismissed: one short comma-separated string per
+    user, where a table would be a table to migrate, export, restore, search
+    and trash. NULL means the default — everything shown — so existing accounts
+    are unchanged until someone chooses otherwise.
+    """
+    try:
+        execute("ALTER TABLE user_profile ADD COLUMN nav_hidden TEXT DEFAULT NULL")
+    except Exception:
+        pass  # already exists
+
+
 def migrate_add_country():
     """Add country column to user_profile. Drives currency, number formatting and
     the medical-spend financial year (see db/locale_config). NULL → India default,
@@ -2185,6 +2199,7 @@ def init_db():
     migrate_add_language()
     migrate_add_country()
     migrate_add_dormant_dismissed()
+    migrate_add_nav_hidden()
     migrate_add_unit_prefs()
     migrate_add_idem_keys()
     migrate_add_symptom_duration()

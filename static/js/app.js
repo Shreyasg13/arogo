@@ -2583,6 +2583,119 @@ function _applyCollapseState(key) {
   if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
+// ── A menu you choose ───────────────────────────────────────────────────────
+//
+// Arogo shows all fifty-five sections to everyone: pregnancy, menopause, rehab,
+// quitting smoking, dialysis, blood donation. Someone tracking blood pressure
+// and two medicines scrolls past every one of them, and the length of the list
+// is itself why a section they DO want never gets found.
+//
+// Hiding is the obvious fix and the dangerous one — this codebase has a whole
+// test file about features that shipped with no route to them. Two things make
+// it safe, and both are enforced in tests rather than promised here: essential
+// sections cannot be hidden, and everything stays in global search whether or
+// not it is in the menu. Hiding changes what you scroll past, never what exists.
+
+let _navHidden = new Set();
+let _navEssential = new Set();
+
+async function loadNavPrefs() {
+  const r = await coalescedGet('/api/nav-prefs').catch(() => null);
+  if (!r) return;                       // menu stays as it is; nothing is lost
+  _navHidden = new Set(r.hidden || []);
+  _navEssential = new Set(r.essential || []);
+  applyNavPrefs();
+}
+
+function applyNavPrefs() {
+  document.querySelectorAll('.nav-item[data-view]').forEach(el => {
+    const v = el.getAttribute('data-view');
+    el.classList.toggle('nav-item--hidden',
+                        _navHidden.has(v) && !_navEssential.has(v));
+  });
+  // A group whose every item is hidden would otherwise sit there as a heading
+  // with nothing under it.
+  document.querySelectorAll('.nav-group').forEach(g => {
+    const items = [...g.querySelectorAll('.nav-item[data-view]')];
+    const allHidden = items.length > 0 &&
+      items.every(el => el.classList.contains('nav-item--hidden'));
+    g.classList.toggle('nav-group--empty', allHidden);
+  });
+}
+
+async function openNavEditor() {
+  const r = await fetch('/api/nav-prefs', {credentials: 'same-origin'})
+    .then(x => x.ok ? x.json() : null).catch(() => null);
+  if (!r) { showToast(t('Could not open that'), 'error'); return; }
+  _navHidden = new Set(r.hidden || []);
+  _navEssential = new Set(r.essential || []);
+  const unused = new Set(r.unused || []);
+
+  const groups = [...document.querySelectorAll('.nav-group')].map(g => {
+    const head = g.querySelector('.nav-group-head span');
+    const items = [...g.querySelectorAll('.nav-item[data-view]')].map(el => {
+      const v = el.getAttribute('data-view');
+      const label = (el.querySelector('span') || {}).textContent || v;
+      return {v, label: label.trim(), essential: _navEssential.has(v),
+              unused: unused.has(v)};
+    });
+    return {title: (head ? head.textContent : '').trim(), items};
+  }).filter(g => g.items.length);
+
+  document.getElementById('nav-editor-body').innerHTML = groups.map(g => `
+    <div class="nav-edit-group">
+      <div class="nav-edit-head">${escHtml(g.title)}</div>
+      ${g.items.map(i => `
+        <label class="nav-edit-row${i.essential ? ' nav-edit-row--fixed' : ''}">
+          <input type="checkbox" data-nav="${escHtml(i.v)}"
+                 ${_navHidden.has(i.v) || i.essential ? '' : 'checked'}
+                 ${i.essential ? 'checked disabled' : ''}>
+          <span>${escHtml(i.label)}</span>
+          ${i.essential ? `<span class="nav-edit-note">${t('always shown')}</span>`
+            : i.unused ? `<span class="nav-edit-note">${t('never used')}</span>` : ''}
+        </label>`).join('')}
+    </div>`).join('');
+
+  const n = [...unused].filter(v => !_navEssential.has(v)).length;
+  document.getElementById('nav-editor-tidy').style.display = n ? '' : 'none';
+  document.getElementById('nav-editor-tidy').textContent =
+    tformat('Untick the %1 I have never used', n);
+  document.getElementById('nav-editor-overlay').style.display = 'flex';
+  _a11yEnhance(document.getElementById('nav-editor-body'));
+}
+
+// A suggestion the user applies, not something the app does for them. Someone
+// who has not logged a pregnancy yet may be about to.
+function navEditorTidy() {
+  fetch('/api/nav-prefs', {credentials: 'same-origin'})
+    .then(r => r.json())
+    .then(r => {
+      const unused = new Set(r.unused || []);
+      document.querySelectorAll('#nav-editor-body [data-nav]').forEach(cb => {
+        if (!cb.disabled && unused.has(cb.getAttribute('data-nav'))) cb.checked = false;
+      });
+    })
+    .catch(() => {});
+}
+
+async function saveNavPrefs() {
+  const hide = [...document.querySelectorAll('#nav-editor-body [data-nav]')]
+    .filter(cb => !cb.checked && !cb.disabled)
+    .map(cb => cb.getAttribute('data-nav'));
+  const r = await fetch('/api/nav-prefs', {
+    method: 'PUT', credentials: 'same-origin',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({hidden: hide}),
+  }).then(x => x.json()).catch(() => null);
+  if (!r || !r.success) { showToast(t('Could not save that'), 'error'); return; }
+  _navHidden = new Set(r.hidden || []);
+  applyNavPrefs();
+  closeModal('nav-editor-overlay');
+  showToast(hide.length
+    ? tformat('%1 sections hidden — still findable in search', hide.length)
+    : t('Everything is shown'));
+}
+
 // Sidebar nav grouping — collapsible sections so a 30-item sidebar scans easily.
 function toggleNavGroup(key) {
   const g = document.querySelector('.nav-group[data-group="' + key + '"]');
@@ -2641,6 +2754,7 @@ async function loadDashboard() {
   try { loadConditionCheckin(); } catch (e) {}
   try { loadReminderHealth(); } catch (e) {}
   try { loadDormant(); } catch (e) {}
+  try { loadNavPrefs(); } catch (e) {}
   initDailyCheckin();
 
   const [doses, fitnessStats] = await Promise.all([

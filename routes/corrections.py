@@ -38,6 +38,23 @@ def api_correct_entry(table, row_id):
     return jsonify({'success': True, **result})
 
 
+@bp.route('/api/nav-prefs')
+@require_auth
+def api_nav_prefs():
+    """Which sections this user has taken out of their menu, which can never be
+    taken out, and which the app can see they have never used."""
+    from db.nav_prefs import report
+    return jsonify(report())
+
+
+@bp.route('/api/nav-prefs', methods=['PUT'])
+@require_auth
+def api_set_nav_prefs():
+    from db.nav_prefs import set_hidden
+    body = request.json or {}
+    return jsonify({'success': True, 'hidden': sorted(set_hidden(body.get('hidden')))})
+
+
 @bp.route('/api/dormant')
 @require_auth
 def api_dormant():
