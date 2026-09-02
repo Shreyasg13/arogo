@@ -1,0 +1,25 @@
+name: Deploy
+
+# Runs only after "MedEasy API Tests" finishes on main, and only deploys if
+# it passed — render.yaml sets autoDeploy: false on both services so Render
+# never deploys an untested commit on its own.
+on:
+  workflow_run:
+    workflows: ["MedEasy API Tests"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy — web
+        run: curl -fsS -X POST "$DEPLOY_HOOK_WEB"
+        env:
+          DEPLOY_HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+
+      - name: Trigger Render deploy — scheduler worker
+        run: curl -fsS -X POST "$DEPLOY_HOOK_WORKER"
+        env:
+          DEPLOY_HOOK_WORKER: ${{ secrets.RENDER_DEPLOY_HOOK_WORKER }}

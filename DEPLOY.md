@@ -34,6 +34,24 @@ formatting done in Python, no SQLite-only SQL (`strftime`/`INSERT OR REPLACE`/
    public URL Render assigned) and `SMTP_HOST/USER/PASS/FROM`.
 3. Redeploy. Done — HTTPS, CSP, secure cookies all active.
 
+### CI-gated auto-deploy
+
+Both services are `autoDeploy: false`, so Render never deploys a commit on
+its own — `.github/workflows/deploy.yml` triggers the deploy, and only
+after `.github/workflows/test.yml` (SQLite + PostgreSQL suites, JS tests)
+passes on `main`.
+
+One-time setup (needs dashboard access — can't be scripted):
+
+1. On each service in the Render dashboard: **Settings → Deploy Hook** →
+   copy the URL.
+2. In the GitHub repo: **Settings → Secrets and variables → Actions**,
+   add `RENDER_DEPLOY_HOOK_WEB` and `RENDER_DEPLOY_HOOK_WORKER` with those
+   two URLs.
+
+From then on, every green run of the test workflow on `main` deploys both
+services; a red run deploys nothing.
+
 For Railway/Fly, the `Procfile` covers the start command; supply the
 same env vars from the table above.
 

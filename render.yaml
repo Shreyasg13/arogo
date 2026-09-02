@@ -32,6 +32,7 @@ services:
     name: arogo
     runtime: python
     plan: free
+    autoDeploy: false                 # deploy.yml triggers this via deploy hook, only after CI is green
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT "app:create_app()"
     healthCheckPath: /healthz         # 200 always; body also reports scheduler liveness
@@ -55,6 +56,7 @@ services:
     name: medeasy-scheduler
     runtime: python
     plan: free
+    autoDeploy: false                 # deploy.yml triggers this via deploy hook, only after CI is green
     buildCommand: pip install -r requirements.txt
     startCommand: python run_scheduler.py
     envVars:
