@@ -29,7 +29,7 @@ envVarGroups:
 
 services:
   - type: web
-    name: medeasy
+    name: arogo
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
