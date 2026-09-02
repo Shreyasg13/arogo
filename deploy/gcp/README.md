@@ -7,7 +7,8 @@ self-hosting)"**.
 
 | File | What it is |
 |------|------------|
-| `provision.sh`           | One-time setup: creates the `arogo` user, installs Python/Caddy, clones the repo, builds the venv |
+| `terraform/`              | **Recommended path** — `terraform apply` creates the VM and runs everything below automatically via a startup script. See [`terraform/README.md`](terraform/README.md) |
+| `provision.sh`           | One-time setup: creates the `arogo` user, installs Python/Caddy, clones the repo, builds the venv. Used directly if you provision the VM by hand instead of via Terraform |
 | `arogo-web.service`      | systemd unit — gunicorn web server (`SCHEDULER_ENABLED=0`) |
 | `arogo-scheduler.service`| systemd unit — background jobs worker (`SCHEDULER_ENABLED=1`, run on ONE process) |
 | `Caddyfile`               | Reverse proxy — automatic Let's Encrypt HTTPS, no certbot/cron needed |

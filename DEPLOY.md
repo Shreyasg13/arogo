@@ -158,7 +158,15 @@ local database server. Public HTTPS comes from Caddy + Let's Encrypt
 instead of Tailscale, since this VM is meant to be reachable by family
 members without installing anything extra.
 
-### 1. Create the VM
+### Fastest path: Terraform
+
+`deploy/gcp/terraform/` creates the VM and fully provisions it (clones the
+repo, installs everything, starts the services) in one `terraform apply` —
+see [`deploy/gcp/terraform/README.md`](deploy/gcp/terraform/README.md).
+Skip straight to step 2 below (get a database) if you're using this path;
+Terraform replaces steps 1, 3, and 4.
+
+### 1. Create the VM (manual path)
 
 Always Free eligibility requires one of `us-west1`, `us-central1`, or
 `us-east1`. Run this yourself (needs your own GCP project/auth):

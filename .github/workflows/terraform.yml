@@ -1,0 +1,46 @@
+name: Terraform
+
+# plan runs automatically for visibility; apply is manual-only (workflow_dispatch)
+# — this provisions real, billable cloud infrastructure, so it never happens
+# silently on a push.
+on:
+  pull_request:
+    paths: ["deploy/gcp/terraform/**"]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "plan or apply"
+        required: true
+        default: "plan"
+        type: choice
+        options: ["plan", "apply"]
+
+defaults:
+  run:
+    working-directory: deploy/gcp/terraform
+
+env:
+  TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+  TF_VAR_app_repo_url: ${{ secrets.TF_VAR_app_repo_url }}
+  TF_VAR_domain: ${{ secrets.TF_VAR_domain }}
+  TF_VAR_secret_key: ${{ secrets.TF_VAR_secret_key }}
+  TF_VAR_database_url: ${{ secrets.TF_VAR_database_url }}
+  GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - run: terraform init
+
+      - name: Plan
+        if: github.event_name == 'pull_request' || inputs.action == 'plan'
+        run: terraform plan -no-color
+
+      - name: Apply
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'apply'
+        run: terraform apply -auto-approve -no-color

@@ -1,0 +1,13 @@
+# Copy to terraform.tfvars (gitignored — never commit the real file) and fill in.
+
+project_id   = "your-gcp-project-id"
+region       = "us-central1"   # must stay us-west1 / us-central1 / us-east1 for Always Free
+zone         = "us-central1-a"
+app_repo_url = "https://github.com/you/arogo.git"
+domain       = "arogo.yourdomain.com"
+
+# python3 -c "import secrets; print(secrets.token_hex(32))"
+secret_key = "REPLACE_ME"
+
+# From your Neon or Supabase project's connection string
+database_url = "postgresql://user:password@host:5432/arogo"
