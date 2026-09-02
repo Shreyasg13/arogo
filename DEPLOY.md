@@ -143,6 +143,89 @@ cd /home/pi/arogo && git pull
 sudo systemctl restart arogo-web arogo-scheduler
 ```
 
+## Google Cloud (GCP e2-micro, self-hosting)
+
+Run Arogo on a Google Cloud `e2-micro` — the "Always Free" tier's VM
+(permanent, not a trial), publicly reachable on your own domain. The
+ready-made units and scripts are in [`deploy/gcp/`](deploy/gcp/); the
+files assume a dedicated `arogo` user and app dir `/home/arogo/arogo`
+(edit if yours differ).
+
+Unlike the Raspberry Pi kit, this path keeps the database off the VM
+entirely — an `e2-micro` only has 1GB RAM, so a free managed Postgres
+(Neon or Supabase both work) leaves that RAM for the app instead of a
+local database server. Public HTTPS comes from Caddy + Let's Encrypt
+instead of Tailscale, since this VM is meant to be reachable by family
+members without installing anything extra.
+
+### 1. Create the VM
+
+Always Free eligibility requires one of `us-west1`, `us-central1`, or
+`us-east1`. Run this yourself (needs your own GCP project/auth):
+
+```bash
+gcloud compute instances create arogo \
+  --zone=us-central1-a \
+  --machine-type=e2-micro \
+  --image-family=debian-12 \
+  --image-project=debian-cloud
+gcloud compute addresses create arogo-ip --region=us-central1
+gcloud compute instances add-access-config arogo --zone=us-central1-a \
+  --address="$(gcloud compute addresses describe arogo-ip --region=us-central1 --format='value(address)')"
+gcloud compute firewall-rules create arogo-http --allow=tcp:80,tcp:443
+```
+
+Point your domain's `A` record at that static IP.
+
+### 2. Get a free Postgres database
+
+Create a project on [Neon](https://neon.tech) or [Supabase](https://supabase.com)
+(both free-tier, no card required) and copy the connection string — this is
+a manual dashboard step, same as the SMTP setup below.
+
+### 3. Provision the VM
+
+```bash
+gcloud compute ssh arogo --zone=us-central1-a
+# on the VM:
+git clone <your-repo-url> /tmp/arogo-repo   # just to grab deploy/gcp/ before the real clone
+AROGO_REPO_URL=<your-repo-url> bash /tmp/arogo-repo/deploy/gcp/provision.sh
+```
+
+### 4. Configure and start
+
+```bash
+cp deploy/gcp/arogo.env.example /home/arogo/arogo/arogo.env
+python3 -c "import secrets; print(secrets.token_hex(32))"   # paste as SECRET_KEY
+sudo -u arogo nano /home/arogo/arogo/arogo.env   # SECRET_KEY, DATABASE_URL, APP_BASE_URL
+sudo chmod 600 /home/arogo/arogo/arogo.env
+
+sudo cp deploy/gcp/arogo-web.service deploy/gcp/arogo-scheduler.service /etc/systemd/system/
+sudo cp deploy/gcp/Caddyfile /etc/caddy/Caddyfile   # edit the domain first
+sudo systemctl daemon-reload
+sudo systemctl enable --now arogo-web arogo-scheduler caddy
+```
+
+### 5. Verify
+
+```bash
+curl -s https://arogo.yourdomain.com/healthz   # {"status":"ok","scheduler":{"ok":true,...}}
+journalctl -u arogo-web -u arogo-scheduler -f  # live logs
+```
+
+DB backups on this path are the Postgres provider's job — Neon and
+Supabase both offer point-in-time recovery on their free tiers, so unlike
+the Pi kit there's no local backup script here (no local SQLite file to
+snapshot).
+
+### Updating
+
+```bash
+sudo -u arogo git -C /home/arogo/arogo pull
+sudo -u arogo /home/arogo/arogo/.venv/bin/pip install -r /home/arogo/arogo/requirements.txt
+sudo systemctl restart arogo-web arogo-scheduler
+```
+
 ## Security posture (current state)
 
 - Sessions: signed HttpOnly cookie, 7-day expiry, `Secure` + HSTS when `COOKIE_SECURE=1`

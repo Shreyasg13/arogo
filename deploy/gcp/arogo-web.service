@@ -1,0 +1,24 @@
+[Unit]
+# Arogo web server (gunicorn). Serves requests only — the scheduler worker
+# runs the background jobs, so this process must NOT (SCHEDULER_ENABLED=0).
+Description=Arogo web (gunicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=arogo
+WorkingDirectory=/home/arogo/arogo
+EnvironmentFile=/home/arogo/arogo/arogo.env
+# This process serves requests; it must not run the jobs (the worker does).
+Environment=SCHEDULER_ENABLED=0
+# Bind to localhost only — Caddy terminates HTTPS in front of it.
+ExecStart=/home/arogo/arogo/.venv/bin/gunicorn -w 2 -b 127.0.0.1:8000 "app:create_app()"
+Restart=always
+RestartSec=3
+# Light hardening
+NoNewPrivileges=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
