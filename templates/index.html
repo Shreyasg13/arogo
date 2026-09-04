@@ -585,6 +585,9 @@
             data-i18n-aria="Toggle simple view with larger text" aria-label="Toggle simple view with larger text">
       <span id="simple-toggle-icon">🔍</span> <span id="simple-toggle-label">Simple view</span>
     </button>
+    <button class="theme-toggle-btn" data-ev-click="signOut()" id="sidebar-signout">
+      <span>🚪</span> <span data-i18n="Sign out">Sign out</span>
+    </button>
   </div>
 </aside>
 
@@ -1406,9 +1409,6 @@
     </div>
     <div class="header-actions">
       <span id="header-user-name" style="font-size:13px;color:var(--gray-500);margin-right:4px"></span>
-      <button class="btn-outline" data-ev-click="signOut()" style="font-size:12px;padding:6px 12px">
-        Sign out
-      </button>
       <button class="btn-icon-labeled" data-ev-click="switchView('consistency')" data-i18n-title="Consistency Tracker" title="Consistency Tracker">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1" fill="currentColor"/><circle cx="12" cy="15" r="1" fill="currentColor"/><circle cx="16" cy="15" r="1" fill="currentColor"/></svg>
         <span id="fitness-streak-badge" class="streak-pill" style="display:none"></span>
