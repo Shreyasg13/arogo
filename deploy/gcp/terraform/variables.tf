@@ -47,3 +47,32 @@ variable "database_url" {
   type        = string
   sensitive   = true
 }
+
+variable "smtp_host" {
+  description = "SMTP server for verification/reset/digest emails. Leave blank to skip SMTP entirely — emails then just log server-side instead of sending."
+  type        = string
+  default     = ""
+}
+
+variable "smtp_port" {
+  type    = string
+  default = "587"
+}
+
+variable "smtp_user" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
+
+variable "smtp_pass" {
+  description = "For Gmail: an App Password (myaccount.google.com/apppasswords), not your real password. Requires 2FA enabled on the account."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "smtp_from" {
+  type    = string
+  default = ""
+}

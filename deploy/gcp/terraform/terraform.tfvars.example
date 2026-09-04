@@ -16,3 +16,12 @@ secret_key = "REPLACE_ME"
 
 # From your Neon or Supabase project's connection string
 database_url = "postgresql://user:password@host:5432/arogo"
+
+# Optional — leave all blank to skip SMTP (emails then just log server-side
+# instead of sending). For Gmail: smtp_pass is an App Password from
+# myaccount.google.com/apppasswords, not your real password (needs 2FA on).
+# smtp_host = "smtp.gmail.com"
+# smtp_port = "587"
+# smtp_user = "you@gmail.com"
+# smtp_pass = "REPLACE_ME"
+# smtp_from = "you@gmail.com"

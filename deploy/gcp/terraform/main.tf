@@ -62,5 +62,10 @@ resource "google_compute_instance" "arogo" {
     secret_key   = var.secret_key
     database_url = var.database_url
     use_https    = var.use_https
+    smtp_host    = var.smtp_host
+    smtp_port    = var.smtp_port
+    smtp_user    = var.smtp_user
+    smtp_pass    = var.smtp_pass
+    smtp_from    = var.smtp_from
   })
 }

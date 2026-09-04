@@ -10,6 +10,11 @@ DOMAIN="${domain}"
 SECRET_KEY="${secret_key}"
 DATABASE_URL="${database_url}"
 USE_HTTPS="${use_https}"
+SMTP_HOST="${smtp_host}"
+SMTP_PORT="${smtp_port}"
+SMTP_USER="${smtp_user}"
+SMTP_PASS="${smtp_pass}"
+SMTP_FROM="${smtp_from}"
 
 apt-get update -y
 apt-get install -y git
@@ -44,6 +49,19 @@ CSP_ENABLED=1
 APP_BASE_URL=$SCHEME://$DOMAIN
 DATABASE_URL=$DATABASE_URL
 ENV
+
+# SMTP is optional — blank smtp_host means emails just log server-side
+# instead of sending, so only write these when actually configured.
+if [ -n "$SMTP_HOST" ]; then
+  cat >> "$APP_DIR/arogo.env" <<ENV
+SMTP_HOST=$SMTP_HOST
+SMTP_PORT=$SMTP_PORT
+SMTP_USER=$SMTP_USER
+SMTP_PASS=$SMTP_PASS
+SMTP_FROM=$SMTP_FROM
+ENV
+fi
+
 chown arogo:arogo "$APP_DIR/arogo.env"
 chmod 600 "$APP_DIR/arogo.env"
 
