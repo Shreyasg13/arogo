@@ -25,11 +25,11 @@ env:
   TF_VAR_domain: ${{ secrets.TF_VAR_domain }}
   TF_VAR_secret_key: ${{ secrets.TF_VAR_secret_key }}
   TF_VAR_database_url: ${{ secrets.TF_VAR_database_url }}
-  TF_VAR_smtp_host: ${{ secrets.TF_VAR_smtp_host }}
-  TF_VAR_smtp_port: ${{ secrets.TF_VAR_smtp_port }}
-  TF_VAR_smtp_user: ${{ secrets.TF_VAR_smtp_user }}
-  TF_VAR_smtp_pass: ${{ secrets.TF_VAR_smtp_pass }}
-  TF_VAR_smtp_from: ${{ secrets.TF_VAR_smtp_from }}
+  TF_VAR_smtp_host: ${{ secrets.TF_VAR_SMTP_HOST }}
+  TF_VAR_smtp_port: ${{ secrets.TF_VAR_SMTP_PORT }}
+  TF_VAR_smtp_user: ${{ secrets.TF_VAR_SMTP_USER }}
+  TF_VAR_smtp_pass: ${{ secrets.TF_VAR_SMTP_PASS }}
+  TF_VAR_smtp_from: ${{ secrets.TF_VAR_SMTP_FROM }}
   GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
 
 jobs:
