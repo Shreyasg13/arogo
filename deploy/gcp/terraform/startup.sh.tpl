@@ -51,6 +51,12 @@ cp "$APP_DIR/deploy/gcp/arogo-web.service" "$APP_DIR/deploy/gcp/arogo-scheduler.
 sed "s#arogo.yourdomain.com#$CADDY_ADDR#" "$APP_DIR/deploy/gcp/Caddyfile" > /etc/caddy/Caddyfile
 
 systemctl daemon-reload
-systemctl enable --now arogo-web arogo-scheduler caddy
+systemctl enable --now arogo-web arogo-scheduler
+# Debian's caddy package auto-starts on install with its own stock config
+# (a static file server) — enable --now is a no-op if it's already running,
+# so it would silently never pick up the Caddyfile written above. restart
+# forces it to reload regardless of prior state.
+systemctl enable caddy
+systemctl restart caddy
 
 echo "arogo startup script: done. Point DNS at this instance's static IP if you haven't already."
