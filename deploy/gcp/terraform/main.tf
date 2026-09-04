@@ -61,5 +61,6 @@ resource "google_compute_instance" "arogo" {
     domain       = var.domain
     secret_key   = var.secret_key
     database_url = var.database_url
+    use_https    = var.use_https
   })
 }

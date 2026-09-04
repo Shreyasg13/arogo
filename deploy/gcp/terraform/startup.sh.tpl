@@ -9,6 +9,7 @@ REPO_URL="${repo_url}"
 DOMAIN="${domain}"
 SECRET_KEY="${secret_key}"
 DATABASE_URL="${database_url}"
+USE_HTTPS="${use_https}"
 
 apt-get update -y
 apt-get install -y git
@@ -21,19 +22,33 @@ AROGO_REPO_URL="$REPO_URL" bash "$BOOTSTRAP_DIR/deploy/gcp/provision.sh"
 
 APP_DIR=/home/arogo/arogo
 
+# use_https=false is for a temporary bare-IP test before a domain exists —
+# forces plain HTTP so COOKIE_SECURE (which needs real TLS) doesn't lock you
+# out, and gives Caddy an explicit http:// address instead of relying on its
+# IP-address auto-detection.
+if [ "$USE_HTTPS" = "true" ]; then
+  SCHEME=https
+  COOKIE_SECURE_VAL=1
+  CADDY_ADDR="$DOMAIN"
+else
+  SCHEME=http
+  COOKIE_SECURE_VAL=0
+  CADDY_ADDR="http://$DOMAIN"
+fi
+
 cat > "$APP_DIR/arogo.env" <<ENV
 SECRET_KEY=$SECRET_KEY
 FLASK_DEBUG=0
-COOKIE_SECURE=1
+COOKIE_SECURE=$COOKIE_SECURE_VAL
 CSP_ENABLED=1
-APP_BASE_URL=https://$DOMAIN
+APP_BASE_URL=$SCHEME://$DOMAIN
 DATABASE_URL=$DATABASE_URL
 ENV
 chown arogo:arogo "$APP_DIR/arogo.env"
 chmod 600 "$APP_DIR/arogo.env"
 
 cp "$APP_DIR/deploy/gcp/arogo-web.service" "$APP_DIR/deploy/gcp/arogo-scheduler.service" /etc/systemd/system/
-sed "s/arogo.yourdomain.com/$DOMAIN/" "$APP_DIR/deploy/gcp/Caddyfile" > /etc/caddy/Caddyfile
+sed "s#arogo.yourdomain.com#$CADDY_ADDR#" "$APP_DIR/deploy/gcp/Caddyfile" > /etc/caddy/Caddyfile
 
 systemctl daemon-reload
 systemctl enable --now arogo-web arogo-scheduler caddy

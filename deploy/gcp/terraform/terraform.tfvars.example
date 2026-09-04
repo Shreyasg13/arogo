@@ -6,6 +6,11 @@ zone         = "us-central1-a"
 app_repo_url = "https://github.com/you/arogo.git"
 domain       = "arogo.yourdomain.com"
 
+# For a first test before you have a domain: set domain to the static IP
+# (get it after one apply from the static_ip output) and use_https = false.
+# Switch back once you have a real domain pointed at that IP.
+# use_https = false
+
 # python3 -c "import secrets; print(secrets.token_hex(32))"
 secret_key = "REPLACE_ME"
 

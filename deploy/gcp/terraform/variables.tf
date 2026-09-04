@@ -26,8 +26,14 @@ variable "app_repo_url" {
 }
 
 variable "domain" {
-  description = "Public domain this instance will serve, e.g. arogo.yourdomain.com. Point its DNS A record at the static IP from the 'static_ip' output after apply."
+  description = "Public domain this instance will serve, e.g. arogo.yourdomain.com. Point its DNS A record at the static IP from the 'static_ip' output after apply. Can also be the bare static IP itself for an initial no-domain test — Caddy skips TLS automatically for IP addresses (see use_https)."
   type        = string
+}
+
+variable "use_https" {
+  description = "Set false only for a temporary bare-IP test before you have a domain: switches APP_BASE_URL to http:// and COOKIE_SECURE off, since there's no real TLS to require. Leave true for any real deploy."
+  type        = bool
+  default     = true
 }
 
 variable "secret_key" {
