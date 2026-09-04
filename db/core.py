@@ -97,8 +97,16 @@ IS_POSTGRES  = DATABASE_URL.startswith(("postgres://", "postgresql://"))
 #
 # Deliberately NOT "is this a file database": a benchmark pointing at its own
 # file is doing the right thing and must not be obstructed.
-IS_LIVE_DB = bool(DATABASE_URL) or (
-    os.path.abspath(DB_PATH) == os.path.abspath(DEFAULT_DB_PATH))
+#
+# MEDEASY_TESTING overrides this to False even when DATABASE_URL is set. Only
+# tests/conftest.py sets it, and only after pytest_configure has already
+# refused to run unless the PostgreSQL database name contains "test" — so by
+# the time this flag has any effect, that check has already established the
+# database is disposable. Without this override, the PostgreSQL test suite
+# could never register a reserved-test-TLD address at all: bool(DATABASE_URL)
+# alone would mark CI's own throwaway database "live".
+IS_LIVE_DB = not os.environ.get("MEDEASY_TESTING") and (bool(DATABASE_URL) or (
+    os.path.abspath(DB_PATH) == os.path.abspath(DEFAULT_DB_PATH)))
 
 # ── Connection ────────────────────────────────────────────────────────────────
 # One connection per thread, never one per process.

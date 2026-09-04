@@ -202,17 +202,19 @@ class TestSleep:
                                             "quality": 4, "date_key": morning_iso})
 
         # Three nights, the last one short — exactly what the old code flagged.
+        # Dated relative to today (not hardcoded) so this doesn't age out of the
+        # trend endpoint's `days` window as real time passes.
+        today = dt.date.today()
         c = _user(app, "sleep-trend@medeasy.test")
-        for morning, wake in [("2026-08-02", "07:45"), ("2026-08-03", "07:45"),
-                              ("2026-08-04", "06:00")]:
-            log_night(c, morning, wake)
+        for offset, wake in [(3, "07:45"), (2, "07:45"), (1, "06:00")]:
+            log_night(c, (today - dt.timedelta(days=offset)).isoformat(), wake)
         assert c.get("/api/sleep/trend?days=30").get_json()["stats"]["dur_trend"] \
             == "insufficient", "classified a trend off 3 nights"
 
         # Seven nights with a real decline in the second half → now it may speak.
         c2 = _user(app, "sleep-trend7@medeasy.test")
         for i, wake in enumerate(["07:00"] * 4 + ["04:00"] * 3):   # 8h ×4, then 5h ×3
-            log_night(c2, "2026-08-%02d" % (11 + i), wake)
+            log_night(c2, (today - dt.timedelta(days=7 - i)).isoformat(), wake)
         assert c2.get("/api/sleep/trend?days=30").get_json()["stats"]["dur_trend"] \
             == "worsening"
 

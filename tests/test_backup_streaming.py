@@ -54,7 +54,7 @@ def _user(app, seed=True):
                                                   time_key,taken,taken_at)
                            VALUES (?,?,?,?,?,?,?)""",
                         (new_id(), uid, mid, f'2026-07-{i % 28 + 1:02d}', '09:00',
-                         i % 5 != 0, now_iso()), commit=True)
+                         1 if i % 5 != 0 else 0, now_iso()), commit=True)
             execute("""INSERT INTO symptoms (id,name,severity,date_key,time_of_day,
                                              notes,logged_at,user_id)
                        VALUES (?,?,?,?,?,?,?,?)""",

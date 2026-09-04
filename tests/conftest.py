@@ -14,6 +14,12 @@ import os
 import pytest
 
 os.environ["MEDEASY_DB"] = ":memory:"
+# Tells db.core the live-database guard doesn't apply here — safe to set
+# unconditionally at import time because pytest_configure below refuses to
+# run at all against a PostgreSQL database whose name doesn't contain "test",
+# so no test ever executes against a database this flag hasn't already
+# vetted.
+os.environ["MEDEASY_TESTING"] = "1"
 
 _DATABASE_URL = os.environ.get("DATABASE_URL", "")
 _IS_PG = _DATABASE_URL.startswith(("postgres://", "postgresql://"))
