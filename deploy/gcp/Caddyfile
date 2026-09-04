@@ -1,0 +1,10 @@
+# Arogo reverse proxy — Caddy issues and auto-renews a Let's Encrypt cert
+# for this domain the moment its A record resolves to this VM. No certbot,
+# no cron job, no manual renewal.
+#
+# Edit the domain below, then: sudo cp Caddyfile /etc/caddy/Caddyfile &&
+# sudo systemctl reload caddy
+
+arogo.yourdomain.com {
+	reverse_proxy 127.0.0.1:8000
+}

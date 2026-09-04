@@ -1,0 +1,24 @@
+[Unit]
+# Arogo background jobs: dose reminders, refill/appointment nudges, caregiver
+# missed-dose escalation, weekly digests, OAuth sync. Run this on EXACTLY ONE
+# process so jobs never double-fire. It shares SECRET_KEY with the web unit
+# (via arogo.env) because it signs digest-unsubscribe tokens the web verifies.
+Description=Arogo scheduler (background jobs)
+After=network-online.target arogo-web.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=arogo
+WorkingDirectory=/home/arogo/arogo
+EnvironmentFile=/home/arogo/arogo/arogo.env
+# This is the one process that runs the jobs.
+Environment=SCHEDULER_ENABLED=1
+ExecStart=/home/arogo/arogo/.venv/bin/python run_scheduler.py
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
