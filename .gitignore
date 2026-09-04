@@ -18,3 +18,14 @@ uploads/
 crash.log
 override.tf
 override.tf.json
+.neon
+
+# Neon platform scaffolding (Auth/Buckets/Functions) — not used by the Flask
+# app itself, kept local-only per the exploratory neon deploy run
+neon.ts
+hello.ts
+package.json
+package-lock.json
+node_modules/
+skills-lock.json
+.claude/skills/
